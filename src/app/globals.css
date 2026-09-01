@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0d10;
+  --surface: #14171c;
+  --surface-2: #1b1f26;
+  --border: #262b33;
+  --text: #f3f4f1;
+  --text-muted: #8b92a0;
+
+  --fastfood: #f2a93b;
+  --fastfood-soft: #4a3a1e;
+  --minimart: #33c9a8;
+  --minimart-soft: #1b3a34;
+  --danger: #e5484d;
+  --danger-soft: #3a1e20;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-fastfood: var(--fastfood);
+  --color-fastfood-soft: var(--fastfood-soft);
+  --color-minimart: var(--minimart);
+  --color-minimart-soft: var(--minimart-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-display: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+/* Hide scrollbar completely across browser elements */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+}
+
+* {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+/* Torn-ticket edge used by the module switcher */
+.ticket-edge {
+  clip-path: polygon(
+    0% 0%, 100% 0%, 100% 92%,
+    92% 100%, 84% 92%, 76% 100%, 68% 92%, 60% 100%,
+    52% 92%, 44% 100%, 36% 92%, 28% 100%, 20% 92%, 12% 100%, 4% 92%, 0% 100%
+  );
+}
