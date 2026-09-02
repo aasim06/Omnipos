@@ -1,0 +1,32 @@
+/* Microsoft Fluent UI v9 Desktop Base Styles */
+/* colorNeutralBackground1 = #FFFFFF (card containers) */
+/* colorNeutralBackground2 = #F5F5F5 (Mica app frame) */
+:root {
+  --fluent-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', sans-serif;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #F5F5F5; /* Fluent v9 Mica app frame base */
+  color: #1A1A1A;
+  font-family: var(--fluent-font);
+  user-select: none;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+/* Fluent v9 Windows 11 scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C7C7C7; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #9E9E9E; }

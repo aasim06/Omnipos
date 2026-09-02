@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id           String          @id @default(cuid())
+  module       String          // "fastfood" | "minimart"
+  name         String
+  description  String?
+  costPrice    Float?
+  price        Float
+  category     String
+  skuCode      String?
+  rackLocation String?
+  unit         String?
+  minThreshold Int?
+  openingStock Int?
+  prepTime     Int?
+  displayOrder Int?            @default(0)
+  tags         String?         // JSON string array
+  allergens    String?         // JSON string array
+  isAvailable  Boolean         @default(true)
+  imageBase64  String?
+  imageUrl     String?
+  variants     String?         // JSON string of ProductVariant[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  orderItems   OrderItem[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  module    String   // "fastfood" | "minimart"
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  module          String      // "fastfood" | "minimart"
+  discountPercent Float       @default(0)
+  customerName    String?
+  orderType       String?     // "dine-in" | "takeaway" | "delivery"
+  stage           String      @default("paid") // "cart" | "kot" | "billed" | "paid"
+  totalAmount     Float       @default(0)
+  syncStatus      String      @default("synced") // "pending" | "synced" | "failed"
+  isSynced        Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  lines           OrderItem[]
+  kitchenTicket   KitchenTicket?
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name         String
+  unitPrice    Float
+  quantity     Int
+  variantLabel String?
+  notes        String?
+}
+
+model KitchenTicket {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      String   @default("pending") // "pending" | "cooking" | "ready" | "served"
+  orderType   String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CustomerKhata {
+  id           String             @id @default(cuid())
+  name         String
+  phone        String?
+  address      String?
+  currentDebt  Float              @default(0) // Kitna udhaar baki hai
+  creditLimit  Float?             @default(50000)
+  note         String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  entries      KhataTransaction[]
+}
+
+model KhataTransaction {
+  id           String        @id @default(cuid())
+  khataId      String
+  khata        CustomerKhata @relation(fields: [khataId], references: [id], onDelete: Cascade)
+  type         String        // "DEBIT" (udhaar diya) | "CREDIT" (wasool kiya)
+  amount       Float
+  balanceAfter Float
+  description  String?
+  orderId      String?
+  date         DateTime      @default(now())
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  module      String   // "fastfood" | "minimart"
+  productId   String
+  productName String
+  type        String   // "in" | "out"
+  quantity    Int
+  unitCost    Float?
+  unitPrice   Float?
+  reason      String?
+  note        String?
+  date        DateTime @default(now())
+}
+
+model SyncOutbox {
+  id          String   @id @default(cuid())
+  entityType  String   // "ORDER" | "KHATA_TRANSACTION" | "STOCK_MOVEMENT"
+  entityId    String
+  action      String   // "CREATE" | "UPDATE" | "DELETE"
+  payload     String   // JSON string
+  status      String   @default("pending") // "pending" | "processing" | "synced" | "failed"
+  retryCount  Int      @default(0)
+  lastError   String?
+  createdAt   DateTime @default(now())
+  syncedAt    DateTime?
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  category    String   // "Rent" | "Utilities" | "Salaries" | "Vendor" | "Petty Cash" | "Maintenance" | "Other"
+  amount      Float
+  paymentMode String   @default("cash") // "cash" | "bank" | "card"
+  description String?
+  vendorName  String?
+  receiptNo   String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model CashDrawer {
+  id          String    @id @default(cuid())
+  date        DateTime  @default(now())
+  openingFloat Float    @default(0)
+  cashSales    Float    @default(0)
+  cashIn       Float    @default(0)
+  cashOut      Float    @default(0)
+  closingCash  Float?
+  status       String   @default("open") // "open" | "closed"
+  closedAt     DateTime?
+  notes        String?
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
