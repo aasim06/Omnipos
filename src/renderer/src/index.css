@@ -115,6 +115,34 @@ html, body, #root, main, table, tr, td, th, p, span, h1, h2, h3, h4, h5, h6, inp
   color: #ffffff !important;
 }
 
+/* Light mode dropdown styling */
+[data-theme="light"] .fui-Dropdown__listbox,
+[data-theme="light"] .fui-Combobox__listbox,
+[data-theme="light"] [role="listbox"] {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme="light"] [role="option"],
+[data-theme="light"] .fui-Option {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] [role="option"]:hover,
+[data-theme="light"] .fui-Option:hover,
+[data-theme="light"] [role="option"].fui-Option--focus,
+[data-theme="light"] .fui-Option--focus {
+  background-color: rgba(229, 25, 55, 0.1) !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] [role="option"][aria-selected="true"],
+[data-theme="light"] .fui-Option[aria-selected="true"] {
+  background-color: #E51937 !important;
+  color: #ffffff !important;
+}
+
 /* Fallback for native select */
 select {
   accent-color: #E51937 !important;

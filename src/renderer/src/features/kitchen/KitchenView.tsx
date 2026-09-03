@@ -17,7 +17,8 @@ import {
   DialogActions,
   DialogContent,
   Input,
-  Select,
+  Dropdown,
+  Option,
   Label,
   TabList,
   Tab,
@@ -437,12 +438,20 @@ export function KitchenView(): React.JSX.Element {
                         <Label required htmlFor="orderType" style={{ fontWeight: 600, fontSize: '13px' }}>
                           Order Type
                         </Label>
-                        <Select id="orderType" {...register('orderType')} style={{ width: '100%' }}>
-                          <option value="Dine-In">Dine-In</option>
-                          <option value="Takeaway">Takeaway</option>
-                          <option value="Delivery">Delivery</option>
-                          <option value="VIP Rush">VIP Rush</option>
-                        </Select>
+                        <Dropdown
+                          id="orderType"
+                          value={watch('orderType') || 'Dine-In'}
+                          selectedOptions={[watch('orderType') || 'Dine-In']}
+                          onOptionSelect={(_, d) => {
+                            if (d.optionValue) setValue('orderType', d.optionValue as any);
+                          }}
+                          style={{ width: '100%' }}
+                        >
+                          <Option value="Dine-In" text="Dine-In">Dine-In</Option>
+                          <Option value="Takeaway" text="Takeaway">Takeaway</Option>
+                          <Option value="Delivery" text="Delivery">Delivery</Option>
+                          <Option value="VIP Rush" text="VIP Rush">VIP Rush</Option>
+                        </Dropdown>
                         {errors.orderType && <span className={styles.errorMessage}>{errors.orderType.message}</span>}
                       </div>
                     </div>

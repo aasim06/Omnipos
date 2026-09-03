@@ -4,7 +4,8 @@ import {
   tokens,
   Button,
   Input,
-  Select,
+  Dropdown,
+  Option,
   Label,
   Subtitle1,
   Body1,
@@ -579,15 +580,22 @@ export function CategoriesView(): React.JSX.Element {
                   control={categoryForm.control}
                   name="module"
                   render={({ field }) => (
-                    <Select
+                    <Dropdown
                       appearance="outline"
-                      className={styles.fullWidth}
-                      value={field.value}
-                      onChange={(_, d) => field.onChange(d.value as ModuleKey)}
+<Dropdown
+  appearance="outline"
+  className={styles.fullWidth}
+  style={{ width: '100%' }}
+  value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Goods'}
+  selectedOptions={field.value ? [field.value] : []}
+  onOptionSelect={(_, d) => {
+    if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
+  }}
+>
                     >
-                      {hasFastFood && <option value="fastfood">Fast Food Menu</option>}
-                      {hasOmnimart && <option value="minimart">Omnimart Goods</option>}
-                    </Select>
+                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
+                      {hasOmnimart && <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>}
+                    </Dropdown>
                   )}
                 />
               </div>
@@ -599,20 +607,34 @@ export function CategoriesView(): React.JSX.Element {
                 <Controller
                   control={categoryForm.control}
                   name="profile"
-                  render={({ field }) => (
-                    <Select
-                      appearance="outline"
-                      className={styles.fullWidth}
-                      value={field.value || 'standard'}
-                      onChange={(_, d) => field.onChange(d.value as CategoryProfile)}
-                    >
-                      <option value="standard">Standard Retail (Grocery &amp; General Goods)</option>
-                      <option value="apparel">Apparel &amp; Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)</option>
-                      <option value="footwear">Footwear &amp; Shoes (Sizes: 38 to 45)</option>
-                      <option value="hardware">Hardware, Iron &amp; Paint (KG, Feet, Meters, Litres, Bags)</option>
-                      <option value="food">Restaurant &amp; Fast Food (Portions: Regular, S, M, L, Family)</option>
-                    </Select>
-                  )}
+render={({ field }) => {
+  const profileLabels: Record<string, string> = {
+    standard: 'Standard Retail (Grocery & General Goods)',
+    apparel: 'Apparel & Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)',
+    footwear: 'Footwear & Shoes (Sizes: 38 to 45)',
+    hardware: 'Hardware, Iron & Paint (KG, Feet, Meters, Litres, Bags)',
+    food: 'Restaurant & Fast Food (Portions: Regular, S, M, L, Family)',
+  };
+  const currentVal = field.value || 'standard';
+  return (
+    <Dropdown
+      appearance="outline"
+      className={styles.fullWidth}
+      style={{ width: '100%' }}
+      value={profileLabels[currentVal] || currentVal}
+      selectedOptions={[currentVal]}
+      onOptionSelect={(_, d) => {
+        if (d.optionValue) field.onChange(d.optionValue as CategoryProfile);
+      }}
+    >
+      <Option value="standard" text="Standard Retail (Grocery & General Goods)">Standard Retail (Grocery &amp; General Goods)</Option>
+      <Option value="apparel" text="Apparel & Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)">Apparel &amp; Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)</Option>
+      <Option value="footwear" text="Footwear & Shoes (Sizes: 38 to 45)">Footwear &amp; Shoes (Sizes: 38 to 45)</Option>
+      <Option value="hardware" text="Hardware, Iron & Paint (KG, Feet, Meters, Litres, Bags)">Hardware, Iron &amp; Paint (KG, Feet, Meters, Litres, Bags)</Option>
+      <Option value="food" text="Restaurant & Fast Food (Portions: Regular, S, M, L, Family)">Restaurant &amp; Fast Food (Portions: Regular, S, M, L, Family)</Option>
+    </Dropdown>
+  );
+}}
                 />
                 <Caption1 className={styles.hintCaption}>
                   Auto-enables size matrices, measurement units, and decimal quantities when creating products.

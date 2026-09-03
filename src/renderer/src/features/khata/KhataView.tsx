@@ -5,7 +5,8 @@ import {
   Button,
   Badge,
   Input,
-  Select,
+  Dropdown,
+  Option,
   Label,
   Body1,
   Body2,
@@ -644,12 +645,19 @@ export function KhataView(): React.JSX.Element {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Label style={{ fontSize: '13px', fontWeight: 600 }}>Filter Type:</Label>
-            <Select value={typeFilter} onChange={(_, d) => setTypeFilter(d.value)}>
-              <option value="all">All Accounts ({khatas.length})</option>
-              <option value="retail">Retail Customers</option>
-              <option value="wholesale">Wholesale / Dukandar</option>
-              <option value="employee">Staff / Employee</option>
-            </Select>
+            <Dropdown
+              value={typeFilter === 'all' ? `All Accounts (${khatas.length})` : typeFilter === 'retail' ? 'Retail Customers' : typeFilter === 'wholesale' ? 'Wholesale / Dukandar' : 'Staff / Employee'}
+              selectedOptions={[typeFilter]}
+              onOptionSelect={(_, d) => {
+                if (d.optionValue) setTypeFilter(d.optionValue as any);
+              }}
+              style={{ minWidth: '180px' }}
+            >
+              <Option value="all" text={`All Accounts (${khatas.length})`}>All Accounts ({khatas.length})</Option>
+              <Option value="retail" text="Retail Customers">Retail Customers</Option>
+              <Option value="wholesale" text="Wholesale / Dukandar">Wholesale / Dukandar</Option>
+              <Option value="employee" text="Staff / Employee">Staff / Employee</Option>
+            </Dropdown>
           </div>
         </div>
 
@@ -1016,11 +1024,19 @@ export function KhataView(): React.JSX.Element {
                       control={newKhataForm.control}
                       name="customerType"
                       render={({ field }) => (
-                        <Select {...field} appearance="outline" style={{ width: '100%' }}>
-                          <option value="retail">Retail Customer</option>
-                          <option value="wholesale">Wholesale Dukandar</option>
-                          <option value="employee">Staff / Employee</option>
-                        </Select>
+                        <Dropdown
+                          appearance="outline"
+                          style={{ width: '100%' }}
+                          value={field.value === 'retail' ? 'Retail Customer' : field.value === 'wholesale' ? 'Wholesale Dukandar' : 'Staff / Employee'}
+                          selectedOptions={[field.value]}
+                          onOptionSelect={(_, d) => {
+                            if (d.optionValue) field.onChange(d.optionValue);
+                          }}
+                        >
+                          <Option value="retail" text="Retail Customer">Retail Customer</Option>
+                          <Option value="wholesale" text="Wholesale Dukandar">Wholesale Dukandar</Option>
+                          <Option value="employee" text="Staff / Employee">Staff / Employee</Option>
+                        </Dropdown>
                       )}
                     />
                   </div>
@@ -1031,12 +1047,20 @@ export function KhataView(): React.JSX.Element {
                       control={newKhataForm.control}
                       name="dueDays"
                       render={({ field }) => (
-                        <Select {...field} appearance="outline" style={{ width: '100%' }}>
-                          <option value="7">7 Days</option>
-                          <option value="15">15 Days</option>
-                          <option value="30">30 Days</option>
-                          <option value="60">60 Days</option>
-                        </Select>
+                        <Dropdown
+                          appearance="outline"
+                          style={{ width: '100%' }}
+                          value={`${field.value} Days`}
+                          selectedOptions={[String(field.value)]}
+                          onOptionSelect={(_, d) => {
+                            if (d.optionValue) field.onChange(Number(d.optionValue));
+                          }}
+                        >
+                          <Option value="7" text="7 Days">7 Days</Option>
+                          <Option value="15" text="15 Days">15 Days</Option>
+                          <Option value="30" text="30 Days">30 Days</Option>
+                          <Option value="60" text="60 Days">60 Days</Option>
+                        </Dropdown>
                       )}
                     />
                   </div>
@@ -1181,14 +1205,30 @@ export function KhataView(): React.JSX.Element {
                   <Controller
                     control={transForm.control}
                     name="paymentMethod"
-                    render={({ field }) => (
-                      <Select {...field} appearance="outline" style={{ width: '100%' }}>
-                        <option value="cash">Cash In Hand</option>
-                        <option value="bank">Bank Transfer / Cheque</option>
-                        <option value="easypaisa">EasyPaisa</option>
-                        <option value="jazzcash">JazzCash</option>
-                      </Select>
-                    )}
+                    render={({ field }) => {
+                      const methodLabels: Record<string, string> = {
+                        cash: 'Cash In Hand',
+                        bank: 'Bank Transfer / Cheque',
+                        easypaisa: 'EasyPaisa',
+                        jazzcash: 'JazzCash',
+                      };
+                      return (
+                        <Dropdown
+                          appearance="outline"
+                          style={{ width: '100%' }}
+                          value={methodLabels[field.value] || field.value || 'Select Payment Method'}
+                          selectedOptions={[field.value]}
+                          onOptionSelect={(_, d) => {
+                            if (d.optionValue) field.onChange(d.optionValue);
+                          }}
+                        >
+                          <Option value="cash" text="Cash In Hand">Cash In Hand</Option>
+                          <Option value="bank" text="Bank Transfer / Cheque">Bank Transfer / Cheque</Option>
+                          <Option value="easypaisa" text="EasyPaisa">EasyPaisa</Option>
+                          <Option value="jazzcash" text="JazzCash">JazzCash</Option>
+                        </Dropdown>
+                      );
+                    }}
                   />
                 </div>
 

@@ -9,7 +9,8 @@ import {
   Badge,
   Button,
   Input,
-  Select,
+  Dropdown,
+  Option,
   TabList,
   Tab,
 } from '@fluentui/react-components';
@@ -523,16 +524,19 @@ export function StockLedgerView(): React.JSX.Element {
               <Tab value="out">Stock Out</Tab>
             </TabList>
 
-            <Select
-              appearance="outline"
-              value={timeFilter}
-              onChange={(_, d) => setTimeFilter(d.value as any)}
+            <Dropdown
+              value={timeFilter === 'all' ? 'All Dates' : timeFilter === 'today' ? 'Today' : timeFilter === 'week' ? 'This Week' : 'This Month'}
+              selectedOptions={[timeFilter]}
+              onOptionSelect={(_, data) => {
+                if (data.optionValue) setTimeFilter(data.optionValue as any);
+              }}
+              style={{ minWidth: '135px' }}
             >
-              <option value="all">All Dates</option>
-              <option value="today">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-            </Select>
+              <Option value="all">All Dates</Option>
+              <Option value="today">Today</Option>
+              <Option value="week">This Week</Option>
+              <Option value="month">This Month</Option>
+            </Dropdown>
 
             <Button
               appearance="primary"

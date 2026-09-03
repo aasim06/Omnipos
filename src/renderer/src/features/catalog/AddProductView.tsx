@@ -5,7 +5,8 @@ import {
   tokens,
   Button,
   Input,
-  Select,
+  Dropdown,
+  Option,
   Label,
   Subtitle1,
   Caption1,
@@ -827,15 +828,22 @@ export function AddProductView(): React.JSX.Element {
                   control={productForm.control}
                   name="module"
                   render={({ field }) => (
-                    <Select
+                    <Dropdown
                       appearance="outline"
-                      className={styles.fullWidth}
-                      value={field.value}
-                      onChange={(_, d) => field.onChange(d.value as ModuleKey)}
+<Dropdown
+  appearance="outline"
+  className={styles.fullWidth}
+  style={{ width: '100%' }}
+  value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Supermarket'}
+  selectedOptions={field.value ? [field.value] : []}
+  onOptionSelect={(_, d) => {
+    if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
+  }}
+>
                     >
-                      {hasFastFood && <option value="fastfood">Fast Food Menu</option>}
-                      {hasOmnimart && <option value="minimart">Omnimart Supermarket</option>}
-                    </Select>
+                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
+                      {hasOmnimart && <Option value="minimart" text="Omnimart Supermarket">Omnimart Supermarket</Option>}
+                    </Dropdown>
                   )}
                 />
               </div>
@@ -865,29 +873,26 @@ export function AddProductView(): React.JSX.Element {
                     const otherGroupCats = categories.filter(
                       (c) => c.module !== watchedModule && (c.module === 'fastfood' ? hasFastFood : hasOmnimart),
                     );
+                    const displayList = [...activeGroupCats, ...otherGroupCats];
 
                     return (
-                      <Select
+                      <Dropdown
                         appearance="outline"
-                        className={styles.fullWidth}
-                        value={field.value}
-                        onChange={(_, d) => field.onChange(d.value)}
+<Dropdown
+  appearance="outline"
+  className={styles.fullWidth}
+  style={{ width: '100%' }}
+  value={field.value || 'Select Category'}
+  selectedOptions={field.value ? [field.value] : []}
+  onOptionSelect={(_, d) => {
+    if (d.optionValue) field.onChange(d.optionValue);
+  }}
+>
                       >
-                        {activeGroupCats.length > 0 && (
-                          <optgroup label={watchedModule === 'fastfood' ? 'Fast Food Categories' : 'Omnimart Categories'}>
-                            {activeGroupCats.map((c) => (
-                              <option key={c.id} value={c.name}>{c.name}</option>
-                            ))}
-                          </optgroup>
-                        )}
-                        {otherGroupCats.length > 0 && (
-                          <optgroup label={watchedModule === 'fastfood' ? 'Omnimart Categories' : 'Fast Food Categories'}>
-                            {otherGroupCats.map((c) => (
-                              <option key={c.id} value={c.name}>{c.name}</option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </Select>
+                        {displayList.map((c) => (
+                          <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
+                        ))}
+                      </Dropdown>
                     );
                   }}
                 />
@@ -995,27 +1000,34 @@ export function AddProductView(): React.JSX.Element {
                   control={productForm.control}
                   name="unit"
                   render={({ field }) => (
-                    <Select
+                    <Dropdown
                       appearance="outline"
-                      className={styles.fullWidth}
-                      value={field.value}
-                      onChange={(_, d) => field.onChange(d.value)}
+<Dropdown
+  appearance="outline"
+  className={styles.fullWidth}
+  style={{ width: '100%' }}
+  value={field.value || 'PCS'}
+  selectedOptions={[field.value || 'PCS']}
+  onOptionSelect={(_, d) => {
+    if (d.optionValue) field.onChange(d.optionValue);
+  }}
+>
                     >
-                      <option value="PCS">Piece (PCS)</option>
-                      <option value="KG">Kilogram (KG)</option>
-                      <option value="Gram">Gram (g)</option>
-                      <option value="Liter">Liter (L)</option>
-                      <option value="ML">Milliliter (ml)</option>
-                      <option value="PACK">Pack</option>
-                      <option value="BOX">Box</option>
-                      <option value="DOZEN">Dozen</option>
-                      <option value="FEET">Feet (ft)</option>
-                      <option value="METER">Meter (m)</option>
-                      <option value="GALLON">Gallon</option>
-                      <option value="BAG">Bag</option>
-                      <option value="BUNDLE">Bundle</option>
-                      <option value="PAIR">Pair</option>
-                    </Select>
+                      <Option value="PCS" text="Piece (PCS)">Piece (PCS)</Option>
+                      <Option value="KG" text="Kilogram (KG)">Kilogram (KG)</Option>
+                      <Option value="Gram" text="Gram (g)">Gram (g)</Option>
+                      <Option value="Liter" text="Liter (L)">Liter (L)</Option>
+                      <Option value="ML" text="Milliliter (ml)">Milliliter (ml)</Option>
+                      <Option value="PACK" text="Pack">Pack</Option>
+                      <Option value="BOX" text="Box">Box</Option>
+                      <Option value="DOZEN" text="Dozen">Dozen</Option>
+                      <Option value="FEET" text="Feet (ft)">Feet (ft)</Option>
+                      <Option value="METER" text="Meter (m)">Meter (m)</Option>
+                      <Option value="GALLON" text="Gallon">Gallon</Option>
+                      <Option value="BAG" text="Bag">Bag</Option>
+                      <Option value="BUNDLE" text="Bundle">Bundle</Option>
+                      <Option value="PAIR" text="Pair">Pair</Option>
+                    </Dropdown>
                   )}
                 />
               </div>
@@ -1508,15 +1520,22 @@ export function AddProductView(): React.JSX.Element {
                   control={categoryForm.control}
                   name="module"
                   render={({ field }) => (
-                    <Select
+                    <Dropdown
                       appearance="outline"
-                      className={styles.fullWidth}
-                      value={field.value}
-                      onChange={(_, d) => field.onChange(d.value as ModuleKey)}
+<Dropdown
+  appearance="outline"
+  className={styles.fullWidth}
+  style={{ width: '100%' }}
+  value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Supermarket'}
+  selectedOptions={field.value ? [field.value] : []}
+  onOptionSelect={(_, d) => {
+    if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
+  }}
+>
                     >
-                      {hasFastFood && <option value="fastfood">Fast Food Menu</option>}
-                      {hasOmnimart && <option value="minimart">Omnimart Supermarket</option>}
-                    </Select>
+                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
+                      {hasOmnimart && <Option value="minimart" text="Omnimart Supermarket">Omnimart Supermarket</Option>}
+                    </Dropdown>
                   )}
                 />
               </div>
