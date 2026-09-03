@@ -61,15 +61,16 @@ export const fluentMicaDarkTheme: Theme = {
   colorBrandBackground: '#E51937',
   colorBrandBackgroundHover: '#EC3953',
   colorBrandForeground1: '#F15A70',
-  colorNeutralBackground1: '#242424',  // Card containers in dark
-  colorNeutralBackground2: '#1A1A1A',  // App frame in dark
-  colorNeutralBackground3: '#2D2D2D',  // Sidebar rail in dark
-  colorNeutralBackground4: '#383838',  // Hover in dark
-  colorNeutralStroke1: '#3D3D3D',
-  colorNeutralStroke2: '#484848',
-  colorNeutralForeground1: '#FFFFFF',
-  colorNeutralForeground2: '#ABABAB',
-  colorNeutralForeground3: '#6E6E6E',
+  colorNeutralBackground1: '#16171A',  // Card containers in dark
+  colorNeutralBackground2: '#0F1012',  // App frame / page background in dark
+  colorNeutralBackground3: '#1A1B1F',  // Secondary surface / table header
+  colorNeutralBackground4: '#24252B',  // Hover in dark
+  colorNeutralBackground5: '#2F3038',  // Pressed
+  colorNeutralStroke1: '#26272D',      // Subtle hairline border
+  colorNeutralStroke2: '#33343C',      // Dividers
+  colorNeutralForeground1: '#F8FAFC',  // Primary text
+  colorNeutralForeground2: '#94A3B8',  // Secondary / subtitle text
+  colorNeutralForeground3: '#64748B',  // Muted / placeholder text
   fontFamilyBase: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', sans-serif",
   borderRadiusSmall: '4px',
   borderRadiusMedium: '8px',
@@ -85,7 +86,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  mode: 'light',
+  mode: 'dark',
   toggleTheme: () => {},
 });
 
@@ -104,8 +105,16 @@ const queryClient = new QueryClient({
 export function AppProviders({ children }: PropsWithChildren): React.JSX.Element {
   const [mode, setMode] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('omnipos-theme');
-    return saved === 'dark' ? 'dark' : 'light'; // Unified Light Theme by default
+    // Default to 'dark'
+    if (saved === 'light') return 'light';
+    return 'dark';
   });
+
+  React.useEffect(() => {
+    document.documentElement.style.backgroundColor = mode === 'dark' ? '#0F1012' : '#F5F5F5';
+    document.body.style.backgroundColor = mode === 'dark' ? '#0F1012' : '#F5F5F5';
+    document.documentElement.setAttribute('data-theme', mode);
+  }, [mode]);
 
   const toggleTheme = () => {
     setMode((prev) => {

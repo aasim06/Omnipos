@@ -10,13 +10,22 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: #F5F5F5; /* Fluent v9 Mica app frame base */
-  color: #1A1A1A;
   font-family: var(--fluent-font);
-  user-select: none;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Enable text selection and copying */
+html, body, #root, main, table, tr, td, th, p, span, h1, h2, h3, h4, h5, h6, input, textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Beautiful OmniPos brand accent selection highlight */
+::selection {
+  background-color: rgba(229, 25, 55, 0.35);
+  color: #FFFFFF;
 }
 
 #root {
@@ -40,4 +49,78 @@ html, body {
 .no-scrollbar {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
+}
+
+/* Fluent Sidebar Smooth Thin Scrollbar */
+.fluent-sidebar-scroll {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent !important;
+}
+.fluent-sidebar-scroll::-webkit-scrollbar {
+  width: 4px !important;
+}
+.fluent-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.fluent-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35) !important;
+  border-radius: 4px !important;
+}
+.fluent-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(229, 25, 55, 0.7) !important;
+}
+
+/* ── Fluent UI Dropdown & Option Brand Red Theme Styling ── */
+.fui-Dropdown__listbox,
+.fui-Combobox__listbox,
+[role="listbox"] {
+  background-color: #16181f !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7) !important;
+  padding: 4px !important;
+  max-height: 280px !important;
+}
+
+[role="option"],
+.fui-Option {
+  border-radius: 6px !important;
+  color: #f1f5f9 !important;
+  font-size: 13px !important;
+  padding: 8px 12px !important;
+  transition: all 0.12s ease !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+[role="option"]:hover,
+.fui-Option:hover,
+[role="option"].fui-Option--focus,
+.fui-Option--focus {
+  background-color: rgba(229, 25, 55, 0.18) !important;
+  color: #ffffff !important;
+}
+
+[role="option"][aria-selected="true"],
+.fui-Option[aria-selected="true"] {
+  background-color: #E51937 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+[role="option"][aria-selected="true"]:hover,
+.fui-Option[aria-selected="true"]:hover {
+  background-color: #C6172E !important;
+  color: #ffffff !important;
+}
+
+/* Fallback for native select */
+select {
+  accent-color: #E51937 !important;
+}
+select option:checked,
+select option:hover {
+  background: #E51937 !important;
+  color: #ffffff !important;
 }

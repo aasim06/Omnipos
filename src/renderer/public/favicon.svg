@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- Vibrant Red Gradient (#FF1E3C to #B30018) matching OmniPos Brand -->
+    <linearGradient id="op_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF1E3C" />
+      <stop offset="100%" stop-color="#B30018" />
+    </linearGradient>
+    <!-- Soft Top Inset Highlight -->
+    <linearGradient id="op_highlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.05" />
+    </linearGradient>
+    <filter id="soft_shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#70000D" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- Base Squircle with Shadow -->
+  <rect x="3" y="3" width="58" height="58" rx="16" ry="16" fill="url(#op_grad)" filter="url(#soft_shadow)" />
+
+  <!-- Top Inset Edge Highlight -->
+  <rect x="3.75" y="3.75" width="56.5" height="56.5" rx="15.25" ry="15.25" fill="none" stroke="url(#op_highlight)" stroke-width="1.5" />
+
+  <!-- OP Text - Pure White Bold Typography -->
+  <text 
+    x="32" 
+    y="34" 
+    fill="#FFFFFF" 
+    font-family="'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+    font-size="27" 
+    font-weight="900" 
+    letter-spacing="-0.8" 
+    text-anchor="middle" 
+    dominant-baseline="central"
+  >OP</text>
+</svg>

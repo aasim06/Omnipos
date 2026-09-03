@@ -214,7 +214,118 @@ export function registerRoutes(app: Express): void {
           unitPrice: req.body.unitPrice ? Number(req.body.unitPrice) : null,
         },
       });
+
+      // Automatically synchronize Product stock in database
+      if (req.body.productId || req.body.productName) {
+        try {
+          const product = await db.product.findFirst({
+            where: {
+              OR: [
+                ...(req.body.productId ? [{ id: req.body.productId }] : []),
+                ...(req.body.productName ? [{ name: req.body.productName }] : []),
+              ],
+            },
+          });
+          if (product) {
+            const delta = movement.type === 'in' ? movement.quantity : -movement.quantity;
+            const updatedStock = Math.max(0, (product.openingStock || 0) + delta);
+            await db.product.update({
+              where: { id: product.id },
+              data: {
+                openingStock: updatedStock,
+                costPrice: (movement.type === 'in' && movement.unitCost) ? movement.unitCost : product.costPrice,
+              },
+            });
+          }
+        } catch (stockErr) {
+          console.error('[Stock Sync Error]:', stockErr);
+        }
+      }
+
       res.json(movement);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/stock-movements/:id', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      const existing = await db.stockMovement.findUnique({ where: { id } });
+      if (existing) {
+        try {
+          const product = await db.product.findFirst({
+            where: {
+              OR: [
+                ...(existing.productId ? [{ id: existing.productId }] : []),
+                ...(existing.productName ? [{ name: existing.productName }] : []),
+              ],
+            },
+          });
+          if (product) {
+            // Revert stock delta
+            const delta = existing.type === 'in' ? -existing.quantity : existing.quantity;
+            const updatedStock = Math.max(0, (product.openingStock || 0) + delta);
+            await db.product.update({
+              where: { id: product.id },
+              data: { openingStock: updatedStock },
+            });
+          }
+        } catch (stockErr) {
+          console.error('[Stock Revert Error]:', stockErr);
+        }
+      }
+
+      await db.stockMovement.delete({ where: { id } });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/stock-movements/:id', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      const prev = await db.stockMovement.findUnique({ where: { id } });
+      const updated = await db.stockMovement.update({
+        where: { id },
+        data: {
+          ...req.body,
+          quantity: req.body.quantity !== undefined ? Number(req.body.quantity) : undefined,
+          unitCost: req.body.unitCost !== undefined ? (req.body.unitCost ? Number(req.body.unitCost) : null) : undefined,
+          unitPrice: req.body.unitPrice !== undefined ? (req.body.unitPrice ? Number(req.body.unitPrice) : null) : undefined,
+        },
+      });
+
+      if (prev && req.body.quantity !== undefined) {
+        try {
+          const product = await db.product.findFirst({
+            where: {
+              OR: [
+                ...(updated.productId ? [{ id: updated.productId }] : []),
+                ...(updated.productName ? [{ name: updated.productName }] : []),
+              ],
+            },
+          });
+          if (product) {
+            const prevDelta = prev.type === 'in' ? prev.quantity : -prev.quantity;
+            const newDelta = updated.type === 'in' ? updated.quantity : -updated.quantity;
+            const diff = newDelta - prevDelta;
+            const updatedStock = Math.max(0, (product.openingStock || 0) + diff);
+            await db.product.update({
+              where: { id: product.id },
+              data: {
+                openingStock: updatedStock,
+                costPrice: (updated.type === 'in' && updated.unitCost) ? updated.unitCost : product.costPrice,
+              },
+            });
+          }
+        } catch (stockErr) {
+          console.error('[Stock Update Error]:', stockErr);
+        }
+      }
+
+      res.json(updated);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -426,17 +537,17 @@ export function registerRoutes(app: Express): void {
       const expenses = await db.expense.findMany();
       const products = await db.product.findMany();
 
-      const totalGrossSales = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-      const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+      const totalGrossSales = orders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0);
+      const totalExpenses = expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
 
       // Estimate Cost of Goods Sold (COGS)
-      const costMap = new Map(products.map((p) => [p.id, p.costPrice || (p.price * 0.6)]));
+      const costMap = new Map<string, number>(products.map((p: any) => [p.id, Number(p.costPrice || (p.price * 0.6))]));
       let estimatedCOGS = 0;
       const itemCountMap: Record<string, { name: string; count: number; revenue: number }> = {};
 
       for (const ord of orders) {
         for (const line of ord.lines) {
-          const cost = (line.productId ? costMap.get(line.productId) : null) || (line.unitPrice * 0.6);
+          const cost = Number((line.productId ? costMap.get(line.productId) : null) || (line.unitPrice * 0.6));
           estimatedCOGS += cost * line.quantity;
 
           if (!itemCountMap[line.name]) {
