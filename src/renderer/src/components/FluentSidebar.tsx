@@ -41,12 +41,14 @@ import {
   ChevronRight20Regular,
 } from '@fluentui/react-icons';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAppTheme } from '@/theme/AppProviders';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 
 export function FluentSidebar(): React.JSX.Element {
   const { mode, toggleTheme } = useAppTheme();
   const { user, logout } = useAuth();
+  const { can } = useLicense();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -85,19 +87,21 @@ export function FluentSidebar(): React.JSX.Element {
     }
   }, [isCatalogActive]);
 
-  const sections = [
+  const allSections = [
     {
       title: 'POS TERMINALS',
       items: [
         {
           to: '/pos/fastfood',
           label: 'Fast Food POS',
+          moduleKey: 'fastfood' as const,
           icon: <Food24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <Food24Filled style={{ width: 19, height: 19 }} />,
         },
         {
           to: '/pos/omnimart',
           label: 'Omnimart POS',
+          moduleKey: 'omnimart' as const,
           icon: <BuildingRetail24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <BuildingRetail24Filled style={{ width: 19, height: 19 }} />,
         },
@@ -105,6 +109,7 @@ export function FluentSidebar(): React.JSX.Element {
           to: '/kitchen',
           label: 'Kitchen Display',
           badge: 'KDS',
+          moduleKey: 'kitchen' as const,
           icon: <BowlSalad24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <BowlSalad24Filled style={{ width: 19, height: 19 }} />,
         },
@@ -116,6 +121,7 @@ export function FluentSidebar(): React.JSX.Element {
         {
           isAccordion: true,
           label: 'Products & Catalog',
+          moduleKey: 'catalog' as const,
           icon: <Tag24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <Tag24Filled style={{ width: 19, height: 19 }} />,
           subItems: [
@@ -129,12 +135,14 @@ export function FluentSidebar(): React.JSX.Element {
         {
           to: '/inventory',
           label: 'Inventory & Stock',
+          moduleKey: 'inventory' as const,
           icon: <Box24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <Box24Filled style={{ width: 19, height: 19 }} />,
         },
         {
           to: '/khata',
           label: 'Khata Ledger Book',
+          moduleKey: 'khata' as const,
           icon: <BookContacts24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <BookContacts24Filled style={{ width: 19, height: 19 }} />,
         },
@@ -146,18 +154,28 @@ export function FluentSidebar(): React.JSX.Element {
         {
           to: '/expenses',
           label: 'Expenses & Cash',
+          moduleKey: 'expenses' as const,
           icon: <Money24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <Money24Filled style={{ width: 19, height: 19 }} />,
         },
         {
           to: '/reports',
           label: 'Profit & Loss Analytics',
+          moduleKey: 'reports' as const,
           icon: <DataTrending24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <DataTrending24Filled style={{ width: 19, height: 19 }} />,
         },
       ],
     },
   ];
+
+  // Dynamically filter sections and items according to remote module licenses
+  const sections = allSections
+    .map((sec) => ({
+      ...sec,
+      items: sec.items.filter((it: any) => !it.moduleKey || can(it.moduleKey)),
+    }))
+    .filter((sec) => sec.items.length > 0);
 
   return (
     <nav

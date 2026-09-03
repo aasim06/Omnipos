@@ -4,6 +4,33 @@ import { syncEngine } from './syncEngine';
 import { KEYS, storage } from './storage';
 
 let cachedApiUrl: string | null = null;
+let cachedTenantMeta: { key?: string; schemaId?: string } | null = null;
+
+export async function getTenantHeaders(): Promise<Record<string, string>> {
+  if (cachedTenantMeta?.schemaId || cachedTenantMeta?.key) {
+    return {
+      ...(cachedTenantMeta.key ? { 'x-license-key': cachedTenantMeta.key } : {}),
+      ...(cachedTenantMeta.schemaId ? { 'x-schema-id': cachedTenantMeta.schemaId } : {}),
+    };
+  }
+
+  if (typeof window !== 'undefined' && window.posApi?.getLicenseMeta) {
+    try {
+      const meta = await window.posApi.getLicenseMeta();
+      if (meta?.key || meta?.schemaId) {
+        cachedTenantMeta = meta;
+        return {
+          ...(meta.key ? { 'x-license-key': meta.key } : {}),
+          ...(meta.schemaId ? { 'x-schema-id': meta.schemaId } : {}),
+        };
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return {};
+}
 
 export async function resolveApiUrl(): Promise<string> {
   if (cachedApiUrl) return cachedApiUrl;
@@ -11,7 +38,8 @@ export async function resolveApiUrl(): Promise<string> {
   // 1. Central Backend (Live Neon PostgreSQL on Vercel)
   const envUrl = (import.meta as any).env?.VITE_API_URL || 'https://omni-server-seven.vercel.app';
   try {
-    const res = await fetch(`${envUrl}/api/products`);
+    const tenantHeaders = await getTenantHeaders();
+    const res = await fetch(`${envUrl}/api/products`, { headers: tenantHeaders });
     if (res.ok) {
       cachedApiUrl = envUrl;
       return envUrl;
@@ -39,10 +67,14 @@ export const posApi = {
    */
   async fetchProducts(module?: string): Promise<Product[]> {
     try {
+      const tenantHeaders = await getTenantHeaders();
+
       // 1. Try to fetch live from backend first and sync to Dexie
       try {
         const base = await resolveApiUrl();
-        const res = await fetch(`${base}/api/products${module ? `?module=${module}` : ''}`);
+        const res = await fetch(`${base}/api/products${module ? `?module=${module}` : ''}`, {
+          headers: tenantHeaders,
+        });
         if (res.ok) {
           const remoteData = await res.json();
           if (Array.isArray(remoteData) && remoteData.length > 0) {
@@ -81,11 +113,12 @@ export const posApi = {
       // 2. Queue in Outbox
       await syncEngine.enqueue('product', product.id, 'CREATE', product);
 
-      // 3. Try network call
+      // 3. Try network call with tenant headers
       const base = await resolveApiUrl();
+      const tenantHeaders = await getTenantHeaders();
       const res = await fetch(`${base}/api/products`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...tenantHeaders },
         body: JSON.stringify(product),
       });
       if (res.ok) return await res.json();
@@ -101,7 +134,11 @@ export const posApi = {
       await syncEngine.enqueue('product', id, 'DELETE', { id });
 
       const base = await resolveApiUrl();
-      await fetch(`${base}/api/products/${id}`, { method: 'DELETE' });
+      const tenantHeaders = await getTenantHeaders();
+      await fetch(`${base}/api/products/${id}`, {
+        method: 'DELETE',
+        headers: tenantHeaders,
+      });
     } catch {
       /* Handled offline */
     }
@@ -109,10 +146,14 @@ export const posApi = {
 
   async fetchCategories(module?: string): Promise<Category[]> {
     try {
+      const tenantHeaders = await getTenantHeaders();
+
       // 1. Try to fetch live from backend first and sync to Dexie
       try {
         const base = await resolveApiUrl();
-        const res = await fetch(`${base}/api/categories${module ? `?module=${module}` : ''}`);
+        const res = await fetch(`${base}/api/categories${module ? `?module=${module}` : ''}`, {
+          headers: tenantHeaders,
+        });
         if (res.ok) {
           const remoteCats = await res.json();
           if (Array.isArray(remoteCats) && remoteCats.length > 0) {
@@ -144,9 +185,10 @@ export const posApi = {
     try {
       await offlineDb.categories.put(cat);
       const base = await resolveApiUrl();
+      const tenantHeaders = await getTenantHeaders();
       const res = await fetch(`${base}/api/categories`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...tenantHeaders },
         body: JSON.stringify(cat),
       });
       if (res.ok) return await res.json();
@@ -160,15 +202,18 @@ export const posApi = {
     try {
       await offlineDb.categories.delete(id);
       const base = await resolveApiUrl();
-      await fetch(`${base}/api/categories/${id}`, { method: 'DELETE' });
+      const tenantHeaders = await getTenantHeaders();
+      await fetch(`${base}/api/categories/${id}`, {
+        method: 'DELETE',
+        headers: tenantHeaders,
+      });
     } catch {
       /* Handled in Dexie */
     }
   },
 
   /**
-   * Fetch Orders: Offline-First strategy.
-   * Reads from Dexie IndexedDB, syncs with backend if reachable.
+   * Fetch Orders: Offline-First strategy with tenant scoping
    */
   async fetchOrders(module?: string): Promise<Order[]> {
     try {
@@ -181,11 +226,13 @@ export const posApi = {
 
       try {
         const base = await resolveApiUrl();
-        const res = await fetch(`${base}/api/orders${module ? `?module=${module}` : ''}`);
+        const tenantHeaders = await getTenantHeaders();
+        const res = await fetch(`${base}/api/orders${module ? `?module=${module}` : ''}`, {
+          headers: tenantHeaders,
+        });
         if (res.ok) {
           const remoteOrders = await res.json();
           if (Array.isArray(remoteOrders)) {
-            // Mark remote orders as synced: 1
             const prepared: LocalOrder[] = remoteOrders.map((o: any) => ({
               ...o,
               synced: 1 as const,
@@ -210,11 +257,7 @@ export const posApi = {
   },
 
   /**
-   * Save Order (Zero-Lag Local Write):
-   * 1. Foran local Dexie IndexedDB mein save hota hai with synced: 0.
-   * 2. Outbox Queue mein push hota hai.
-   * 3. Agar online ho, to background mein API ko push kar ke synced: 1 karta hai.
-   * 4. Cashier ko bina rukaawat ke instant response milta hai (receipt print ho sakti hai).
+   * Save Order with Tenant Header
    */
   async saveOrder(order: Order): Promise<Order> {
     const localOrder: LocalOrder = {
@@ -226,7 +269,7 @@ export const posApi = {
       // 1. Instant local write to Dexie
       await offlineDb.orders.put(localOrder);
 
-      // Deduct stock in local Dexie database for instant offline consistency
+      // Deduct stock in local Dexie database
       if (Array.isArray(order.lines)) {
         for (const line of order.lines) {
           if (line.productId) {
@@ -250,22 +293,21 @@ export const posApi = {
       // 2. Queue in Outbox for Cloud Sync
       await syncEngine.enqueue('order', order.id, 'CREATE', order);
 
-      // 3. Try immediate push if online
+      // 3. Try immediate push if online with tenant headers
       const base = await resolveApiUrl();
+      const tenantHeaders = await getTenantHeaders();
       const res = await fetch(`${base}/api/orders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...tenantHeaders },
         body: JSON.stringify(order),
       });
 
       if (res.ok) {
         const saved = await res.json();
-        // Update local status to synced
         await offlineDb.orders.update(order.id, { synced: 1 });
         return saved;
       }
     } catch {
-      // Offline: order is safely preserved in Dexie IndexedDB with synced: 0
       console.log(`[Omnipos Offline] Order #${order.id} saved in local Dexie DB. Queued for cloud sync.`);
     }
 

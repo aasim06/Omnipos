@@ -1,5 +1,5 @@
 import { offlineDb, SyncQueueItem, LocalOrder } from './offlineDb';
-import { resolveApiUrl } from './api';
+import { resolveApiUrl, getTenantHeaders } from './api';
 import { Product, Category, Order } from '@shared/types';
 
 export interface SyncState {
@@ -239,9 +239,10 @@ class SyncEngine {
       ? `${endpoint}/${item.entityId}` 
       : endpoint;
 
+    const tenantHeaders = await getTenantHeaders();
     const res = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...tenantHeaders },
       body: method !== 'DELETE' ? JSON.stringify(item.payload) : undefined,
     });
 
@@ -251,8 +252,9 @@ class SyncEngine {
   }
 
   private async pullCatalog(baseUrl: string): Promise<void> {
+    const tenantHeaders = await getTenantHeaders();
     try {
-      const res = await fetch(`${baseUrl}/api/products`);
+      const res = await fetch(`${baseUrl}/api/products`, { headers: tenantHeaders });
       if (res.ok) {
         const products: Product[] = await res.json();
         if (Array.isArray(products) && products.length > 0) {
@@ -264,7 +266,7 @@ class SyncEngine {
     }
 
     try {
-      const catRes = await fetch(`${baseUrl}/api/categories`);
+      const catRes = await fetch(`${baseUrl}/api/categories`, { headers: tenantHeaders });
       if (catRes.ok) {
         const categories: Category[] = await catRes.json();
         if (Array.isArray(categories) && categories.length > 0) {
