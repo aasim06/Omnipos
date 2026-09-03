@@ -12,6 +12,8 @@ function formatSuffix(raw: string): string {
   return parts.join('-');
 }
 
+import { getOrCreateBrowserHwid, getBrowserDeviceName, getWebLicenseApiBase } from '@/lib/webLicense';
+
 export function LicensePage({ onActivated }: { onActivated: () => void }): React.JSX.Element {
   const [suffix, setSuffix] = useState('');
   const [error, setError] = useState('');
@@ -38,7 +40,30 @@ export function LicensePage({ onActivated }: { onActivated: () => void }): React
           setError(result.error || 'Invalid or disabled license key.');
         }
       } else {
-        setError('Desktop posApi bridge unavailable.');
+        // WEB BROWSER MODE: activate directly with backend API
+        const hwid = getOrCreateBrowserHwid();
+        const deviceName = getBrowserDeviceName();
+        const apiBase = getWebLicenseApiBase();
+
+        const res = await fetch(`${apiBase}/license/activate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: fullKey, hwid, deviceName }),
+        });
+
+        const data = await res.json();
+        if (data.ok) {
+          localStorage.setItem('omnipos_active_key', fullKey);
+          if (data.schemaId) {
+            localStorage.setItem('omnipos_active_schema', data.schemaId);
+          }
+          if (data.modules) {
+            localStorage.setItem('omnipos_cached_modules', JSON.stringify(data.modules));
+          }
+          onActivated();
+        } else {
+          setError(data.error || 'Invalid or disabled license key.');
+        }
       }
     } catch (err: any) {
       setError(err?.message || 'Failed to connect to license server.');

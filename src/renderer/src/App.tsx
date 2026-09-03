@@ -19,6 +19,8 @@ import { LicensePage } from '@/features/auth/LicensePage';
 import { LicenseDisabledOverlay } from '@/features/auth/LicenseDisabledOverlay';
 import { RouteAccessGate } from '@/components/RouteAccessGate';
 
+import { getOrCreateBrowserHwid, getWebLicenseApiBase } from '@/lib/webLicense';
+
 export interface PosLicenseGate {
   state: 'ok' | 'none' | 'blocked';
   reason?: string;
@@ -62,7 +64,55 @@ export default function App(): React.JSX.Element {
           }
         }
       } else {
-        setGate({ state: 'ok' });
+        // WEB BROWSER MODE (e.g. running on http://localhost:5174)
+        const savedKey = localStorage.getItem('omnipos_active_key');
+        if (!savedKey) {
+          // No license key saved -> Must show LicensePage activation screen!
+          setGate({ state: 'none' });
+          return;
+        }
+
+        const hwid = getOrCreateBrowserHwid();
+        const apiBase = getWebLicenseApiBase();
+
+        try {
+          const res = await fetch(`${apiBase}/license/validate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: savedKey, hwid }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (!data.valid) {
+              if (data.code === 'not_found' || data.code === 'device') {
+                // Key removed or device unlinked
+                localStorage.removeItem('omnipos_active_key');
+                localStorage.removeItem('omnipos_active_schema');
+                setGate({ state: 'none' });
+              } else {
+                setGate({
+                  state: 'blocked',
+                  reason: data.error || 'This license has been suspended by the administrator.',
+                });
+              }
+            } else {
+              if (data.schemaId) {
+                localStorage.setItem('omnipos_active_schema', data.schemaId);
+              }
+              if (data.modules) {
+                localStorage.setItem('omnipos_cached_modules', JSON.stringify(data.modules));
+              }
+              setGate({ state: 'ok', modules: data.modules });
+            }
+          } else {
+            // If offline, check if previously cached as ok
+            setGate((prev) => prev ?? { state: 'ok' });
+          }
+        } catch {
+          // Network offline resilience
+          setGate((prev) => prev ?? { state: 'ok' });
+        }
       }
     } catch {
       setGate((prev: PosLicenseGate | null) => prev ?? { state: 'none' });
