@@ -138,6 +138,33 @@ export function registerRoutes(app: Express): void {
         },
         include: { lines: true },
       });
+
+      // Deduct inventory stock for each sold product line
+      if (Array.isArray(lines)) {
+        for (const line of lines) {
+          if (line.productId) {
+            try {
+              const product = await db.product.findUnique({
+                where: { id: String(line.productId) },
+              });
+              if (product && product.openingStock !== null && product.openingStock !== undefined) {
+                const soldQty = Number(line.quantity || 1);
+                const newStock = Math.max(0, product.openingStock - soldQty);
+                await db.product.update({
+                  where: { id: String(line.productId) },
+                  data: {
+                    openingStock: newStock,
+                    updatedAt: new Date(),
+                  },
+                });
+              }
+            } catch (stockErr) {
+              console.error(`[Inventory] Failed to deduct stock for product ${line.productId}:`, stockErr);
+            }
+          }
+        }
+      }
+
       res.json(order);
     } catch (err: any) {
       res.status(500).json({ error: err.message });

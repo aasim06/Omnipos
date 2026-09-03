@@ -33,20 +33,26 @@ import {
   Delete16Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { resolveApiUrl } from '@/lib/api';
 import { KitchenPageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 
-/* ── Zod Validation Schema for Manual KDS Ticket ── */
+/* ── Zod Validation Schema for Manual KDS Ticket with Multiple Items ── */
+const rushTicketLineSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Item name is required'),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  variantLabel: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 const rushTicketSchema = z.object({
   customerName: z.string().min(2, 'Customer / Table name is required (min 2 chars)'),
   orderType: z.string().min(1, 'Order type is required'),
-  itemName: z.string().min(2, 'Item name is required'),
-  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
-  notes: z.string().optional(),
+  lines: z.array(rushTicketLineSchema).min(1, 'At least 1 food item is required'),
 });
 
 type RushTicketFormValues = z.infer<typeof rushTicketSchema>;
@@ -70,6 +76,70 @@ const useStyles = makeStyles({
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
     borderBottomColor: tokens.colorNeutralStroke1,
+  },
+  activeOrdersChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    paddingTop: '6px',
+    paddingBottom: '6px',
+    paddingLeft: '14px',
+    paddingRight: '14px',
+    borderRadius: '9999px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderTopWidth: '1px',
+    borderBottomWidth: '1px',
+    borderLeftWidth: '1px',
+    borderRightWidth: '1px',
+    borderTopStyle: 'solid',
+    borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid',
+    borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1,
+    borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1,
+    borderRightColor: tokens.colorNeutralStroke1,
+    boxShadow: tokens.shadow2,
+    userSelect: 'none',
+    boxSizing: 'border-box',
+    height: '36px',
+    transitionProperty: 'all',
+    transitionDuration: '0.2s',
+    transitionTimingFunction: 'ease',
+  },
+  chipDotActive: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#E51937',
+    boxShadow: '0 0 8px rgba(229, 25, 55, 0.8)',
+    animationName: {
+      '0%': { transform: 'scale(0.95)', opacity: '0.8' },
+      '50%': { transform: 'scale(1.2)', opacity: '1' },
+      '100%': { transform: 'scale(0.95)', opacity: '0.8' },
+    },
+    animationDuration: '2s',
+    animationIterationCount: 'infinite',
+    flexShrink: 0,
+  },
+  chipDotClear: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#10B981',
+    boxShadow: '0 0 8px rgba(16, 185, 129, 0.5)',
+    flexShrink: 0,
+  },
+  chipCount: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    fontFamily: tokens.fontFamilyMonospace,
+    fontSize: '13px',
+  },
+  chipLabel: {
+    color: tokens.colorNeutralForeground2,
+    fontSize: '13px',
+    fontWeight: 500,
   },
   filterBar: {
     display: 'flex',
@@ -176,9 +246,10 @@ export function KitchenView(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<TabValue>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Form for Manual KOT / Rush Ticket
+  // Form for Manual KOT / Rush Ticket with Multi-Item support
   const {
     register,
+    control,
     handleSubmit,
     setValue,
     watch,
@@ -189,10 +260,15 @@ export function KitchenView(): React.JSX.Element {
     defaultValues: {
       customerName: '',
       orderType: 'Dine-In',
-      itemName: '',
-      quantity: 1,
-      notes: '',
+      lines: [
+        { id: `item_${Date.now()}`, name: '', quantity: 1, notes: '' },
+      ],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'lines',
   });
 
   // Query tickets with live 4-second auto-refresh
@@ -201,10 +277,16 @@ export function KitchenView(): React.JSX.Element {
     queryFn: async () => {
       const base = await resolveApiUrl();
       const res = await fetch(`${base}/api/kitchen/tickets`);
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error(`Kitchen API error: ${res.statusText}`);
       return res.json();
     },
-    refetchInterval: 4000,
+    // When server is offline or fails, back off to 30s instead of spamming every 4s
+    refetchInterval: (query) => {
+      if (query.state.error) return 30000;
+      return 4000;
+    },
+    refetchIntervalInBackground: false,
+    retry: 1,
   });
 
   // Mutation: Update status (Pending -> Cooking -> Ready -> Served)
@@ -229,7 +311,21 @@ export function KitchenView(): React.JSX.Element {
       const res = await fetch(`${base}/api/kitchen/tickets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          customerName: data.customerName,
+          orderType: data.orderType,
+          lines: data.lines.map((l, idx) => ({
+            id: l.id || `line_${Date.now()}_${idx}`,
+            name: l.name,
+            quantity: Number(l.quantity) || 1,
+            variantLabel: l.variantLabel || '',
+            notes: l.notes || '',
+          })),
+          // Fallback legacy fields for single-item endpoints
+          itemName: data.lines[0]?.name || 'Manual Item',
+          quantity: Number(data.lines[0]?.quantity) || 1,
+          notes: data.lines[0]?.notes || '',
+        }),
       });
       if (!res.ok) throw new Error('Failed to create ticket');
       return res.json();
@@ -237,7 +333,11 @@ export function KitchenView(): React.JSX.Element {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
       setIsDialogOpen(false);
-      reset();
+      reset({
+        customerName: '',
+        orderType: 'Dine-In',
+        lines: [{ id: `item_${Date.now()}`, name: '', quantity: 1, notes: '' }],
+      });
     },
   });
 
@@ -289,60 +389,191 @@ export function KitchenView(): React.JSX.Element {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Badge appearance="tint" color="brand" size="large" icon={<Timer24Regular />}>
-            {tickets.length} Active Order{tickets.length !== 1 ? 's' : ''}
-          </Badge>
+          <div className={styles.activeOrdersChip}>
+            <span className={tickets.length > 0 ? styles.chipDotActive : styles.chipDotClear} />
+            <Timer24Regular
+              style={{
+                fontSize: '18px',
+                width: '18px',
+                height: '18px',
+                color: tickets.length > 0 ? '#E51937' : tokens.colorNeutralForeground2,
+              }}
+            />
+            <span className={styles.chipCount}>{tickets.length}</span>
+            <span className={styles.chipLabel}>Active Order{tickets.length !== 1 ? 's' : ''}</span>
+          </div>
 
           {/* Manual Rush Ticket Dialog Trigger */}
           <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
             <DialogTrigger disableButtonEnhancement>
               <Button appearance="primary" icon={<Add20Regular />}>
-                + Manual Rush Ticket
+                Manual Rush Ticket
               </Button>
             </DialogTrigger>
-            <DialogSurface style={{ maxWidth: '460px' }}>
+            <DialogSurface style={{ maxWidth: '580px', width: '94vw', padding: '24px', borderRadius: '16px' }}>
               <form onSubmit={handleSubmit(onSubmit)}>
                 <DialogBody>
-                  <DialogTitle style={{ fontWeight: 700 }}>Add Manual Rush Order Ticket</DialogTitle>
-                  <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                    <div className={styles.formGroup}>
-                      <Label required htmlFor="customerName" style={{ fontWeight: 600 }}>Customer / Table Name</Label>
-                      <Input id="customerName" {...register('customerName')} placeholder="e.g. Table 4 / Phone Order" />
-                      {errors.customerName && <span className={styles.errorMessage}>{errors.customerName.message}</span>}
+                  <DialogTitle style={{ fontWeight: 800, fontSize: '20px', margin: 0, paddingBottom: '12px', borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                    Add Manual Rush Order Ticket
+                  </DialogTitle>
+                  <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                    
+                    {/* Top Row: Customer Name & Order Type */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <Label required htmlFor="customerName" style={{ fontWeight: 600, fontSize: '13px' }}>
+                          Customer / Table Name
+                        </Label>
+                        <Input
+                          id="customerName"
+                          {...register('customerName')}
+                          placeholder="e.g. Table 4 / Phone Order"
+                          style={{ width: '100%' }}
+                        />
+                        {errors.customerName && <span className={styles.errorMessage}>{errors.customerName.message}</span>}
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <Label required htmlFor="orderType" style={{ fontWeight: 600, fontSize: '13px' }}>
+                          Order Type
+                        </Label>
+                        <Select id="orderType" {...register('orderType')} style={{ width: '100%' }}>
+                          <option value="Dine-In">Dine-In</option>
+                          <option value="Takeaway">Takeaway</option>
+                          <option value="Delivery">Delivery</option>
+                          <option value="VIP Rush">VIP Rush</option>
+                        </Select>
+                        {errors.orderType && <span className={styles.errorMessage}>{errors.orderType.message}</span>}
+                      </div>
                     </div>
 
-                    <div className={styles.formGroup}>
-                      <Label required htmlFor="orderType" style={{ fontWeight: 600 }}>Order Type</Label>
-                      <Select id="orderType" {...register('orderType')}>
-                        <option value="Dine-In">Dine-In</option>
-                        <option value="Takeaway">Takeaway</option>
-                        <option value="Delivery">Delivery</option>
-                        <option value="VIP Rush">VIP Rush</option>
-                      </Select>
-                      {errors.orderType && <span className={styles.errorMessage}>{errors.orderType.message}</span>}
+                    {/* Food Items Section Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                      <Label style={{ fontWeight: 700, fontSize: '14px', color: tokens.colorNeutralForeground1 }}>
+                        Food Items ({fields.length})
+                      </Label>
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        icon={<Add20Regular />}
+                        type="button"
+                        onClick={() => append({ id: `item_${Date.now()}`, name: '', quantity: 1, notes: '' })}
+                        style={{ color: '#E51937', fontWeight: 700, padding: '4px 10px' }}
+                      >
+                        Add Item
+                      </Button>
                     </div>
 
-                    <ProductAutocomplete
-                      id="itemName"
-                      label="Food Item Name"
-                      required
-                      filterModule="fastfood"
-                      value={watch('itemName') || ''}
-                      onChange={(val) => setValue('itemName', val, { shouldValidate: true })}
-                      placeholder="Search or select food (e.g. Zinger, Burger, Fries)..."
-                      error={errors.itemName?.message}
-                    />
+                    {/* Multi-Item Fields List with Scroll */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
+                      {fields.map((field, index) => (
+                        <div
+                          key={field.id}
+                          style={{
+                            padding: '14px 16px',
+                            borderRadius: '12px',
+                            backgroundColor: tokens.colorNeutralBackground3,
+                            border: `1px solid ${tokens.colorNeutralStroke2}`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                          }}
+                        >
+                          {/* Item Header Pill & Delete */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                color: '#E51937',
+                                backgroundColor: 'rgba(229, 25, 55, 0.1)',
+                                border: '1px solid rgba(229, 25, 55, 0.25)',
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                              }}
+                            >
+                              Item #{index + 1}
+                            </span>
+                            {fields.length > 1 && (
+                              <Button
+                                appearance="subtle"
+                                size="small"
+                                icon={<Delete16Regular style={{ color: '#EF4444' }} />}
+                                type="button"
+                                onClick={() => remove(index)}
+                                title="Remove this item"
+                                aria-label="Remove item"
+                                style={{ minWidth: 'auto', padding: '4px 8px' }}
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </div>
 
-                    <div className={styles.formGroup}>
-                      <Label required htmlFor="quantity" style={{ fontWeight: 600 }}>Quantity</Label>
-                      <Input id="quantity" type="number" min={1} {...register('quantity')} />
-                      {errors.quantity && <span className={styles.errorMessage}>{errors.quantity.message}</span>}
+                          {/* Autocomplete Input */}
+                          <ProductAutocomplete
+                            id={`lines.${index}.name`}
+                            label="Food Item Name"
+                            required
+                            filterModule="fastfood"
+                            value={watch(`lines.${index}.name`) || ''}
+                            onChange={(val) => setValue(`lines.${index}.name`, val, { shouldValidate: true })}
+                            placeholder="Search or type food (e.g. Pizza, Burger, Sandwich)..."
+                            error={errors.lines?.[index]?.name?.message}
+                          />
+
+                          {/* Qty and Notes cleanly stacked in 2 columns */}
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                            <div style={{ width: '100px', display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
+                              <Label required htmlFor={`qty-${index}`} style={{ fontWeight: 600, fontSize: '12px', display: 'block' }}>
+                                Quantity
+                              </Label>
+                              <Input
+                                id={`qty-${index}`}
+                                type="number"
+                                min={1}
+                                {...register(`lines.${index}.quantity` as const)}
+                                style={{ width: '100%' }}
+                              />
+                              {errors.lines?.[index]?.quantity && (
+                                <span className={styles.errorMessage}>{errors.lines[index]?.quantity?.message}</span>
+                              )}
+                            </div>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <Label htmlFor={`notes-${index}`} style={{ fontWeight: 600, fontSize: '12px', display: 'block' }}>
+                                Chef Prep Note
+                              </Label>
+                              <Input
+                                id={`notes-${index}`}
+                                placeholder="e.g. Extra spicy, no onion, extra cheese"
+                                {...register(`lines.${index}.notes` as const)}
+                                style={{ width: '100%' }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
-                    <div className={styles.formGroup}>
-                      <Label htmlFor="notes" style={{ fontWeight: 600 }}>Kitchen Preparation Notes</Label>
-                      <Input id="notes" {...register('notes')} placeholder="e.g. No mayo, make it spicy" />
-                    </div>
+                    {/* Bottom Add Another Item Button */}
+                    <Button
+                      appearance="secondary"
+                      type="button"
+                      icon={<Add20Regular />}
+                      onClick={() => append({ id: `item_${Date.now()}`, name: '', quantity: 1, notes: '' })}
+                      style={{
+                        borderStyle: 'dashed',
+                        borderColor: tokens.colorNeutralStroke1,
+                        fontWeight: 700,
+                        justifyContent: 'center',
+                        borderRadius: '10px',
+                        padding: '10px',
+                      }}
+                    >
+                      Add Another Food Item
+                    </Button>
                   </DialogContent>
 
                   <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>

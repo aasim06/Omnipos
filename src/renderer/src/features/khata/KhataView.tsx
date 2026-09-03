@@ -11,6 +11,7 @@ import {
   Body2,
   Caption1,
   Subtitle1,
+  Text,
   Dialog,
   DialogSurface,
   DialogTitle,
@@ -287,9 +288,255 @@ export function KhataView(): React.JSX.Element {
     window.open(`https://wa.me/${phoneWithCountry}?text=${text}`, '_blank');
   };
 
-  // Print Statement Handler
+  // Print Statement Handler: Generates clean, professional A4 Customer Ledger Statement for printing / PDF
   const printStatement = () => {
-    window.print();
+    if (!selectedKhata) return;
+
+    const printWindow = window.open('', '_blank', 'width=950,height=750');
+    if (!printWindow) {
+      alert('Please allow popups in your browser to print statement');
+      return;
+    }
+
+    const totalDebits = passbookTransactions
+      .filter((tx) => tx.type === 'DEBIT')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const totalCredits = passbookTransactions
+      .filter((tx) => tx.type === 'CREDIT')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const rowsHtml = passbookTransactions
+      .map(
+        (tx) => `
+        <tr>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 12px; vertical-align: top;">
+            <strong>${new Date(tx.createdAt).toLocaleDateString()}</strong><br/>
+            <span style="color: #6b7280; font-size: 11px;">${new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          </td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 12px; vertical-align: top;">
+            <strong style="color: #111827;">${tx.description || 'Transaction'}</strong><br/>
+            <span style="color: #6b7280; font-size: 11px; text-transform: capitalize;">Payment Mode: ${tx.paymentMethod}</span>
+          </td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 12px; text-align: right; color: #dc2626; font-weight: 700; vertical-align: top;">
+            ${tx.type === 'DEBIT' ? `+PKR ${tx.amount.toLocaleString()}` : '—'}
+          </td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 12px; text-align: right; color: #16a34a; font-weight: 700; vertical-align: top;">
+            ${tx.type === 'CREDIT' ? `-PKR ${tx.amount.toLocaleString()}` : '—'}
+          </td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; text-align: right; font-weight: 800; color: #111827; vertical-align: top;">
+            PKR ${tx.balanceAfter.toLocaleString()}
+          </td>
+        </tr>
+      `
+      )
+      .join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Customer Ledger Statement - ${selectedKhata.name}</title>
+        <style>
+          @page { size: A4 portrait; margin: 12mm 15mm; }
+          * { box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: #111827;
+            background: #ffffff;
+            margin: 0;
+            padding: 24px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+          }
+          .brand-title {
+            font-size: 26px;
+            font-weight: 900;
+            color: #E51937;
+            margin: 0;
+            letter-spacing: -0.5px;
+          }
+          .brand-sub {
+            font-size: 12px;
+            color: #4b5563;
+            margin-top: 3px;
+          }
+          .statement-meta {
+            text-align: right;
+          }
+          .statement-meta h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+            color: #111827;
+          }
+          .statement-meta p {
+            margin: 4px 0 0 0;
+            font-size: 11px;
+            color: #6b7280;
+          }
+          .customer-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px 18px;
+            margin-bottom: 16px;
+          }
+          .customer-box strong {
+            font-size: 16px;
+            color: #111827;
+          }
+          .customer-box p {
+            margin: 3px 0 0 0;
+            font-size: 12px;
+            color: #4b5563;
+          }
+          .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+          }
+          .summary-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px 14px;
+            background: #f9fafb;
+          }
+          .summary-card .label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #6b7280;
+          }
+          .summary-card .val {
+            font-size: 16px;
+            font-weight: 800;
+            margin-top: 5px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+          }
+          th {
+            background: #f3f4f6;
+            border-bottom: 2px solid #d1d5db;
+            padding: 10px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #374151;
+            text-align: left;
+          }
+          th.right { text-align: right; }
+          .footer {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px dashed #d1d5db;
+            padding-top: 16px;
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 36px;
+          }
+          @media print {
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1 class="brand-title">OMNIPOS</h1>
+            <div class="brand-sub">Commercial Ledger &amp; Customer Passbook Statement</div>
+          </div>
+          <div class="statement-meta">
+            <h2>ACCOUNT STATEMENT</h2>
+            <p>Generated: ${new Date().toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div class="customer-box">
+          <div>
+            <strong>${selectedKhata.name}</strong>
+            <p>Phone: ${selectedKhata.phone || 'N/A'} &nbsp;|&nbsp; CNIC: ${selectedKhata.cnic || 'N/A'}</p>
+            <p>Address: ${selectedKhata.address || 'N/A'}</p>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase;">Account Status</div>
+            <div style="font-size: 14px; font-weight: 800; color: ${selectedKhata.currentDebt > 0 ? '#dc2626' : '#16a34a'}; margin-top: 3px;">
+              ${selectedKhata.currentDebt > 0 ? 'OUTSTANDING BALANCE DUE' : 'ACCOUNT SETTLED'}
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="label">Credit Limit</div>
+            <div class="val">PKR ${selectedKhata.creditLimit.toLocaleString()}</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Total Udhaar (Diya)</div>
+            <div class="val" style="color: #dc2626;">+PKR ${totalDebits.toLocaleString()}</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Total Wasooli (Received)</div>
+            <div class="val" style="color: #16a34a;">-PKR ${totalCredits.toLocaleString()}</div>
+          </div>
+          <div class="summary-card" style="background: #fef2f2; border-color: #fca5a5;">
+            <div class="label" style="color: #dc2626;">Net Outstanding Balance</div>
+            <div class="val" style="color: #b91c1c;">PKR ${selectedKhata.currentDebt.toLocaleString()}</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 140px;">Date &amp; Time</th>
+              <th>Description / Mode</th>
+              <th class="right" style="width: 130px;">Debit (Diya)</th>
+              <th class="right" style="width: 130px;">Credit (Wasooli)</th>
+              <th class="right" style="width: 130px;">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="5" style="text-align:center; padding: 24px; color: #9ca3af;">No transactions recorded.</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <div>Omnipos Enterprise POS · Computer Generated Statement</div>
+          <div>Customer Signature: _______________________</div>
+          <div>Authorized Signature: _______________________</div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.focus();
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   // Filter khatas
@@ -336,7 +583,7 @@ export function KhataView(): React.JSX.Element {
           }}
           style={{ backgroundColor: '#E51937', borderRadius: tokens.borderRadiusMedium, fontWeight: 700 }}
         >
-          + Add New Customer Khata
+          Add New Customer Khata
         </Button>
       </div>
 
@@ -1005,34 +1252,75 @@ export function KhataView(): React.JSX.Element {
       {/* ════════════════════════════════════════════════════════════════════
           MODAL 3: CUSTOMER PASSBOOK / LEDGER STATEMENT
       ════════════════════════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════════════
+          MODAL 3: CUSTOMER PASSBOOK / LEDGER STATEMENT
+      ════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isPassbookOpen} onOpenChange={(_, d) => setIsPassbookOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '680px', width: '100%' }}>
-          <DialogBody>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <DialogTitle style={{ fontWeight: 800 }}>
-                  Ledger Passbook Statement
-                </DialogTitle>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block' }}>
-                  {selectedKhata?.name} ({selectedKhata?.phone || 'No phone'}) • {selectedKhata?.address || 'No address'}
-                </Caption1>
+        <DialogSurface style={{ borderRadius: '16px', maxWidth: '920px', minWidth: '780px', width: '92vw', padding: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+            {/* 1. Header: Title, Customer Details, Action Buttons */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingBottom: '14px',
+                borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+                gap: '16px',
+                width: '100%',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '20px', margin: 0, padding: 0, color: tokens.colorNeutralForeground1, whiteSpace: 'nowrap' }}>
+                    Ledger Passbook Statement
+                  </h2>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: '9999px',
+                      whiteSpace: 'nowrap',
+                      backgroundColor: (selectedKhata?.currentDebt || 0) > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                      color: (selectedKhata?.currentDebt || 0) > 0 ? '#EF4444' : '#10B981',
+                      border: `1px solid ${(selectedKhata?.currentDebt || 0) > 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+                    }}
+                  >
+                    {(selectedKhata?.currentDebt || 0) > 0 ? 'Outstanding Due' : 'Account Settled'}
+                  </span>
+                </div>
+                <div style={{ color: tokens.colorNeutralForeground2, marginTop: '2px', fontSize: '13px' }}>
+                  <strong style={{ color: tokens.colorNeutralForeground1, fontWeight: 700 }}>{selectedKhata?.name}</strong>
+                  {' · '}{selectedKhata?.phone || 'No phone'}
+                  {' · '}{selectedKhata?.address || 'No address'}
+                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0 }}>
                 <Button
-                  size="small"
-                  appearance="outline"
+                  size="medium"
+                  appearance="secondary"
                   icon={<Print20Regular />}
                   onClick={printStatement}
+                  style={{ borderRadius: '8px', fontWeight: 600, whiteSpace: 'nowrap' }}
                 >
                   Print Statement
                 </Button>
                 {selectedKhata && selectedKhata.currentDebt > 0 && (
                   <Button
-                    size="small"
+                    size="medium"
                     appearance="primary"
                     icon={<Chat20Regular />}
-                    style={{ backgroundColor: '#25D366', fontWeight: 600 }}
+                    style={{
+                      backgroundColor: '#25D366',
+                      color: '#FFFFFF',
+                      fontWeight: 700,
+                      borderRadius: '8px',
+                      border: 'none',
+                      boxShadow: '0 2px 8px rgba(37, 211, 102, 0.25)',
+                      whiteSpace: 'nowrap',
+                    }}
                     onClick={() => sendWhatsAppReminder(selectedKhata)}
                   >
                     WhatsApp Reminder
@@ -1041,103 +1329,218 @@ export function KhataView(): React.JSX.Element {
               </div>
             </div>
 
-            <DialogContent style={{ marginTop: '16px', maxHeight: '400px', overflowY: 'auto' }}>
-              {/* Balance Summary Header */}
+            {/* 2. 4 KPI Summary Metric Cards (Full Width Row) */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '12px',
+                width: '100%',
+              }}
+            >
               <div
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '14px 18px',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
                   backgroundColor: tokens.colorNeutralBackground3,
-                  borderRadius: '8px',
-                  marginBottom: '14px',
+                  border: `1px solid ${tokens.colorNeutralStroke2}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
                 }}
               >
-                <div>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Credit Limit</Caption1>
-                  <Body1 style={{ fontWeight: 700 }}>PKR {selectedKhata?.creditLimit.toLocaleString()}</Body1>
-                </div>
-                <div>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Current Outstanding</Caption1>
-                  <Subtitle1 style={{ fontWeight: 800, color: '#E51937' }}>
-                    PKR {selectedKhata?.currentDebt.toLocaleString()}
-                  </Subtitle1>
+                <span style={{ color: tokens.colorNeutralForeground3, fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  Credit Limit
+                </span>
+                <div style={{ fontSize: '16px', fontWeight: 800, color: tokens.colorNeutralForeground1, fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' }}>
+                  PKR {selectedKhata?.creditLimit.toLocaleString()}
                 </div>
               </div>
 
-              {/* Transactions Ledger Table */}
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  backgroundColor: tokens.colorNeutralBackground3,
+                  border: `1px solid ${tokens.colorNeutralStroke2}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <span style={{ color: tokens.colorNeutralForeground3, fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  Total Udhaar (Diya)
+                </span>
+                <div style={{ fontSize: '16px', fontWeight: 800, color: '#EF4444', fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' }}>
+                  +PKR {passbookTransactions.filter((tx) => tx.type === 'DEBIT').reduce((s, t) => s + t.amount, 0).toLocaleString()}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  backgroundColor: tokens.colorNeutralBackground3,
+                  border: `1px solid ${tokens.colorNeutralStroke2}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <span style={{ color: tokens.colorNeutralForeground3, fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  Total Wasooli (Received)
+                </span>
+                <div style={{ fontSize: '16px', fontWeight: 800, color: '#10B981', fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' }}>
+                  -PKR {passbookTransactions.filter((tx) => tx.type === 'CREDIT').reduce((s, t) => s + t.amount, 0).toLocaleString()}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(229, 25, 55, 0.08)',
+                  border: '1px solid rgba(229, 25, 55, 0.25)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <span style={{ color: '#EF4444', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                  Net Outstanding
+                </span>
+                <div style={{ fontSize: '18px', fontWeight: 900, color: '#E51937', fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' }}>
+                  PKR {selectedKhata?.currentDebt.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Table Container */}
+            <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '2px', width: '100%' }}>
               {isLoadingPassbook ? (
-                <div style={{ padding: '30px', textAlign: 'center' }}>Loading passbook ledger...</div>
+                <div style={{ padding: '40px', textAlign: 'center', color: tokens.colorNeutralForeground2 }}>
+                  Loading passbook ledger...
+                </div>
               ) : passbookTransactions.length === 0 ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+                <div style={{ padding: '40px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
                   No transactions recorded for this customer yet.
                 </div>
               ) : (
-                <Table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                  <TableHeader>
-                    <TableRow style={{ backgroundColor: tokens.colorNeutralBackground3, borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                      <TableHeaderCell style={{ padding: '10px 14px', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2 }}>
-                        Date &amp; Time
-                      </TableHeaderCell>
-                      <TableHeaderCell style={{ padding: '10px 14px', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2 }}>
-                        Description / Mode
-                      </TableHeaderCell>
-                      <TableHeaderCell style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2 }}>
-                        Debit (Diya)
-                      </TableHeaderCell>
-                      <TableHeaderCell style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2 }}>
-                        Credit (Wasooli)
-                      </TableHeaderCell>
-                      <TableHeaderCell style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2 }}>
-                        Balance
-                      </TableHeaderCell>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {passbookTransactions.map((tx) => (
-                      <TableRow key={tx.id} style={{ borderBottom: `1px solid ${tokens.colorNeutralStroke3}` }}>
-                        <TableCell style={{ padding: '12px 14px', fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
-                          <div>{new Date(tx.createdAt).toLocaleDateString()}</div>
-                          <div style={{ fontSize: '10px', color: tokens.colorNeutralForeground3 }}>
-                            {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </TableCell>
-                        <TableCell style={{ padding: '12px 14px' }}>
-                          <Body2 style={{ fontWeight: 600 }}>{tx.description || 'Transaction'}</Body2>
-                          <Caption1 style={{ color: tokens.colorNeutralForeground3, textTransform: 'capitalize', display: 'block', marginTop: '2px' }}>
-                            Mode: {tx.paymentMethod}
-                          </Caption1>
-                        </TableCell>
-                        <TableCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, color: tx.type === 'DEBIT' ? '#E51937' : 'inherit' }}>
-                          {tx.type === 'DEBIT' ? (
-                            <span style={{ backgroundColor: '#FEF2F2', color: '#DC2626', padding: '3px 8px', borderRadius: '6px', fontSize: '12px' }}>
-                              +PKR {tx.amount.toLocaleString()}
-                            </span>
-                          ) : '—'}
-                        </TableCell>
-                        <TableCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, color: tx.type === 'CREDIT' ? '#107C41' : 'inherit' }}>
-                          {tx.type === 'CREDIT' ? (
-                            <span style={{ backgroundColor: '#ECFDF5', color: '#047857', padding: '3px 8px', borderRadius: '6px', fontSize: '12px' }}>
-                              -PKR {tx.amount.toLocaleString()}
-                            </span>
-                          ) : '—'}
-                        </TableCell>
-                        <TableCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 800, fontSize: '13px' }}>
-                          PKR {tx.balanceAfter.toLocaleString()}
-                        </TableCell>
+                <div style={{ borderRadius: '10px', overflow: 'hidden', border: `1px solid ${tokens.colorNeutralStroke2}`, backgroundColor: tokens.colorNeutralBackground1 }}>
+                  <Table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0 }}>
+                    <TableHeader>
+                      <TableRow style={{ backgroundColor: tokens.colorNeutralBackground3, borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                        <TableHeaderCell style={{ padding: '12px 14px', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2, width: '140px', whiteSpace: 'nowrap' }}>
+                          Date &amp; Time
+                        </TableHeaderCell>
+                        <TableHeaderCell style={{ padding: '12px 14px', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2, width: 'auto' }}>
+                          Description / Mode
+                        </TableHeaderCell>
+                        <TableHeaderCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2, width: '130px', whiteSpace: 'nowrap' }}>
+                          Debit (Diya)
+                        </TableHeaderCell>
+                        <TableHeaderCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2, width: '130px', whiteSpace: 'nowrap' }}>
+                          Credit (Wasooli)
+                        </TableHeaderCell>
+                        <TableHeaderCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2, width: '120px', whiteSpace: 'nowrap' }}>
+                          Balance
+                        </TableHeaderCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {passbookTransactions.map((tx) => (
+                        <TableRow key={tx.id} style={{ borderBottom: `1px solid ${tokens.colorNeutralStroke3}` }}>
+                          <TableCell style={{ padding: '12px 14px', fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
+                            <div style={{ fontWeight: 600, color: tokens.colorNeutralForeground1, whiteSpace: 'nowrap' }}>
+                              {new Date(tx.createdAt).toLocaleDateString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, marginTop: '2px', whiteSpace: 'nowrap' }}>
+                              {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </TableCell>
+                          <TableCell style={{ padding: '12px 14px' }}>
+                            <div style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {tx.description || 'Transaction'}
+                            </div>
+                            <div style={{ color: tokens.colorNeutralForeground3, textTransform: 'capitalize', marginTop: '2px', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                              Payment Mode: <strong style={{ color: tokens.colorNeutralForeground2 }}>{tx.paymentMethod}</strong>
+                            </div>
+                          </TableCell>
+                          <TableCell style={{ padding: '12px 14px', textAlign: 'right' }}>
+                            {tx.type === 'DEBIT' ? (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                                  color: '#EF4444',
+                                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  fontFamily: tokens.fontFamilyMonospace,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                +PKR {tx.amount.toLocaleString()}
+                              </span>
+                            ) : (
+                              <span style={{ color: tokens.colorNeutralForeground3 }}>—</span>
+                            )}
+                          </TableCell>
+                          <TableCell style={{ padding: '12px 14px', textAlign: 'right' }}>
+                            {tx.type === 'CREDIT' ? (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                                  color: '#10B981',
+                                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  fontFamily: tokens.fontFamilyMonospace,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                -PKR {tx.amount.toLocaleString()}
+                              </span>
+                            ) : (
+                              <span style={{ color: tokens.colorNeutralForeground3 }}>—</span>
+                            )}
+                          </TableCell>
+                          <TableCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 800, fontSize: '13px', fontFamily: tokens.fontFamilyMonospace, color: tokens.colorNeutralForeground1, whiteSpace: 'nowrap' }}>
+                            PKR {tx.balanceAfter.toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
-            </DialogContent>
+            </div>
 
-            <DialogActions style={{ marginTop: '16px' }}>
-              <Button appearance="secondary" onClick={() => setIsPassbookOpen(false)}>
+            {/* 4. Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: `1px solid ${tokens.colorNeutralStroke2}` }}>
+              <span style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                Showing {passbookTransactions.length} transaction record{passbookTransactions.length !== 1 ? 's' : ''}
+              </span>
+              <Button
+                appearance="secondary"
+                onClick={() => setIsPassbookOpen(false)}
+                style={{
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  padding: '8px 20px',
+                }}
+              >
                 Close Passbook
               </Button>
-            </DialogActions>
-          </DialogBody>
+            </div>
+          </div>
         </DialogSurface>
       </Dialog>
     </div>

@@ -226,6 +226,27 @@ export const posApi = {
       // 1. Instant local write to Dexie
       await offlineDb.orders.put(localOrder);
 
+      // Deduct stock in local Dexie database for instant offline consistency
+      if (Array.isArray(order.lines)) {
+        for (const line of order.lines) {
+          if (line.productId) {
+            try {
+              const localProd = await offlineDb.products.get(line.productId);
+              if (localProd && localProd.openingStock !== undefined && localProd.openingStock !== null) {
+                const soldQty = Number(line.quantity || 1);
+                const newStock = Math.max(0, localProd.openingStock - soldQty);
+                await offlineDb.products.update(line.productId, {
+                  openingStock: newStock,
+                  updatedAt: new Date().toISOString(),
+                });
+              }
+            } catch (dexieErr) {
+              console.warn('[Offline DB] Error updating local stock:', dexieErr);
+            }
+          }
+        }
+      }
+
       // 2. Queue in Outbox for Cloud Sync
       await syncEngine.enqueue('order', order.id, 'CREATE', order);
 

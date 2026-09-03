@@ -30,3 +30,14 @@ html, body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #C7C7C7; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #9E9E9E; }
+
+/* Hide scrollbar utility (MUI Tabs style) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}

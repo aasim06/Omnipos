@@ -18,12 +18,14 @@ class SyncEngine {
   private isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   private lastSyncedAt: Date | null = null;
   private lastError: string | null = null;
-  private syncTimer: any = null;
+  private syncTimeout: any = null;
+  private consecutiveFailures = 0;
 
   constructor() {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
         this.isOnline = true;
+        this.consecutiveFailures = 0;
         this.notify();
         this.syncNow();
       });
@@ -33,13 +35,34 @@ class SyncEngine {
         this.notify();
       });
 
-      // Periodic check every 20 seconds
-      this.syncTimer = setInterval(() => {
-        if (this.isOnline && !this.isSyncing) {
-          this.syncNow();
-        }
-      }, 20000);
+      // Periodic check with smart progressive backoff
+      this.scheduleNextSync(15000);
     }
+  }
+
+  private scheduleNextSync(delayMs?: number) {
+    if (this.syncTimeout) {
+      clearTimeout(this.syncTimeout);
+      this.syncTimeout = null;
+    }
+    if (typeof window === 'undefined') return;
+
+    let delay = delayMs;
+    if (delay === undefined) {
+      if (this.consecutiveFailures === 0) {
+        delay = 30000; // 30s normal interval when healthy
+      } else if (this.consecutiveFailures === 1) {
+        delay = 60000; // 1 min on first failure
+      } else {
+        delay = 180000; // 3 min backoff when server is offline
+      }
+    }
+
+    this.syncTimeout = setTimeout(() => {
+      if (!this.isSyncing) {
+        this.syncNow();
+      }
+    }, delay);
   }
 
   public subscribe(listener: SyncListener): () => void {
@@ -101,9 +124,26 @@ class SyncEngine {
 
     this.notify();
 
-    if (this.isOnline && !this.isSyncing) {
+    if (this.isOnline && !this.isSyncing && this.consecutiveFailures === 0) {
       // Trigger background sync without blocking
       void this.syncNow();
+    }
+  }
+
+  /**
+   * Quick check if server is reachable before flooding requests
+   */
+  private async checkServerReachable(baseUrl: string): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(`${baseUrl}/api/products`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      return res.ok;
+    } catch {
+      return false;
     }
   }
 
@@ -118,6 +158,18 @@ class SyncEngine {
 
     try {
       const baseUrl = await this.resolveCloudUrl();
+
+      // Check server reachability first to prevent multiple failing requests when server is off
+      const reachable = await this.checkServerReachable(baseUrl);
+      if (!reachable) {
+        this.isOnline = false;
+        this.consecutiveFailures++;
+        this.lastError = 'Backend server offline';
+        return;
+      }
+
+      this.isOnline = true;
+      this.consecutiveFailures = 0;
 
       // 1. Process Outbox Push
       const pendingItems = await offlineDb.syncQueue
@@ -141,6 +193,8 @@ class SyncEngine {
               retryCount: item.retryCount + 1,
               lastError: err?.message || 'Network error',
             });
+            // Stop pushing rest if network dropped mid-way
+            break;
           }
         }
       }
@@ -150,12 +204,16 @@ class SyncEngine {
 
       this.lastSyncedAt = new Date();
       this.isOnline = true;
+      this.consecutiveFailures = 0;
     } catch (err: any) {
       console.warn('[SyncEngine] Cloud sync check failed:', err);
+      this.isOnline = false;
+      this.consecutiveFailures++;
       this.lastError = err?.message || 'Sync connection failed';
     } finally {
       this.isSyncing = false;
       await this.notify();
+      this.scheduleNextSync();
     }
   }
 
