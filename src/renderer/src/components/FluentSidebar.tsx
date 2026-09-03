@@ -1,8 +1,6 @@
-import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  makeStyles,
-  tokens,
   Tooltip,
   Menu,
   MenuTrigger,
@@ -11,7 +9,6 @@ import {
   MenuPopover,
   MenuDivider,
   Avatar,
-  Button,
   Text,
 } from '@fluentui/react-components';
 import {
@@ -36,233 +33,751 @@ import {
   CloudCheckmark16Filled,
   Tag24Regular,
   Tag24Filled,
+  Tag20Regular,
+  Grid20Regular,
+  Add20Regular,
+  ChevronDown20Regular,
+  ChevronLeft20Regular,
+  ChevronRight20Regular,
 } from '@fluentui/react-icons';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useAppTheme } from '@/theme/AppProviders';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 
-const useStyles = makeStyles({
-  // Fluent v9 NavigationView: seamless sidebar merging with app frame
-  // No heavy pitch-black container — uses app frame (#F5F5F5) Mica background
-  sidebar: {
-    width: '64px',
-    height: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    // Fluent NavigationView: subtle neutral EBEBEB — lighter than app frame
-    // but NOT dark — seamlessly blends into the Mica surface
-    backgroundColor: tokens.colorNeutralBackground3,
-    // Single subtle 1px right divider (NO heavy border or box-shadow)
-    borderRightWidth: '1px',
-    borderRightStyle: 'solid',
-    borderRightColor: tokens.colorNeutralStroke1,
-    paddingTop: '14px',
-    paddingBottom: '16px',
-    boxSizing: 'border-box',
-    flexShrink: 0,
-  },
-
-  logoBox: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginBottom: '8px',
-  },
-
-  // 8px corner radius on logo badge (Fluent v9 borderRadiusMedium)
-  logoBadge: {
-    width: '36px',
-    height: '36px',
-    borderRadius: tokens.borderRadiusMedium, // 8px Fluent standard
-    backgroundColor: '#E51937', // Reserved accent for brand only
-    color: '#ffffff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 800,
-    fontSize: '15px',
-    letterSpacing: '-0.5px',
-  },
-
-  navGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-    alignItems: 'center',
-    width: '100%',
-    paddingLeft: '8px',
-    paddingRight: '8px',
-    boxSizing: 'border-box',
-  },
-
-  // Fluent NavigationView item: 4px-8px radius, transparent background
-  navItem: {
-    width: '100%',
-    height: '40px',
-    borderRadius: tokens.borderRadiusMedium, // 8px Fluent v9 standard
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: tokens.colorNeutralForeground2,
-    textDecoration: 'none',
-    position: 'relative',
-    transition: 'background-color 0.1s ease',
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground4,
-      color: tokens.colorNeutralForeground1,
-    },
-  },
-
-  // Active: white card container (#FFFFFF) on Mica frame — standard NavigationView active
-  navItemActive: {
-    backgroundColor: tokens.colorNeutralBackground1, // #FFFFFF elevated card on #F5F5F5 frame
-    color: '#E51937', // Red accent only on active icon
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0,0,0,0.04)',
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground1,
-      color: '#E51937',
-    },
-  },
-
-  // Strict Fluent v9 NavigationView left accent indicator (3px, red, 4px radius)
-  activeIndicator: {
-    position: 'absolute',
-    left: '-8px',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    width: '3px',
-    height: '20px',
-    borderRadius: '0 3px 3px 0',
-    backgroundColor: '#E51937', // Accent strictly for indicator only
-  },
-
-  bottomGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '6px',
-    width: '100%',
-    paddingLeft: '8px',
-    paddingRight: '8px',
-    boxSizing: 'border-box',
-  },
-
-  userBtn: {
-    width: '100%',
-    height: '40px',
-    borderRadius: tokens.borderRadiusMedium,
-    minWidth: 'unset',
-    padding: '0',
-    backgroundColor: 'transparent',
-    borderTopStyle: 'none',
-    borderBottomStyle: 'none',
-    borderLeftStyle: 'none',
-    borderRightStyle: 'none',
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground4,
-    },
-  },
-});
-
 export function FluentSidebar(): React.JSX.Element {
-  const styles = useStyles();
   const { mode, toggleTheme } = useAppTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const navItems = [
-    { to: '/pos/fastfood', label: 'Fast Food POS', icon: <Food24Regular />, activeIcon: <Food24Filled /> },
-    { to: '/pos/omnimart', label: 'Omnimart POS', icon: <BuildingRetail24Regular />, activeIcon: <BuildingRetail24Filled /> },
-    { to: '/kitchen', label: 'Kitchen Display (KDS)', icon: <BowlSalad24Regular />, activeIcon: <BowlSalad24Filled /> },
-    { to: '/khata', label: 'Khata Ledger Book', icon: <BookContacts24Regular />, activeIcon: <BookContacts24Filled /> },
-    { to: '/inventory', label: 'Inventory & Stock', icon: <Box24Regular />, activeIcon: <Box24Filled /> },
-    { to: '/catalog', label: 'Products & Menu Catalog', icon: <Tag24Regular />, activeIcon: <Tag24Filled /> },
-    { to: '/expenses', label: 'Expenses & Cash Drawer', icon: <Money24Regular />, activeIcon: <Money24Filled /> },
-    { to: '/reports', label: 'Profit & Loss Analytics', icon: <DataTrending24Regular />, activeIcon: <DataTrending24Filled /> },
+  // Collapsed state persisted in localStorage
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('omnipos_sidebar_collapsed') === 'true';
+  });
+
+  const toggleSidebar = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('omnipos_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
+
+  // Keyboard shortcut Ctrl+B / Cmd+B
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Accordion for Products submenu
+  const isCatalogActive = location.pathname.startsWith('/catalog');
+  const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(() => isCatalogActive);
+
+  useEffect(() => {
+    if (isCatalogActive) {
+      setIsCatalogOpen(true);
+    }
+  }, [isCatalogActive]);
+
+  const sections = [
+    {
+      title: 'POS TERMINALS',
+      items: [
+        {
+          to: '/pos/fastfood',
+          label: 'Fast Food POS',
+          icon: <Food24Regular style={{ width: 19, height: 19 }} />,
+          activeIcon: <Food24Filled style={{ width: 19, height: 19 }} />,
+        },
+        {
+          to: '/pos/omnimart',
+          label: 'Omnimart POS',
+          icon: <BuildingRetail24Regular style={{ width: 19, height: 19 }} />,
+          activeIcon: <BuildingRetail24Filled style={{ width: 19, height: 19 }} />,
+        },
+        {
+          to: '/kitchen',
+          label: 'Kitchen Display',
+          badge: 'KDS',
+          icon: <BowlSalad24Regular style={{ width: 19, height: 19 }} />,
+          activeIcon: <BowlSalad24Filled style={{ width: 19, height: 19 }} />,
+        },
+      ],
+    },
+    {
+      title: 'INVENTORY & CATALOG',
+      items: [
+        {
+          isAccordion: true,
+          label: 'Products & Catalog',
+          icon: <Tag24Regular style={{ width: 19, height: 19 }} />,
+          activeIcon: <Tag24Filled style={{ width: 19, height: 19 }} />,
+          subItems: [
+            { to: '/catalog', label: 'All Store Items', icon: <Tag20Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/catalog/fastfood', label: 'Fast Food Menu', icon: <Food24Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/catalog/omnimart', label: 'Omnimart Goods', icon: <BuildingRetail24Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/catalog/categories', label: 'Categories Manager', icon: <Grid20Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/catalog/new', label: '+ Add Product', icon: <Add20Regular style={{ width: 15, height: 15, color: '#FF4D63' }} />, isSpecial: true },
+          ],
+        },
+        {
+          to: '/inventory',
+          label: 'Inventory & Stock',
+          icon: <Box24Regular style={{ width: 19, height: 19 }} />,
+          activeIcon: <Box24Filled style={{ width: 19, height: 19 }} />,
+        },
+        {
+          to: '/khata',
+          label: 'Khata Ledger Book',
+          icon: <BookContacts24Regular style={{ width: 19, height: 19 }} />,
+          activeIcon: <BookContacts24Filled style={{ width: 19, height: 19 }} />,
+        },
+      ],
+    },
+    {
+      title: 'FINANCE & AUDIT',
+      items: [
+        {
+          to: '/expenses',
+          label: 'Expenses & Cash',
+          icon: <Money24Regular style={{ width: 19, height: 19 }} />,
+          activeIcon: <Money24Filled style={{ width: 19, height: 19 }} />,
+        },
+        {
+          to: '/reports',
+          label: 'Profit & Loss Analytics',
+          icon: <DataTrending24Regular style={{ width: 19, height: 19 }} />,
+          activeIcon: <DataTrending24Filled style={{ width: 19, height: 19 }} />,
+        },
+      ],
+    },
   ];
 
   return (
-    <nav className={styles.sidebar}>
-      <div className={styles.navGroup}>
-        {/* Brand Logo */}
-        <div className={styles.logoBox}>
-          <div className={styles.logoBadge}>OP</div>
-        </div>
-
-        {/* Fluent NavigationView items */}
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-            }
+    <nav
+      style={{
+        width: isCollapsed ? '64px' : '236px',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        background: 'linear-gradient(180deg, #111215 0%, #0c0d10 100%)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+        boxSizing: 'border-box',
+        flexShrink: 0,
+        transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        position: 'relative',
+        userSelect: 'none',
+        boxShadow: '4px 0 24px rgba(0, 0, 0, 0.35)',
+      }}
+    >
+      {/* ── Top Ambient Glow Header ─────────────────────────────── */}
+      <div
+        style={{
+          padding: isCollapsed ? '16px 0 12px' : '16px 14px 14px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: isCollapsed ? 'center' : 'flex-start',
+          background: 'radial-gradient(circle at 50% 0%, rgba(229, 25, 55, 0.12) 0%, transparent 75%)',
+        }}
+      >
+        <div
+          onClick={toggleSidebar}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer',
+            width: isCollapsed ? 'auto' : '100%',
+            gap: '10px',
+          }}
+          title={isCollapsed ? 'Click to expand sidebar (Ctrl+B)' : 'Click to collapse sidebar (Ctrl+B)'}
+        >
+          {/* Futuristic Hexagon/Square Logo Badge */}
+          <div
+            style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #FF1E3C 0%, #B30018 100%)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 900,
+              fontSize: '14px',
+              letterSpacing: '-0.5px',
+              boxShadow: '0 0 16px rgba(229, 25, 55, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.35)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              flexShrink: 0,
+            }}
           >
-            {({ isActive }) => (
-              <Tooltip content={item.label} relationship="label" positioning="after">
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {isActive && <div className={styles.activeIndicator} />}
-                  {isActive ? item.activeIcon : item.icon}
+            OP
+          </div>
+
+          {!isCollapsed && (
+            <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontWeight: 800, fontSize: '14.5px', color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                  OmniPos
                 </span>
-              </Tooltip>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#E51937', boxShadow: '0 0 6px #E51937' }} />
+              </div>
+              <div style={{ fontSize: '9.5px', color: '#64748B', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Enterprise POS &amp; ERP
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Scrollable Navigation Items ─────────────────────────── */}
+      <div
+        className="no-scrollbar"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          padding: isCollapsed ? '12px 6px' : '12px 10px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2px',
+        }}
+      >
+        {sections.map((section, secIdx) => (
+          <div key={section.title} style={{ marginBottom: '8px' }}>
+            {!isCollapsed && (
+              <div
+                style={{
+                  fontSize: '9.5px',
+                  fontWeight: 800,
+                  color: '#475569',
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  padding: '10px 10px 4px',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  textOverflow: 'ellipsis',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span style={{ width: '4px', height: '4px', borderRadius: '1px', backgroundColor: '#334155' }} />
+                <span>{section.title}</span>
+              </div>
             )}
-          </NavLink>
+            {isCollapsed && secIdx > 0 && (
+              <div style={{ height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.05)', margin: '8px 6px' }} />
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              {section.items.map((item: any) => {
+                // Special Accordion handling for Products & Catalog
+                if (item.isAccordion) {
+                  if (isCollapsed) {
+                    // When collapsed: Flyout Popover Menu
+                    return (
+                      <Menu key={item.label} positioning="after" openOnHover={true} hoverDelay={150}>
+                        <MenuTrigger disableButtonEnhancement>
+                          <button
+                            type="button"
+                            onClick={() => navigate('/catalog')}
+                            style={{
+                              width: '42px',
+                              height: '40px',
+                              padding: 0,
+                              margin: '0 auto',
+                              borderRadius: '8px',
+                              border: isCatalogActive ? '1px solid rgba(229, 25, 55, 0.35)' : '1px solid transparent',
+                              background: isCatalogActive ? 'linear-gradient(135deg, rgba(229, 25, 55, 0.2) 0%, rgba(229, 25, 55, 0.06) 100%)' : 'transparent',
+                              color: isCatalogActive ? '#FF4D63' : '#94A3B8',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              position: 'relative',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <Tooltip content="Products & Catalog" relationship="label" positioning="after">
+                              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                                {isCatalogActive && (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      left: '0',
+                                      top: '50%',
+                                      transform: 'translateY(-50%)',
+                                      width: '3.5px',
+                                      height: '20px',
+                                      borderRadius: '0 3px 3px 0',
+                                      backgroundColor: '#E51937',
+                                      boxShadow: '0 0 8px #E51937',
+                                    }}
+                                  />
+                                )}
+                                {isCatalogActive ? item.activeIcon : item.icon}
+                              </span>
+                            </Tooltip>
+                          </button>
+                        </MenuTrigger>
+                        <MenuPopover
+                          style={{
+                            borderRadius: '10px',
+                            padding: '6px',
+                            minWidth: '220px',
+                            backgroundColor: '#121316',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6)',
+                          }}
+                        >
+                          <MenuList>
+                            <div style={{ padding: '6px 12px 8px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '4px' }}>
+                              <Text weight="bold" size={200} block style={{ color: '#FF4D63' }}>
+                                Products &amp; Catalog
+                              </Text>
+                              <Text size={100} style={{ color: '#64748B' }}>
+                                Store inventory &amp; menus
+                              </Text>
+                            </div>
+                            {item.subItems.map((sub: any) => (
+                              <MenuItem
+                                key={sub.to}
+                                icon={sub.icon}
+                                onClick={() => navigate(sub.to)}
+                                style={{
+                                  fontWeight: location.pathname === sub.to ? 700 : 500,
+                                  color: location.pathname === sub.to ? '#FF4D63' : sub.isSpecial ? '#FF4D63' : '#E2E8F0',
+                                }}
+                              >
+                                {sub.label}
+                              </MenuItem>
+                            ))}
+                          </MenuList>
+                        </MenuPopover>
+                      </Menu>
+                    );
+                  }
+
+                  // When expanded: Accordion with ChevronDown
+                  return (
+                    <div key={item.label}>
+                      <button
+                        type="button"
+                        onClick={() => setIsCatalogOpen((prev) => !prev)}
+                        style={{
+                          width: '100%',
+                          height: '38px',
+                          padding: '0 10px',
+                          borderRadius: '8px',
+                          border: isCatalogActive ? '1px solid rgba(229, 25, 55, 0.28)' : '1px solid transparent',
+                          background: isCatalogActive ? 'linear-gradient(90deg, rgba(229, 25, 55, 0.16) 0%, rgba(229, 25, 55, 0.04) 100%)' : 'transparent',
+                          color: isCatalogActive ? '#FFFFFF' : '#94A3B8',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          position: 'relative',
+                          transition: 'all 0.15s ease',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {isCatalogActive && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: '0',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '3.5px',
+                                height: '22px',
+                                borderRadius: '0 3px 3px 0',
+                                backgroundColor: '#E51937',
+                                boxShadow: '0 0 10px #E51937',
+                              }}
+                            />
+                          )}
+                          <span style={{ display: 'flex', alignItems: 'center', color: isCatalogActive ? '#FF4D63' : '#94A3B8' }}>
+                            {isCatalogActive ? item.activeIcon : item.icon}
+                          </span>
+                          <span style={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: isCatalogActive ? 700 : 500 }}>
+                            {item.label}
+                          </span>
+                        </div>
+                        <ChevronDown20Regular
+                          style={{
+                            width: 15,
+                            height: 15,
+                            color: '#64748B',
+                            transition: 'transform 0.22s ease',
+                            transform: isCatalogOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                          }}
+                        />
+                      </button>
+
+                      {/* Smooth slide-down Submenu with glowing guide line */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px',
+                          marginLeft: '14px',
+                          paddingLeft: '10px',
+                          borderLeft: '1.5px solid rgba(255, 255, 255, 0.08)',
+                          overflow: 'hidden',
+                          maxHeight: isCatalogOpen ? '220px' : '0',
+                          opacity: isCatalogOpen ? 1 : 0,
+                          marginTop: isCatalogOpen ? '4px' : '0',
+                          marginBottom: isCatalogOpen ? '4px' : '0',
+                          transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+                        }}
+                      >
+                        {item.subItems.map((sub: any) => {
+                          const isSubActive = location.pathname === sub.to;
+                          return (
+                            <button
+                              key={sub.to}
+                              type="button"
+                              onClick={() => navigate(sub.to)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                height: '32px',
+                                padding: '0 8px',
+                                borderRadius: '6px',
+                                color: isSubActive ? '#FF4D63' : '#94A3B8',
+                                background: isSubActive ? 'rgba(229, 25, 55, 0.1)' : 'transparent',
+                                border: 'none',
+                                fontSize: '12px',
+                                fontWeight: isSubActive ? 700 : 500,
+                                cursor: 'pointer',
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                textAlign: 'left',
+                                position: 'relative',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {/* Glowing Laser Notch right over the line */}
+                              {isSubActive && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    left: '-11.5px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    width: '3px',
+                                    height: '18px',
+                                    borderRadius: '2px',
+                                    backgroundColor: '#E51937',
+                                    boxShadow: '0 0 10px #E51937, 0 0 20px #E51937',
+                                    zIndex: 2,
+                                  }}
+                                />
+                              )}
+                              <span style={{ display: 'flex', alignItems: 'center', opacity: isSubActive ? 1 : 0.65 }}>
+                                {sub.icon}
+                              </span>
+                              <span style={{ whiteSpace: 'nowrap' }}>
+                                {sub.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Standard NavLink Item
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      height: '38px',
+                      width: isCollapsed ? '42px' : '100%',
+                      margin: isCollapsed ? '0 auto' : '0',
+                      padding: isCollapsed ? '0' : '0 10px',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontSize: '13px',
+                      fontWeight: isActive ? 700 : 500,
+                      position: 'relative',
+                      boxSizing: 'border-box',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      border: isActive ? '1px solid rgba(229, 25, 55, 0.28)' : '1px solid transparent',
+                      background: isActive
+                        ? 'linear-gradient(90deg, rgba(229, 25, 55, 0.16) 0%, rgba(229, 25, 55, 0.04) 100%)'
+                        : 'transparent',
+                      color: isActive ? '#FFFFFF' : '#94A3B8',
+                      justifyContent: isCollapsed ? 'center' : 'flex-start',
+                    })}
+                  >
+                    {({ isActive }) => {
+                      const content = isCollapsed ? (
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                          {isActive && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: '0',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '3.5px',
+                                height: '20px',
+                                borderRadius: '0 3px 3px 0',
+                                backgroundColor: '#E51937',
+                                boxShadow: '0 0 8px #E51937',
+                              }}
+                            />
+                          )}
+                          <span style={{ color: isActive ? '#FF4D63' : '#94A3B8', filter: isActive ? 'drop-shadow(0 0 6px rgba(229, 25, 55, 0.6))' : 'none' }}>
+                            {isActive ? item.activeIcon : item.icon}
+                          </span>
+                        </span>
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                          {isActive && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: '0',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '3.5px',
+                                height: '22px',
+                                borderRadius: '0 3px 3px 0',
+                                backgroundColor: '#E51937',
+                                boxShadow: '0 0 10px #E51937',
+                              }}
+                            />
+                          )}
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: isActive ? '#FF4D63' : '#94A3B8', filter: isActive ? 'drop-shadow(0 0 6px rgba(229, 25, 55, 0.6))' : 'none' }}>
+                            {isActive ? item.activeIcon : item.icon}
+                          </span>
+                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {item.label}
+                          </span>
+                          {item.badge && (
+                            <span
+                              style={{
+                                fontSize: '9.5px',
+                                fontWeight: 800,
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                backgroundColor: 'rgba(229, 25, 55, 0.15)',
+                                color: '#FF4D63',
+                                border: '1px solid rgba(229, 25, 55, 0.3)',
+                              }}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                        </span>
+                      );
+
+                      if (isCollapsed) {
+                        return (
+                          <Tooltip content={item.label} relationship="label" positioning="after">
+                            {content}
+                          </Tooltip>
+                        );
+                      }
+                      return content;
+                    }}
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* Bottom: Sync Status & User Avatar Menu */}
-      <div className={styles.bottomGroup}>
-        <SyncStatusIndicator />
+      {/* ── Futuristic Bottom Glass Deck ─────────────────────────── */}
+      <div
+        style={{
+          padding: isCollapsed ? '10px 6px 14px' : '10px 10px 14px',
+          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.3) 100%)',
+        }}
+      >
+        {/* Futuristic Cloud Sync Indicator */}
+        <SyncStatusIndicator isCollapsed={isCollapsed} />
 
-        <Menu positioning="after-top">
+        {/* User Identity Glass Card */}
+        <Menu positioning={isCollapsed ? 'after-bottom' : 'above'}>
           <MenuTrigger disableButtonEnhancement>
-            <Tooltip content={`${user?.name || 'Cashier'} — Account`} relationship="label" positioning="after">
-              <Button className={styles.userBtn} appearance="subtle">
+            <button
+              type="button"
+              style={{
+                height: '46px',
+                width: isCollapsed ? '42px' : '100%',
+                margin: isCollapsed ? '0 auto' : '0',
+                padding: isCollapsed ? '0' : '6px 8px',
+                borderRadius: '9px',
+                border: '1px solid rgba(255, 255, 255, 0.07)',
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: isCollapsed ? 'center' : 'flex-start',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <div style={{ position: 'relative' }}>
                 <Avatar
                   name={user?.name || 'Cashier'}
                   color="colorful"
                   size={32}
-                  badge={{ status: 'available' }}
                 />
-              </Button>
-            </Tooltip>
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: '0',
+                    right: '0',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#10B981',
+                    boxShadow: '0 0 6px #10B981',
+                    border: '1.5px solid #111215',
+                  }}
+                />
+              </div>
+
+              {!isCollapsed && (
+                <div style={{ marginLeft: '10px', textAlign: 'left', flex: 1, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#F1F5F9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user?.name || 'Store Manager'}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '9px',
+                        fontWeight: 800,
+                        padding: '1px 5px',
+                        borderRadius: '3px',
+                        backgroundColor: 'rgba(229, 25, 55, 0.15)',
+                        color: '#FF4D63',
+                        border: '1px solid rgba(229, 25, 55, 0.3)',
+                      }}
+                    >
+                      {user?.role?.toUpperCase() || 'ADMIN'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '1px' }}>
+                    Online Terminal
+                  </div>
+                </div>
+              )}
+            </button>
           </MenuTrigger>
 
-          <MenuPopover style={{ borderRadius: '8px', padding: '6px', minWidth: '230px' }}>
+          <MenuPopover
+            style={{
+              borderRadius: '12px',
+              padding: '6px',
+              minWidth: '240px',
+              backgroundColor: '#121316',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6)',
+            }}
+          >
             <MenuList>
-              {/* User Identity Header */}
-              <div style={{ padding: '8px 12px 10px', borderBottom: `1px solid ${tokens.colorNeutralStroke1}`, marginBottom: '4px' }}>
-                <Text weight="semibold" size={200} block>{user?.name || 'Cashier Operator'}</Text>
-                <Text size={100} style={{ color: tokens.colorNeutralForeground2, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                  <CloudCheckmark16Filled style={{ color: '#107C41', verticalAlign: 'middle' }} />
-                  {' '}{user?.role || 'staff'} — Terminal Online
+              <div style={{ padding: '8px 12px 10px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '4px' }}>
+                <Text weight="semibold" size={200} block style={{ color: '#F1F5F9' }}>{user?.name || 'Store Manager'}</Text>
+                <Text size={100} style={{ color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                  <CloudCheckmark16Filled style={{ color: '#10B981' }} />
+                  {' '}{user?.role || 'staff'} — Terminal Active
                 </Text>
               </div>
 
-              <MenuItem icon={<Settings20Regular />} onClick={() => navigate('/admin')}>
+              <MenuItem icon={<Settings20Regular style={{ color: '#94A3B8' }} />} onClick={() => navigate('/admin')}>
                 Store &amp; Admin Settings
               </MenuItem>
               <MenuItem
-                icon={mode === 'dark' ? <WeatherSunny20Regular /> : <WeatherMoon20Regular />}
+                icon={mode === 'dark' ? <WeatherSunny20Regular style={{ color: '#F59E0B' }} /> : <WeatherMoon20Regular style={{ color: '#94A3B8' }} />}
                 onClick={toggleTheme}
               >
                 {mode === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
               </MenuItem>
-
               <MenuDivider />
-
               <MenuItem
-                icon={<LockClosed20Regular style={{ color: '#E51937' }} />}
+                icon={<LockClosed20Regular style={{ color: '#FF4D63' }} />}
                 onClick={logout}
-                style={{ color: '#E51937', fontWeight: 600 }}
+                style={{ color: '#FF4D63', fontWeight: 600 }}
               >
                 Lock Terminal / Log Out
               </MenuItem>
             </MenuList>
           </MenuPopover>
         </Menu>
+
+        {/* ── Futuristic Collapse Sidebar Button ────────────────── */}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          style={{
+            height: '34px',
+            width: isCollapsed ? '42px' : '100%',
+            margin: isCollapsed ? '0 auto' : '0',
+            padding: isCollapsed ? '0' : '0 10px',
+            borderRadius: '7px',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
+            color: '#64748B',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isCollapsed ? 'center' : 'space-between',
+            transition: 'all 0.15s ease',
+          }}
+          title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+        >
+          {isCollapsed ? (
+            <Tooltip content="Expand sidebar (Ctrl+B)" relationship="label" positioning="after">
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ChevronRight20Regular style={{ width: 16, height: 16, color: '#94A3B8' }} />
+              </span>
+            </Tooltip>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ChevronLeft20Regular style={{ width: 15, height: 15, color: '#94A3B8' }} />
+                <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#94A3B8' }}>Collapse Sidebar</span>
+              </div>
+              <span
+                style={{
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: '3px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  color: '#64748B',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                }}
+              >
+                Ctrl+B
+              </span>
+            </>
+          )}
+        </button>
       </div>
     </nav>
   );

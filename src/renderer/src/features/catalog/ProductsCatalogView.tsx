@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -36,6 +37,7 @@ import {
   ArrowUpload20Regular,
   Dismiss16Regular,
   Image20Regular,
+  Grid20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -157,12 +159,35 @@ const useStyles = makeStyles({
   },
 });
 
-export function ProductsCatalogView(): React.JSX.Element {
+export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fastfood' | 'minimart' | 'categories' } = {}): React.JSX.Element {
   const styles = useStyles();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Synchronize activeTab with URL route or prop
+  const getTabFromPath = (): 'all' | 'fastfood' | 'minimart' | 'categories' => {
+    if (location.pathname === '/catalog/fastfood') return 'fastfood';
+    if (location.pathname === '/catalog/omnimart') return 'minimart';
+    if (location.pathname === '/catalog/categories') return 'categories';
+    return initialTab || 'all';
+  };
 
   // Navigation tab state
-  const [activeTab, setActiveTab] = useState<'all' | 'fastfood' | 'minimart' | 'categories'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'fastfood' | 'minimart' | 'categories'>(getTabFromPath);
+
+  useEffect(() => {
+    setActiveTab(getTabFromPath());
+  }, [location.pathname, initialTab]);
+
+  const handleTabChange = (key: 'all' | 'fastfood' | 'minimart' | 'categories') => {
+    setActiveTab(key);
+    if (key === 'all') navigate('/catalog');
+    else if (key === 'fastfood') navigate('/catalog/fastfood');
+    else if (key === 'minimart') navigate('/catalog/omnimart');
+    else if (key === 'categories') navigate('/catalog/categories');
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
@@ -384,79 +409,56 @@ export function ProductsCatalogView(): React.JSX.Element {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <Subtitle1
             as="h1"
-            style={{ fontWeight: 700, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0, display: 'block' }}
+            style={{ fontWeight: 800, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0, display: 'block' }}
           >
-            Products &amp; Menu Catalog
+            {activeTab === 'fastfood'
+              ? 'Fast Food Menu Catalog'
+              : activeTab === 'minimart'
+              ? 'Omnimart Supermarket Catalog'
+              : activeTab === 'categories'
+              ? 'Store Categories Manager'
+              : 'Products & Menu Catalog'}
           </Subtitle1>
           <Caption1
             as="p"
-            style={{ color: tokens.colorNeutralForeground2, margin: 0, display: 'block', fontSize: '13px' }}
+            style={{ color: tokens.colorNeutralForeground2, margin: 0, display: 'block', fontSize: '13px', marginTop: '2px' }}
           >
-            Manage items, pricing, categories, SKU codes, and inventory levels
+            {activeTab === 'fastfood'
+              ? 'Manage fast food burgers, pizzas, snacks, and kitchen prep items'
+              : activeTab === 'minimart'
+              ? 'Manage retail groceries, SKU barcodes, rack locations, and loose scale items'
+              : activeTab === 'categories'
+              ? 'Configure product category classifications across fast food and supermarket'
+              : 'Manage store catalog, prices, categories, SKU codes, and inventory levels'}
           </Caption1>
         </div>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <Button
-            appearance="outline"
-            icon={<Tag20Regular />}
-            style={{ borderRadius: tokens.borderRadiusMedium }}
-            onClick={() => {
-              categoryForm.reset({ name: '', module: activeTab === 'minimart' ? 'minimart' : 'fastfood' });
-              setIsCategoryDialogOpen(true);
-            }}
-          >
-            + New Category
-          </Button>
-
           {/* Primary Action Button: Red Brand Accent (#E51937) */}
           <Button
             appearance="primary"
             icon={<Add20Regular />}
             style={{ backgroundColor: '#E51937', borderRadius: tokens.borderRadiusMedium, fontWeight: 600 }}
-            onClick={handleOpenAddProduct}
+            onClick={() => {
+              if (activeTab === 'fastfood') {
+                navigate('/catalog/new?module=fastfood');
+              } else if (activeTab === 'minimart') {
+                navigate('/catalog/new?module=minimart');
+              } else {
+                navigate('/catalog/new');
+              }
+            }}
           >
-            + Add New Product
+            {activeTab === 'fastfood'
+              ? '+ Add Fast Food Item'
+              : activeTab === 'minimart'
+              ? '+ Add Omnimart Product'
+              : '+ Add New Product'}
           </Button>
         </div>
       </div>
 
-      {/* ── Navigation Tabs ───────────────────────────────────── */}
-      <div style={{ borderBottom: `1px solid ${tokens.colorNeutralStroke1}`, paddingBottom: '2px', overflowX: 'auto' }} className="no-scrollbar">
-        <TabList selectedValue={activeTab} onTabSelect={(_, d) => setActiveTab(d.value as any)}>
-          <Tab value="all">All Products ({products.length})</Tab>
-          <Tab value="fastfood">Fast Food Items ({products.filter((p) => p.module === 'fastfood').length})</Tab>
-          <Tab value="minimart">Omnimart Goods ({products.filter((p) => p.module === 'minimart').length})</Tab>
-          <Tab value="categories">Categories ({categories.length})</Tab>
-        </TabList>
-      </div>
-
-      {/* ── Tab Content ───────────────────────────────────────── */}
-      {activeTab === 'categories' ? (
-        <div className={styles.categoryGrid}>
-          {categories.map((cat) => {
-            const count = products.filter((p) => p.category === cat.name).length;
-            return (
-              <div key={cat.id} className={styles.categoryCard}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <Body1 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>{cat.name}</Body1>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
-                    {cat.module === 'fastfood' ? 'Fast Food' : 'Omnimart'} • {count} product{count !== 1 ? 's' : ''}
-                  </Caption1>
-                </div>
-                <Button
-                  size="small"
-                  appearance="subtle"
-                  icon={<Delete20Regular style={{ color: '#D13438' }} />}
-                  onClick={() => deleteCategoryMutation.mutate(cat.id)}
-                  title="Delete Category"
-                />
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className={styles.tableCard}>
+      <div className={styles.tableCard}>
           {/* Filter & Search Bar */}
           <div className={styles.filterBar}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -476,9 +478,11 @@ export function ProductsCatalogView(): React.JSX.Element {
                 style={{ width: '180px' }}
               >
                 <option value="ALL">All Categories</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
+                {categories
+                  .filter((c) => (activeTab === 'fastfood' ? c.module === 'fastfood' : activeTab === 'minimart' ? c.module === 'minimart' : true))
+                  .map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
               </Select>
             </div>
 
@@ -639,7 +643,6 @@ export function ProductsCatalogView(): React.JSX.Element {
             </Table>
           </div>
         </div>
-      )}
 
       {/* ── Add / Edit Product Dialog: Executive 2-Column Studio Layout ── */}
       <Dialog open={isProductDialogOpen} onOpenChange={(_, d) => setIsProductDialogOpen(d.open)}>

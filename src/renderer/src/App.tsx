@@ -10,6 +10,8 @@ import { ReportsAnalyticsView } from '@/features/reports/ReportsAnalyticsView';
 import { WebStoreView } from '@/features/web-store/WebStoreView';
 import { AdminSettingsView } from '@/features/admin/AdminSettingsView';
 import { ProductsCatalogView } from '@/features/catalog/ProductsCatalogView';
+import { CategoriesView } from '@/features/catalog/CategoriesView';
+import { AddProductView } from '@/features/catalog/AddProductView';
 import { LoginView } from '@/features/auth/LoginView';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
 
@@ -46,6 +48,10 @@ export default function App(): React.JSX.Element {
           <Route path="/expenses" element={<ExpensesView />} />
           <Route path="/reports" element={<ReportsAnalyticsView />} />
           <Route path="/catalog" element={<ProductsCatalogView />} />
+          <Route path="/catalog/fastfood" element={<ProductsCatalogView initialTab="fastfood" />} />
+          <Route path="/catalog/omnimart" element={<ProductsCatalogView initialTab="minimart" />} />
+          <Route path="/catalog/categories" element={<CategoriesView />} />
+          <Route path="/catalog/new" element={<AddProductView />} />
           <Route path="/web-store" element={<WebStoreView />} />
           <Route path="/admin" element={<AdminSettingsView />} />
           <Route path="*" element={<Navigate to="/pos/fastfood" replace />} />

@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Tooltip,
-  Button,
-  tokens,
-  makeStyles,
   Badge,
 } from '@fluentui/react-components';
 import {
@@ -14,44 +11,11 @@ import {
 } from '@fluentui/react-icons';
 import { syncEngine, SyncState } from '@/lib/syncEngine';
 
-const useStyles = makeStyles({
-  syncBtn: {
-    width: '100%',
-    height: '40px',
-    borderRadius: tokens.borderRadiusMedium,
-    minWidth: 'unset',
-    padding: '0',
-    backgroundColor: 'transparent',
-    borderTopStyle: 'none',
-    borderBottomStyle: 'none',
-    borderLeftStyle: 'none',
-    borderRightStyle: 'none',
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground4,
-    },
-  },
-  spinning: {
-    animationName: {
-      from: { transform: 'rotate(0deg)' },
-      to: { transform: 'rotate(360deg)' },
-    },
-    animationDuration: '1s',
-    animationIterationCount: 'infinite',
-    animationTimingFunction: 'linear',
-  },
-  badgePos: {
-    position: 'absolute',
-    top: '4px',
-    right: '8px',
-  },
-});
+interface SyncStatusProps {
+  isCollapsed?: boolean;
+}
 
-export function SyncStatusIndicator(): React.JSX.Element {
-  const styles = useStyles();
+export function SyncStatusIndicator({ isCollapsed = false }: SyncStatusProps): React.JSX.Element {
   const [syncState, setSyncState] = useState<SyncState>(syncEngine.getState());
 
   useEffect(() => {
@@ -64,39 +28,141 @@ export function SyncStatusIndicator(): React.JSX.Element {
     void syncEngine.syncNow();
   };
 
-  let tooltipText = 'Cloud Sync: Online & All Synced';
-  let icon = <CloudCheckmark20Filled style={{ color: '#107C41' }} />;
+  const isOnline = syncState.isOnline;
+  const isSyncing = syncState.isSyncing;
+  const pendingCount = syncState.pendingCount;
 
-  if (syncState.isSyncing) {
-    tooltipText = 'Syncing offline outbox with Cloud API...';
-    icon = <ArrowSync20Filled className={styles.spinning} style={{ color: '#0078D4' }} />;
-  } else if (!syncState.isOnline) {
-    tooltipText = `Offline Mode: ${syncState.pendingCount} orders queued locally in Dexie. Click to retry.`;
-    icon = <CloudDismiss20Filled style={{ color: '#D13438' }} />;
-  } else if (syncState.pendingCount > 0) {
-    tooltipText = `${syncState.pendingCount} orders in queue ready to sync. Click to sync now.`;
-    icon = <CloudSync20Filled style={{ color: '#C19500' }} />;
+  let statusText = 'Cloud Synced';
+  let subText = 'Neon PostgreSQL Live';
+  let dotColor = '#10B981'; // Neon emerald
+  let dotGlow = '0 0 8px rgba(16, 185, 129, 0.7)';
+
+  if (isSyncing) {
+    statusText = 'Syncing Orders...';
+    subText = 'Sending to Cloud API';
+    dotColor = '#38BDF8'; // Sky blue
+    dotGlow = '0 0 8px rgba(56, 189, 248, 0.8)';
+  } else if (!isOnline) {
+    statusText = 'Offline Cache';
+    subText = `${pendingCount} queued in local DB`;
+    dotColor = '#EF4444'; // Neon red
+    dotGlow = '0 0 8px rgba(239, 68, 68, 0.8)';
+  } else if (pendingCount > 0) {
+    statusText = 'Pending Upload';
+    subText = `${pendingCount} orders ready`;
+    dotColor = '#F59E0B'; // Amber
+    dotGlow = '0 0 8px rgba(245, 158, 11, 0.8)';
+  }
+
+  if (isCollapsed) {
+    return (
+      <Tooltip
+        content={`${statusText} — ${subText} (Click to Sync)`}
+        relationship="label"
+        positioning="after"
+      >
+        <button
+          type="button"
+          onClick={handleClick}
+          style={{
+            width: '42px',
+            height: '34px',
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            margin: '0 auto',
+            position: 'relative',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <span
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: dotColor,
+              boxShadow: dotGlow,
+            }}
+          />
+          {pendingCount > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '-3px',
+                right: '-3px',
+                fontSize: '9px',
+                fontWeight: 800,
+                backgroundColor: '#E51937',
+                color: '#fff',
+                borderRadius: '999px',
+                padding: '1px 4px',
+              }}
+            >
+              {pendingCount}
+            </span>
+          )}
+        </button>
+      </Tooltip>
+    );
   }
 
   return (
-    <Tooltip content={tooltipText} relationship="label" positioning="after">
-      <Button
-        className={styles.syncBtn}
-        appearance="subtle"
-        onClick={handleClick}
-        aria-label="Cloud Sync Status"
+    <div
+      onClick={handleClick}
+      style={{
+        padding: '8px 10px',
+        borderRadius: '8px',
+        border: '1px solid rgba(255, 255, 255, 0.07)',
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backdropFilter: 'blur(10px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+      }}
+      title="Click to trigger instant cloud sync"
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span
+            style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              backgroundColor: dotColor,
+              boxShadow: dotGlow,
+            }}
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#F1F5F9', letterSpacing: '0.02em', lineHeight: 1.2 }}>
+            {statusText}
+          </div>
+          <div style={{ fontSize: '9.5px', color: '#64748B', fontWeight: 500 }}>
+            {subText}
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          fontSize: '9.5px',
+          fontWeight: 700,
+          letterSpacing: '0.05em',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          backgroundColor: isOnline ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.15)',
+          color: isOnline ? '#10B981' : '#EF4444',
+          border: `1px solid ${isOnline ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.3)'}`,
+        }}
       >
-        {icon}
-        {syncState.pendingCount > 0 && !syncState.isSyncing && (
-          <Badge
-            className={styles.badgePos}
-            size="small"
-            color={syncState.isOnline ? 'warning' : 'danger'}
-          >
-            {syncState.pendingCount}
-          </Badge>
-        )}
-      </Button>
-    </Tooltip>
+        {isSyncing ? 'SYNC' : isOnline ? 'ONLINE' : 'CACHED'}
+      </div>
+    </div>
   );
 }
