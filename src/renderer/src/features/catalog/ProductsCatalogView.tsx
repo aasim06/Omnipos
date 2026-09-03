@@ -6,7 +6,8 @@ import {
   Button,
   Badge,
   Input,
-  Select,
+  Dropdown,
+  Option,
   Label,
   Subtitle1,
   Body1,
@@ -996,19 +997,22 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                 style={{ width: '320px' }}
               />
 
-              <Select
+              <Dropdown
                 appearance="outline"
-                value={selectedCategory}
-                onChange={(_, d) => setSelectedCategory(d.value)}
-                style={{ width: '180px' }}
+                value={selectedCategory === 'ALL' ? 'All Categories' : selectedCategory}
+                selectedOptions={[selectedCategory]}
+                onOptionSelect={(_, d) => {
+                  if (d.optionValue) setSelectedCategory(d.optionValue);
+                }}
+                style={{ width: '190px' }}
               >
-                <option value="ALL">All Categories</option>
+                <Option value="ALL" text="All Categories">All Categories</Option>
                 {categories
                   .filter((c) => (activeTab === 'fastfood' ? c.module === 'fastfood' : activeTab === 'minimart' ? c.module === 'minimart' : true))
                   .map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
+                    <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
                   ))}
-              </Select>
+              </Dropdown>
             </div>
 
             <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
@@ -1212,19 +1216,22 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                         control={productForm.control}
                         name="module"
                         render={({ field }) => (
-                          <Select
+                          <Dropdown
                             appearance="outline"
                             style={{ width: '100%' }}
-                            value={field.value}
-                            onChange={(_, d) => {
-                              field.onChange(d.value as ModuleKey);
-                              const firstCat = categories.find((c) => c.module === d.value)?.name || 'General';
-                              productForm.setValue('category', firstCat);
+                            value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Goods'}
+                            selectedOptions={[field.value]}
+                            onOptionSelect={(_, d) => {
+                              if (d.optionValue) {
+                                field.onChange(d.optionValue as ModuleKey);
+                                const firstCat = categories.find((c) => c.module === d.optionValue)?.name || 'General';
+                                productForm.setValue('category', firstCat);
+                              }
                             }}
                           >
-                            <option value="fastfood">Fast Food Menu</option>
-                            <option value="minimart">Omnimart Goods</option>
-                          </Select>
+                            <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>
+                            <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>
+                          </Dropdown>
                         )}
                       />
                     </div>
@@ -1253,29 +1260,19 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                         control={productForm.control}
                         name="category"
                         render={({ field }) => (
-                          <Select
+                          <Dropdown
                             appearance="outline"
                             style={{ width: '100%' }}
-                            value={field.value}
-                            onChange={(_, d) => field.onChange(d.value)}
+                            value={field.value || 'Select Category'}
+                            selectedOptions={field.value ? [field.value] : []}
+                            onOptionSelect={(_, d) => {
+                              if (d.optionValue) field.onChange(d.optionValue);
+                            }}
                           >
-                            <optgroup label={watchedModule === 'fastfood' ? "Fast Food Categories (Recommended)" : "Omnimart Categories (Recommended)"}>
-                              {categories
-                                .filter((c) => c.module === watchedModule)
-                                .map((c) => (
-                                  <option key={c.id} value={c.name}>{c.name}</option>
-                                ))}
-                            </optgroup>
-                            {categories.some((c) => c.module !== watchedModule) && (
-                              <optgroup label={watchedModule === 'fastfood' ? "Omnimart Categories" : "Fast Food Categories"}>
-                                {categories
-                                  .filter((c) => c.module !== watchedModule)
-                                  .map((c) => (
-                                    <option key={c.id} value={c.name}>{c.name}</option>
-                                  ))}
-                              </optgroup>
-                            )}
-                          </Select>
+                            {categories.map((c) => (
+                              <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
+                            ))}
+                          </Dropdown>
                         )}
                       />
                       {productForm.formState.errors.category && (
@@ -1361,21 +1358,24 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                         control={productForm.control}
                         name="unit"
                         render={({ field }) => (
-                          <Select
+                          <Dropdown
                             appearance="outline"
                             style={{ width: '100%' }}
                             value={field.value || 'PCS'}
-                            onChange={(_, d) => field.onChange(d.value)}
+                            selectedOptions={[field.value || 'PCS']}
+                            onOptionSelect={(_, d) => {
+                              if (d.optionValue) field.onChange(d.optionValue);
+                            }}
                           >
-                            <option value="PCS">PCS (Pieces / Packaged Goods)</option>
-                            <option value="KG">KG (Kilograms - Sold by Weight: 250g, 500g, 1kg)</option>
-                            <option value="Gram">Gram (Grams - Precision Weight)</option>
-                            <option value="Liter">Liter (Liters - Sold by Volume: 250ml, 500ml, 1L)</option>
-                            <option value="ML">ML (Milliliters)</option>
-                            <option value="PACK">PACK (Packet / Bundle)</option>
-                            <option value="BOX">BOX (Box / Carton)</option>
-                            <option value="DOZEN">DOZEN (12 Units)</option>
-                          </Select>
+                            <Option value="PCS" text="PCS (Pieces / Packaged Goods)">PCS (Pieces / Packaged Goods)</Option>
+                            <Option value="KG" text="KG (Kilograms - Sold by Weight)">KG (Kilograms - Sold by Weight)</Option>
+                            <Option value="Gram" text="Gram (Grams - Precision Weight)">Gram (Grams - Precision Weight)</Option>
+                            <Option value="Liter" text="Liter (Liters - Sold by Volume)">Liter (Liters - Sold by Volume)</Option>
+                            <Option value="ML" text="ML (Milliliters)">ML (Milliliters)</Option>
+                            <Option value="PACK" text="PACK (Packet / Bundle)">PACK (Packet / Bundle)</Option>
+                            <Option value="BOX" text="BOX (Box / Carton)">BOX (Box / Carton)</Option>
+                            <Option value="DOZEN" text="DOZEN (12 Units)">DOZEN (12 Units)</Option>
+                          </Dropdown>
                         )}
                       />
                     </div>
@@ -1881,15 +1881,18 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                   control={categoryForm.control}
                   name="module"
                   render={({ field }) => (
-                    <Select
+                    <Dropdown
                       appearance="outline"
                       style={{ width: '100%' }}
-                      value={field.value}
-                      onChange={(_, d) => field.onChange(d.value as ModuleKey)}
+                      value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Goods'}
+                      selectedOptions={[field.value]}
+                      onOptionSelect={(_, d) => {
+                        if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
+                      }}
                     >
-                      <option value="fastfood">Fast Food Menu</option>
-                      <option value="minimart">Omnimart Goods</option>
-                    </Select>
+                      <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>
+                      <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>
+                    </Dropdown>
                   )}
                 />
               </div>

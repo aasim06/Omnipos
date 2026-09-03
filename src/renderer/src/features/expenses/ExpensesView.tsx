@@ -9,7 +9,8 @@ import {
   Caption1,
   Badge,
   Input,
-  Select,
+  Dropdown,
+  Option,
   Label,
   Dialog,
   DialogSurface,
@@ -515,22 +516,36 @@ export function ExpensesView(): React.JSX.Element {
                   <Controller
                     control={expenseForm.control}
                     name="category"
-                    render={({ field }) => (
-                      <Select
-                        appearance="outline"
-                        style={{ width: '100%' }}
-                        value={field.value}
-                        onChange={(_, d) => field.onChange(d.value)}
-                      >
-                        <option value="Petty Cash">Tea / Refreshments / Cleaning</option>
-                        <option value="Rent">Shop Rent</option>
-                        <option value="Utilities">Electricity / Gas / Water Bill</option>
-                        <option value="Salaries">Staff Salary / Daily Wages</option>
-                        <option value="Vendor">Vendor &amp; Raw Material Supply</option>
-                        <option value="Maintenance">Equipment Repair &amp; Maintenance</option>
-                        <option value="Other">Other Expenses</option>
-                      </Select>
-                    )}
+                    render={({ field }) => {
+                      const categoryLabels: Record<string, string> = {
+                        'Petty Cash': 'Tea / Refreshments / Cleaning',
+                        Rent: 'Shop Rent',
+                        Utilities: 'Electricity / Gas / Water Bill',
+                        Salaries: 'Staff Salary / Daily Wages',
+                        Vendor: 'Vendor & Raw Material Supply',
+                        Maintenance: 'Equipment Repair & Maintenance',
+                        Other: 'Other Expenses',
+                      };
+                      return (
+                        <Dropdown
+                          appearance="outline"
+                          style={{ width: '100%' }}
+                          value={categoryLabels[field.value] || field.value || 'Select Expense Category'}
+                          selectedOptions={field.value ? [field.value] : []}
+                          onOptionSelect={(_, d) => {
+                            if (d.optionValue) field.onChange(d.optionValue);
+                          }}
+                        >
+                          <Option value="Petty Cash" text="Tea / Refreshments / Cleaning">Tea / Refreshments / Cleaning</Option>
+                          <Option value="Rent" text="Shop Rent">Shop Rent</Option>
+                          <Option value="Utilities" text="Electricity / Gas / Water Bill">Electricity / Gas / Water Bill</Option>
+                          <Option value="Salaries" text="Staff Salary / Daily Wages">Staff Salary / Daily Wages</Option>
+                          <Option value="Vendor" text="Vendor & Raw Material Supply">Vendor &amp; Raw Material Supply</Option>
+                          <Option value="Maintenance" text="Equipment Repair & Maintenance">Equipment Repair &amp; Maintenance</Option>
+                          <Option value="Other" text="Other Expenses">Other Expenses</Option>
+                        </Dropdown>
+                      );
+                    }}
                   />
                   {expenseForm.formState.errors.category && (
                     <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
@@ -569,18 +584,28 @@ export function ExpensesView(): React.JSX.Element {
                   <Controller
                     control={expenseForm.control}
                     name="paymentMode"
-                    render={({ field }) => (
-                      <Select
-                        appearance="outline"
-                        style={{ width: '100%' }}
-                        value={field.value}
-                        onChange={(_, d) => field.onChange(d.value)}
-                      >
-                        <option value="cash">Paid via Cash (Draw from Register Drawer)</option>
-                        <option value="bank">Paid via Bank Transfer</option>
-                        <option value="card">Paid via Company Card</option>
-                      </Select>
-                    )}
+                    render={({ field }) => {
+                      const modeLabels: Record<string, string> = {
+                        cash: 'Paid via Cash (Draw from Register Drawer)',
+                        bank: 'Paid via Bank Transfer',
+                        card: 'Paid via Company Card',
+                      };
+                      return (
+                        <Dropdown
+                          appearance="outline"
+                          style={{ width: '100%' }}
+                          value={modeLabels[field.value] || field.value || 'Select Payment Method'}
+                          selectedOptions={field.value ? [field.value] : []}
+                          onOptionSelect={(_, d) => {
+                            if (d.optionValue) field.onChange(d.optionValue);
+                          }}
+                        >
+                          <Option value="cash" text="Paid via Cash (Draw from Register Drawer)">Paid via Cash (Draw from Register Drawer)</Option>
+                          <Option value="bank" text="Paid via Bank Transfer">Paid via Bank Transfer</Option>
+                          <Option value="card" text="Paid via Company Card">Paid via Company Card</Option>
+                        </Dropdown>
+                      );
+                    }}
                   />
                 </div>
 

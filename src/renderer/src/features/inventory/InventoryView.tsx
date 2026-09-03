@@ -9,7 +9,8 @@ import {
   Caption1,
   Badge,
   Input,
-  Select,
+  Dropdown,
+  Option,
   Label,
   Dialog,
   DialogSurface,
@@ -655,19 +656,22 @@ export function InventoryView(): React.JSX.Element {
                     control={stockOutForm.control}
                     name="reason"
                     render={({ field }) => (
-                      <Select
+                      <Dropdown
                         appearance="outline"
                         style={{ width: '100%' }}
-                        value={field.value}
-                        onChange={(_, d) => field.onChange(d.value)}
+                        value={field.value || 'Select Reason'}
+                        selectedOptions={field.value ? [field.value] : []}
+                        onOptionSelect={(_, d) => {
+                          if (d.optionValue) field.onChange(d.optionValue);
+                        }}
                       >
-                        <option value="Kitchen Usage">Kitchen Usage / Consumption</option>
-                        <option value="Damage / Broken">Damage / Broken</option>
-                        <option value="Expired">Expired</option>
-                        <option value="Audit Adjustment">Audit Adjustment</option>
-                        <option value="Theft / Lost">Theft / Lost</option>
-                        <option value="Other">Other Reason</option>
-                      </Select>
+                        <Option value="Kitchen Usage" text="Kitchen Usage / Consumption">Kitchen Usage / Consumption</Option>
+                        <Option value="Damage / Broken" text="Damage / Broken">Damage / Broken</Option>
+                        <Option value="Expired" text="Expired">Expired</Option>
+                        <Option value="Audit Adjustment" text="Audit Adjustment">Audit Adjustment</Option>
+                        <Option value="Theft / Lost" text="Theft / Lost">Theft / Lost</Option>
+                        <Option value="Other" text="Other Reason">Other Reason</Option>
+                      </Dropdown>
                     )}
                   />
                 </div>
