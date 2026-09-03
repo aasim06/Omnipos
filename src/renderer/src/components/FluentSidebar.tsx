@@ -10,6 +10,8 @@ import {
   MenuDivider,
   Avatar,
   Text,
+  makeStyles,
+  tokens,
 } from '@fluentui/react-components';
 import {
   Food24Regular,
@@ -50,7 +52,75 @@ import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAppTheme } from '@/theme/AppProviders';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 
+const useStyles = makeStyles({
+  laserIndicator: {
+    position: 'absolute',
+    left: '0',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: '3.5px',
+    height: '22px',
+    borderRadius: '0 3px 3px 0',
+    backgroundColor: '#E51937',
+    boxShadow: '0 0 10px #E51937',
+  },
+  submenuLaserNotch: {
+    position: 'absolute',
+    left: '-11.5px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: '3px',
+    height: '18px',
+    borderRadius: '2px',
+    backgroundColor: '#E51937',
+    boxShadow: '0 0 10px #E51937, 0 0 20px #E51937',
+    zIndex: 2,
+  },
+  accordionBtn: {
+    width: '100%',
+    height: '38px',
+    padding: '0 10px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    position: 'relative',
+    transition: 'all 0.15s ease',
+    boxSizing: 'border-box',
+  },
+  accordionInner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  subItemBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    height: '32px',
+    padding: '0 8px',
+    borderRadius: '6px',
+    border: 'none',
+    fontSize: '12px',
+    cursor: 'pointer',
+    width: '100%',
+    boxSizing: 'border-box',
+    textAlign: 'left',
+    position: 'relative',
+    transition: 'all 0.15s ease',
+  },
+  iconWrap: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  noWrapText: {
+    whiteSpace: 'nowrap',
+  },
+});
+
 export function FluentSidebar(): React.JSX.Element {
+  const styles = useStyles();
   const { mode, toggleTheme } = useAppTheme();
   const { user, logout } = useAuth();
   const { can } = useLicense();
@@ -479,43 +549,21 @@ export function FluentSidebar(): React.JSX.Element {
                       <button
                         type="button"
                         onClick={() => item.setIsOpen((prev: boolean) => !prev)}
+                        className={styles.accordionBtn}
                         style={{
-                          width: '100%',
-                          height: '38px',
-                          padding: '0 10px',
-                          borderRadius: '8px',
                           border: item.isActive ? t.itemActiveBorder : '1px solid transparent',
                           background: item.isActive ? t.itemActiveBg : 'transparent',
                           color: item.isActive ? t.itemActiveText : t.itemText,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          position: 'relative',
-                          transition: 'all 0.15s ease',
-                          boxSizing: 'border-box',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div className={styles.accordionInner}>
                           {item.isActive && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                left: '0',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                width: '3.5px',
-                                height: '22px',
-                                borderRadius: '0 3px 3px 0',
-                                backgroundColor: '#E51937',
-                                boxShadow: '0 0 10px #E51937',
-                              }}
-                            />
+                            <div className={styles.laserIndicator} />
                           )}
-                          <span style={{ display: 'flex', alignItems: 'center', color: item.isActive ? '#FF4D63' : t.itemText }}>
+                          <span className={styles.iconWrap} style={{ color: item.isActive ? '#FF4D63' : t.itemText }}>
                             {item.isActive ? item.activeIcon : item.icon}
                           </span>
-                          <span style={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: item.isActive ? 700 : 500 }}>
+                          <span className={styles.noWrapText} style={{ fontSize: '13px', fontWeight: item.isActive ? 700 : 500 }}>
                             {item.label}
                           </span>
                         </div>
@@ -556,47 +604,21 @@ export function FluentSidebar(): React.JSX.Element {
                               key={sub.to}
                               type="button"
                               onClick={() => navigate(sub.to)}
+                              className={styles.subItemBtn}
                               style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                height: '32px',
-                                padding: '0 8px',
-                                borderRadius: '6px',
                                 color: isSubActive ? t.submenuActiveText : t.submenuText,
                                 background: isSubActive ? t.submenuActiveBg : 'transparent',
-                                border: 'none',
-                                fontSize: '12px',
                                 fontWeight: isSubActive ? 700 : 500,
-                                cursor: 'pointer',
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                textAlign: 'left',
-                                position: 'relative',
-                                transition: 'all 0.15s ease',
                               }}
                             >
                               {/* Glowing Laser Notch right over the line */}
                               {isSubActive && (
-                                <div
-                                  style={{
-                                    position: 'absolute',
-                                    left: '-11.5px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    width: '3px',
-                                    height: '18px',
-                                    borderRadius: '2px',
-                                    backgroundColor: '#E51937',
-                                    boxShadow: '0 0 10px #E51937, 0 0 20px #E51937',
-                                    zIndex: 2,
-                                  }}
-                                />
+                                <div className={styles.submenuLaserNotch} />
                               )}
-                              <span style={{ display: 'flex', alignItems: 'center', opacity: isSubActive ? 1 : 0.75 }}>
+                              <span className={styles.iconWrap} style={{ opacity: isSubActive ? 1 : 0.75 }}>
                                 {sub.icon}
                               </span>
-                              <span style={{ whiteSpace: 'nowrap' }}>
+                              <span className={styles.noWrapText}>
                                 {sub.label}
                               </span>
                             </button>

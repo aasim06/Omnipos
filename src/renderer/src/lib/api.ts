@@ -89,8 +89,10 @@ export const posApi = {
         });
         if (res.ok) {
           const remoteData = await res.json();
-          if (Array.isArray(remoteData) && remoteData.length > 0) {
-            await offlineDb.products.bulkPut(remoteData);
+          if (Array.isArray(remoteData)) {
+            if (remoteData.length > 0) {
+              await offlineDb.products.bulkPut(remoteData);
+            }
             return remoteData;
           }
         }
@@ -111,6 +113,12 @@ export const posApi = {
       }
     } catch {
       /* Fallback to local storage if IndexedDB is blocked */
+    }
+
+    const activeKey = (localStorage.getItem('omnipos_active_key') || '').toUpperCase();
+    const isDemoKey = activeKey.includes('DEMO') || activeKey === 'OMNI-DEMO-2026-LIVE';
+    if (!isDemoKey) {
+      return [];
     }
 
     const legacy = storage.getList<Product>(KEYS.products);
@@ -168,8 +176,10 @@ export const posApi = {
         });
         if (res.ok) {
           const remoteCats = await res.json();
-          if (Array.isArray(remoteCats) && remoteCats.length > 0) {
-            await offlineDb.categories.bulkPut(remoteCats);
+          if (Array.isArray(remoteCats)) {
+            if (remoteCats.length > 0) {
+              await offlineDb.categories.bulkPut(remoteCats);
+            }
             return remoteCats;
           }
         }
@@ -189,6 +199,13 @@ export const posApi = {
     } catch {
       /* Fallback */
     }
+
+    const activeKey = (localStorage.getItem('omnipos_active_key') || '').toUpperCase();
+    const isDemoKey = activeKey.includes('DEMO') || activeKey === 'OMNI-DEMO-2026-LIVE';
+    if (!isDemoKey) {
+      return [];
+    }
+
     const legacy = storage.getList<Category>(KEYS.categories);
     return module ? legacy.filter((c) => c.module === module) : legacy;
   },
@@ -302,22 +319,27 @@ export const posApi = {
         }
       }
 
-      // 2. Queue in Outbox for Cloud Sync
-      await syncEngine.enqueue('order', order.id, 'CREATE', order);
+      // 2. Try immediate push if online with tenant headers
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const res = await fetch(`${base}/api/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify(order),
+        });
 
-      // 3. Try immediate push if online with tenant headers
-      const base = await resolveApiUrl();
-      const tenantHeaders = await getTenantHeaders();
-      const res = await fetch(`${base}/api/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-        body: JSON.stringify(order),
-      });
-
-      if (res.ok) {
-        const saved = await res.json();
-        await offlineDb.orders.update(order.id, { synced: 1 });
-        return saved;
+        if (res.ok) {
+          const saved = await res.json();
+          await offlineDb.orders.update(order.id, { synced: 1 });
+          return saved;
+        } else {
+          // Push failed with server error: enqueue for cloud sync
+          await syncEngine.enqueue('order', order.id, 'CREATE', order);
+        }
+      } catch {
+        // Network offline: enqueue for background cloud sync
+        await syncEngine.enqueue('order', order.id, 'CREATE', order);
       }
     } catch {
       console.log(`[Omnipos Offline] Order #${order.id} saved in local Dexie DB. Queued for cloud sync.`);

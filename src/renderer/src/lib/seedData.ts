@@ -206,6 +206,14 @@ function generateSampleStock(): StockMovement[] {
 export function ensureInitialData() {
   if (typeof window === "undefined") return;
 
+  const activeKey = (localStorage.getItem('omnipos_active_key') || '').toUpperCase();
+  const isDemoKey = activeKey.includes('DEMO') || activeKey === 'OMNI-DEMO-2026-LIVE';
+
+  if (!isDemoKey) {
+    // For real production customer keys: NEVER seed mock products or sample data!
+    return;
+  }
+
   const existingProducts = storage.getList<Product>(KEYS.products);
   if (existingProducts.length === 0 || existingProducts.every((p) => !p.skuCode)) {
     storage.setList(KEYS.products, INITIAL_PRODUCTS);

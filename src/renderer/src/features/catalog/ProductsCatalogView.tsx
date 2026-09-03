@@ -191,6 +191,239 @@ const useStyles = makeStyles({
     flex: '1 1 auto',
     minHeight: '0',
   },
+  kpiContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '22px',
+  },
+  kpiGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '16px',
+  },
+  kpiHeaderRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  kpiLabel: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground3,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+  },
+  kpiValue: {
+    fontSize: '26px',
+    fontWeight: 900,
+    color: tokens.colorNeutralForeground1,
+    marginTop: '4px',
+    lineHeight: '1.1',
+  },
+  kpiSkus: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground3,
+  },
+  kpiValueGreen: {
+    fontSize: '24px',
+    fontWeight: 900,
+    color: '#10B981',
+    marginTop: '4px',
+    lineHeight: '1.1',
+  },
+  kpiValueRed: {
+    fontSize: '26px',
+    fontWeight: 900,
+    color: '#EF4444',
+    marginTop: '4px',
+    lineHeight: '1.1',
+  },
+  kpiIconFastFood: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '10px',
+    background: 'rgba(229, 25, 55, 0.12)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#E51937',
+  },
+  kpiIconGreen: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '10px',
+    background: 'rgba(160, 230, 190, 0.15)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#10B981',
+  },
+  kpiIconRed: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '10px',
+    background: 'rgba(239, 68, 68, 0.12)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#EF4444',
+  },
+  kpiIconPurple: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '10px',
+    background: 'rgba(168, 85, 247, 0.12)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#A855F7',
+  },
+  kpiSubRow: {
+    display: 'flex',
+    gap: '8px',
+    marginTop: '12px',
+    fontSize: '11.5px',
+  },
+  kpiRedText: {
+    color: '#E51937',
+    fontWeight: 700,
+  },
+  kpiBlueText: {
+    color: '#0284C7',
+    fontWeight: 700,
+  },
+  kpiAmberText: {
+    color: '#F59E0B',
+    fontWeight: 700,
+  },
+  kpiManageCatsLink: {
+    color: '#A855F7',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  divisionHeroTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  divisionHeroTitleWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+  },
+  divisionIconFastFood: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #FF1E3C 0%, #990012 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#fff',
+    boxShadow: '0 0 16px rgba(229, 25, 55, 0.4)',
+  },
+  divisionIconOmnimart: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#fff',
+    boxShadow: '0 0 16px rgba(14, 165, 233, 0.4)',
+  },
+  divisionTitle: {
+    fontSize: '18px',
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
+  },
+  divisionSubtitle: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+  },
+  divisionTagFastFood: {
+    fontSize: '10.5px',
+    fontWeight: 800,
+    color: '#E51937',
+    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    padding: '3px 8px',
+    borderRadius: '6px',
+    border: '1px solid rgba(229, 25, 55, 0.25)',
+  },
+  divisionTagOmnimart: {
+    fontSize: '10.5px',
+    fontWeight: 800,
+    color: '#0284C7',
+    backgroundColor: 'rgba(14, 165, 233, 0.12)',
+    padding: '3px 8px',
+    borderRadius: '6px',
+    border: '1px solid rgba(14, 165, 233, 0.25)',
+  },
+  divisionStatBox: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '12px',
+    marginTop: '20px',
+    padding: '14px',
+    borderRadius: '8px',
+    background: tokens.colorNeutralBackground3,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  divisionStatHead: {
+    fontSize: '10.5px',
+    color: tokens.colorNeutralForeground3,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+  },
+  divisionStatNum: {
+    fontSize: '18px',
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
+    marginTop: '2px',
+  },
+  divisionStatNumGreen: {
+    fontSize: '18px',
+    fontWeight: 800,
+    color: '#10B981',
+    marginTop: '2px',
+  },
+  divisionStatNumBlue: {
+    fontSize: '18px',
+    fontWeight: 800,
+    color: '#0284C7',
+    marginTop: '2px',
+  },
+  divisionBtnRow: {
+    display: 'flex',
+    gap: '10px',
+    marginTop: '20px',
+  },
+  btnFastFoodHero: {
+    backgroundColor: '#E51937',
+    color: '#ffffff',
+    borderRadius: '8px',
+    fontWeight: 700,
+    flex: 1,
+    ':hover': {
+      backgroundColor: '#be123c',
+    },
+  },
+  btnOmnimartHero: {
+    backgroundColor: '#0284C7',
+    color: '#ffffff',
+    borderRadius: '8px',
+    fontWeight: 700,
+    flex: 1,
+    ':hover': {
+      backgroundColor: '#0369a1',
+    },
+  },
+  btnOutlineRounded: {
+    borderRadius: '8px',
+    fontWeight: 600,
+  },
 });
 
 export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fastfood' | 'minimart' | 'categories' } = {}): React.JSX.Element {
@@ -541,86 +774,86 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
       {/* ── Condition: Dashboard vs Detailed Table View ─────────── */}
       {activeTab === 'all' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+        <div className={styles.kpiContainer}>
           {/* 1. Futuristic KPI Pulse HUD */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+          <div className={styles.kpiGrid}>
             <div className={styles.hudCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div className={styles.kpiHeaderRow}>
                 <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  <div className={styles.kpiLabel}>
                     Catalog Inventory
                   </div>
-                  <div style={{ fontSize: '26px', fontWeight: 900, color: tokens.colorNeutralForeground1, marginTop: '4px', lineHeight: 1.1 }}>
-                    {products.length} <span style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground3 }}>SKUs</span>
+                  <div className={styles.kpiValue}>
+                    {products.length} <span className={styles.kpiSkus}>SKUs</span>
                   </div>
                 </div>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(229, 25, 55, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E51937' }}>
+                <div className={styles.kpiIconFastFood}>
                   <Box20Regular style={{ width: 22, height: 22 }} />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', fontSize: '11.5px' }}>
-                <span style={{ color: '#E51937', fontWeight: 700 }}>{fastFoodProducts.length} Fast Food</span>
+              <div className={styles.kpiSubRow}>
+                <span className={styles.kpiRedText}>{fastFoodProducts.length} Fast Food</span>
                 <span style={{ color: tokens.colorNeutralForeground4 }}>•</span>
-                <span style={{ color: '#0284C7', fontWeight: 700 }}>{omnimartProducts.length} Omnimart</span>
+                <span className={styles.kpiBlueText}>{omnimartProducts.length} Omnimart</span>
               </div>
             </div>
 
             <div className={styles.hudCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div className={styles.kpiHeaderRow}>
                 <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  <div className={styles.kpiLabel}>
                     Retail Valuation
                   </div>
-                  <div style={{ fontSize: '24px', fontWeight: 900, color: '#10B981', marginTop: '4px', lineHeight: 1.1 }}>
+                  <div className={styles.kpiValueGreen}>
                     {formatPKR(totalRetailValue)}
                   </div>
                 </div>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10B981' }}>
+                <div className={styles.kpiIconGreen}>
                   <Money20Regular style={{ width: 22, height: 22 }} />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+              <div className={styles.kpiSubRow} style={{ color: tokens.colorNeutralForeground3 }}>
                 <span>Estimated Cost: <strong style={{ color: tokens.colorNeutralForeground1 }}>{formatPKR(totalCostValue)}</strong></span>
               </div>
             </div>
 
             <div className={styles.hudCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div className={styles.kpiHeaderRow}>
                 <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  <div className={styles.kpiLabel}>
                     Stock Health
                   </div>
-                  <div style={{ fontSize: '26px', fontWeight: 900, color: outOfStockProducts.length > 0 ? '#EF4444' : '#10B981', marginTop: '4px', lineHeight: 1.1 }}>
-                    {outOfStockProducts.length} <span style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground3 }}>Zero Stock</span>
+                  <div className={outOfStockProducts.length > 0 ? styles.kpiValueRed : styles.kpiValueGreen}>
+                    {outOfStockProducts.length} <span className={styles.kpiSkus}>Zero Stock</span>
                   </div>
                 </div>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444' }}>
+                <div className={styles.kpiIconRed}>
                   <Warning20Regular style={{ width: 22, height: 22 }} />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', fontSize: '11.5px' }}>
-                <span style={{ color: '#F59E0B', fontWeight: 700 }}>{lowStockProducts.length} Low Stock Warnings</span>
+              <div className={styles.kpiSubRow}>
+                <span className={styles.kpiAmberText}>{lowStockProducts.length} Low Stock Warnings</span>
               </div>
             </div>
 
             <div className={styles.hudCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div className={styles.kpiHeaderRow}>
                 <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  <div className={styles.kpiLabel}>
                     Active Categories
                   </div>
-                  <div style={{ fontSize: '26px', fontWeight: 900, color: tokens.colorNeutralForeground1, marginTop: '4px', lineHeight: 1.1 }}>
-                    {categories.length} <span style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground3 }}>Departments</span>
+                  <div className={styles.kpiValue}>
+                    {categories.length} <span className={styles.kpiSkus}>Departments</span>
                   </div>
                 </div>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(168, 85, 247, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#A855F7' }}>
+                <div className={styles.kpiIconPurple}>
                   <Grid20Regular style={{ width: 22, height: 22 }} />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', fontSize: '11.5px' }}>
+              <div className={styles.kpiSubRow}>
                 <span
                   onClick={() => navigate('/catalog/categories')}
-                  style={{ color: '#A855F7', fontWeight: 700, cursor: 'pointer' }}
+                  className={styles.kpiManageCatsLink}
                 >
                   Manage Categories →
                 </span>
@@ -634,57 +867,57 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
               {/* Fast Food Hub Card */}
               {hasFastFood && (
                 <div className={styles.divisionHeroCard}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #FF1E3C 0%, #990012 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 0 16px rgba(229, 25, 55, 0.4)' }}>
+                  <div className={styles.divisionHeroTop}>
+                    <div className={styles.divisionHeroTitleWrap}>
+                      <div className={styles.divisionIconFastFood}>
                         <Food24Regular style={{ width: 26, height: 26 }} />
                       </div>
                       <div>
-                        <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        <div className={styles.divisionTitle}>
                           Fast Food Division
                         </div>
-                        <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                        <div className={styles.divisionSubtitle}>
                           Burgers, pizzas, snacks, prep times & kitchen addons
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(229, 25, 55, 0.25)' }}>
+                    <span className={styles.divisionTagFastFood}>
                       RESTAURANT
                     </span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '20px', padding: '14px', borderRadius: '8px', background: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                  <div className={styles.divisionStatBox}>
                     <div>
-                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Items</div>
-                      <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                      <div className={styles.divisionStatHead}>Items</div>
+                      <div className={styles.divisionStatNum}>
                         {fastFoodProducts.length}
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Categories</div>
-                      <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                      <div className={styles.divisionStatHead}>Categories</div>
+                      <div className={styles.divisionStatNum}>
                         {categories.filter(c => c.module === 'fastfood').length}
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Avg Price</div>
-                      <div style={{ fontSize: '18px', fontWeight: 800, color: '#10B981', marginTop: '2px' }}>
+                      <div className={styles.divisionStatHead}>Avg Price</div>
+                      <div className={styles.divisionStatNumGreen}>
                         {formatPKR(fastFoodAvgPrice)}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                  <div className={styles.divisionBtnRow}>
                     <Button
                       appearance="primary"
-                      style={{ backgroundColor: '#E51937', borderRadius: '8px', fontWeight: 700, flex: 1 }}
+                      className={styles.btnFastFoodHero}
                       onClick={() => navigate('/catalog/fastfood')}
                     >
                       Open Fast Food Catalog →
                     </Button>
                     <Button
                       appearance="outline"
-                      style={{ borderRadius: '8px', fontWeight: 600 }}
+                      className={styles.btnOutlineRounded}
                       onClick={() => navigate('/catalog/new?module=fastfood')}
                     >
                       + Add Food Item
@@ -696,57 +929,57 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
               {/* Omnimart Supermarket Hub Card */}
               {hasOmnimart && (
                 <div className={styles.divisionHeroCard}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 0 16px rgba(14, 165, 233, 0.4)' }}>
+                  <div className={styles.divisionHeroTop}>
+                    <div className={styles.divisionHeroTitleWrap}>
+                      <div className={styles.divisionIconOmnimart}>
                         <BuildingRetail24Regular style={{ width: 26, height: 26 }} />
                       </div>
                       <div>
-                        <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        <div className={styles.divisionTitle}>
                           Omnimart Supermarket
                         </div>
-                        <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                        <div className={styles.divisionSubtitle}>
                           Retail goods, SKU barcodes, racks & scale units
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#0284C7', backgroundColor: 'rgba(14, 165, 233, 0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(14, 165, 233, 0.25)' }}>
+                    <span className={styles.divisionTagOmnimart}>
                       RETAIL &amp; MART
                     </span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '20px', padding: '14px', borderRadius: '8px', background: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                  <div className={styles.divisionStatBox}>
                     <div>
-                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Products</div>
-                      <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                      <div className={styles.divisionStatHead}>Products</div>
+                      <div className={styles.divisionStatNum}>
                         {omnimartProducts.length}
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Categories</div>
-                      <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                      <div className={styles.divisionStatHead}>Categories</div>
+                      <div className={styles.divisionStatNum}>
                         {categories.filter(c => c.module === 'minimart').length}
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Total Stock</div>
-                      <div style={{ fontSize: '18px', fontWeight: 800, color: '#0284C7', marginTop: '2px' }}>
+                      <div className={styles.divisionStatHead}>Total Stock</div>
+                      <div className={styles.divisionStatNumBlue}>
                         {omnimartProducts.reduce((sum, p) => sum + (p.openingStock || 0), 0)} units
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                  <div className={styles.divisionBtnRow}>
                     <Button
                       appearance="primary"
-                      style={{ backgroundColor: '#0284C7', borderRadius: '8px', fontWeight: 700, flex: 1 }}
+                      className={styles.btnOmnimartHero}
                       onClick={() => navigate('/catalog/omnimart')}
                     >
                       Open Omnimart Catalog →
                     </Button>
                     <Button
                       appearance="outline"
-                      style={{ borderRadius: '8px', fontWeight: 600 }}
+                      className={styles.btnOutlineRounded}
                       onClick={() => navigate('/catalog/new?module=minimart')}
                     >
                       + Add Retail Item
