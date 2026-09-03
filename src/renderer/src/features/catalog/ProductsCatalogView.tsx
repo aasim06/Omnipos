@@ -52,6 +52,7 @@ import { posApi } from '@/lib/api';
 import { Product, Category, ModuleKey } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 /* ── Zod Schemas ───────────────────────────────────────────────────── */
 const productSchema = z.object({
@@ -417,8 +418,15 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     };
     saveCategoryMutation.mutate(cat);
   };
+  const { can } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
   // Filtered products
   const filteredProducts = products.filter((p) => {
+    if (p.module === 'fastfood' && !hasFastFood) return false;
+    if (p.module === 'minimart' && !hasOmnimart) return false;
+
     if (activeTab === 'fastfood' && p.module !== 'fastfood') return false;
     if (activeTab === 'minimart' && p.module !== 'minimart') return false;
     if (selectedCategory !== 'ALL' && p.category !== selectedCategory) return false;
@@ -438,12 +446,15 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
   }
 
   // Dashboard KPI metrics calculations
-  const fastFoodProducts = products.filter((p) => p.module === 'fastfood');
-  const omnimartProducts = products.filter((p) => p.module === 'minimart');
-  const totalRetailValue = products.reduce((acc, p) => acc + (p.price * (p.openingStock || 0)), 0);
-  const totalCostValue = products.reduce((acc, p) => acc + ((p.costPrice || (p.price * 0.7)) * (p.openingStock || 0)), 0);
-  const outOfStockProducts = products.filter((p) => (p.openingStock || 0) <= 0);
-  const lowStockProducts = products.filter((p) => (p.openingStock || 0) > 0 && (p.openingStock || 0) <= (p.minThreshold || 10));
+  const activeProducts = products.filter((p) =>
+    p.module === 'fastfood' ? hasFastFood : hasOmnimart,
+  );
+  const fastFoodProducts = activeProducts.filter((p) => p.module === 'fastfood');
+  const omnimartProducts = activeProducts.filter((p) => p.module === 'minimart');
+  const totalRetailValue = activeProducts.reduce((acc, p) => acc + (p.price * (p.openingStock || 0)), 0);
+  const totalCostValue = activeProducts.reduce((acc, p) => acc + ((p.costPrice || (p.price * 0.7)) * (p.openingStock || 0)), 0);
+  const outOfStockProducts = activeProducts.filter((p) => (p.openingStock || 0) <= 0);
+  const lowStockProducts = activeProducts.filter((p) => (p.openingStock || 0) > 0 && (p.openingStock || 0) <= (p.minThreshold || 10));
   const fastFoodAvgPrice = fastFoodProducts.length > 0
     ? Math.round(fastFoodProducts.reduce((sum, p) => sum + p.price, 0) / fastFoodProducts.length)
     : 0;
@@ -619,127 +630,133 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
           </div>
 
           {/* 2. Department Division Command Hubs */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            {/* Fast Food Hub Card */}
-            <div className={styles.divisionHeroCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #FF1E3C 0%, #990012 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 0 16px rgba(229, 25, 55, 0.4)' }}>
-                    <Food24Regular style={{ width: 26, height: 26 }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
-                      Fast Food Division
+          {(hasFastFood || hasOmnimart) && (
+            <div style={{ display: 'grid', gridTemplateColumns: (hasFastFood && hasOmnimart) ? '1fr 1fr' : '1fr', gap: '20px' }}>
+              {/* Fast Food Hub Card */}
+              {hasFastFood && (
+                <div className={styles.divisionHeroCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #FF1E3C 0%, #990012 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 0 16px rgba(229, 25, 55, 0.4)' }}>
+                        <Food24Regular style={{ width: 26, height: 26 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                          Fast Food Division
+                        </div>
+                        <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                          Burgers, pizzas, snacks, prep times & kitchen addons
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
-                      Burgers, pizzas, snacks, prep times & kitchen addons
+                    <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(229, 25, 55, 0.25)' }}>
+                      RESTAURANT
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '20px', padding: '14px', borderRadius: '8px', background: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                    <div>
+                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Items</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                        {fastFoodProducts.length}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Categories</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                        {categories.filter(c => c.module === 'fastfood').length}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Avg Price</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: '#10B981', marginTop: '2px' }}>
+                        {formatPKR(fastFoodAvgPrice)}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(229, 25, 55, 0.25)' }}>
-                  RESTAURANT
-                </span>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '20px', padding: '14px', borderRadius: '8px', background: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                <div>
-                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Items</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
-                    {fastFoodProducts.length}
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                    <Button
+                      appearance="primary"
+                      style={{ backgroundColor: '#E51937', borderRadius: '8px', fontWeight: 700, flex: 1 }}
+                      onClick={() => navigate('/catalog/fastfood')}
+                    >
+                      Open Fast Food Catalog →
+                    </Button>
+                    <Button
+                      appearance="outline"
+                      style={{ borderRadius: '8px', fontWeight: 600 }}
+                      onClick={() => navigate('/catalog/new?module=fastfood')}
+                    >
+                      + Add Food Item
+                    </Button>
                   </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Categories</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
-                    {categories.filter(c => c.module === 'fastfood').length}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Avg Price</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#10B981', marginTop: '2px' }}>
-                    {formatPKR(fastFoodAvgPrice)}
-                  </div>
-                </div>
-              </div>
+              )}
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <Button
-                  appearance="primary"
-                  style={{ backgroundColor: '#E51937', borderRadius: '8px', fontWeight: 700, flex: 1 }}
-                  onClick={() => navigate('/catalog/fastfood')}
-                >
-                  Open Fast Food Catalog →
-                </Button>
-                <Button
-                  appearance="outline"
-                  style={{ borderRadius: '8px', fontWeight: 600 }}
-                  onClick={() => navigate('/catalog/new?module=fastfood')}
-                >
-                  + Add Food Item
-                </Button>
-              </div>
+              {/* Omnimart Supermarket Hub Card */}
+              {hasOmnimart && (
+                <div className={styles.divisionHeroCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 0 16px rgba(14, 165, 233, 0.4)' }}>
+                        <BuildingRetail24Regular style={{ width: 26, height: 26 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                          Omnimart Supermarket
+                        </div>
+                        <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                          Retail goods, SKU barcodes, racks & scale units
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#0284C7', backgroundColor: 'rgba(14, 165, 233, 0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(14, 165, 233, 0.25)' }}>
+                      RETAIL &amp; MART
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '20px', padding: '14px', borderRadius: '8px', background: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                    <div>
+                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Products</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                        {omnimartProducts.length}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Categories</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                        {categories.filter(c => c.module === 'minimart').length}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Total Stock</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: '#0284C7', marginTop: '2px' }}>
+                        {omnimartProducts.reduce((sum, p) => sum + (p.openingStock || 0), 0)} units
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                    <Button
+                      appearance="primary"
+                      style={{ backgroundColor: '#0284C7', borderRadius: '8px', fontWeight: 700, flex: 1 }}
+                      onClick={() => navigate('/catalog/omnimart')}
+                    >
+                      Open Omnimart Catalog →
+                    </Button>
+                    <Button
+                      appearance="outline"
+                      style={{ borderRadius: '8px', fontWeight: 600 }}
+                      onClick={() => navigate('/catalog/new?module=minimart')}
+                    >
+                      + Add Retail Item
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Omnimart Supermarket Hub Card */}
-            <div className={styles.divisionHeroCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 0 16px rgba(14, 165, 233, 0.4)' }}>
-                    <BuildingRetail24Regular style={{ width: 26, height: 26 }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
-                      Omnimart Supermarket
-                    </div>
-                    <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
-                      Retail goods, SKU barcodes, racks & scale units
-                    </div>
-                  </div>
-                </div>
-                <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#0284C7', backgroundColor: 'rgba(14, 165, 233, 0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(14, 165, 233, 0.25)' }}>
-                  RETAIL &amp; MART
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '20px', padding: '14px', borderRadius: '8px', background: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                <div>
-                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Products</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
-                    {omnimartProducts.length}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Categories</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
-                    {categories.filter(c => c.module === 'minimart').length}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Total Stock</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#0284C7', marginTop: '2px' }}>
-                    {omnimartProducts.reduce((sum, p) => sum + (p.openingStock || 0), 0)} units
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <Button
-                  appearance="primary"
-                  style={{ backgroundColor: '#0284C7', borderRadius: '8px', fontWeight: 700, flex: 1 }}
-                  onClick={() => navigate('/catalog/omnimart')}
-                >
-                  Open Omnimart Catalog →
-                </Button>
-                <Button
-                  appearance="outline"
-                  style={{ borderRadius: '8px', fontWeight: 600 }}
-                  onClick={() => navigate('/catalog/new?module=minimart')}
-                >
-                  + Add Retail Item
-                </Button>
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* 3. Critical Stock Attention Radar */}
           {(outOfStockProducts.length > 0 || lowStockProducts.length > 0) && (
@@ -1229,8 +1246,8 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                               }
                             }}
                           >
-                            <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>
-                            <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>
+                            {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
+                            {hasOmnimart && <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>}
                           </Dropdown>
                         )}
                       />
@@ -1259,21 +1276,31 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                       <Controller
                         control={productForm.control}
                         name="category"
-                        render={({ field }) => (
-                          <Dropdown
-                            appearance="outline"
-                            style={{ width: '100%' }}
-                            value={field.value || 'Select Category'}
-                            selectedOptions={field.value ? [field.value] : []}
-                            onOptionSelect={(_, d) => {
-                              if (d.optionValue) field.onChange(d.optionValue);
-                            }}
-                          >
-                            {categories.map((c) => (
-                              <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
-                            ))}
-                          </Dropdown>
-                        )}
+                        render={({ field }) => {
+                          const activeGroupCats = categories.filter(
+                            (c) => c.module === watchedModule && (c.module === 'fastfood' ? hasFastFood : hasOmnimart),
+                          );
+                          const otherGroupCats = categories.filter(
+                            (c) => c.module !== watchedModule && (c.module === 'fastfood' ? hasFastFood : hasOmnimart),
+                          );
+                          const displayList = [...activeGroupCats, ...otherGroupCats];
+
+                          return (
+                            <Dropdown
+                              appearance="outline"
+                              style={{ width: '100%' }}
+                              value={field.value || 'Select Category'}
+                              selectedOptions={field.value ? [field.value] : []}
+                              onOptionSelect={(_, d) => {
+                                if (d.optionValue) field.onChange(d.optionValue);
+                              }}
+                            >
+                              {displayList.map((c) => (
+                                <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
+                              ))}
+                            </Dropdown>
+                          );
+                        }}
                       />
                       {productForm.formState.errors.category && (
                         <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
@@ -1890,8 +1917,8 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                         if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
                       }}
                     >
-                      <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>
-                      <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>
+                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
+                      {hasOmnimart && <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>}
                     </Dropdown>
                   )}
                 />

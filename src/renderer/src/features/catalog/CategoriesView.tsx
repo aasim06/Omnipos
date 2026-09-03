@@ -35,6 +35,7 @@ import { Category, Product, ModuleKey, CategoryProfile } from '@shared/types';
 import { uid } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'Category name must be at least 2 characters'),
@@ -143,12 +144,17 @@ export function CategoriesView(): React.JSX.Element {
     },
   });
 
-  const handleOpenDialog = (module: ModuleKey = 'fastfood') => {
-    setTargetModule(module);
+  const { can } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
+  const handleOpenDialog = (module?: ModuleKey) => {
+    const selected = module || (hasFastFood ? 'fastfood' : 'minimart');
+    setTargetModule(selected);
     categoryForm.reset({
       name: '',
-      module,
-      profile: module === 'fastfood' ? 'food' : 'standard',
+      module: selected,
+      profile: selected === 'fastfood' ? 'food' : 'standard',
     });
     setIsDialogOpen(true);
   };
@@ -179,7 +185,7 @@ export function CategoriesView(): React.JSX.Element {
             as="p"
             style={{ color: tokens.colorNeutralForeground2, margin: 0, display: 'block', fontSize: '13px', marginTop: '2px' }}
           >
-            Configure and organize category classifications across Fast Food and Omnimart supermarket
+            Configure and organize category classifications across active store departments
           </Caption1>
         </div>
 
@@ -187,13 +193,14 @@ export function CategoriesView(): React.JSX.Element {
           appearance="primary"
           icon={<Add20Regular />}
           style={{ backgroundColor: '#E51937', borderRadius: tokens.borderRadiusMedium, fontWeight: 600 }}
-          onClick={() => handleOpenDialog('fastfood')}
+          onClick={() => handleOpenDialog()}
         >
           + New Category
         </Button>
       </div>
 
       {/* ── Fast Food Categories Section ──────────────────────── */}
+      {hasFastFood && (
       <div>
         <div className={styles.sectionTitle}>
           <Food24Regular style={{ color: '#E51937', width: 20, height: 20 }} />
@@ -271,8 +278,10 @@ export function CategoriesView(): React.JSX.Element {
           })}
         </div>
       </div>
+      )}
 
       {/* ── Omnimart Supermarket Categories Section ──────────── */}
+      {hasOmnimart && (
       <div style={{ marginTop: '10px' }}>
         <div className={styles.sectionTitle}>
           <BuildingRetail24Regular style={{ color: '#E51937', width: 20, height: 20 }} />
@@ -350,6 +359,7 @@ export function CategoriesView(): React.JSX.Element {
           })}
         </div>
       </div>
+      )}
 
       {/* ── Create Category Dialog ─────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
@@ -458,8 +468,8 @@ export function CategoriesView(): React.JSX.Element {
                         if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
                       }}
                     >
-                      <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>
-                      <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>
+                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
+                      {hasOmnimart && <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>}
                     </Dropdown>
                   )}
                 />

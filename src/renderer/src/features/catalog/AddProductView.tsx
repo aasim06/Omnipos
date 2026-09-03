@@ -40,6 +40,7 @@ import { Product, Category, ModuleKey, ProductVariant } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 const productSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters'),
@@ -100,7 +101,16 @@ export function AddProductView(): React.JSX.Element {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
-  const defaultModule = (searchParams.get('module') as ModuleKey) || 'fastfood';
+  const { can } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
+  const defaultModule =
+    ((searchParams.get('module') as ModuleKey) && can(searchParams.get('module') as any))
+      ? (searchParams.get('module') as ModuleKey)
+      : hasFastFood
+      ? 'fastfood'
+      : 'minimart';
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
@@ -350,8 +360,8 @@ export function AddProductView(): React.JSX.Element {
                         if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
                       }}
                     >
-                      <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>
-                      <Option value="minimart" text="Omnimart Supermarket">Omnimart Supermarket</Option>
+                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
+                      {hasOmnimart && <Option value="minimart" text="Omnimart Supermarket">Omnimart Supermarket</Option>}
                     </Dropdown>
                   )}
                 />
@@ -375,21 +385,31 @@ export function AddProductView(): React.JSX.Element {
                 <Controller
                   control={productForm.control}
                   name="category"
-                  render={({ field }) => (
-                    <Dropdown
-                      appearance="outline"
-                      style={{ width: '100%' }}
-                      value={field.value || 'Select Category'}
-                      selectedOptions={field.value ? [field.value] : []}
-                      onOptionSelect={(_, d) => {
-                        if (d.optionValue) field.onChange(d.optionValue);
-                      }}
-                    >
-                      {categories.map((c) => (
-                        <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
-                      ))}
-                    </Dropdown>
-                  )}
+                  render={({ field }) => {
+                    const activeGroupCats = categories.filter(
+                      (c) => c.module === watchedModule && (c.module === 'fastfood' ? hasFastFood : hasOmnimart),
+                    );
+                    const otherGroupCats = categories.filter(
+                      (c) => c.module !== watchedModule && (c.module === 'fastfood' ? hasFastFood : hasOmnimart),
+                    );
+                    const displayList = [...activeGroupCats, ...otherGroupCats];
+
+                    return (
+                      <Dropdown
+                        appearance="outline"
+                        style={{ width: '100%' }}
+                        value={field.value || 'Select Category'}
+                        selectedOptions={field.value ? [field.value] : []}
+                        onOptionSelect={(_, d) => {
+                          if (d.optionValue) field.onChange(d.optionValue);
+                        }}
+                      >
+                        {displayList.map((c) => (
+                          <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
+                        ))}
+                      </Dropdown>
+                    );
+                  }}
                 />
               </div>
             </div>
@@ -1145,8 +1165,8 @@ export function AddProductView(): React.JSX.Element {
                         if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
                       }}
                     >
-                      <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>
-                      <Option value="minimart" text="Omnimart Supermarket">Omnimart Supermarket</Option>
+                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
+                      {hasOmnimart && <Option value="minimart" text="Omnimart Supermarket">Omnimart Supermarket</Option>}
                     </Dropdown>
                   )}
                 />
