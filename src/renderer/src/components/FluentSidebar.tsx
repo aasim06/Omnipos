@@ -146,8 +146,8 @@ export function FluentSidebar(): React.JSX.Element {
           activeIcon: <Tag24Filled style={{ width: 19, height: 19 }} />,
           subItems: [
             { to: '/catalog', label: 'All Store Items', icon: <Tag20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/catalog/fastfood', label: 'Fast Food Menu', icon: <Food24Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/catalog/omnimart', label: 'Omnimart Goods', icon: <BuildingRetail24Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/catalog/fastfood', label: 'Fast Food Menu', moduleKey: 'fastfood' as const, icon: <Food24Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/catalog/omnimart', label: 'Omnimart Goods', moduleKey: 'omnimart' as const, icon: <BuildingRetail24Regular style={{ width: 15, height: 15 }} /> },
             { to: '/catalog/categories', label: 'Categories Manager', icon: <Grid20Regular style={{ width: 15, height: 15 }} /> },
             { to: '/catalog/new', label: '+ Add Product', icon: <Add20Regular style={{ width: 15, height: 15, color: '#FF4D63' }} />, isSpecial: true },
           ],
@@ -547,8 +547,10 @@ export function FluentSidebar(): React.JSX.Element {
                           transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
                         }}
                       >
-                        {item.subItems.map((sub: any) => {
-                          const isSubActive = location.pathname === sub.to;
+                        {item.subItems
+                          .filter((sub: any) => !sub.moduleKey || can(sub.moduleKey))
+                          .map((sub: any) => {
+                            const isSubActive = location.pathname === sub.to;
                           return (
                             <button
                               key={sub.to}

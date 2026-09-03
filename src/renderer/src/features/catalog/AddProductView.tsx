@@ -39,6 +39,7 @@ import { Product, Category, ModuleKey, ProductVariant } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 const productSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters'),
@@ -99,7 +100,16 @@ export function AddProductView(): React.JSX.Element {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
-  const defaultModule = (searchParams.get('module') as ModuleKey) || 'fastfood';
+  const { can } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
+  const defaultModule =
+    ((searchParams.get('module') as ModuleKey) && can(searchParams.get('module') as any))
+      ? (searchParams.get('module') as ModuleKey)
+      : hasFastFood
+      ? 'fastfood'
+      : 'minimart';
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
@@ -346,8 +356,8 @@ export function AddProductView(): React.JSX.Element {
                       value={field.value}
                       onChange={(_, d) => field.onChange(d.value as ModuleKey)}
                     >
-                      <option value="fastfood">Fast Food Menu</option>
-                      <option value="minimart">Omnimart Supermarket</option>
+                      {hasFastFood && <option value="fastfood">Fast Food Menu</option>}
+                      {hasOmnimart && <option value="minimart">Omnimart Supermarket</option>}
                     </Select>
                   )}
                 />
@@ -371,31 +381,38 @@ export function AddProductView(): React.JSX.Element {
                 <Controller
                   control={productForm.control}
                   name="category"
-                  render={({ field }) => (
-                    <Select
-                      appearance="outline"
-                      style={{ width: '100%' }}
-                      value={field.value}
-                      onChange={(_, d) => field.onChange(d.value)}
-                    >
-                      <optgroup label={watchedModule === 'fastfood' ? 'Fast Food Categories' : 'Omnimart Categories'}>
-                        {categories
-                          .filter((c) => c.module === watchedModule)
-                          .map((c) => (
-                            <option key={c.id} value={c.name}>{c.name}</option>
-                          ))}
-                      </optgroup>
-                      {categories.some((c) => c.module !== watchedModule) && (
-                        <optgroup label={watchedModule === 'fastfood' ? 'Omnimart Categories' : 'Fast Food Categories'}>
-                          {categories
-                            .filter((c) => c.module !== watchedModule)
-                            .map((c) => (
+                  render={({ field }) => {
+                    const activeGroupCats = categories.filter(
+                      (c) => c.module === watchedModule && (c.module === 'fastfood' ? hasFastFood : hasOmnimart),
+                    );
+                    const otherGroupCats = categories.filter(
+                      (c) => c.module !== watchedModule && (c.module === 'fastfood' ? hasFastFood : hasOmnimart),
+                    );
+
+                    return (
+                      <Select
+                        appearance="outline"
+                        style={{ width: '100%' }}
+                        value={field.value}
+                        onChange={(_, d) => field.onChange(d.value)}
+                      >
+                        {activeGroupCats.length > 0 && (
+                          <optgroup label={watchedModule === 'fastfood' ? 'Fast Food Categories' : 'Omnimart Categories'}>
+                            {activeGroupCats.map((c) => (
                               <option key={c.id} value={c.name}>{c.name}</option>
                             ))}
-                        </optgroup>
-                      )}
-                    </Select>
-                  )}
+                          </optgroup>
+                        )}
+                        {otherGroupCats.length > 0 && (
+                          <optgroup label={watchedModule === 'fastfood' ? 'Omnimart Categories' : 'Fast Food Categories'}>
+                            {otherGroupCats.map((c) => (
+                              <option key={c.id} value={c.name}>{c.name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </Select>
+                    );
+                  }}
                 />
               </div>
             </div>
@@ -1145,8 +1162,8 @@ export function AddProductView(): React.JSX.Element {
                       value={field.value}
                       onChange={(_, d) => field.onChange(d.value as ModuleKey)}
                     >
-                      <option value="fastfood">Fast Food Menu</option>
-                      <option value="minimart">Omnimart Supermarket</option>
+                      {hasFastFood && <option value="fastfood">Fast Food Menu</option>}
+                      {hasOmnimart && <option value="minimart">Omnimart Supermarket</option>}
                     </Select>
                   )}
                 />
