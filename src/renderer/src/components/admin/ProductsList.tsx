@@ -29,10 +29,19 @@ export function ProductsList({ module = "minimart", onAddProductClick, onEditPro
   // Filter products by search term & category
   const filteredProducts = products
     .filter((p) => {
+      const q = searchTerm.toLowerCase().trim();
       const matchSearch =
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()));
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        (p.skuCode && p.skuCode.toLowerCase().includes(q)) ||
+        p.category.toLowerCase().includes(q) ||
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        (p.variants &&
+          p.variants.some(
+            (v) =>
+              (v.skuCode && v.skuCode.toLowerCase().includes(q)) ||
+              (v.label && v.label.toLowerCase().includes(q))
+          ));
       const matchCategory = selectedCategory === "all" || p.category === selectedCategory;
       return matchSearch && matchCategory;
     })

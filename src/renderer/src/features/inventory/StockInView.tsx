@@ -37,7 +37,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { resolveApiUrl } from '@/lib/api';
+import { resolveApiUrl, posApi } from '@/lib/api';
 import { StockMovement, Product } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
@@ -104,6 +104,65 @@ const useStyles = makeStyles({
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
     },
+  },
+  productDetailCard: {
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    padding: '14px 18px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  productDetailHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '10px',
+  },
+  productDetailLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  productThumb: {
+    width: '42px',
+    height: '42px',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    backgroundColor: tokens.colorNeutralBackground3,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  productDetailGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+    gap: '10px',
+    padding: '10px 14px',
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  detailStatBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  detailStatLabel: {
+    fontSize: '10.5px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    color: tokens.colorNeutralForeground3,
+    letterSpacing: '0.4px',
+  },
+  detailStatVal: {
+    fontSize: '14px',
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
   },
   row2: {
     display: 'grid',
@@ -300,6 +359,13 @@ export function StockInView(): React.JSX.Element {
     },
   });
 
+  // Fetch Products for Live Stock Inspection
+  const { data: allProducts = [] } = useQuery<Product[]>({
+    queryKey: ['products'],
+    queryFn: () => posApi.fetchProducts(),
+    staleTime: 60000,
+  });
+
   // Top Card Create Form
   const form = useForm<StockInFormData>({
     resolver: zodResolver(stockInSchema) as any,
@@ -345,6 +411,27 @@ export function StockInView(): React.JSX.Element {
   const watchedQty = form.watch('quantity') || 0;
   const watchedPrice = form.watch('unitPrice') || 0;
   const watchedDiscountPercent = form.watch('discountPercent') || 0;
+  const watchedProductId = form.watch('selectedProductId');
+  const watchedProductName = form.watch('productName');
+
+  const selectedProduct = React.useMemo(() => {
+    if (watchedProductId) {
+      const byId = allProducts.find((p) => p.id === watchedProductId);
+      if (byId) return byId;
+    }
+    if (watchedProductName?.trim()) {
+      const q = watchedProductName.trim().toLowerCase();
+      return (
+        allProducts.find(
+          (p) =>
+            p.name.toLowerCase() === q ||
+            (p.skuCode && p.skuCode.toLowerCase() === q)
+        ) || null
+      );
+    }
+    return null;
+  }, [watchedProductId, watchedProductName, allProducts]);
+
   const subTotal = watchedQty * watchedPrice;
   const discountAmount = Math.round((subTotal * watchedDiscountPercent) / 100);
   const lineTotal = Math.max(0, subTotal - discountAmount);
@@ -1039,7 +1126,7 @@ export function StockInView(): React.JSX.Element {
                     id="stockInItemSelect"
                     label="ITEM SELECT"
                     required
-                    placeholder="Search and select product..."
+                    placeholder="Search by product name, SKU or barcode..."
                     value={field.value || ''}
                     onChange={(name, prod) => {
                       field.onChange(name);
@@ -1050,6 +1137,8 @@ export function StockInView(): React.JSX.Element {
                         } else if (prod.price) {
                           form.setValue('unitPrice', prod.price);
                         }
+                      } else {
+                        form.setValue('selectedProductId', '');
                       }
                     }}
                     error={form.formState.errors.productName?.message}
@@ -1058,6 +1147,177 @@ export function StockInView(): React.JSX.Element {
               />
             </div>
           </div>
+
+          {/* Selected Product Live Stock & Details Card */}
+          {selectedProduct && (
+            <div className={styles.productDetailCard}>
+              <div className={styles.productDetailHeader}>
+                <div className={styles.productDetailLeft}>
+                  <div className={styles.productThumb}>
+                    {selectedProduct.imageUrl ? (
+                      <img
+                        src={selectedProduct.imageUrl}
+                        alt={selectedProduct.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '20px' }}>📦</span>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '15px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        {selectedProduct.name}
+                      </span>
+                      <Badge
+                        appearance="filled"
+                        color={
+                          (selectedProduct.openingStock ?? 0) <= 0
+                            ? 'danger'
+                            : (selectedProduct.openingStock ?? 0) <= (selectedProduct.minThreshold ?? 10)
+                            ? 'warning'
+                            : 'success'
+                        }
+                        size="small"
+                      >
+                        {(selectedProduct.openingStock ?? 0) <= 0
+                          ? 'Out of Stock'
+                          : (selectedProduct.openingStock ?? 0) <= (selectedProduct.minThreshold ?? 10)
+                          ? 'Low Stock Alert'
+                          : 'In Stock'}
+                      </Badge>
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: tokens.colorNeutralForeground3, display: 'flex', gap: '10px', marginTop: '3px', flexWrap: 'wrap' }}>
+                      <span>📁 {selectedProduct.category || 'General'}</span>
+                      {selectedProduct.skuCode && (
+                        <span>🏷️ SKU: <code style={{ color: tokens.colorNeutralForeground1, fontWeight: 700 }}>{selectedProduct.skuCode}</code></span>
+                      )}
+                      {selectedProduct.rackLocation && (
+                        <span>📍 Rack: {selectedProduct.rackLocation}</span>
+                      )}
+                      <span>📏 Unit: {selectedProduct.unit || 'PCS'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Button
+                    size="small"
+                    appearance="subtle"
+                    icon={<Dismiss20Regular />}
+                    onClick={() => {
+                      form.setValue('selectedProductId', '');
+                      form.setValue('productName', '');
+                    }}
+                    title="Clear selected product"
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+              </div>
+
+              {/* 4-stat Stock & Valuation Matrix */}
+              <div className={styles.productDetailGrid}>
+                <div className={styles.detailStatBox}>
+                  <span className={styles.detailStatLabel}>Current Inventory</span>
+                  <span
+                    className={styles.detailStatVal}
+                    style={{ color: (selectedProduct.openingStock ?? 0) <= 0 ? '#E51937' : tokens.colorNeutralForeground1 }}
+                  >
+                    {selectedProduct.openingStock ?? 0} {selectedProduct.unit || 'PCS'}
+                  </span>
+                </div>
+
+                <div className={styles.detailStatBox}>
+                  <span className={styles.detailStatLabel}>Stock In Addition</span>
+                  <span className={styles.detailStatVal} style={{ color: '#0F6CBD' }}>
+                    +{watchedQty} {selectedProduct.unit || 'PCS'}
+                  </span>
+                </div>
+
+                <div className={styles.detailStatBox}>
+                  <span className={styles.detailStatLabel}>Projected New Stock</span>
+                  <span className={styles.detailStatVal} style={{ color: '#107C41' }}>
+                    {(selectedProduct.openingStock ?? 0) + (Number(watchedQty) || 0)} {selectedProduct.unit || 'PCS'}
+                  </span>
+                </div>
+
+                <div className={styles.detailStatBox}>
+                  <span className={styles.detailStatLabel}>Cost vs Selling</span>
+                  <span className={styles.detailStatVal}>
+                    PKR {(watchedPrice || selectedProduct.costPrice || 0).toLocaleString()}{' '}
+                    <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, fontWeight: 500 }}>
+                      / {selectedProduct.price ? `Sale: PKR ${selectedProduct.price.toLocaleString()}` : ''}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Portion Sizes / Variants details if configured */}
+              {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+                <div style={{ paddingTop: '8px', borderTop: `1px dashed ${tokens.colorNeutralStroke2}` }}>
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      color: tokens.colorNeutralForeground3,
+                      textTransform: 'uppercase',
+                      marginBottom: '6px',
+                      letterSpacing: '0.4px',
+                    }}
+                  >
+                    Configured Portion Sizes / Variants ({selectedProduct.variants.length})
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {selectedProduct.variants.map((v) => (
+                      <div
+                        key={v.id}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          backgroundColor: tokens.colorNeutralBackground1,
+                          border: `1px solid ${tokens.colorNeutralStroke1}`,
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <strong style={{ color: tokens.colorBrandForeground1 }}>{v.label}</strong>
+                        <span style={{ color: tokens.colorNeutralForeground3 }}>
+                          Stock: <strong style={{ color: tokens.colorNeutralForeground1 }}>{v.stock ?? 0}</strong>
+                        </span>
+                        <span style={{ color: tokens.colorNeutralForeground2 }}>
+                          Price:{' '}
+                          <strong>
+                            PKR{' '}
+                            {(v.price !== undefined && v.price > 0
+                              ? v.price
+                              : selectedProduct.price + (v.priceDelta || 0)
+                            ).toLocaleString()}
+                          </strong>
+                        </span>
+                        {v.skuCode && (
+                          <span
+                            style={{
+                              fontFamily: 'monospace',
+                              fontSize: '10.5px',
+                              color: tokens.colorNeutralForeground3,
+                              backgroundColor: tokens.colorNeutralBackground3,
+                              padding: '1px 4px',
+                              borderRadius: '3px',
+                            }}
+                          >
+                            {v.skuCode}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Row 2: QTY, Unit Price, Discount (%), Line Total, Save Button */}
           <div className={styles.row2}>

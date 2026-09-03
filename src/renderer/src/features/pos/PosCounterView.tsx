@@ -294,7 +294,18 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
   }, [activeCategory, checkScrollButtons]);
 
   const filteredProducts = products.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const q = searchTerm.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      (p.skuCode && p.skuCode.toLowerCase().includes(q)) ||
+      (p.category && p.category.toLowerCase().includes(q)) ||
+      (p.variants &&
+        p.variants.some(
+          (v) =>
+            (v.skuCode && v.skuCode.toLowerCase().includes(q)) ||
+            (v.label && v.label.toLowerCase().includes(q))
+        ));
     const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
@@ -365,15 +376,33 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
     }
 
     const termLower = lookupTerm.toLowerCase();
-    const found = products.find(
-      (p) =>
-        (p.skuCode && p.skuCode.toLowerCase() === termLower) ||
-        p.id.toLowerCase() === termLower ||
-        p.name.toLowerCase() === termLower ||
-        p.name.toLowerCase().includes(termLower)
-    );
+    let matchedVariant: any = null;
+    const found = products.find((p) => {
+      if (p.skuCode && p.skuCode.toLowerCase() === termLower) return true;
+      if (p.id.toLowerCase() === termLower) return true;
+      const vMatch = p.variants?.find((v) => v.skuCode && v.skuCode.toLowerCase() === termLower);
+      if (vMatch) {
+        matchedVariant = vMatch;
+        return true;
+      }
+      return p.name.toLowerCase() === termLower || p.name.toLowerCase().includes(termLower);
+    });
 
     if (found) {
+      if (matchedVariant) {
+        const vPrice =
+          matchedVariant.price !== undefined && matchedVariant.price > 0
+            ? matchedVariant.price
+            : found.price + (matchedVariant.priceDelta || 0);
+        addToCart(found, qty, matchedVariant.label, vPrice);
+        setLastScannedFeedback(
+          `✅ Added ${qty}x ${found.name} (${matchedVariant.label}) (PKR ${(vPrice * qty).toLocaleString()})`
+        );
+        setBarcodeInput('');
+        setTimeout(() => setLastScannedFeedback(null), 3500);
+        return;
+      }
+
       const isWeightItem = isWeighableOrLiquid(found.unit);
       if (isWeightItem) {
         setWeighingProduct(found);
@@ -925,7 +954,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search catalog..."
+                placeholder="Search catalog by name or SKU..."
                 style={{
                   border: 'none',
                   background: 'transparent',

@@ -582,16 +582,13 @@ export function CategoriesView(): React.JSX.Element {
                   render={({ field }) => (
                     <Dropdown
                       appearance="outline"
-<Dropdown
-  appearance="outline"
-  className={styles.fullWidth}
-  style={{ width: '100%' }}
-  value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Goods'}
-  selectedOptions={field.value ? [field.value] : []}
-  onOptionSelect={(_, d) => {
-    if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
-  }}
->
+                      className={styles.fullWidth}
+                      style={{ width: '100%' }}
+                      value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Goods'}
+                      selectedOptions={field.value ? [field.value] : []}
+                      onOptionSelect={(_, d) => {
+                        if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
+                      }}
                     >
                       {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
                       {hasOmnimart && <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>}

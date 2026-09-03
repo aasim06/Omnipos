@@ -97,11 +97,14 @@ export function MiniMartDashboard() {
   const lowStockItems = productValuationList.filter((p) => p.isLowStock);
 
   // Filtered product table
-  const searchFilteredProducts = productValuationList.filter(
-    (p) =>
-      p.product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.product.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const searchFilteredProducts = productValuationList.filter((p) => {
+    const q = searchTerm.toLowerCase().trim();
+    return (
+      p.product.name.toLowerCase().includes(q) ||
+      (p.product.skuCode && p.product.skuCode.toLowerCase().includes(q)) ||
+      p.product.category.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="space-y-6 no-scrollbar text-white">

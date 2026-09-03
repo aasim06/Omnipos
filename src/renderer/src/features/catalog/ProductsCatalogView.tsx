@@ -664,11 +664,17 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     if (activeTab === 'minimart' && p.module !== 'minimart') return false;
     if (selectedCategory !== 'ALL' && p.category !== selectedCategory) return false;
     if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
+      const q = searchTerm.toLowerCase().trim();
       return (
         p.name.toLowerCase().includes(q) ||
         (p.skuCode && p.skuCode.toLowerCase().includes(q)) ||
-        p.category.toLowerCase().includes(q)
+        p.category.toLowerCase().includes(q) ||
+        (p.variants &&
+          p.variants.some(
+            (v) =>
+              (v.skuCode && v.skuCode.toLowerCase().includes(q)) ||
+              (v.label && v.label.toLowerCase().includes(q))
+          ))
       );
     }
     return true;

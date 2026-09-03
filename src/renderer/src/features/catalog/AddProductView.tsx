@@ -830,16 +830,13 @@ export function AddProductView(): React.JSX.Element {
                   render={({ field }) => (
                     <Dropdown
                       appearance="outline"
-<Dropdown
-  appearance="outline"
-  className={styles.fullWidth}
-  style={{ width: '100%' }}
-  value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Supermarket'}
-  selectedOptions={field.value ? [field.value] : []}
-  onOptionSelect={(_, d) => {
-    if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
-  }}
->
+                      className={styles.fullWidth}
+                      style={{ width: '100%' }}
+                      value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Supermarket'}
+                      selectedOptions={field.value ? [field.value] : []}
+                      onOptionSelect={(_, d) => {
+                        if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
+                      }}
                     >
                       {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
                       {hasOmnimart && <Option value="minimart" text="Omnimart Supermarket">Omnimart Supermarket</Option>}
@@ -878,16 +875,13 @@ export function AddProductView(): React.JSX.Element {
                     return (
                       <Dropdown
                         appearance="outline"
-<Dropdown
-  appearance="outline"
-  className={styles.fullWidth}
-  style={{ width: '100%' }}
-  value={field.value || 'Select Category'}
-  selectedOptions={field.value ? [field.value] : []}
-  onOptionSelect={(_, d) => {
-    if (d.optionValue) field.onChange(d.optionValue);
-  }}
->
+                        className={styles.fullWidth}
+                        style={{ width: '100%' }}
+                        value={field.value || 'Select Category'}
+                        selectedOptions={field.value ? [field.value] : []}
+                        onOptionSelect={(_, d) => {
+                          if (d.optionValue) field.onChange(d.optionValue);
+                        }}
                       >
                         {displayList.map((c) => (
                           <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
@@ -1002,16 +996,13 @@ export function AddProductView(): React.JSX.Element {
                   render={({ field }) => (
                     <Dropdown
                       appearance="outline"
-<Dropdown
-  appearance="outline"
-  className={styles.fullWidth}
-  style={{ width: '100%' }}
-  value={field.value || 'PCS'}
-  selectedOptions={[field.value || 'PCS']}
-  onOptionSelect={(_, d) => {
-    if (d.optionValue) field.onChange(d.optionValue);
-  }}
->
+                      className={styles.fullWidth}
+                      style={{ width: '100%' }}
+                      value={field.value || 'PCS'}
+                      selectedOptions={[field.value || 'PCS']}
+                      onOptionSelect={(_, d) => {
+                        if (d.optionValue) field.onChange(d.optionValue);
+                      }}
                     >
                       <Option value="PCS" text="Piece (PCS)">Piece (PCS)</Option>
                       <Option value="KG" text="Kilogram (KG)">Kilogram (KG)</Option>
@@ -1522,16 +1513,13 @@ export function AddProductView(): React.JSX.Element {
                   render={({ field }) => (
                     <Dropdown
                       appearance="outline"
-<Dropdown
-  appearance="outline"
-  className={styles.fullWidth}
-  style={{ width: '100%' }}
-  value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Supermarket'}
-  selectedOptions={field.value ? [field.value] : []}
-  onOptionSelect={(_, d) => {
-    if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
-  }}
->
+                      className={styles.fullWidth}
+                      style={{ width: '100%' }}
+                      value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Supermarket'}
+                      selectedOptions={field.value ? [field.value] : []}
+                      onOptionSelect={(_, d) => {
+                        if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
+                      }}
                     >
                       {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
                       {hasOmnimart && <Option value="minimart" text="Omnimart Supermarket">Omnimart Supermarket</Option>}

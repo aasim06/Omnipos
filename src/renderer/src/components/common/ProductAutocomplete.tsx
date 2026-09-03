@@ -30,7 +30,7 @@ export function ProductAutocomplete({
   onChange,
   onSelectProduct,
   filterModule = 'all',
-  placeholder = 'Search or select product / food item...',
+  placeholder = 'Search by product name, SKU or barcode...',
   required = false,
   label,
   error,
@@ -64,14 +64,21 @@ export function ProductAutocomplete({
 
   const availableProducts = filteredByModule.length > 0 ? filteredByModule : allProducts;
 
-  // Filter suggestions by search query
+  // Filter suggestions by search query (name, SKU barcode, category, variant barcode)
   const query = (value || '').toLowerCase().trim();
   const suggestions = availableProducts.filter((p) => {
     if (!query) return true;
     return (
       p.name.toLowerCase().includes(query) ||
+      (p.skuCode && p.skuCode.toLowerCase().includes(query)) ||
       (p.category && p.category.toLowerCase().includes(query)) ||
-      (p.skuCode && p.skuCode.toLowerCase().includes(query))
+      (p.id && p.id.toLowerCase().includes(query)) ||
+      (p.variants &&
+        p.variants.some(
+          (v) =>
+            (v.skuCode && v.skuCode.toLowerCase().includes(query)) ||
+            (v.label && v.label.toLowerCase().includes(query))
+        ))
     );
   });
 
@@ -118,6 +125,14 @@ export function ProductAutocomplete({
           onChange(e.target.value);
           setIsOpen(true);
         }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (suggestions.length > 0) {
+              handleSelect(suggestions[0]);
+            }
+          }
+        }}
         style={{ width: '100%' }}
       />
 
@@ -159,65 +174,88 @@ export function ProductAutocomplete({
               No items match &quot;{value}&quot;. Custom name will be used.
             </div>
           ) : (
-            suggestions.slice(0, 15).map((prod) => (
-              <div
-                key={prod.id}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSelect(prod);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '7px 10px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.12s ease',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground3)}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                {/* Thumbnail Preview */}
+            suggestions.slice(0, 20).map((prod) => {
+              const matchedVariant = query && prod.variants
+                ? prod.variants.find(
+                    (v) =>
+                      (v.skuCode && v.skuCode.toLowerCase().includes(query)) ||
+                      (v.label && v.label.toLowerCase().includes(query))
+                  )
+                : null;
+
+              return (
                 <div
+                  key={prod.id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(prod);
+                  }}
                   style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '6px',
-                    overflow: 'hidden',
-                    backgroundColor: tokens.colorNeutralBackground2,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    border: `1px solid ${tokens.colorNeutralStroke2}`,
+                    gap: '10px',
+                    padding: '7px 10px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.12s ease',
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground3)}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  {prod.imageUrl ? (
-                    <img src={prod.imageUrl} alt={prod.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : prod.module === 'fastfood' ? (
-                    <Food24Filled style={{ width: 16, height: 16, color: tokens.colorBrandForeground1 }} />
-                  ) : (
-                    <BuildingRetail24Regular style={{ width: 16, height: 16, color: tokens.colorNeutralForeground2 }} />
-                  )}
-                </div>
-
-                {/* Name & Category */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {prod.name}
+                  {/* Thumbnail Preview */}
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      backgroundColor: tokens.colorNeutralBackground2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      border: `1px solid ${tokens.colorNeutralStroke2}`,
+                    }}
+                  >
+                    {prod.imageUrl ? (
+                      <img src={prod.imageUrl} alt={prod.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : prod.module === 'fastfood' ? (
+                      <Food24Filled style={{ width: 16, height: 16, color: tokens.colorBrandForeground1 }} />
+                    ) : (
+                      <BuildingRetail24Regular style={{ width: 16, height: 16, color: tokens.colorNeutralForeground2 }} />
+                    )}
                   </div>
-                  <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
-                    {prod.category || 'Product'} {prod.openingStock !== undefined ? `• ${prod.openingStock} in stock` : ''}
+
+                  {/* Name & Category / SKU */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {prod.name}
+                    </div>
+                    <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', flexWrap: 'wrap' }}>
+                      <span>{prod.category || 'Product'}</span>
+                      {prod.skuCode && (
+                        <span style={{ fontFamily: 'monospace', backgroundColor: tokens.colorNeutralBackground3, padding: '1px 5px', borderRadius: '4px', fontSize: '10.5px' }}>
+                          SKU: {prod.skuCode}
+                        </span>
+                      )}
+                      {matchedVariant && (
+                        <span style={{ backgroundColor: 'rgba(229, 25, 55, 0.12)', color: '#E51937', padding: '1px 5px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 700 }}>
+                          Variant: {matchedVariant.label} {matchedVariant.skuCode ? `(${matchedVariant.skuCode})` : ''}
+                        </span>
+                      )}
+                      {prod.openingStock !== undefined && (
+                        <span>• {prod.openingStock} in stock</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Price */}
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: tokens.colorBrandForeground1 }}>
+                    PKR {(matchedVariant && matchedVariant.price !== undefined ? matchedVariant.price : prod.price).toLocaleString()}
                   </div>
                 </div>
-
-                {/* Price */}
-                <div style={{ fontSize: '12px', fontWeight: 700, color: tokens.colorBrandForeground1 }}>
-                  PKR {prod.price.toLocaleString()}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
