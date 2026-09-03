@@ -4,7 +4,12 @@ import { FluentSidebar } from '@/components/FluentSidebar';
 import { PosCounterView } from '@/features/pos/PosCounterView';
 import { KitchenView } from '@/features/kitchen/KitchenView';
 import { KhataView } from '@/features/khata/KhataView';
-import { InventoryView } from '@/features/inventory/InventoryView';
+import { InventoryLayout } from '@/features/inventory/InventoryLayout';
+import { InventoryDashboardView } from '@/features/inventory/InventoryDashboardView';
+import { StockInView } from '@/features/inventory/StockInView';
+import { StockOutView } from '@/features/inventory/StockOutView';
+import { VendorsView } from '@/features/inventory/VendorsView';
+import { StockLedgerView } from '@/features/inventory/StockLedgerView';
 import { ExpensesView } from '@/features/expenses/ExpensesView';
 import { ReportsAnalyticsView } from '@/features/reports/ReportsAnalyticsView';
 import { WebStoreView } from '@/features/web-store/WebStoreView';
@@ -197,15 +202,22 @@ export default function App(): React.JSX.Element {
               }
             />
 
-            {/* Inventory */}
+            {/* ── Inventory Hub Routes (5 Sub-routes) ── */}
             <Route
               path="/inventory"
               element={
                 <RouteAccessGate moduleKey="inventory">
-                  <InventoryView />
+                  <InventoryLayout />
                 </RouteAccessGate>
               }
-            />
+            >
+              <Route index element={<InventoryDashboardView />} />
+              <Route path="dashboard" element={<InventoryDashboardView />} />
+              <Route path="stock-in" element={<StockInView />} />
+              <Route path="stock-out" element={<StockOutView />} />
+              <Route path="vendors" element={<VendorsView />} />
+              <Route path="ledger" element={<StockLedgerView />} />
+            </Route>
 
             {/* Expenses */}
             <Route

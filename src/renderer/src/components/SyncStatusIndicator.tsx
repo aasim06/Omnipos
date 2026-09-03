@@ -10,12 +10,15 @@ import {
   CloudSync20Filled,
 } from '@fluentui/react-icons';
 import { syncEngine, SyncState } from '@/lib/syncEngine';
+import { useAppTheme } from '@/theme/AppProviders';
 
 interface SyncStatusProps {
   isCollapsed?: boolean;
 }
 
 export function SyncStatusIndicator({ isCollapsed = false }: SyncStatusProps): React.JSX.Element {
+  const { mode } = useAppTheme();
+  const isDark = mode === 'dark';
   const [syncState, setSyncState] = useState<SyncState>(syncEngine.getState());
 
   useEffect(() => {
@@ -68,15 +71,15 @@ export function SyncStatusIndicator({ isCollapsed = false }: SyncStatusProps): R
             width: '42px',
             height: '34px',
             borderRadius: '8px',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F1F5F9',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
             margin: '0 auto',
             position: 'relative',
-            transition: 'all 0.2s ease',
+            transition: 'all 0.15s ease',
           }}
         >
           <span
@@ -116,8 +119,8 @@ export function SyncStatusIndicator({ isCollapsed = false }: SyncStatusProps): R
       style={{
         padding: '8px 10px',
         borderRadius: '8px',
-        border: '1px solid rgba(255, 255, 255, 0.07)',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        border: isDark ? '1px solid rgba(255, 255, 255, 0.07)' : '1px solid #E2E8F0',
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
         backdropFilter: 'blur(10px)',
         display: 'flex',
         alignItems: 'center',
@@ -140,7 +143,7 @@ export function SyncStatusIndicator({ isCollapsed = false }: SyncStatusProps): R
           />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#F1F5F9', letterSpacing: '0.02em', lineHeight: 1.2 }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: isDark ? '#F1F5F9' : '#0F172A', letterSpacing: '0.02em', lineHeight: 1.2 }}>
             {statusText}
           </div>
           <div style={{ fontSize: '9.5px', color: '#64748B', fontWeight: 500 }}>
