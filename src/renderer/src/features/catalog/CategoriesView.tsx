@@ -23,19 +23,22 @@ import {
   BuildingRetail24Regular,
   Dismiss16Regular,
   Grid20Regular,
+  Tag20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { posApi } from '@/lib/api';
-import { Category, Product, ModuleKey } from '@shared/types';
+import { Category, Product, ModuleKey, CategoryProfile } from '@shared/types';
 import { uid } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
+import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'Category name must be at least 2 characters'),
   module: z.enum(['fastfood', 'minimart']),
+  profile: z.enum(['standard', 'apparel', 'footwear', 'hardware', 'food']).default('standard'),
 });
 type CategoryFormData = z.infer<typeof categorySchema>;
 
@@ -71,21 +74,22 @@ const useStyles = makeStyles({
   },
   categoryGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-    gap: '14px',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: '16px',
   },
   categoryCard: {
-    borderRadius: tokens.borderRadiusMedium,
+    borderRadius: '12px',
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow4,
-    padding: '16px 18px',
+    padding: '16px 20px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
-    transition: 'transform 0.1s ease, box-shadow 0.1s ease',
+    transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
     ':hover': {
-      boxShadow: tokens.shadow8,
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.16)',
+      transform: 'translateY(-2px)',
     },
   },
 });
@@ -119,7 +123,8 @@ export function CategoriesView(): React.JSX.Element {
       const newCat: Category = {
         id: uid('cat_'),
         module: data.module,
-        name: data.name,
+        name: data.name.trim(),
+        profile: data.profile,
       };
       return await posApi.saveCategory(newCat);
     },
@@ -139,7 +144,11 @@ export function CategoriesView(): React.JSX.Element {
 
   const handleOpenDialog = (module: ModuleKey = 'fastfood') => {
     setTargetModule(module);
-    categoryForm.reset({ name: '', module });
+    categoryForm.reset({
+      name: '',
+      module,
+      profile: module === 'fastfood' ? 'food' : 'standard',
+    });
     setIsDialogOpen(true);
   };
 
@@ -200,15 +209,50 @@ export function CategoriesView(): React.JSX.Element {
         <div className={styles.categoryGrid}>
           {fastFoodCategories.map((cat) => {
             const count = products.filter((p) => p.category === cat.name).length;
+            const activeProfile = detectCategoryProfile(cat.name, cat.profile);
+            const profileConfig = CATEGORY_PROFILES[activeProfile];
             return (
               <div key={cat.id} className={styles.categoryCard}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                  <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, fontSize: '14px' }}>
-                    {cat.name}
-                  </Body1>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
-                    Fast Food • {count} product{count !== 1 ? 's' : ''}
-                  </Caption1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
+                      backgroundColor: `${profileConfig.accentColor}18`,
+                      border: `1px solid ${profileConfig.accentColor}33`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: profileConfig.accentColor,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Tag20Regular style={{ width: 18, height: 18 }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, fontSize: '14.5px' }}>
+                      {cat.name}
+                    </Body1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                      <span
+                        style={{
+                          fontSize: '9.5px',
+                          fontWeight: 800,
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          backgroundColor: `${profileConfig.accentColor}18`,
+                          color: profileConfig.accentColor,
+                          border: `1px solid ${profileConfig.accentColor}33`,
+                        }}
+                      >
+                        {profileConfig.shortTag}
+                      </span>
+                      <Caption1 style={{ color: tokens.colorNeutralForeground2, fontSize: '11.5px' }}>
+                        • {count} product{count !== 1 ? 's' : ''}
+                      </Caption1>
+                    </div>
+                  </div>
                 </div>
                 <Button
                   size="small"
@@ -244,15 +288,50 @@ export function CategoriesView(): React.JSX.Element {
         <div className={styles.categoryGrid}>
           {omnimartCategories.map((cat) => {
             const count = products.filter((p) => p.category === cat.name).length;
+            const activeProfile = detectCategoryProfile(cat.name, cat.profile);
+            const profileConfig = CATEGORY_PROFILES[activeProfile];
             return (
               <div key={cat.id} className={styles.categoryCard}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                  <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, fontSize: '14px' }}>
-                    {cat.name}
-                  </Body1>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
-                    Omnimart • {count} product{count !== 1 ? 's' : ''}
-                  </Caption1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
+                      backgroundColor: `${profileConfig.accentColor}18`,
+                      border: `1px solid ${profileConfig.accentColor}33`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: profileConfig.accentColor,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Tag20Regular style={{ width: 18, height: 18 }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, fontSize: '14.5px' }}>
+                      {cat.name}
+                    </Body1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                      <span
+                        style={{
+                          fontSize: '9.5px',
+                          fontWeight: 800,
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          backgroundColor: `${profileConfig.accentColor}18`,
+                          color: profileConfig.accentColor,
+                          border: `1px solid ${profileConfig.accentColor}33`,
+                        }}
+                      >
+                        {profileConfig.shortTag}
+                      </span>
+                      <Caption1 style={{ color: tokens.colorNeutralForeground2, fontSize: '11.5px' }}>
+                        • {count} product{count !== 1 ? 's' : ''}
+                      </Caption1>
+                    </div>
+                  </div>
                 </div>
                 <Button
                   size="small"
@@ -273,82 +352,172 @@ export function CategoriesView(): React.JSX.Element {
 
       {/* ── Create Category Dialog ─────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
-        <DialogSurface style={{ maxWidth: '440px', width: '92vw', borderRadius: '12px', padding: '24px' }}>
-          <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)}>
-            <DialogBody style={{ padding: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <DialogTitle style={{ fontSize: '17px', fontWeight: 800, color: tokens.colorNeutralForeground1, margin: 0 }}>
-                  Create New Category
-                </DialogTitle>
-                <Button
-                  size="small"
-                  appearance="subtle"
-                  icon={<Dismiss16Regular />}
-                  onClick={() => setIsDialogOpen(false)}
+        <DialogSurface
+          style={{
+            maxWidth: '480px',
+            width: '92vw',
+            borderRadius: '16px',
+            padding: '24px',
+            boxSizing: 'border-box',
+            backgroundColor: tokens.colorNeutralBackground1,
+            border: `1px solid ${tokens.colorNeutralStroke1}`,
+            boxShadow: '0 24px 64px rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <form
+            onSubmit={categoryForm.handleSubmit(onCategorySubmit)}
+            style={{ display: 'flex', flexDirection: 'column', gap: '18px', width: '100%' }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingBottom: '14px',
+                borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+                width: '100%',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#E51937',
+                  }}
+                >
+                  <Tag20Regular style={{ width: 20, height: 20 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '17px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                    Create New Category
+                  </div>
+                  <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                    Configure classification &amp; presets for {targetModule === 'fastfood' ? 'Fast Food' : 'Omnimart'}
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<Dismiss16Regular />}
+                onClick={() => setIsDialogOpen(false)}
+                type="button"
+              />
+            </div>
+
+            {/* Form Fields */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
+              <div>
+                <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '13px' }}>
+                  Category Name
+                </Label>
+                <Controller
+                  control={categoryForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      appearance="outline"
+                      placeholder="e.g. Burgers, Dairy, Snacks, Clothing, Hardware..."
+                      style={{ width: '100%' }}
+                    />
+                  )}
+                />
+                {categoryForm.formState.errors.name && (
+                  <Caption1 style={{ color: tokens.colorPaletteRedForeground1, marginTop: '4px', display: 'block' }}>
+                    {categoryForm.formState.errors.name.message}
+                  </Caption1>
+                )}
+              </div>
+
+              <div>
+                <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '13px' }}>
+                  Target Store Module
+                </Label>
+                <Controller
+                  control={categoryForm.control}
+                  name="module"
+                  render={({ field }) => (
+                    <Select
+                      appearance="outline"
+                      style={{ width: '100%' }}
+                      value={field.value}
+                      onChange={(_, d) => field.onChange(d.value as ModuleKey)}
+                    >
+                      <option value="fastfood">Fast Food Menu</option>
+                      <option value="minimart">Omnimart Goods</option>
+                    </Select>
+                  )}
                 />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Category Name</Label>
-                  <Controller
-                    control={categoryForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        appearance="outline"
-                        placeholder="e.g. Burgers, Dairy, Snacks..."
-                        style={{ width: '100%' }}
-                      />
-                    )}
-                  />
-                  {categoryForm.formState.errors.name && (
-                    <Caption1 style={{ color: tokens.colorPaletteRedForeground1, marginTop: '4px', display: 'block' }}>
-                      {categoryForm.formState.errors.name.message}
-                    </Caption1>
+              <div>
+                <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '13px' }}>
+                  Industry Profile (Size &amp; Unit Presets)
+                </Label>
+                <Controller
+                  control={categoryForm.control}
+                  name="profile"
+                  render={({ field }) => (
+                    <Select
+                      appearance="outline"
+                      style={{ width: '100%' }}
+                      value={field.value || 'standard'}
+                      onChange={(_, d) => field.onChange(d.value as CategoryProfile)}
+                    >
+                      <option value="standard">Standard Retail (Grocery &amp; General Goods)</option>
+                      <option value="apparel">Apparel &amp; Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)</option>
+                      <option value="footwear">Footwear &amp; Shoes (Sizes: 38 to 45)</option>
+                      <option value="hardware">Hardware, Iron &amp; Paint (KG, Feet, Meters, Litres, Bags)</option>
+                      <option value="food">Restaurant &amp; Fast Food (Portions: Regular, S, M, L, Family)</option>
+                    </Select>
                   )}
-                </div>
-
-                <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Target Store Module</Label>
-                  <Controller
-                    control={categoryForm.control}
-                    name="module"
-                    render={({ field }) => (
-                      <Select
-                        appearance="outline"
-                        style={{ width: '100%' }}
-                        value={field.value}
-                        onChange={(_, d) => field.onChange(d.value as ModuleKey)}
-                      >
-                        <option value="fastfood">Fast Food Menu</option>
-                        <option value="minimart">Omnimart Goods</option>
-                      </Select>
-                    )}
-                  />
-                </div>
+                />
+                <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '5px', display: 'block', fontSize: '11px', lineHeight: 1.4 }}>
+                  Auto-enables size matrices, measurement units, and decimal quantities when creating products.
+                </Caption1>
               </div>
+            </div>
 
-              <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <Button
-                  appearance="subtle"
-                  type="button"
-                  onClick={() => setIsDialogOpen(false)}
-                  style={{ borderRadius: '8px', fontWeight: 600 }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  appearance="primary"
-                  type="submit"
-                  disabled={createCategoryMutation.isPending}
-                  style={{ backgroundColor: '#E51937', borderRadius: '8px', fontWeight: 600 }}
-                >
-                  {createCategoryMutation.isPending ? 'Saving...' : 'Save Category'}
-                </Button>
-              </DialogActions>
-            </DialogBody>
+            {/* Modal Actions */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '10px',
+                justifyContent: 'flex-end',
+                marginTop: '6px',
+                paddingTop: '14px',
+                borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+                width: '100%',
+              }}
+            >
+              <Button
+                appearance="subtle"
+                type="button"
+                onClick={() => setIsDialogOpen(false)}
+                style={{ borderRadius: '8px', fontWeight: 600 }}
+              >
+                Cancel
+              </Button>
+              <Button
+                appearance="primary"
+                type="submit"
+                disabled={createCategoryMutation.isPending}
+                style={{ backgroundColor: '#E51937', borderRadius: '8px', fontWeight: 700, padding: '0 20px' }}
+              >
+                {createCategoryMutation.isPending ? 'Saving...' : 'Save Category'}
+              </Button>
+            </div>
           </form>
         </DialogSurface>
       </Dialog>

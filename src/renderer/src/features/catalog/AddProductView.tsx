@@ -26,15 +26,19 @@ import {
   Tag20Regular,
   Food24Regular,
   BuildingRetail24Regular,
+  Delete20Regular,
+  Sparkle20Regular,
+  Grid20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { posApi } from '@/lib/api';
-import { Product, Category, ModuleKey } from '@shared/types';
+import { Product, Category, ModuleKey, ProductVariant } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
+import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
 
 const productSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters'),
@@ -106,6 +110,8 @@ export function AddProductView(): React.JSX.Element {
     queryFn: () => posApi.fetchCategories(),
   });
 
+  const generateRandomSku = () => String(Math.floor(10000000 + Math.random() * 90000000));
+
   const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productSchema) as any,
     defaultValues: {
@@ -115,7 +121,7 @@ export function AddProductView(): React.JSX.Element {
       price: undefined,
       costPrice: undefined,
       unit: defaultModule === 'minimart' ? 'PCS' : 'PCS',
-      skuCode: '',
+      skuCode: generateRandomSku(),
       rackLocation: '',
       openingStock: 50,
       minThreshold: 10,
@@ -139,6 +145,56 @@ export function AddProductView(): React.JSX.Element {
   const watchedUnit = productForm.watch('unit');
   const watchedStock = productForm.watch('openingStock');
 
+  const [hasVariants, setHasVariants] = useState<boolean>(false);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
+
+  // Detected profile from selected category
+  const activeCategoryObj = categories.find((c) => c.name === watchedCategory);
+  const detectedProfile = detectCategoryProfile(watchedCategory || '', activeCategoryObj?.profile);
+  const profileConfig = CATEGORY_PROFILES[detectedProfile];
+
+  // Auto toggle size variants
+  const handleToggleSize = (sizeLabel: string) => {
+    setVariants((prev) => {
+      const exists = prev.some((v) => v.label.toLowerCase() === sizeLabel.toLowerCase());
+      if (exists) {
+        const next = prev.filter((v) => v.label.toLowerCase() !== sizeLabel.toLowerCase());
+        if (next.length === 0) setHasVariants(false);
+        return next;
+      } else {
+        const newVar: ProductVariant = {
+          id: uid('var_'),
+          label: sizeLabel,
+          priceDelta: 0,
+          costDelta: 0,
+          stock: 10,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${sizeLabel}` : undefined,
+        };
+        setHasVariants(true);
+        return [...prev, newVar];
+      }
+    });
+  };
+
+  const handleUpdateVariant = (id: string, updates: Partial<ProductVariant>) => {
+    setVariants((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
+  };
+
+  const handleRemoveVariant = (id: string) => {
+    setVariants((prev) => {
+      const next = prev.filter((v) => v.id !== id);
+      if (next.length === 0) setHasVariants(false);
+      return next;
+    });
+  };
+
+  const handleAddCustomVariant = () => {
+    const label = prompt('Enter custom variant name (e.g. XL, 42, Blue / M):');
+    if (label && label.trim()) {
+      handleToggleSize(label.trim());
+    }
+  };
+
   useEffect(() => {
     if (categories.length > 0) {
       const match = categories.find((c) => c.module === watchedModule);
@@ -150,6 +206,10 @@ export function AddProductView(): React.JSX.Element {
 
   const saveProductMutation = useMutation({
     mutationFn: async (data: ProductFormData) => {
+      const totalStock = hasVariants && variants.length > 0
+        ? variants.reduce((sum, v) => sum + (v.stock || 0), 0)
+        : data.openingStock;
+
       const newProduct: Product = {
         id: uid(data.module === 'fastfood' ? 'prod_ff_' : 'prod_mm_'),
         name: data.name,
@@ -160,11 +220,13 @@ export function AddProductView(): React.JSX.Element {
         unit: data.unit,
         skuCode: data.skuCode,
         rackLocation: data.rackLocation,
-        openingStock: data.openingStock,
+        openingStock: totalStock,
         minThreshold: data.minThreshold,
         prepTime: data.prepTime,
         description: data.description,
         imageUrl: data.imageUrl,
+        hasVariants: hasVariants && variants.length > 0,
+        variants: hasVariants && variants.length > 0 ? variants : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -265,7 +327,7 @@ export function AddProductView(): React.JSX.Element {
 
       {/* ── Main Form Layout ──────────────────────────────────── */}
       <form onSubmit={productForm.handleSubmit(onSubmit)}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px', alignItems: 'stretch' }}>
           {/* Left Column: Form Details */}
           <div className={styles.cardSurface} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
             {/* Target Module & Category */}
@@ -453,15 +515,44 @@ export function AddProductView(): React.JSX.Element {
                       <option value="PACK">Pack</option>
                       <option value="BOX">Box</option>
                       <option value="DOZEN">Dozen</option>
+                      <option value="FEET">Feet (ft)</option>
+                      <option value="METER">Meter (m)</option>
+                      <option value="GALLON">Gallon</option>
+                      <option value="BAG">Bag</option>
+                      <option value="BUNDLE">Bundle</option>
+                      <option value="PAIR">Pair</option>
                     </Select>
                   )}
                 />
               </div>
 
               <div>
-                <Label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>
-                  {watchedModule === 'fastfood' ? 'Kitchen Prep Time (mins)' : 'SKU / Barcode'}
-                </Label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <Label style={{ fontWeight: 600 }}>
+                    {watchedModule === 'fastfood' ? 'Kitchen Prep Time (mins)' : 'SKU / Barcode'}
+                  </Label>
+                  {watchedModule !== 'fastfood' && (
+                    <button
+                      type="button"
+                      onClick={() => productForm.setValue('skuCode', generateRandomSku())}
+                      title="Generate new unique barcode / SKU"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#E51937',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: '0 2px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                      }}
+                    >
+                      ↻ Auto Generate
+                    </button>
+                  )}
+                </div>
                 {watchedModule === 'fastfood' ? (
                   <Controller
                     control={productForm.control}
@@ -486,7 +577,7 @@ export function AddProductView(): React.JSX.Element {
                       <Input
                         {...field}
                         appearance="outline"
-                        placeholder="e.g. 89915275"
+                        placeholder="e.g. 89915275 (or scan barcode)"
                         style={{ width: '100%' }}
                       />
                     )}
@@ -531,6 +622,223 @@ export function AddProductView(): React.JSX.Element {
               </div>
             </div>
 
+            {/* Quick Unit Presets Bar with generous spacing */}
+            {profileConfig.suggestedUnits.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: tokens.colorNeutralBackground3,
+                  border: `1px solid ${tokens.colorNeutralStroke2}`,
+                  marginTop: '2px',
+                  marginBottom: '6px',
+                }}
+              >
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: tokens.colorNeutralForeground2, whiteSpace: 'nowrap' }}>
+                  Quick Unit Presets:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {profileConfig.suggestedUnits.map((u) => {
+                    const isSelected = watchedUnit === u;
+                    return (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => productForm.setValue('unit', u)}
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: isSelected ? 800 : 600,
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          border: isSelected ? `1.5px solid ${profileConfig.accentColor}` : `1px solid ${tokens.colorNeutralStroke1}`,
+                          backgroundColor: isSelected ? `${profileConfig.accentColor}25` : tokens.colorNeutralBackground1,
+                          color: isSelected ? profileConfig.accentColor : tokens.colorNeutralForeground2,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {u}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ── Smart Product Variants & Size Matrix Section ── */}
+            <div
+              style={{
+                padding: '16px',
+                borderRadius: '10px',
+                border: `1px solid ${hasVariants || profileConfig.suggestedSizes.length > 0 ? `${profileConfig.accentColor}44` : tokens.colorNeutralStroke1}`,
+                backgroundColor: hasVariants || profileConfig.suggestedSizes.length > 0 ? `${profileConfig.accentColor}08` : tokens.colorNeutralBackground3,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      padding: '2px 7px',
+                      borderRadius: '4px',
+                      backgroundColor: `${profileConfig.accentColor}22`,
+                      color: profileConfig.accentColor,
+                      border: `1px solid ${profileConfig.accentColor}44`,
+                    }}
+                  >
+                    {profileConfig.shortTag}
+                  </span>
+                  <Label style={{ fontWeight: 700, fontSize: '13.5px' }}>
+                    {detectedProfile === 'apparel'
+                      ? 'Clothing Sizes Matrix (S, M, L, XL)'
+                      : detectedProfile === 'footwear'
+                      ? 'Shoe Sizes Matrix (38 - 45)'
+                      : detectedProfile === 'food'
+                      ? 'Food Portion Sizes'
+                      : 'Product Variants & Sizes'}
+                  </Label>
+                </div>
+
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={<Add20Regular />}
+                  onClick={handleAddCustomVariant}
+                  style={{ fontSize: '11.5px', fontWeight: 600, color: profileConfig.accentColor }}
+                >
+                  + Custom Variant
+                </Button>
+              </div>
+
+              {/* Size Suggestion Chips */}
+              {profileConfig.suggestedSizes.length > 0 && (
+                <div>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground3, display: 'block', marginBottom: '6px' }}>
+                    Click sizes to add to inventory matrix:
+                  </Caption1>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {profileConfig.suggestedSizes.map((size) => {
+                      const isSelected = variants.some((v) => v.label.toLowerCase() === size.toLowerCase());
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => handleToggleSize(size)}
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '6px',
+                            border: isSelected ? `2px solid ${profileConfig.accentColor}` : `1px solid ${tokens.colorNeutralStroke1}`,
+                            backgroundColor: isSelected ? `${profileConfig.accentColor}22` : tokens.colorNeutralBackground1,
+                            color: isSelected ? profileConfig.accentColor : tokens.colorNeutralForeground1,
+                            fontWeight: isSelected ? 800 : 600,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <span>{size}</span>
+                          {isSelected && <span style={{ fontSize: '10px' }}>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Variants Matrix Table */}
+              {variants.length > 0 && (
+                <div style={{ marginTop: '4px', borderTop: `1px solid ${tokens.colorNeutralStroke2}`, paddingTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <Caption1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground2 }}>
+                      Configured Variants ({variants.length}) — Total Variant Stock:{' '}
+                      <strong style={{ color: tokens.colorNeutralForeground1 }}>
+                        {variants.reduce((sum, v) => sum + (v.stock || 0), 0)} {watchedUnit || 'PCS'}
+                      </strong>
+                    </Caption1>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {variants.map((v) => (
+                      <div
+                        key={v.id}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '70px 90px 110px 1fr 32px',
+                          gap: '8px',
+                          alignItems: 'center',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: tokens.colorNeutralBackground1,
+                          border: `1px solid ${tokens.colorNeutralStroke1}`,
+                        }}
+                      >
+                        <div style={{ fontWeight: 800, fontSize: '12.5px', color: profileConfig.accentColor }}>
+                          {v.label}
+                        </div>
+
+                        <div>
+                          <Input
+                            size="small"
+                            type="number"
+                            appearance="outline"
+                            placeholder="Stock"
+                            value={v.stock !== undefined ? String(v.stock) : ''}
+                            onChange={(_, d) =>
+                              handleUpdateVariant(v.id, { stock: d.value === '' ? 0 : Number(d.value) })
+                            }
+                            style={{ width: '100%' }}
+                          />
+                        </div>
+
+                        <div>
+                          <Input
+                            size="small"
+                            type="number"
+                            appearance="outline"
+                            placeholder="+/- Price"
+                            value={v.priceDelta !== undefined ? String(v.priceDelta) : ''}
+                            onChange={(_, d) =>
+                              handleUpdateVariant(v.id, { priceDelta: d.value === '' ? 0 : Number(d.value) })
+                            }
+                            style={{ width: '100%' }}
+                          />
+                        </div>
+
+                        <div>
+                          <Input
+                            size="small"
+                            appearance="outline"
+                            placeholder="SKU / Barcode"
+                            value={v.skuCode || ''}
+                            onChange={(_, d) => handleUpdateVariant(v.id, { skuCode: d.value })}
+                            style={{ width: '100%' }}
+                          />
+                        </div>
+
+                        <Button
+                          size="small"
+                          appearance="subtle"
+                          icon={<Delete20Regular style={{ color: '#D13438' }} />}
+                          onClick={() => handleRemoveVariant(v.id)}
+                          title="Remove Variant"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Description */}
             <div>
               <Label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>Item Description</Label>
@@ -550,7 +858,7 @@ export function AddProductView(): React.JSX.Element {
           </div>
 
           {/* Right Column: Image Upload & Live POS Card Preview */}
-          <div className={styles.cardSurface} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className={styles.cardSurface} style={{ display: 'flex', flexDirection: 'column', gap: '18px', height: '100%', boxSizing: 'border-box' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '13.5px', color: tokens.colorNeutralForeground1, marginBottom: '4px' }}>
                 Product Image
@@ -655,7 +963,9 @@ export function AddProductView(): React.JSX.Element {
                       fontWeight: 700,
                     }}
                   >
-                    {watchedStock ?? 50} left
+                    {variants.length > 0
+                      ? `${variants.reduce((sum, v) => sum + (v.stock || 0), 0)} left`
+                      : `${watchedStock ?? 50} left`}
                   </div>
                 </div>
 
@@ -665,9 +975,35 @@ export function AddProductView(): React.JSX.Element {
                     <div style={{ fontSize: '12px', fontWeight: 800, color: tokens.colorNeutralForeground1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {watchedName || 'Product Title'}
                     </div>
-                    <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3 }}>
-                      {watchedCategory || 'Category'} • {watchedUnit || 'PCS'}
-                    </div>
+                    {variants.length > 0 ? (
+                      <div style={{ display: 'flex', gap: '3px', marginTop: '2px', overflow: 'hidden' }}>
+                        {variants.slice(0, 4).map((v) => (
+                          <span
+                            key={v.id}
+                            style={{
+                              fontSize: '8.5px',
+                              fontWeight: 800,
+                              padding: '0 4px',
+                              borderRadius: '3px',
+                              backgroundColor: 'rgba(229, 25, 55, 0.12)',
+                              color: '#E51937',
+                              border: '1px solid rgba(229, 25, 55, 0.25)',
+                            }}
+                          >
+                            {v.label}
+                          </span>
+                        ))}
+                        {variants.length > 4 && (
+                          <span style={{ fontSize: '8.5px', color: tokens.colorNeutralForeground3 }}>
+                            +{variants.length - 4}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3 }}>
+                        {watchedCategory || 'Category'} • {watchedUnit || 'PCS'}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: '13px', fontWeight: 800, color: '#E51937' }}>
@@ -680,56 +1016,172 @@ export function AddProductView(): React.JSX.Element {
                 </div>
               </div>
             </div>
+
+            {/* Quick Catalog Pro Tip (Pinned to bottom of stretched right card) */}
+            <div
+              style={{
+                marginTop: 'auto',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                backgroundColor: tokens.colorNeutralBackground3,
+                border: `1px solid ${tokens.colorNeutralStroke2}`,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+              }}
+            >
+              <div style={{ fontSize: '11px', fontWeight: 800, color: tokens.colorNeutralForeground1, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                POS Display Pro Tip
+              </div>
+              <Caption1 style={{ color: tokens.colorNeutralForeground3, fontSize: '11px', lineHeight: 1.4 }}>
+                Product cards follow 6:4 visual ratio (60% image, 40% details) for touch accuracy and barcode scanning readability on all POS registers.
+              </Caption1>
+            </div>
           </div>
         </div>
       </form>
 
       {/* ── Quick Category Modal ───────────────────────────────── */}
       <Dialog open={isCategoryDialogOpen} onOpenChange={(_, d) => setIsCategoryDialogOpen(d.open)}>
-        <DialogSurface style={{ maxWidth: '420px', borderRadius: '12px', padding: '24px' }}>
-          <form onSubmit={categoryForm.handleSubmit((d) => createCategoryMutation.mutate(d))}>
-            <DialogBody style={{ padding: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <DialogTitle style={{ fontSize: '17px', fontWeight: 800 }}>Create New Category</DialogTitle>
-                <Button size="small" appearance="subtle" icon={<Dismiss16Regular />} onClick={() => setIsCategoryDialogOpen(false)} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <Label required style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Category Name</Label>
-                  <Controller
-                    control={categoryForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <Input {...field} appearance="outline" placeholder="e.g. Burgers, Dairy" style={{ width: '100%' }} />
-                    )}
-                  />
+        <DialogSurface
+          style={{
+            maxWidth: '460px',
+            width: '92vw',
+            borderRadius: '16px',
+            padding: '24px',
+            boxSizing: 'border-box',
+            backgroundColor: tokens.colorNeutralBackground1,
+            border: `1px solid ${tokens.colorNeutralStroke1}`,
+            boxShadow: '0 24px 64px rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <form
+            onSubmit={categoryForm.handleSubmit((d) => createCategoryMutation.mutate(d))}
+            style={{ display: 'flex', flexDirection: 'column', gap: '18px', width: '100%' }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingBottom: '14px',
+                borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+                width: '100%',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#E51937',
+                  }}
+                >
+                  <Tag20Regular style={{ width: 20, height: 20 }} />
                 </div>
                 <div>
-                  <Label required style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Target Module</Label>
-                  <Controller
-                    control={categoryForm.control}
-                    name="module"
-                    render={({ field }) => (
-                      <Select
-                        appearance="outline"
-                        style={{ width: '100%' }}
-                        value={field.value}
-                        onChange={(_, d) => field.onChange(d.value as ModuleKey)}
-                      >
-                        <option value="fastfood">Fast Food Menu</option>
-                        <option value="minimart">Omnimart Supermarket</option>
-                      </Select>
-                    )}
-                  />
+                  <div style={{ fontSize: '17px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                    Create New Category
+                  </div>
+                  <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                    Add quick classification to catalog
+                  </div>
                 </div>
               </div>
-              <DialogActions style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                <Button appearance="subtle" onClick={() => setIsCategoryDialogOpen(false)}>Cancel</Button>
-                <Button appearance="primary" type="submit" style={{ backgroundColor: '#E51937' }}>
-                  {createCategoryMutation.isPending ? 'Saving...' : 'Save Category'}
-                </Button>
-              </DialogActions>
-            </DialogBody>
+
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<Dismiss16Regular />}
+                onClick={() => setIsCategoryDialogOpen(false)}
+                type="button"
+              />
+            </div>
+
+            {/* Form Fields */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
+              <div>
+                <Label required style={{ fontWeight: 600, display: 'block', marginBottom: '6px', fontSize: '13px' }}>
+                  Category Name
+                </Label>
+                <Controller
+                  control={categoryForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      appearance="outline"
+                      placeholder="e.g. Burgers, Dairy, Shirts, Shoes..."
+                      style={{ width: '100%' }}
+                    />
+                  )}
+                />
+                {categoryForm.formState.errors.name && (
+                  <Caption1 style={{ color: tokens.colorPaletteRedForeground1, marginTop: '4px', display: 'block' }}>
+                    {categoryForm.formState.errors.name.message}
+                  </Caption1>
+                )}
+              </div>
+
+              <div>
+                <Label required style={{ fontWeight: 600, display: 'block', marginBottom: '6px', fontSize: '13px' }}>
+                  Target Store Module
+                </Label>
+                <Controller
+                  control={categoryForm.control}
+                  name="module"
+                  render={({ field }) => (
+                    <Select
+                      appearance="outline"
+                      style={{ width: '100%' }}
+                      value={field.value}
+                      onChange={(_, d) => field.onChange(d.value as ModuleKey)}
+                    >
+                      <option value="fastfood">Fast Food Menu</option>
+                      <option value="minimart">Omnimart Supermarket</option>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '10px',
+                justifyContent: 'flex-end',
+                marginTop: '6px',
+                paddingTop: '14px',
+                borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+                width: '100%',
+              }}
+            >
+              <Button
+                appearance="subtle"
+                type="button"
+                onClick={() => setIsCategoryDialogOpen(false)}
+                style={{ borderRadius: '8px', fontWeight: 600 }}
+              >
+                Cancel
+              </Button>
+              <Button
+                appearance="primary"
+                type="submit"
+                disabled={createCategoryMutation.isPending}
+                style={{ backgroundColor: '#E51937', borderRadius: '8px', fontWeight: 700, padding: '0 20px' }}
+              >
+                {createCategoryMutation.isPending ? 'Saving...' : 'Save Category'}
+              </Button>
+            </div>
           </form>
         </DialogSurface>
       </Dialog>

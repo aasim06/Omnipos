@@ -20,15 +20,19 @@ export interface Product {
   isAvailable?: boolean; // Visible on POS
   imageBase64?: string;
   imageUrl?: string;
-  variants?: ProductVariant[]; // e.g. Small/Medium/Large for fast food
+  hasVariants?: boolean;
+  variants?: ProductVariant[]; // e.g. Small/Medium/Large or Sizes S/M/L
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ProductVariant {
   id: string;
-  label: string; // "Small", "Full", etc.
-  priceDelta: number; // added to base price
+  label: string; // "Small", "S", "M", "42", "Full", etc.
+  priceDelta: number; // added to base retail price
+  costDelta?: number; // added to base cost price
+  stock?: number; // individual stock for this variant
+  skuCode?: string; // variant-specific SKU barcode
 }
 
 export interface CartLine {
@@ -71,8 +75,13 @@ export interface StockMovement {
   date: string;
 }
 
+export type CategoryProfile = 'standard' | 'apparel' | 'footwear' | 'hardware' | 'food';
+
 export interface Category {
   id: string;
   module: ModuleKey;
   name: string;
+  profile?: CategoryProfile;
+  suggestedSizes?: string[];
+  suggestedUnits?: string[];
 }

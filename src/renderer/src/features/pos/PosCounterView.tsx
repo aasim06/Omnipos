@@ -221,6 +221,9 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
   /* Minimart Customer Phone & Loyalty Lookup */
   const [customerPhone, setCustomerPhone] = useState('');
 
+  /* Quick Size / Variant Picker for Apparel, Shoes & Products with Variants */
+  const [variantPickerProduct, setVariantPickerProduct] = useState<Product | null>(null);
+
   /* Query Khatas for Credit / Udhaar payment */
   const { data: customerKhatas = [] } = useQuery({
     queryKey: ['khatas'],
@@ -1383,7 +1386,13 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                                   <button
                                     type="button"
                                     disabled={isOut}
-                                    onClick={() => addToCart(product, 1)}
+                                    onClick={() => {
+                                      if (product.hasVariants && product.variants && product.variants.length > 0) {
+                                        setVariantPickerProduct(product);
+                                      } else {
+                                        addToCart(product, 1);
+                                      }
+                                    }}
                                     style={{
                                       padding: '5px 12px',
                                       borderRadius: F.radiusSm,
@@ -1452,6 +1461,11 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                       key={product.id}
                       onClick={() => {
                         if (!isOut) {
+                          if (product.hasVariants && product.variants && product.variants.length > 0) {
+                            setVariantPickerProduct(product);
+                            playBeep();
+                            return;
+                          }
                           if (module === 'minimart' && isWeightItem) {
                             setWeighingProduct(product);
                             setWeightAmount(1.0);
@@ -1660,11 +1674,35 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                           >
                             {product.name}
                           </div>
-                          {product.skuCode && (
+                          {product.hasVariants && product.variants && product.variants.length > 0 ? (
+                            <div style={{ display: 'flex', gap: '3px', marginTop: '3px', overflow: 'hidden' }}>
+                              {product.variants.slice(0, 3).map((v) => (
+                                <span
+                                  key={v.id}
+                                  style={{
+                                    fontSize: '9px',
+                                    fontWeight: 700,
+                                    padding: '1px 4px',
+                                    borderRadius: '3px',
+                                    backgroundColor: isDark ? 'rgba(229,25,55,0.18)' : '#FFEBEF',
+                                    color: '#E51937',
+                                    border: '1px solid rgba(229,25,55,0.25)',
+                                  }}
+                                >
+                                  {v.label}
+                                </span>
+                              ))}
+                              {product.variants.length > 3 && (
+                                <span style={{ fontSize: '9px', color: F.textMuted, alignSelf: 'center' }}>
+                                  +{product.variants.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          ) : product.skuCode ? (
                             <div style={{ fontSize: '10px', fontFamily: 'monospace', color: F.textMuted, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {product.skuCode}
                             </div>
-                          )}
+                          ) : null}
                         </div>
 
                         {/* ── Price and Quick-Add Bar ── */}
@@ -1682,7 +1720,10 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (isWeightItem) {
+                                if (product.hasVariants && product.variants && product.variants.length > 0) {
+                                  setVariantPickerProduct(product);
+                                  playBeep();
+                                } else if (isWeightItem) {
                                   setWeighingProduct(product);
                                   setWeightAmount(1.0);
                                   playBeep();
@@ -2791,6 +2832,117 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
           </button>
         </div>
       </div>
+
+      {/* ── Modal: Quick Size / Variant Selector (Clothing, Shoes, Portions) ── */}
+      {variantPickerProduct && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+          }}
+          onClick={() => setVariantPickerProduct(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '420px',
+              maxWidth: '92vw',
+              backgroundColor: F.bgCard,
+              borderRadius: F.radiusLg,
+              border: `1px solid ${F.border}`,
+              boxShadow: F.shadowElevated,
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '18px', color: F.textPrimary }}>
+                  {variantPickerProduct.name}
+                </div>
+                <div style={{ fontSize: '12px', color: F.textSecondary, marginTop: '2px' }}>
+                  {variantPickerProduct.category} • Select size or option to add to order
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVariantPickerProduct(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: F.textMuted, padding: '4px' }}
+              >
+                <Dismiss20Regular />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
+              {variantPickerProduct.variants?.map((v) => {
+                const finalPrice = variantPickerProduct.price + (v.priceDelta || 0);
+                const isVarOut = v.stock !== undefined && v.stock <= 0;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    disabled={isVarOut}
+                    onClick={() => {
+                      addToCart(
+                        variantPickerProduct,
+                        1,
+                        v.label,
+                        finalPrice
+                      );
+                      setVariantPickerProduct(null);
+                    }}
+                    style={{
+                      padding: '12px 10px',
+                      borderRadius: '10px',
+                      border: `1.5px solid ${F.border}`,
+                      backgroundColor: F.bgSubtle,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: isVarOut ? 'not-allowed' : 'pointer',
+                      opacity: isVarOut ? 0.4 : 1,
+                      transition: 'all 0.12s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isVarOut) {
+                        e.currentTarget.style.borderColor = F.accentRed;
+                        e.currentTarget.style.backgroundColor = isDark ? 'rgba(229, 25, 55, 0.15)' : '#FFF5F5';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isVarOut) {
+                        e.currentTarget.style.borderColor = F.border;
+                        e.currentTarget.style.backgroundColor = F.bgSubtle;
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '15px', fontWeight: 800, color: F.textPrimary }}>
+                      {v.label}
+                    </span>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: isDark ? '#FF4D64' : F.accentRed }}>
+                      PKR {finalPrice.toLocaleString()}
+                    </span>
+                    {v.stock !== undefined && (
+                      <span style={{ fontSize: '10px', color: F.textMuted, fontWeight: 600 }}>
+                        {isVarOut ? 'Out of stock' : `${v.stock} left`}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal: Line Item Kitchen Prep Notes / Modifiers (Fast Food Only) ── */}
       {module === 'fastfood' && editingNoteItem && (

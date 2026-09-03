@@ -38,6 +38,10 @@ import {
   Dismiss16Regular,
   Image20Regular,
   Grid20Regular,
+  ArrowRight20Regular,
+  Warning20Regular,
+  Box20Regular,
+  Money20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -93,6 +97,35 @@ const useStyles = makeStyles({
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
     borderBottomColor: tokens.colorNeutralStroke1,
+  },
+  hudCard: {
+    borderRadius: '12px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    boxShadow: tokens.shadow4,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    padding: '18px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    transition: 'all 0.2s ease',
+    ':hover': {
+      boxShadow: tokens.shadow8,
+      transform: 'translateY(-2px)',
+    },
+  },
+  divisionHeroCard: {
+    borderRadius: '14px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    boxShadow: tokens.shadow8,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    padding: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    transition: 'all 0.2s ease',
+    ':hover': {
+      boxShadow: tokens.shadow16,
+    },
   },
   tableCard: {
     borderRadius: tokens.borderRadiusMedium, // 8px
@@ -367,6 +400,8 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
       imageUrl: data.imageUrl?.trim() || (isBase64 ? imagePreview : undefined),
       imageBase64: isBase64 ? imagePreview : (editingProduct?.imageBase64 || undefined),
       description: data.description?.trim() || undefined,
+      hasVariants: editingProduct ? editingProduct.hasVariants : undefined,
+      variants: editingProduct ? editingProduct.variants : undefined,
       createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -381,7 +416,6 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     };
     saveCategoryMutation.mutate(cat);
   };
-
   // Filtered products
   const filteredProducts = products.filter((p) => {
     if (activeTab === 'fastfood' && p.module !== 'fastfood') return false;
@@ -402,23 +436,50 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     return <TablePageSkeleton title="Products & Menu Catalog" hasMetrics={false} />;
   }
 
+  // Dashboard KPI metrics calculations
+  const fastFoodProducts = products.filter((p) => p.module === 'fastfood');
+  const omnimartProducts = products.filter((p) => p.module === 'minimart');
+  const totalRetailValue = products.reduce((acc, p) => acc + (p.price * (p.openingStock || 0)), 0);
+  const totalCostValue = products.reduce((acc, p) => acc + ((p.costPrice || (p.price * 0.7)) * (p.openingStock || 0)), 0);
+  const outOfStockProducts = products.filter((p) => (p.openingStock || 0) <= 0);
+  const lowStockProducts = products.filter((p) => (p.openingStock || 0) > 0 && (p.openingStock || 0) <= (p.minThreshold || 10));
+  const fastFoodAvgPrice = fastFoodProducts.length > 0
+    ? Math.round(fastFoodProducts.reduce((sum, p) => sum + p.price, 0) / fastFoodProducts.length)
+    : 0;
+
   return (
     <div className={styles.container}>
       {/* ── Page Header ────────────────────────────────────────── */}
       <div className={styles.pageHeader}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <Subtitle1
-            as="h1"
-            style={{ fontWeight: 800, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0, display: 'block' }}
-          >
-            {activeTab === 'fastfood'
-              ? 'Fast Food Menu Catalog'
-              : activeTab === 'minimart'
-              ? 'Omnimart Supermarket Catalog'
-              : activeTab === 'categories'
-              ? 'Store Categories Manager'
-              : 'Products & Menu Catalog'}
-          </Subtitle1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Subtitle1
+              as="h1"
+              style={{ fontWeight: 800, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0 }}
+            >
+              {activeTab === 'fastfood'
+                ? 'Fast Food Menu Catalog'
+                : activeTab === 'minimart'
+                ? 'Omnimart Supermarket Catalog'
+                : 'Catalog Executive Dashboard'}
+            </Subtitle1>
+            {activeTab === 'all' && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  padding: '2px 7px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(229, 25, 55, 0.15)',
+                  color: '#FF4D63',
+                  border: '1px solid rgba(229, 25, 55, 0.3)',
+                  letterSpacing: '0.06em',
+                }}
+              >
+                INTELLIGENCE HUB
+              </span>
+            )}
+          </div>
           <Caption1
             as="p"
             style={{ color: tokens.colorNeutralForeground2, margin: 0, display: 'block', fontSize: '13px', marginTop: '2px' }}
@@ -427,14 +488,23 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
               ? 'Manage fast food burgers, pizzas, snacks, and kitchen prep items'
               : activeTab === 'minimart'
               ? 'Manage retail groceries, SKU barcodes, rack locations, and loose scale items'
-              : activeTab === 'categories'
-              ? 'Configure product category classifications across fast food and supermarket'
-              : 'Manage store catalog, prices, categories, SKU codes, and inventory levels'}
+              : 'Real-time catalog performance, departmental division hubs & stock valuation'}
           </Caption1>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {/* Primary Action Button: Red Brand Accent (#E51937) */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {activeTab === 'all' && (
+            <Button
+              appearance="outline"
+              icon={<Grid20Regular />}
+              style={{ borderRadius: tokens.borderRadiusMedium, fontWeight: 600 }}
+              onClick={() => navigate('/catalog/categories')}
+            >
+              Categories Manager
+            </Button>
+          )}
+
+          {/* Primary Action Button */}
           <Button
             appearance="primary"
             icon={<Add20Regular />}
@@ -458,7 +528,462 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
         </div>
       </div>
 
-      <div className={styles.tableCard}>
+      {/* ── Condition: Dashboard vs Detailed Table View ─────────── */}
+      {activeTab === 'all' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+          {/* 1. Futuristic KPI Pulse HUD */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+            <div className={styles.hudCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Catalog Inventory
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: 900, color: tokens.colorNeutralForeground1, marginTop: '4px', lineHeight: 1.1 }}>
+                    {products.length} <span style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground3 }}>SKUs</span>
+                  </div>
+                </div>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(229, 25, 55, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E51937' }}>
+                  <Box20Regular style={{ width: 22, height: 22 }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', fontSize: '11.5px' }}>
+                <span style={{ color: '#E51937', fontWeight: 700 }}>{fastFoodProducts.length} Fast Food</span>
+                <span style={{ color: tokens.colorNeutralForeground4 }}>•</span>
+                <span style={{ color: '#0284C7', fontWeight: 700 }}>{omnimartProducts.length} Omnimart</span>
+              </div>
+            </div>
+
+            <div className={styles.hudCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Retail Valuation
+                  </div>
+                  <div style={{ fontSize: '24px', fontWeight: 900, color: '#10B981', marginTop: '4px', lineHeight: 1.1 }}>
+                    {formatPKR(totalRetailValue)}
+                  </div>
+                </div>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10B981' }}>
+                  <Money20Regular style={{ width: 22, height: 22 }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                <span>Estimated Cost: <strong style={{ color: tokens.colorNeutralForeground1 }}>{formatPKR(totalCostValue)}</strong></span>
+              </div>
+            </div>
+
+            <div className={styles.hudCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Stock Health
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: 900, color: outOfStockProducts.length > 0 ? '#EF4444' : '#10B981', marginTop: '4px', lineHeight: 1.1 }}>
+                    {outOfStockProducts.length} <span style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground3 }}>Zero Stock</span>
+                  </div>
+                </div>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444' }}>
+                  <Warning20Regular style={{ width: 22, height: 22 }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', fontSize: '11.5px' }}>
+                <span style={{ color: '#F59E0B', fontWeight: 700 }}>{lowStockProducts.length} Low Stock Warnings</span>
+              </div>
+            </div>
+
+            <div className={styles.hudCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Active Categories
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: 900, color: tokens.colorNeutralForeground1, marginTop: '4px', lineHeight: 1.1 }}>
+                    {categories.length} <span style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground3 }}>Departments</span>
+                  </div>
+                </div>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(168, 85, 247, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#A855F7' }}>
+                  <Grid20Regular style={{ width: 22, height: 22 }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', fontSize: '11.5px' }}>
+                <span
+                  onClick={() => navigate('/catalog/categories')}
+                  style={{ color: '#A855F7', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Manage Categories →
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Department Division Command Hubs */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            {/* Fast Food Hub Card */}
+            <div className={styles.divisionHeroCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #FF1E3C 0%, #990012 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 0 16px rgba(229, 25, 55, 0.4)' }}>
+                    <Food24Regular style={{ width: 26, height: 26 }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      Fast Food Division
+                    </div>
+                    <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                      Burgers, pizzas, snacks, prep times & kitchen addons
+                    </div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(229, 25, 55, 0.25)' }}>
+                  RESTAURANT
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '20px', padding: '14px', borderRadius: '8px', background: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Items</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                    {fastFoodProducts.length}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Categories</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                    {categories.filter(c => c.module === 'fastfood').length}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Avg Price</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#10B981', marginTop: '2px' }}>
+                    {formatPKR(fastFoodAvgPrice)}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <Button
+                  appearance="primary"
+                  style={{ backgroundColor: '#E51937', borderRadius: '8px', fontWeight: 700, flex: 1 }}
+                  onClick={() => navigate('/catalog/fastfood')}
+                >
+                  Open Fast Food Catalog →
+                </Button>
+                <Button
+                  appearance="outline"
+                  style={{ borderRadius: '8px', fontWeight: 600 }}
+                  onClick={() => navigate('/catalog/new?module=fastfood')}
+                >
+                  + Add Food Item
+                </Button>
+              </div>
+            </div>
+
+            {/* Omnimart Supermarket Hub Card */}
+            <div className={styles.divisionHeroCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 0 16px rgba(14, 165, 233, 0.4)' }}>
+                    <BuildingRetail24Regular style={{ width: 26, height: 26 }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      Omnimart Supermarket
+                    </div>
+                    <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                      Retail goods, SKU barcodes, racks & scale units
+                    </div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#0284C7', backgroundColor: 'rgba(14, 165, 233, 0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(14, 165, 233, 0.25)' }}>
+                  RETAIL &amp; MART
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '20px', padding: '14px', borderRadius: '8px', background: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Products</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                    {omnimartProducts.length}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Categories</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '2px' }}>
+                    {categories.filter(c => c.module === 'minimart').length}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, fontWeight: 700, textTransform: 'uppercase' }}>Total Stock</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#0284C7', marginTop: '2px' }}>
+                    {omnimartProducts.reduce((sum, p) => sum + (p.openingStock || 0), 0)} units
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <Button
+                  appearance="primary"
+                  style={{ backgroundColor: '#0284C7', borderRadius: '8px', fontWeight: 700, flex: 1 }}
+                  onClick={() => navigate('/catalog/omnimart')}
+                >
+                  Open Omnimart Catalog →
+                </Button>
+                <Button
+                  appearance="outline"
+                  style={{ borderRadius: '8px', fontWeight: 600 }}
+                  onClick={() => navigate('/catalog/new?module=minimart')}
+                >
+                  + Add Retail Item
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Critical Stock Attention Radar */}
+          {(outOfStockProducts.length > 0 || lowStockProducts.length > 0) && (
+            <div
+              style={{
+                borderRadius: '12px',
+                padding: '18px 20px',
+                background: 'rgba(239, 68, 68, 0.04)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Warning20Regular style={{ color: '#EF4444', width: 20, height: 20 }} />
+                  <span style={{ fontWeight: 800, fontSize: '14px', color: tokens.colorNeutralForeground1 }}>
+                    Critical Stock Attention Radar
+                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', padding: '2px 7px', borderRadius: '999px' }}>
+                    {outOfStockProducts.length + lowStockProducts.length} Items Require Action
+                  </span>
+                </div>
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  style={{ fontSize: '12px', fontWeight: 600, color: '#E51937' }}
+                  onClick={() => navigate('/inventory')}
+                >
+                  Go to Inventory Manager →
+                </Button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
+                {[...outOfStockProducts, ...lowStockProducts].slice(0, 4).map((p) => (
+                  <div
+                    key={p.id}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: tokens.colorNeutralBackground1,
+                      border: `1px solid ${tokens.colorNeutralStroke1}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      boxShadow: tokens.shadow2,
+                    }}
+                  >
+                    <div style={{ overflow: 'hidden', marginRight: '10px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: tokens.colorNeutralForeground1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {p.name}
+                      </div>
+                      <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                        {p.module === 'fastfood' ? 'Fast Food' : 'Omnimart'} • {p.category}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      <Badge
+                        appearance="filled"
+                        color={(p.openingStock || 0) <= 0 ? 'danger' : 'warning'}
+                        style={{ fontWeight: 800, fontSize: '11px' }}
+                      >
+                        {p.openingStock ?? 0} {p.unit || 'PCS'}
+                      </Badge>
+                      <Button
+                        size="small"
+                        appearance="subtle"
+                        icon={<Edit20Regular />}
+                        onClick={() => handleOpenEditProduct(p)}
+                        title="Restock / Edit"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 4. Live Visual Catalog Cards Showcase (6:4 Proportions) */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontWeight: 800, fontSize: '16px', color: tokens.colorNeutralForeground1 }}>
+                  Live Store Catalog Visuals
+                </span>
+                <span style={{ fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                  Showing {filteredProducts.length} Items (6:4 Live POS Cards)
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <Input
+                  appearance="outline"
+                  placeholder="Instant SKU / Product Search..."
+                  contentBefore={<Search20Regular />}
+                  value={searchTerm}
+                  onChange={(_, d) => setSearchTerm(d.value)}
+                  style={{ width: '280px' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '14px' }}>
+              {filteredProducts.slice(0, 12).map((p) => {
+                const img = p.imageBase64 || p.imageUrl;
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      height: '210px',
+                      borderRadius: '10px',
+                      border: `1px solid ${tokens.colorNeutralStroke1}`,
+                      backgroundColor: tokens.colorNeutralBackground1,
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      boxShadow: tokens.shadow4,
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                      position: 'relative',
+                    }}
+                  >
+                    {/* 6 Parts Image (126px) */}
+                    <div
+                      style={{
+                        height: '126px',
+                        width: '100%',
+                        position: 'relative',
+                        backgroundColor: tokens.colorNeutralBackground3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {img ? (
+                        <img
+                          src={img}
+                          alt={p.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', color: tokens.colorNeutralForeground4 }}>
+                          {p.module === 'fastfood' ? <Food24Regular style={{ width: 28, height: 28 }} /> : <BuildingRetail24Regular style={{ width: 28, height: 28 }} />}
+                          <span style={{ fontSize: '10px' }}>No photo</span>
+                        </div>
+                      )}
+
+                      {/* Stock Badge Overlay */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '6px',
+                          right: '6px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          backgroundColor: (p.openingStock || 0) <= 0 ? 'rgba(239, 68, 68, 0.9)' : 'rgba(0,0,0,0.65)',
+                          color: '#ffffff',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {p.openingStock ?? 0} {p.unit || 'PCS'}
+                      </div>
+
+                      {/* Quick Edit Overlay Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditProduct(p)}
+                        style={{
+                          position: 'absolute',
+                          bottom: '6px',
+                          right: '6px',
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '6px',
+                          backgroundColor: 'rgba(0,0,0,0.7)',
+                          color: '#ffffff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title="Edit Product"
+                      >
+                        <Edit20Regular style={{ width: 14, height: 14 }} />
+                      </button>
+                    </div>
+
+                    {/* 4 Parts Details (84px) */}
+                    <div style={{ height: '84px', padding: '8px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {p.name}
+                        </div>
+                        {p.hasVariants && p.variants && p.variants.length > 0 ? (
+                          <div style={{ display: 'flex', gap: '3px', marginTop: '2px', overflow: 'hidden' }}>
+                            {p.variants.slice(0, 3).map((v) => (
+                              <span
+                                key={v.id}
+                                style={{
+                                  fontSize: '9px',
+                                  fontWeight: 800,
+                                  padding: '0 4px',
+                                  borderRadius: '3px',
+                                  backgroundColor: 'rgba(229, 25, 55, 0.12)',
+                                  color: '#E51937',
+                                  border: '1px solid rgba(229, 25, 55, 0.25)',
+                                }}
+                              >
+                                {v.label}
+                              </span>
+                            ))}
+                            {p.variants.length > 3 && (
+                              <span style={{ fontSize: '9px', color: tokens.colorNeutralForeground3 }}>
+                                +{p.variants.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, marginTop: '1px' }}>
+                            {p.category} • {p.module === 'fastfood' ? 'Fast Food' : 'Omnimart'}
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontSize: '14px', fontWeight: 900, color: '#E51937' }}>
+                          {formatPKR(p.price)}
+                        </div>
+                        <div style={{ fontSize: '10px', fontFamily: 'monospace', color: tokens.colorNeutralForeground3 }}>
+                          {p.skuCode ? p.skuCode.slice(0, 10) : '—'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Detailed Module Data Table View (for Fast Food, Omnimart, or user toggled) */
+        <div className={styles.tableCard}>
           {/* Filter & Search Bar */}
           <div className={styles.filterBar}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -643,6 +1168,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
             </Table>
           </div>
         </div>
+      )}
 
       {/* ── Add / Edit Product Dialog: Executive 2-Column Studio Layout ── */}
       <Dialog open={isProductDialogOpen} onOpenChange={(_, d) => setIsProductDialogOpen(d.open)}>
@@ -1258,90 +1784,162 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
       {/* ── Add Category Dialog with Labels & Zod + React Hook Form ── */}
       <Dialog open={isCategoryDialogOpen} onOpenChange={(_, d) => setIsCategoryDialogOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '420px', width: '100%', overflowX: 'hidden' }}>
-          <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)}>
-            <DialogBody style={{ overflowX: 'hidden' }}>
-              <DialogTitle>Create New Category</DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px', overflowX: 'hidden', overflowY: 'auto' }}>
-                
-                {/* Category Name */}
-                <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Category Name</Label>
-                  <Controller
-                    control={categoryForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <Input
-                        appearance="outline"
-                        style={{ width: '100%' }}
-                        placeholder="e.g. Desserts, Beverages, Lubricants"
-                        value={field.value}
-                        onChange={(_, d) => field.onChange(d.value)}
-                      />
-                    )}
-                  />
-                  {categoryForm.formState.errors.name && (
-                    <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                      {categoryForm.formState.errors.name.message}
-                    </span>
-                  )}
+        <DialogSurface
+          style={{
+            maxWidth: '460px',
+            width: '92vw',
+            borderRadius: '16px',
+            padding: '24px',
+            boxSizing: 'border-box',
+            backgroundColor: tokens.colorNeutralBackground1,
+            border: `1px solid ${tokens.colorNeutralStroke1}`,
+            boxShadow: '0 24px 64px rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <form
+            onSubmit={categoryForm.handleSubmit(onCategorySubmit)}
+            style={{ display: 'flex', flexDirection: 'column', gap: '18px', width: '100%' }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingBottom: '14px',
+                borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+                width: '100%',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#E51937',
+                  }}
+                >
+                  <Tag20Regular style={{ width: 20, height: 20 }} />
                 </div>
+                <div>
+                  <div style={{ fontSize: '17px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                    Create New Category
+                  </div>
+                  <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                    Add quick classification to catalog
+                  </div>
+                </div>
+              </div>
 
-                {/* Module */}
-                <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Assign to Module</Label>
-                  <Controller
-                    control={categoryForm.control}
-                    name="module"
-                    render={({ field }) => (
-                      <Select
-                        appearance="outline"
-                        style={{ width: '100%' }}
-                        value={field.value}
-                        onChange={(_, d) => field.onChange(d.value as ModuleKey)}
-                      >
-                        <option value="fastfood">Fast Food Menu</option>
-                        <option value="minimart">Omnimart Goods</option>
-                      </Select>
-                    )}
-                  />
-                </div>
-              </DialogContent>
-              <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <Button
-                  appearance="subtle"
-                  type="button"
-                  onClick={() => setIsCategoryDialogOpen(false)}
-                  style={{
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    padding: '8px 18px',
-                    border: `1px solid ${tokens.colorNeutralStroke1}`,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  appearance="primary"
-                  type="submit"
-                  disabled={saveCategoryMutation.isPending}
-                  style={{
-                    backgroundColor: '#E51937',
-                    color: '#FFFFFF',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    padding: '9px 22px',
-                    minWidth: '130px',
-                    whiteSpace: 'nowrap',
-                    border: 'none',
-                    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-                  }}
-                >
-                  {saveCategoryMutation.isPending ? 'Adding...' : 'Add Category'}
-                </Button>
-              </DialogActions>
-            </DialogBody>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<Dismiss16Regular />}
+                onClick={() => setIsCategoryDialogOpen(false)}
+                type="button"
+              />
+            </div>
+
+            {/* Form Fields */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
+              <div>
+                <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '13px' }}>
+                  Category Name
+                </Label>
+                <Controller
+                  control={categoryForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <Input
+                      appearance="outline"
+                      style={{ width: '100%' }}
+                      placeholder="e.g. Desserts, Beverages, Lubricants"
+                      value={field.value}
+                      onChange={(_, d) => field.onChange(d.value)}
+                    />
+                  )}
+                />
+                {categoryForm.formState.errors.name && (
+                  <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
+                    {categoryForm.formState.errors.name.message}
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '13px' }}>
+                  Assign to Module
+                </Label>
+                <Controller
+                  control={categoryForm.control}
+                  name="module"
+                  render={({ field }) => (
+                    <Select
+                      appearance="outline"
+                      style={{ width: '100%' }}
+                      value={field.value}
+                      onChange={(_, d) => field.onChange(d.value as ModuleKey)}
+                    >
+                      <option value="fastfood">Fast Food Menu</option>
+                      <option value="minimart">Omnimart Goods</option>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '10px',
+                justifyContent: 'flex-end',
+                marginTop: '6px',
+                paddingTop: '14px',
+                borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+                width: '100%',
+              }}
+            >
+              <Button
+                appearance="subtle"
+                type="button"
+                onClick={() => setIsCategoryDialogOpen(false)}
+                style={{
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  padding: '8px 18px',
+                  border: `1px solid ${tokens.colorNeutralStroke1}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                appearance="primary"
+                type="submit"
+                disabled={saveCategoryMutation.isPending}
+                style={{
+                  backgroundColor: '#E51937',
+                  color: '#FFFFFF',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  padding: '9px 22px',
+                  minWidth: '130px',
+                  whiteSpace: 'nowrap',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+                }}
+              >
+                {saveCategoryMutation.isPending ? 'Adding...' : 'Add Category'}
+              </Button>
+            </div>
           </form>
         </DialogSurface>
       </Dialog>
