@@ -274,52 +274,6 @@ export function StockLedgerView(): React.JSX.Element {
             color: #4b5563;
             margin-top: 3px;
           }
-          .meta-strip {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 10px 14px;
-            margin-bottom: 16px;
-          }
-          .meta-item .lbl {
-            font-size: 9.5px;
-            color: #64748b;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-          }
-          .meta-item .val {
-            font-size: 11.5px;
-            color: #0f172a;
-            font-weight: 700;
-            margin-top: 2px;
-          }
-          .summary-kpis {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-bottom: 16px;
-          }
-          .kpi-box {
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            padding: 8px 12px;
-            background: #ffffff;
-          }
-          .kpi-box .lbl {
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: #6b7280;
-          }
-          .kpi-box .val {
-            font-size: 15px;
-            font-weight: 800;
-            margin-top: 2px;
-          }
           table {
             width: 100%;
             border-collapse: collapse;
@@ -390,48 +344,6 @@ export function StockLedgerView(): React.JSX.Element {
             <h2>STOCK MOVEMENT LEDGER</h2>
             <p><strong>Ref:</strong> ${docNo}</p>
             <p><strong>Date:</strong> ${generatedTime}</p>
-          </div>
-        </div>
-
-        <!-- Meta Parameters Strip -->
-        <div class="meta-strip">
-          <div class="meta-item">
-            <div class="lbl">Filter Scope</div>
-            <div class="val">${typeLabel}</div>
-          </div>
-          <div class="meta-item">
-            <div class="lbl">Date Range</div>
-            <div class="val">${periodLabel}</div>
-          </div>
-          <div class="meta-item">
-            <div class="lbl">Audited By</div>
-            <div class="val">Store Manager (Admin)</div>
-          </div>
-          <div class="meta-item">
-            <div class="lbl">Search Filter</div>
-            <div class="val">${searchQuery ? `"${searchQuery}"` : 'None (Full Data)'}</div>
-          </div>
-        </div>
-
-        <!-- Summary KPIs -->
-        <div class="summary-kpis">
-          <div class="kpi-box">
-            <div class="lbl">Total Records</div>
-            <div class="val" style="color: #0f172a;">${filteredMovements.length} logs</div>
-          </div>
-          <div class="kpi-box">
-            <div class="lbl">Total Inflow</div>
-            <div class="val" style="color: #15803d;">+${currentInUnits.toLocaleString()} units</div>
-          </div>
-          <div class="kpi-box">
-            <div class="lbl">Total Outflow</div>
-            <div class="val" style="color: #b91c1c;">-${currentOutUnits.toLocaleString()} units</div>
-          </div>
-          <div class="kpi-box">
-            <div class="lbl">Net Balance Variance</div>
-            <div class="val" style="color: ${currentNetUnits >= 0 ? '#15803d' : '#b91c1c'};">
-              ${currentNetUnits >= 0 ? `+${currentNetUnits.toLocaleString()}` : currentNetUnits.toLocaleString()} units
-            </div>
           </div>
         </div>
 
