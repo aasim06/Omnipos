@@ -29,6 +29,7 @@ export interface Product {
 export interface ProductVariant {
   id: string;
   label: string; // "Small", "S", "M", "42", "Full", etc.
+  price?: number; // direct retail price for this variant
   priceDelta: number; // added to base retail price
   costDelta?: number; // added to base cost price
   stock?: number; // individual stock for this variant

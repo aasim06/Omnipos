@@ -2883,7 +2883,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
               {variantPickerProduct.variants?.map((v) => {
-                const finalPrice = variantPickerProduct.price + (v.priceDelta || 0);
+                const finalPrice = v.price !== undefined && v.price > 0 ? v.price : (variantPickerProduct.price + (v.priceDelta || 0));
                 const isVarOut = v.stock !== undefined && v.stock <= 0;
                 return (
                   <button

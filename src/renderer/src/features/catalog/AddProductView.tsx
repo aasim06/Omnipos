@@ -291,6 +291,19 @@ const useStyles = makeStyles({
     fontWeight: 700,
     color: tokens.colorNeutralForeground2,
   },
+  variantColumnHeaderRow: {
+    display: 'grid',
+    gridTemplateColumns: '85px 95px 120px 1fr 32px',
+    gap: '8px',
+    alignItems: 'center',
+    padding: '4px 8px',
+    fontSize: '11px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.4px',
+    marginBottom: '2px',
+  },
   variantRowsList: {
     display: 'flex',
     flexDirection: 'column',
@@ -298,7 +311,7 @@ const useStyles = makeStyles({
   },
   variantRowItem: {
     display: 'grid',
-    gridTemplateColumns: '70px 90px 110px 1fr 32px',
+    gridTemplateColumns: '85px 95px 120px 1fr 32px',
     gap: '8px',
     alignItems: 'center',
     padding: '6px 8px',
@@ -644,6 +657,7 @@ export function AddProductView(): React.JSX.Element {
         const newVar: ProductVariant = {
           id: uid('var_'),
           label: sizeLabel,
+          price: watchedPrice || undefined,
           priceDelta: 0,
           costDelta: 0,
           stock: 10,
@@ -1207,62 +1221,82 @@ export function AddProductView(): React.JSX.Element {
                     </Caption1>
                   </div>
 
+                  {/* Table Column Headers */}
+                  <div className={styles.variantColumnHeaderRow}>
+                    <span>Portion / Size</span>
+                    <span>Stock Qty</span>
+                    <span>Price (PKR)</span>
+                    <span>SKU / Barcode</span>
+                    <span></span>
+                  </div>
+
                   <div className={styles.variantRowsList}>
-                    {variants.map((v) => (
-                      <div key={v.id} className={styles.variantRowItem}>
-                        <div className={styles.variantRowLabel} style={{ color: profileConfig.accentColor }}>
-                          {v.label}
-                        </div>
+                    {variants.map((v) => {
+                      const displayPrice =
+                        v.price !== undefined
+                          ? v.price
+                          : v.priceDelta !== undefined && v.priceDelta !== 0
+                          ? (watchedPrice || 0) + v.priceDelta
+                          : (watchedPrice || undefined);
 
-                        <div>
-                          <Input
+                      return (
+                        <div key={v.id} className={styles.variantRowItem}>
+                          <div className={styles.variantRowLabel} style={{ color: profileConfig.accentColor }}>
+                            {v.label}
+                          </div>
+
+                          <div>
+                            <Input
+                              size="small"
+                              type="number"
+                              appearance="outline"
+                              placeholder="Stock"
+                              value={v.stock !== undefined ? String(v.stock) : ''}
+                              onChange={(_, d) =>
+                                handleUpdateVariant(v.id, { stock: d.value === '' ? 0 : Number(d.value) })
+                              }
+                              className={styles.fullWidth}
+                            />
+                          </div>
+
+                          <div>
+                            <Input
+                              size="small"
+                              type="number"
+                              appearance="outline"
+                              placeholder={watchedPrice ? `Rs. ${watchedPrice}` : 'Price (PKR)'}
+                              value={displayPrice !== undefined ? String(displayPrice) : ''}
+                              onChange={(_, d) => {
+                                const val = d.value === '' ? undefined : Number(d.value);
+                                const pDelta = val !== undefined ? val - (watchedPrice || 0) : 0;
+                                handleUpdateVariant(v.id, { price: val, priceDelta: pDelta });
+                              }}
+                              className={styles.fullWidth}
+                            />
+                          </div>
+
+                          <div>
+                            <Input
+                              size="small"
+                              appearance="outline"
+                              placeholder="SKU / Barcode"
+                              value={v.skuCode || ''}
+                              onChange={(_, d) => handleUpdateVariant(v.id, { skuCode: d.value })}
+                              className={styles.fullWidth}
+                            />
+                          </div>
+
+                          <Button
                             size="small"
-                            type="number"
-                            appearance="outline"
-                            placeholder="Stock"
-                            value={v.stock !== undefined ? String(v.stock) : ''}
-                            onChange={(_, d) =>
-                              handleUpdateVariant(v.id, { stock: d.value === '' ? 0 : Number(d.value) })
-                            }
-                            className={styles.fullWidth}
+                            appearance="subtle"
+                            className={styles.variantDeleteBtn}
+                            icon={<Delete20Regular />}
+                            onClick={() => handleRemoveVariant(v.id)}
+                            title={`Remove ${v.label}`}
                           />
                         </div>
-
-                        <div>
-                          <Input
-                            size="small"
-                            type="number"
-                            appearance="outline"
-                            placeholder="+/- Price"
-                            value={v.priceDelta !== undefined ? String(v.priceDelta) : ''}
-                            onChange={(_, d) =>
-                              handleUpdateVariant(v.id, { priceDelta: d.value === '' ? 0 : Number(d.value) })
-                            }
-                            className={styles.fullWidth}
-                          />
-                        </div>
-
-                        <div>
-                          <Input
-                            size="small"
-                            appearance="outline"
-                            placeholder="SKU / Barcode"
-                            value={v.skuCode || ''}
-                            onChange={(_, d) => handleUpdateVariant(v.id, { skuCode: d.value })}
-                            className={styles.fullWidth}
-                          />
-                        </div>
-
-                        <Button
-                          size="small"
-                          appearance="subtle"
-                          className={styles.variantDeleteBtn}
-                          icon={<Delete20Regular />}
-                          onClick={() => handleRemoveVariant(v.id)}
-                          title="Remove Variant"
-                        />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
