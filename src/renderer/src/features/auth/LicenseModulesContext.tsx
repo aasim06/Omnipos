@@ -7,6 +7,7 @@ import React, {
   useState,
   type PropsWithChildren,
 } from 'react';
+import { getWebLicenseApiBase } from '@/lib/webLicense';
 
 export interface LicenseModules {
   fastfood: boolean;
@@ -109,6 +110,22 @@ export function LicenseModulesProvider({ children }: PropsWithChildren): React.J
       let data: Record<string, boolean> | null = null;
       if (window.posApi?.license?.modules) {
         data = await window.posApi.license.modules();
+      } else {
+        const savedKey = localStorage.getItem('omnipos_active_key');
+        if (savedKey) {
+          const apiBase = getWebLicenseApiBase();
+          const res = await fetch(`${apiBase}/license/modules`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: savedKey }),
+          });
+          if (res.ok) {
+            const j = await res.json();
+            if (j.ok && j.modules) {
+              data = j.modules;
+            }
+          }
+        }
       }
 
       if (data) {

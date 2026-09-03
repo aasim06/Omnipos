@@ -29,6 +29,18 @@ export async function getTenantHeaders(): Promise<Record<string, string>> {
     }
   }
 
+  // Web Browser fallback (e.g. running on localhost:5174)
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const key = localStorage.getItem('omnipos_active_key');
+    const schemaId = localStorage.getItem('omnipos_active_schema');
+    if (key || schemaId) {
+      return {
+        ...(key ? { 'x-license-key': key } : {}),
+        ...(schemaId ? { 'x-schema-id': schemaId } : {}),
+      };
+    }
+  }
+
   return {};
 }
 
