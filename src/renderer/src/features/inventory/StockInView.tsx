@@ -547,8 +547,411 @@ export function StockInView(): React.JSX.Element {
     setIsPrintModalOpen(true);
   };
 
+  // Current Vendor & Invoice calculations for printing
+  const currentPrintVendor = printingMovement
+    ? vendors.find(
+        (v) =>
+          v.name.toLowerCase() === (printingMovement.reason || '').toLowerCase() ||
+          v.companyName?.toLowerCase() === (printingMovement.reason || '').toLowerCase()
+      )
+    : undefined;
+
+  const printUnitCost = printingMovement?.unitCost || 0;
+  const printQty = printingMovement?.quantity || 0;
+  const printGrossTotal = printUnitCost * printQty;
+  const printDiscountPercent = printingMovement?.note?.includes('%')
+    ? parseFloat(printingMovement.note.match(/(\d+(\.\d+)?)%/)?.[1] || '0')
+    : 0;
+  const printDiscountAmount = (printGrossTotal * printDiscountPercent) / 100;
+  const printNetTotal = printGrossTotal - printDiscountAmount;
+  const printVendorBalance = currentPrintVendor?.openingBalance || printNetTotal;
+  const printPrevBalance = Math.max(0, printVendorBalance - printNetTotal);
+  const printDocNo = printingMovement
+    ? `PINV-${new Date(printingMovement.date).toISOString().slice(0, 10).replace(/-/g, '')}-${printingMovement.id.slice(-6).toUpperCase()}`
+    : '';
+  const printDate = printingMovement
+    ? new Date(printingMovement.date).toLocaleDateString('en-PK', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+    : '';
+  const printTime = printingMovement
+    ? new Date(printingMovement.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '';
+
   const handlePrint = () => {
-    window.print();
+    if (!printingMovement) return;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Purchase Receiving Invoice - ${printDocNo}</title>
+        <style>
+          @page { size: A4 portrait; margin: 12mm 14mm; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #111827;
+            background: #ffffff;
+            padding: 24px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .inv-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2.5px solid #E51937;
+            padding-bottom: 14px;
+            margin-bottom: 16px;
+          }
+          .brand-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .logo-badge {
+            width: 40px;
+            height: 40px;
+            background: #E51937;
+            color: #ffffff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+          }
+          .brand-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+          }
+          .brand-sub {
+            font-size: 10.5px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+            margin-top: 2px;
+          }
+          .inv-meta {
+            text-align: right;
+          }
+          .inv-meta h2 {
+            font-size: 17px;
+            font-weight: 800;
+            color: #E51937;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .inv-meta p {
+            font-size: 11px;
+            color: #475569;
+            margin-top: 3px;
+          }
+          .parties-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 18px;
+          }
+          .party-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            background: #f8fafc;
+          }
+          .party-card .party-role {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #E51937;
+            margin-bottom: 6px;
+          }
+          .party-card .party-name {
+            font-size: 14.5px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 4px;
+          }
+          .party-card .party-detail {
+            font-size: 11px;
+            color: #475569;
+            line-height: 1.4;
+          }
+          .vendor-bal-badge {
+            margin-top: 8px;
+            display: inline-block;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 5px;
+            padding: 4px 10px;
+            font-size: 11px;
+            color: #991b1b;
+            font-weight: 700;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+          }
+          th {
+            background: #f1f5f9;
+            border-top: 1px solid #cbd5e1;
+            border-bottom: 2px solid #94a3b8;
+            padding: 8px 12px;
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #334155;
+            letter-spacing: 0.4px;
+          }
+          td {
+            padding: 9px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 11.5px;
+            color: #1e293b;
+          }
+          .calc-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+          }
+          .calc-box {
+            width: 320px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+            padding: 12px 16px;
+          }
+          .calc-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11.5px;
+            color: #475569;
+            margin-bottom: 6px;
+          }
+          .calc-line.total {
+            border-top: 1.5px solid #0f172a;
+            border-bottom: 1.5px solid #0f172a;
+            padding: 6px 0;
+            margin: 6px 0;
+            font-size: 13px;
+            font-weight: 800;
+            color: #0f172a;
+          }
+          .calc-line.vendor-net {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            padding: 6px 8px;
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #991b1b;
+          }
+          .footer-sign {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 30px;
+            padding-top: 14px;
+            border-top: 1px dashed #cbd5e1;
+            page-break-inside: avoid;
+          }
+          .sign-block {
+            text-align: center;
+            width: 170px;
+          }
+          .sign-line {
+            border-top: 1px solid #475569;
+            margin-bottom: 4px;
+          }
+          .sign-title {
+            font-size: 10px;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+          }
+          .disclaimer {
+            font-size: 9px;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 20px;
+          }
+        </style>
+      </head>
+      <body>
+        <!-- Header -->
+        <div class="inv-header">
+          <div class="brand-wrap">
+            <div class="logo-badge">OP</div>
+            <div>
+              <div class="brand-title">OmniPos</div>
+              <div class="brand-sub">Enterprise POS &amp; Inventory Receiving</div>
+            </div>
+          </div>
+          <div class="inv-meta">
+            <h2>PURCHASE RECEIVING INVOICE</h2>
+            <p><strong>Invoice No:</strong> ${printDocNo}</p>
+            <p><strong>Date &amp; Time:</strong> ${printDate} ${printTime}</p>
+          </div>
+        </div>
+
+        <!-- Parties Grid -->
+        <div class="parties-grid">
+          <!-- Vendor / Supplier Details -->
+          <div class="party-card">
+            <div class="party-role">Supplier / Vendor Details</div>
+            <div class="party-name">${currentPrintVendor?.name || printingMovement.reason || 'Vendor / Supplier'}</div>
+            <div class="party-detail"><strong>Contact Rep:</strong> ${currentPrintVendor?.contactPerson || 'Authorized Agent'}</div>
+            <div class="party-detail"><strong>Phone / Mobile:</strong> ${currentPrintVendor?.phone || 'N/A'}</div>
+            <div class="party-detail"><strong>Address:</strong> ${currentPrintVendor?.address || 'Local Wholesale Supply'}</div>
+            <div class="vendor-bal-badge">
+              Vendor Payable Balance: Rs. ${printVendorBalance.toLocaleString()} PKR
+            </div>
+          </div>
+
+          <!-- Receiving Store / Warehouse Details -->
+          <div class="party-card">
+            <div class="party-role">Delivered To / Receiving Facility</div>
+            <div class="party-name">OmniPos Central Branch &amp; Store</div>
+            <div class="party-detail"><strong>Facility:</strong> Main Inward Logistics Bay #1</div>
+            <div class="party-detail"><strong>Received By:</strong> Store Manager (Admin)</div>
+            <div class="party-detail"><strong>Account Type:</strong> Commercial Inventory (Trade Credit)</div>
+            <div style="margin-top: 8px; font-size: 10.5px; color: #15803d; font-weight: 700;">
+              ✓ Goods Verified &amp; Added to System Stock
+            </div>
+          </div>
+        </div>
+
+        <!-- Itemized Table -->
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 35px; text-align: center;">#</th>
+              <th style="text-align: left;">Item Description / Food Product</th>
+              <th style="width: 100px; text-align: right;">Unit Rate (PKR)</th>
+              <th style="width: 80px; text-align: center;">Quantity</th>
+              <th style="width: 80px; text-align: right;">Discount</th>
+              <th style="width: 110px; text-align: right;">Line Total (PKR)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="text-align: center; color: #64748b;">1</td>
+              <td>
+                <div style="font-weight: 700; color: #0f172a;">${printingMovement.productName}</div>
+                ${printingMovement.note ? `<div style="font-size: 10px; color: #64748b; margin-top: 2px;">Note: ${printingMovement.note}</div>` : ''}
+              </td>
+              <td style="text-align: right; font-weight: 600;">${formatPKR(printUnitCost)}</td>
+              <td style="text-align: center; font-weight: 800; color: #15803d;">+${printQty} units</td>
+              <td style="text-align: right; color: #64748b;">${printDiscountPercent > 0 ? `${printDiscountPercent}%` : '—'}</td>
+              <td style="text-align: right; font-weight: 800; color: #0f172a;">${formatPKR(printNetTotal)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Calculation & Vendor Balance Reconciliation Box -->
+        <div class="calc-row">
+          <div class="calc-box">
+            <div class="calc-line">
+              <span>Gross Total:</span>
+              <span style="font-weight: 600;">${formatPKR(printGrossTotal)}</span>
+            </div>
+            ${printDiscountAmount > 0 ? `
+              <div class="calc-line">
+                <span>Discount (${printDiscountPercent}%):</span>
+                <span style="color: #15803d;">- ${formatPKR(printDiscountAmount)}</span>
+              </div>
+            ` : ''}
+            <div class="calc-line total">
+              <span>This Invoice Total:</span>
+              <span style="color: #E51937;">${formatPKR(printNetTotal)}</span>
+            </div>
+            <div class="calc-line" style="margin-top: 6px;">
+              <span>Previous Vendor Balance:</span>
+              <span>${formatPKR(printPrevBalance)}</span>
+            </div>
+            <div class="calc-line">
+              <span>This Bill Added:</span>
+              <span style="color: #15803d;">+ ${formatPKR(printNetTotal)}</span>
+            </div>
+            <div class="calc-line vendor-net">
+              <span>Total Balance Due:</span>
+              <span>${formatPKR(printVendorBalance)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formal Signatures -->
+        <div class="footer-sign">
+          <div class="sign-block">
+            <div class="sign-line"></div>
+            <div class="sign-title">Vendor / Delivery Person</div>
+          </div>
+          <div class="sign-block">
+            <div class="sign-line"></div>
+            <div class="sign-title">Received By (Store Incharge)</div>
+          </div>
+          <div class="sign-block">
+            <div class="sign-line"></div>
+            <div class="sign-title">Authorized Store Seal</div>
+          </div>
+        </div>
+
+        <div class="disclaimer">
+          OmniPos Enterprise Cloud &amp; Local Node Sync · Computer-generated Purchase Receiving Invoice · Valid for Accounts Settlement
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.focus();
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    // Dedicated invisible iframe
+    let printFrame = document.getElementById('stock-in-print-frame') as HTMLIFrameElement;
+    if (!printFrame) {
+      printFrame = document.createElement('iframe');
+      printFrame.id = 'stock-in-print-frame';
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.style.border = 'none';
+      printFrame.style.zIndex = '-9999';
+      document.body.appendChild(printFrame);
+    }
+
+    const frameDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
+    if (frameDoc) {
+      frameDoc.open();
+      frameDoc.write(htmlContent);
+      frameDoc.close();
+    } else {
+      const printWindow = window.open('', '_blank', 'width=950,height=800');
+      if (printWindow) {
+        printWindow.document.open();
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+      }
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -1114,12 +1517,12 @@ export function StockInView(): React.JSX.Element {
         </div>
       )}
 
-      {/* ── PRINT RECEIVING SLIP MODAL ── */}
+      {/* ── PRINT RECEIVING INVOICE MODAL ── */}
       <Dialog open={isPrintModalOpen} onOpenChange={(_, d) => setIsPrintModalOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: '12px', width: '480px', maxWidth: '94vw', padding: '22px', boxSizing: 'border-box' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <Subtitle2 style={{ fontWeight: 800, color: tokens.colorNeutralForeground1, margin: 0, fontSize: '17px' }}>
-              Stock In Receiving Voucher
+        <DialogSurface style={{ borderRadius: '14px', width: '680px', maxWidth: '96vw', padding: '24px', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <Subtitle2 style={{ fontWeight: 800, color: tokens.colorNeutralForeground1, margin: 0, fontSize: '18px' }}>
+              Purchase Receiving Invoice
             </Subtitle2>
             <Button
               appearance="subtle"
@@ -1132,79 +1535,190 @@ export function StockInView(): React.JSX.Element {
           <div>
             {printingMovement && (
               <div
-                id="printableVoucher"
                 style={{
                   backgroundColor: '#FFFFFF',
-                  color: '#000000',
-                  padding: '18px 20px',
-                  borderRadius: '8px',
-                  border: '1px dashed #777',
+                  color: '#111827',
+                  padding: '20px 22px',
+                  borderRadius: '10px',
+                  border: '1px solid #E2E8F0',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px',
-                  fontFamily: 'monospace',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                  gap: '14px',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.06)',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                 }}
               >
-                <div style={{ textAlign: 'center', borderBottom: '1px dashed #999', paddingBottom: '8px' }}>
-                  <div style={{ fontWeight: 800, fontSize: '15px' }}>OMNIPOS WAREHOUSE</div>
-                  <div style={{ fontSize: '11px', color: '#555' }}>Stock In Receiving Voucher</div>
-                  <div style={{ fontSize: '10px', color: '#777', marginTop: '2px' }}>
-                    Ref: #{printingMovement.id.slice(-8).toUpperCase()}
+                {/* Invoice Top Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #E51937', paddingBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '6px',
+                        backgroundColor: '#E51937',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 900,
+                        fontSize: '15px',
+                      }}
+                    >
+                      OP
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '16px', color: '#111827', lineHeight: 1.1 }}>OmniPos</div>
+                      <div style={{ fontSize: '9.5px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Enterprise POS &amp; Inventory
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: '#E51937', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      RECEIVING INVOICE
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: '#475569', marginTop: '2px' }}>
+                      <strong>Inv #:</strong> {printDocNo}
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: '#475569' }}>
+                      <strong>Date:</strong> {printDate} {printTime}
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#555' }}>Date:</span>
-                    <span>{new Date(printingMovement.date).toLocaleDateString()}</span>
+                {/* Parties Information (Vendor & Store) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {/* Vendor / Supplier Box */}
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 14px', backgroundColor: '#F8FAFC' }}>
+                    <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#E51937', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                      Supplier / Vendor Details
+                    </div>
+                    <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A', marginBottom: '3px' }}>
+                      {currentPrintVendor?.name || printingMovement.reason || 'Vendor / Supplier'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#475569', lineHeight: 1.35 }}>
+                      <div><strong>Rep:</strong> {currentPrintVendor?.contactPerson || 'Authorized Agent'}</div>
+                      <div><strong>Phone:</strong> {currentPrintVendor?.phone || 'N/A'}</div>
+                      <div><strong>Address:</strong> {currentPrintVendor?.address || 'Local Supply'}</div>
+                    </div>
+                    <div
+                      style={{
+                        marginTop: '8px',
+                        display: 'inline-block',
+                        backgroundColor: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        borderRadius: '4px',
+                        padding: '3px 8px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        color: '#991B1B',
+                      }}
+                    >
+                      Vendor Balance: Rs. {printVendorBalance.toLocaleString()} PKR
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#555' }}>Time:</span>
-                    <span>{new Date(printingMovement.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#555' }}>Supplier:</span>
-                    <span style={{ fontWeight: 700 }}>{printingMovement.reason || 'Direct'}</span>
+
+                  {/* Store / Destination Box */}
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 14px', backgroundColor: '#F8FAFC' }}>
+                    <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                      Receiving Facility / Store
+                    </div>
+                    <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A', marginBottom: '3px' }}>
+                      OmniPos Central Branch &amp; Store
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#475569', lineHeight: 1.35 }}>
+                      <div><strong>Warehouse:</strong> Inward Logistics Bay #1</div>
+                      <div><strong>Received By:</strong> Store Manager (Admin)</div>
+                      <div><strong>Account:</strong> Inventory Trade Payable</div>
+                    </div>
+                    <div style={{ marginTop: '8px', fontSize: '10.5px', color: '#15803D', fontWeight: 700 }}>
+                      ✓ Stock Count Verified &amp; Added
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px dashed #999', borderBottom: '1px dashed #999', padding: '8px 0', fontSize: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
-                    <span>Item:</span>
-                    <span>{printingMovement.productName}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                    <span style={{ color: '#555' }}>Quantity Received:</span>
-                    <span style={{ fontWeight: 800, color: '#107C41' }}>+{printingMovement.quantity} units</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                    <span style={{ color: '#555' }}>Unit Rate:</span>
-                    <span>PKR {printingMovement.unitCost || 0}</span>
+                {/* Itemized Table */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px' }}>
+                  <thead>
+                    <tr style={{ background: '#F1F5F9', borderTop: '1px solid #CBD5E1', borderBottom: '2px solid #94A3B8' }}>
+                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center', color: '#334155', width: '32px' }}>#</th>
+                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'left', color: '#334155' }}>Item Description</th>
+                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'right', color: '#334155', width: '90px' }}>Unit Rate</th>
+                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center', color: '#334155', width: '80px' }}>Quantity</th>
+                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'right', color: '#334155', width: '70px' }}>Discount</th>
+                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'right', color: '#334155', width: '110px' }}>Total (PKR)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11px', textAlign: 'center', color: '#64748B' }}>1</td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11.5px' }}>
+                        <div style={{ fontWeight: 700, color: '#0F172A' }}>{printingMovement.productName}</div>
+                        {printingMovement.note && <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px' }}>Note: {printingMovement.note}</div>}
+                      </td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11.5px', textAlign: 'right', fontWeight: 600 }}>{formatPKR(printUnitCost)}</td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11.5px', textAlign: 'center', fontWeight: 800, color: '#15803D' }}>+{printQty} units</td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11.5px', textAlign: 'right', color: '#64748B' }}>{printDiscountPercent > 0 ? `${printDiscountPercent}%` : '—'}</td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11.5px', textAlign: 'right', fontWeight: 800, color: '#0F172A' }}>{formatPKR(printNetTotal)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Calculation & Vendor Balance Breakdown */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                  <div style={{ width: '280px', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 14px', backgroundColor: '#F8FAFC' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#475569', marginBottom: '4px' }}>
+                      <span>Gross Total:</span>
+                      <span style={{ fontWeight: 600 }}>{formatPKR(printGrossTotal)}</span>
+                    </div>
+                    {printDiscountAmount > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#15803D', marginBottom: '4px' }}>
+                        <span>Discount ({printDiscountPercent}%):</span>
+                        <span>- {formatPKR(printDiscountAmount)}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', fontWeight: 800, color: '#0F172A', borderTop: '1px solid #0F172A', borderBottom: '1px solid #0F172A', padding: '5px 0', margin: '5px 0' }}>
+                      <span>This Invoice Total:</span>
+                      <span style={{ color: '#E51937' }}>{formatPKR(printNetTotal)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#475569', marginBottom: '3px' }}>
+                      <span>Previous Vendor Balance:</span>
+                      <span>{formatPKR(printPrevBalance)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#15803D', marginBottom: '4px' }}>
+                      <span>This Bill Added:</span>
+                      <span>+ {formatPKR(printNetTotal)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', fontWeight: 800, color: '#991B1B', backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '4px', padding: '4px 6px', marginTop: '4px' }}>
+                      <span>Total Balance Due:</span>
+                      <span>{formatPKR(printVendorBalance)}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800 }}>
-                  <span>Total Inflow:</span>
-                  <span style={{ color: '#107C41' }}>PKR {((printingMovement.unitCost || 0) * printingMovement.quantity).toLocaleString()}</span>
-                </div>
-
-                {printingMovement.note && (
-                  <div style={{ fontSize: '10px', color: '#555', borderTop: '1px dotted #ccc', paddingTop: '6px' }}>
-                    Note: {printingMovement.note}
+                {/* Signatures */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed #CBD5E1', fontSize: '10px', color: '#64748B' }}>
+                  <div style={{ textAlign: 'center', width: '130px' }}>
+                    <div style={{ borderTop: '1px solid #64748B', marginBottom: '3px' }}></div>
+                    <div>Vendor / Delivery Sign</div>
                   </div>
-                )}
-
-                <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#777' }}>
-                  <div>Received By: ____________</div>
-                  <div>Signature: ____________</div>
+                  <div style={{ textAlign: 'center', width: '130px' }}>
+                    <div style={{ borderTop: '1px solid #64748B', marginBottom: '3px' }}></div>
+                    <div>Storekeeper Received</div>
+                  </div>
+                  <div style={{ textAlign: 'center', width: '130px' }}>
+                    <div style={{ borderTop: '1px solid #64748B', marginBottom: '3px' }}></div>
+                    <div>Authorized Seal</div>
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Clean Aligned Action Buttons */}
-          <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
+          {/* Action Buttons */}
+          <div style={{ marginTop: '18px', display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
             <Button
               appearance="secondary"
               onClick={() => setIsPrintModalOpen(false)}
@@ -1228,7 +1742,7 @@ export function StockInView(): React.JSX.Element {
               style={{
                 height: '38px',
                 padding: '0 22px',
-                backgroundColor: '#0078D4',
+                backgroundColor: '#E51937',
                 color: '#FFFFFF',
                 fontWeight: 700,
                 borderRadius: '8px',
@@ -1238,10 +1752,10 @@ export function StockInView(): React.JSX.Element {
                 alignItems: 'center',
                 gap: '8px',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0, 120, 212, 0.35)',
+                boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
               }}
             >
-              Print Voucher
+              Print Invoice
             </Button>
           </div>
         </DialogSurface>
