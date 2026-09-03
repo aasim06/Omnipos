@@ -8,6 +8,7 @@
     "dev": "vite",
     "dev:electron": "electron-vite dev",
     "build:web": "vite build",
+    "vercel-build": "npm run build:web",
     "build": "npm run prisma:generate && electron-vite build",
     "prisma:generate": "prisma generate",
     "preview": "vite preview",
