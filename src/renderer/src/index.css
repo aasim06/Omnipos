@@ -124,3 +124,20 @@ select option:hover {
   background: #E51937 !important;
   color: #ffffff !important;
 }
+
+/* ── Global Print Media Rules ── */
+@media print {
+  nav,
+  aside,
+  .no-print,
+  #root > nav {
+    display: none !important;
+  }
+
+  body, html, #root {
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+}
+
