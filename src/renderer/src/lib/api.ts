@@ -8,8 +8,8 @@ let cachedApiUrl: string | null = null;
 export async function resolveApiUrl(): Promise<string> {
   if (cachedApiUrl) return cachedApiUrl;
 
-  // 1. Central Backend (Neon PostgreSQL on port 4000)
-  const envUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000';
+  // 1. Central Backend (Live Neon PostgreSQL on Vercel)
+  const envUrl = (import.meta as any).env?.VITE_API_URL || 'https://omni-server-seven.vercel.app';
   try {
     const res = await fetch(`${envUrl}/api/products`);
     if (res.ok) {

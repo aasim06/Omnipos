@@ -426,7 +426,7 @@ export function ProductsCatalogView(): React.JSX.Element {
         <TabList selectedValue={activeTab} onTabSelect={(_, d) => setActiveTab(d.value as any)}>
           <Tab value="all">All Products ({products.length})</Tab>
           <Tab value="fastfood">Fast Food Items ({products.filter((p) => p.module === 'fastfood').length})</Tab>
-          <Tab value="minimart">Mini Mart Goods ({products.filter((p) => p.module === 'minimart').length})</Tab>
+          <Tab value="minimart">Omnimart Goods ({products.filter((p) => p.module === 'minimart').length})</Tab>
           <Tab value="categories">Categories ({categories.length})</Tab>
         </TabList>
       </div>
@@ -441,7 +441,7 @@ export function ProductsCatalogView(): React.JSX.Element {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   <Body1 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>{cat.name}</Body1>
                   <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
-                    {cat.module === 'fastfood' ? 'Fast Food' : 'Mini Mart'} • {count} product{count !== 1 ? 's' : ''}
+                    {cat.module === 'fastfood' ? 'Fast Food' : 'Omnimart'} • {count} product{count !== 1 ? 's' : ''}
                   </Caption1>
                 </div>
                 <Button
@@ -656,7 +656,7 @@ export function ProductsCatalogView(): React.JSX.Element {
                   {editingProduct ? 'Edit Product Item' : 'Add New Product to Catalog'}
                 </DialogTitle>
                 <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground2, marginTop: '2px' }}>
-                  {editingProduct ? 'Update product pricing, inventory thresholds, and media' : 'Create a new product for Fast Food menu or Mini Mart supermarket'}
+                  {editingProduct ? 'Update product pricing, inventory thresholds, and media' : 'Create a new product for Fast Food menu or Omnimart supermarket'}
                 </div>
               </div>
 
@@ -694,7 +694,7 @@ export function ProductsCatalogView(): React.JSX.Element {
                             }}
                           >
                             <option value="fastfood">Fast Food Menu</option>
-                            <option value="minimart">Mini Mart Goods</option>
+                            <option value="minimart">Omnimart Goods</option>
                           </Select>
                         )}
                       />
@@ -730,7 +730,7 @@ export function ProductsCatalogView(): React.JSX.Element {
                             value={field.value}
                             onChange={(_, d) => field.onChange(d.value)}
                           >
-                            <optgroup label={watchedModule === 'fastfood' ? "Fast Food Categories (Recommended)" : "Mini Mart Categories (Recommended)"}>
+                            <optgroup label={watchedModule === 'fastfood' ? "Fast Food Categories (Recommended)" : "Omnimart Categories (Recommended)"}>
                               {categories
                                 .filter((c) => c.module === watchedModule)
                                 .map((c) => (
@@ -738,7 +738,7 @@ export function ProductsCatalogView(): React.JSX.Element {
                                 ))}
                             </optgroup>
                             {categories.some((c) => c.module !== watchedModule) && (
-                              <optgroup label={watchedModule === 'fastfood' ? "Mini Mart Categories" : "Fast Food Categories"}>
+                              <optgroup label={watchedModule === 'fastfood' ? "Omnimart Categories" : "Fast Food Categories"}>
                                 {categories
                                   .filter((c) => c.module !== watchedModule)
                                   .map((c) => (
@@ -1298,7 +1298,7 @@ export function ProductsCatalogView(): React.JSX.Element {
                         onChange={(_, d) => field.onChange(d.value as ModuleKey)}
                       >
                         <option value="fastfood">Fast Food Menu</option>
-                        <option value="minimart">Mini Mart Goods</option>
+                        <option value="minimart">Omnimart Goods</option>
                       </Select>
                     )}
                   />

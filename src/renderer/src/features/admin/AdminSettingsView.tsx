@@ -213,7 +213,7 @@ export function AdminSettingsView(): React.JSX.Element {
   const [printTestMsg, setPrintTestMsg] = useState('');
   const [isLicenseOpen, setIsLicenseOpen] = useState(false);
   const [licenseKey, setLicenseKey] = useState('');
-  const [cloudUrl, setCloudUrl] = useState('http://localhost:4000');
+  const [cloudUrl, setCloudUrl] = useState('https://omni-server-seven.vercel.app');
   const [licenseMsg, setLicenseMsg] = useState('');
 
   const handleSave = () => {

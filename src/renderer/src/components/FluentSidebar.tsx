@@ -174,7 +174,7 @@ export function FluentSidebar(): React.JSX.Element {
 
   const navItems = [
     { to: '/pos/fastfood', label: 'Fast Food POS', icon: <Food24Regular />, activeIcon: <Food24Filled /> },
-    { to: '/pos/minimart', label: 'Mini Mart POS', icon: <BuildingRetail24Regular />, activeIcon: <BuildingRetail24Filled /> },
+    { to: '/pos/omnimart', label: 'Omnimart POS', icon: <BuildingRetail24Regular />, activeIcon: <BuildingRetail24Filled /> },
     { to: '/kitchen', label: 'Kitchen Display (KDS)', icon: <BowlSalad24Regular />, activeIcon: <BowlSalad24Filled /> },
     { to: '/khata', label: 'Khata Ledger Book', icon: <BookContacts24Regular />, activeIcon: <BookContacts24Filled /> },
     { to: '/inventory', label: 'Inventory & Stock', icon: <Box24Regular />, activeIcon: <Box24Filled /> },

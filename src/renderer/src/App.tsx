@@ -38,7 +38,8 @@ export default function App(): React.JSX.Element {
         <Route element={<ProtectedShellLayout />}>
           <Route path="/" element={<Navigate to="/pos/fastfood" replace />} />
           <Route path="/pos/fastfood" element={<PosCounterView module="fastfood" />} />
-          <Route path="/pos/minimart" element={<PosCounterView module="minimart" />} />
+          <Route path="/pos/omnimart" element={<PosCounterView module="minimart" />} />
+          <Route path="/pos/minimart" element={<Navigate to="/pos/omnimart" replace />} />
           <Route path="/kitchen" element={<KitchenView />} />
           <Route path="/khata" element={<KhataView />} />
           <Route path="/inventory" element={<InventoryView />} />
