@@ -7,10 +7,6 @@ import {
   Caption1,
   Badge,
   Button,
-  Input,
-  Select,
-  Dropdown,
-  Option,
   Checkbox,
   Tooltip,
   Dialog,
@@ -40,7 +36,17 @@ import { z } from 'zod';
 import { resolveApiUrl } from '@/lib/api';
 import { StockMovement } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
+import { CustomInput, CustomSelect } from '@/components/ui';
 import { vendorStorage, Vendor } from './vendorStorage';
+
+const PARTY_TYPE_OPTIONS = [
+  { value: 'Supplier (Vendor)', label: 'Supplier (Vendor)' },
+  { value: 'Wholesale Distributor', label: 'Wholesale Distributor' },
+  { value: 'Food & Meat Vendor', label: 'Food & Meat Vendor' },
+  { value: 'Bakery Supplier', label: 'Bakery Supplier' },
+  { value: 'Packaging & Cartons', label: 'Packaging & Cartons' },
+  { value: 'General Party', label: 'General Party' },
+];
 
 // Form validation schema with rich 2-row layout
 const vendorSchema = z.object({
@@ -121,7 +127,7 @@ const useStyles = makeStyles({
     display: 'grid',
     gridTemplateColumns: '1.2fr 2.4fr auto',
     gap: '16px',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     '@media (max-width: 900px)': {
       gridTemplateColumns: '1fr 1fr',
     },
@@ -130,7 +136,7 @@ const useStyles = makeStyles({
     },
   },
   saveBtn: {
-    height: '36px',
+    height: '38px',
     backgroundColor: '#E51937',
     color: '#FFFFFF',
     borderRadius: tokens.borderRadiusMedium,
@@ -415,104 +421,81 @@ export function VendorsView(): React.JSX.Element {
           {/* Row 1: Identification & Classification */}
           <div className={styles.row1}>
             {/* Field 1: VENDOR / PERSON NAME */}
-            <div>
-              <span className={styles.fieldLabel}>
-                VENDOR / BUSINESS NAME <span style={{ color: '#E51937' }}>*</span>
-              </span>
-              <Controller
-                name="name"
-                control={form.control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    placeholder="Enter vendor or business name..."
-                    appearance="outline"
-                    style={{ width: '100%', height: '36px' }}
-                  />
-                )}
-              />
-            </div>
+            <Controller
+              name="name"
+              control={form.control}
+              render={({ field }) => (
+                <CustomInput
+                  label="Vendor / Business Name"
+                  required
+                  placeholder="Enter vendor or business name..."
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  error={form.formState.errors.name?.message}
+                />
+              )}
+            />
 
             {/* Field 2: PARTY TYPE */}
-            <div>
-              <span className={styles.fieldLabel} style={{ color: '#E51937' }}>
-                PARTY TYPE <span style={{ color: '#E51937' }}>*</span>
-              </span>
-              <Controller
-                name="category"
-                control={form.control}
-                render={({ field }) => (
-                  <Dropdown
-                    placeholder="Select Party Type"
-                    value={field.value || ''}
-                    selectedOptions={field.value ? [field.value] : []}
-                    onOptionSelect={(_, d) => field.onChange(d.optionValue || '')}
-                    style={{ width: '100%', height: '36px' }}
-                  >
-                    <Option value="Supplier (Vendor)" text="Supplier (Vendor)">Supplier (Vendor)</Option>
-                    <Option value="Wholesale Distributor" text="Wholesale Distributor">Wholesale Distributor</Option>
-                    <Option value="Food & Meat Vendor" text="Food & Meat Vendor">Food &amp; Meat Vendor</Option>
-                    <Option value="Bakery Supplier" text="Bakery Supplier">Bakery Supplier</Option>
-                    <Option value="Packaging & Cartons" text="Packaging & Cartons">Packaging &amp; Cartons</Option>
-                    <Option value="General Party" text="General Party">General Party</Option>
-                  </Dropdown>
-                )}
-              />
-            </div>
+            <Controller
+              name="category"
+              control={form.control}
+              render={({ field }) => (
+                <CustomSelect
+                  label="Party Type"
+                  required
+                  placeholder="Select Party Type"
+                  value={field.value || 'Supplier (Vendor)'}
+                  onChange={field.onChange}
+                  options={PARTY_TYPE_OPTIONS}
+                />
+              )}
+            />
 
             {/* Field 3: CONTACT PERSON / REP */}
-            <div>
-              <span className={styles.fieldLabel}>CONTACT PERSON / REP</span>
-              <Controller
-                name="contactPerson"
-                control={form.control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    placeholder="e.g. Sales manager, rep name..."
-                    appearance="outline"
-                    style={{ width: '100%', height: '36px' }}
-                  />
-                )}
-              />
-            </div>
+            <Controller
+              name="contactPerson"
+              control={form.control}
+              render={({ field }) => (
+                <CustomInput
+                  label="Contact Person / Rep"
+                  placeholder="e.g. Sales manager, rep name..."
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                />
+              )}
+            />
           </div>
 
           {/* Row 2: Contact, Address Note & Submit Action */}
           <div className={styles.row2}>
             {/* Field 4: PHONE NUMBER */}
-            <div>
-              <span className={styles.fieldLabel}>PHONE NUMBER</span>
-              <Controller
-                name="phone"
-                control={form.control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    placeholder="0300-1234567"
-                    appearance="outline"
-                    style={{ width: '100%', height: '36px' }}
-                  />
-                )}
-              />
-            </div>
+            <Controller
+              name="phone"
+              control={form.control}
+              render={({ field }) => (
+                <CustomInput
+                  label="Phone Number"
+                  placeholder="0300-1234567"
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                />
+              )}
+            />
 
             {/* Field 5: COMPANY / ADDRESS NOTE */}
-            <div>
-              <span className={styles.fieldLabel}>COMPANY / ADDRESS NOTE</span>
-              <Controller
-                name="address"
-                control={form.control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    placeholder="Shop #, Market, Area, City or note..."
-                    appearance="outline"
-                    style={{ width: '100%', height: '36px' }}
-                  />
-                )}
-              />
-            </div>
+            <Controller
+              name="address"
+              control={form.control}
+              render={({ field }) => (
+                <CustomInput
+                  label="Company / Address Note"
+                  placeholder="Shop #, Market, Area, City or note..."
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                />
+              )}
+            />
 
             {/* Save Button */}
             <div>
@@ -535,14 +518,14 @@ export function VendorsView(): React.JSX.Element {
 
         {/* Filter Bar */}
         <div className={styles.filterBar}>
-          <Input
-            appearance="outline"
-            placeholder="Search Vendors by Name, Phone, Address, Category..."
-            contentBefore={<Search20Regular style={{ color: tokens.colorNeutralForeground3 }} />}
-            value={searchQuery}
-            onChange={(_, d) => setSearchQuery(d.value)}
-            style={{ minWidth: '280px', maxWidth: '420px', width: '100%' }}
-          />
+          <div style={{ minWidth: '280px', maxWidth: '420px', width: '100%' }}>
+            <CustomInput
+              placeholder="Search Vendors by Name, Phone, Address, Category..."
+              leftIcon={<Search20Regular />}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
 
           <Caption1 style={{ color: tokens.colorNeutralForeground3, fontWeight: 600 }}>
             Total {filteredVendors.length} Vendor Records
@@ -725,82 +708,78 @@ export function VendorsView(): React.JSX.Element {
             <form onSubmit={editForm.handleSubmit(onUpdate)} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
               <div className={styles.drawerBody}>
                 {/* VENDOR NAME */}
-                <div>
-                  <span className={styles.fieldLabel}>
-                    VENDOR / PERSON NAME <span style={{ color: '#E51937' }}>*</span>
-                  </span>
-                  <Controller
-                    name="name"
-                    control={editForm.control}
-                    render={({ field }) => (
-                      <Input {...field} appearance="outline" style={{ width: '100%' }} />
-                    )}
-                  />
-                </div>
+                <Controller
+                  name="name"
+                  control={editForm.control}
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Vendor / Business Name"
+                      required
+                      placeholder="Vendor name..."
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      error={editForm.formState.errors.name?.message}
+                    />
+                  )}
+                />
 
                 {/* PARTY TYPE */}
-                <div>
-                  <span className={styles.fieldLabel} style={{ color: '#107C41' }}>
-                    PARTY TYPE
-                  </span>
-                  <Controller
-                    name="category"
-                    control={editForm.control}
-                    render={({ field }) => (
-                      <Dropdown
-                        placeholder="Select Party Type"
-                        value={field.value || ''}
-                        selectedOptions={field.value ? [field.value] : []}
-                        onOptionSelect={(_, d) => field.onChange(d.optionValue || '')}
-                        style={{ width: '100%' }}
-                      >
-                        <Option value="Supplier (Vendor)" text="Supplier (Vendor)">Supplier (Vendor)</Option>
-                        <Option value="Wholesale Distributor" text="Wholesale Distributor">Wholesale Distributor</Option>
-                        <Option value="Food & Meat Vendor" text="Food & Meat Vendor">Food &amp; Meat Vendor</Option>
-                        <Option value="Bakery Supplier" text="Bakery Supplier">Bakery Supplier</Option>
-                        <Option value="Packaging & Cartons" text="Packaging & Cartons">Packaging &amp; Cartons</Option>
-                        <Option value="General Party" text="General Party">General Party</Option>
-                      </Dropdown>
-                    )}
-                  />
-                </div>
+                <Controller
+                  name="category"
+                  control={editForm.control}
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="Party Type"
+                      required
+                      placeholder="Select Party Type"
+                      value={field.value || 'Supplier (Vendor)'}
+                      onChange={field.onChange}
+                      options={PARTY_TYPE_OPTIONS}
+                    />
+                  )}
+                />
 
                 {/* CONTACT PERSON */}
-                <div>
-                  <span className={styles.fieldLabel}>CONTACT PERSON / REP</span>
-                  <Controller
-                    name="contactPerson"
-                    control={editForm.control}
-                    render={({ field }) => (
-                      <Input {...field} appearance="outline" style={{ width: '100%' }} />
-                    )}
-                  />
-                </div>
+                <Controller
+                  name="contactPerson"
+                  control={editForm.control}
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Contact Person / Rep"
+                      placeholder="Contact person..."
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
 
                 {/* PHONE */}
-                <div>
-                  <span className={styles.fieldLabel}>PHONE NUMBER</span>
-                  <Controller
-                    name="phone"
-                    control={editForm.control}
-                    render={({ field }) => (
-                      <Input {...field} appearance="outline" style={{ width: '100%' }} />
-                    )}
-                  />
-                </div>
+                <Controller
+                  name="phone"
+                  control={editForm.control}
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Phone Number"
+                      placeholder="Phone number..."
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
 
                 {/* ADDRESS */}
-                <div>
-                  <span className={styles.fieldLabel}>COMPANY / ADDRESS NOTE</span>
-                  <Controller
-                    name="address"
-                    control={editForm.control}
-                    render={({ field }) => (
-                      <Input {...field} appearance="outline" style={{ width: '100%' }} />
-                    )}
-                  />
-                </div>
-
+                <Controller
+                  name="address"
+                  control={editForm.control}
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Company / Address Note"
+                      placeholder="Address..."
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
               </div>
 
               <div className={styles.drawerFooter}>

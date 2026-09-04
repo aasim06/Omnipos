@@ -45,6 +45,27 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { resolveApiUrl } from '@/lib/api';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
+import { CustomInput, CustomSelect } from '@/components/ui';
+
+const CUSTOMER_TYPE_OPTIONS = [
+  { value: 'retail', label: 'Retail Customer' },
+  { value: 'wholesale', label: 'Wholesale Dukandar' },
+  { value: 'employee', label: 'Staff / Employee' },
+];
+
+const DUE_DAYS_OPTIONS = [
+  { value: '7', label: '7 Days' },
+  { value: '15', label: '15 Days' },
+  { value: '30', label: '30 Days' },
+  { value: '60', label: '60 Days' },
+];
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'cash', label: 'Cash In Hand' },
+  { value: 'bank', label: 'Bank Transfer / Cheque' },
+  { value: 'easypaisa', label: 'EasyPaisa' },
+  { value: 'jazzcash', label: 'JazzCash' },
+];
 
 /* ─── Zod Schemas ──────────────────────────────────────────────────── */
 const newKhataSchema = z.object({
@@ -634,30 +655,29 @@ export function KhataView(): React.JSX.Element {
       {/* ── Main Khata Table Card ── */}
       <div className={styles.tableCard}>
         <div className={styles.filterBar}>
-          <Input
-            appearance="outline"
-            placeholder="Search by customer name, phone, CNIC..."
-            contentBefore={<Search20Regular />}
-            value={searchTerm}
-            onChange={(_, d) => setSearchTerm(d.value)}
-            style={{ width: '320px' }}
-          />
+          <div style={{ width: '320px' }}>
+            <CustomInput
+              label="Search Customers"
+              placeholder="Name, phone, or CNIC..."
+              icon={<Search20Regular />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClear={searchTerm ? () => setSearchTerm('') : undefined}
+            />
+          </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Label style={{ fontSize: '13px', fontWeight: 600 }}>Filter Type:</Label>
-            <Dropdown
-              value={typeFilter === 'all' ? `All Accounts (${khatas.length})` : typeFilter === 'retail' ? 'Retail Customers' : typeFilter === 'wholesale' ? 'Wholesale / Dukandar' : 'Staff / Employee'}
-              selectedOptions={[typeFilter]}
-              onOptionSelect={(_, d) => {
-                if (d.optionValue) setTypeFilter(d.optionValue as any);
-              }}
-              style={{ minWidth: '180px' }}
-            >
-              <Option value="all" text={`All Accounts (${khatas.length})`}>All Accounts ({khatas.length})</Option>
-              <Option value="retail" text="Retail Customers">Retail Customers</Option>
-              <Option value="wholesale" text="Wholesale / Dukandar">Wholesale / Dukandar</Option>
-              <Option value="employee" text="Staff / Employee">Staff / Employee</Option>
-            </Dropdown>
+          <div style={{ width: '220px' }}>
+            <CustomSelect
+              label="Filter Account Type"
+              value={typeFilter}
+              options={[
+                { value: 'all', label: `All Accounts (${khatas.length})` },
+                { value: 'retail', label: 'Retail Customers' },
+                { value: 'wholesale', label: 'Wholesale / Dukandar' },
+                { value: 'employee', label: 'Staff / Employee' },
+              ]}
+              onChange={(val) => setTypeFilter(val as any)}
+            />
           </div>
         </div>
 
@@ -972,45 +992,55 @@ export function KhataView(): React.JSX.Element {
           <form onSubmit={newKhataForm.handleSubmit(onNewKhataSubmit)}>
             <DialogBody>
               <DialogTitle style={{ fontWeight: 800 }}>Create New Customer Khata Account</DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
                 {/* Full Name */}
                 <div>
-                  <Label required style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Customer / Business Name</Label>
                   <Controller
                     control={newKhataForm.control}
                     name="name"
                     render={({ field }) => (
-                      <Input {...field} appearance="outline" style={{ width: '100%' }} placeholder="e.g. Muhammad Naveed / Green Mart" />
+                      <CustomInput
+                        label="Customer / Business Name"
+                        required
+                        placeholder="e.g. Muhammad Naveed / Green Mart"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        error={newKhataForm.formState.errors.name?.message}
+                      />
                     )}
                   />
-                  {newKhataForm.formState.errors.name && (
-                    <span style={{ color: '#E51937', fontSize: '11px' }}>{newKhataForm.formState.errors.name.message}</span>
-                  )}
                 </div>
 
                 {/* Phone & CNIC */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <Label required style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Phone Number</Label>
                     <Controller
                       control={newKhataForm.control}
                       name="phone"
                       render={({ field }) => (
-                        <Input {...field} appearance="outline" style={{ width: '100%' }} placeholder="0300-1234567" />
+                        <CustomInput
+                          label="Phone Number"
+                          required
+                          placeholder="0300-1234567"
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          error={newKhataForm.formState.errors.phone?.message}
+                        />
                       )}
                     />
-                    {newKhataForm.formState.errors.phone && (
-                      <span style={{ color: '#E51937', fontSize: '11px' }}>{newKhataForm.formState.errors.phone.message}</span>
-                    )}
                   </div>
 
                   <div>
-                    <Label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>CNIC (National ID)</Label>
                     <Controller
                       control={newKhataForm.control}
                       name="cnic"
                       render={({ field }) => (
-                        <Input {...field} appearance="outline" style={{ width: '100%' }} placeholder="35201-1234567-1" />
+                        <CustomInput
+                          label="CNIC (National ID)"
+                          placeholder="35201-1234567-1"
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                        />
                       )}
                     />
                   </div>
@@ -1019,48 +1049,31 @@ export function KhataView(): React.JSX.Element {
                 {/* Account Type & Payment Term */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <Label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Customer Type</Label>
                     <Controller
                       control={newKhataForm.control}
                       name="customerType"
                       render={({ field }) => (
-                        <Dropdown
-                          appearance="outline"
-                          style={{ width: '100%' }}
-                          value={field.value === 'retail' ? 'Retail Customer' : field.value === 'wholesale' ? 'Wholesale Dukandar' : 'Staff / Employee'}
-                          selectedOptions={[field.value]}
-                          onOptionSelect={(_, d) => {
-                            if (d.optionValue) field.onChange(d.optionValue);
-                          }}
-                        >
-                          <Option value="retail" text="Retail Customer">Retail Customer</Option>
-                          <Option value="wholesale" text="Wholesale Dukandar">Wholesale Dukandar</Option>
-                          <Option value="employee" text="Staff / Employee">Staff / Employee</Option>
-                        </Dropdown>
+                        <CustomSelect
+                          label="Customer Type"
+                          value={field.value}
+                          options={CUSTOMER_TYPE_OPTIONS}
+                          onChange={(val) => field.onChange(val)}
+                        />
                       )}
                     />
                   </div>
 
                   <div>
-                    <Label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Credit Term (Days)</Label>
                     <Controller
                       control={newKhataForm.control}
                       name="dueDays"
                       render={({ field }) => (
-                        <Dropdown
-                          appearance="outline"
-                          style={{ width: '100%' }}
-                          value={`${field.value} Days`}
-                          selectedOptions={[String(field.value)]}
-                          onOptionSelect={(_, d) => {
-                            if (d.optionValue) field.onChange(Number(d.optionValue));
-                          }}
-                        >
-                          <Option value="7" text="7 Days">7 Days</Option>
-                          <Option value="15" text="15 Days">15 Days</Option>
-                          <Option value="30" text="30 Days">30 Days</Option>
-                          <Option value="60" text="60 Days">60 Days</Option>
-                        </Dropdown>
+                        <CustomSelect
+                          label="Credit Term"
+                          value={String(field.value)}
+                          options={DUE_DAYS_OPTIONS}
+                          onChange={(val) => field.onChange(Number(val))}
+                        />
                       )}
                     />
                   </div>
@@ -1069,36 +1082,34 @@ export function KhataView(): React.JSX.Element {
                 {/* Credit Limit & Initial Opening Debt */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <Label required style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Credit Limit (PKR)</Label>
                     <Controller
                       control={newKhataForm.control}
                       name="creditLimit"
                       render={({ field }) => (
-                        <Input
-                          value={String(field.value ?? '')}
-                          onChange={(_, d) => field.onChange(d.value)}
+                        <CustomInput
+                          label="Credit Limit (PKR)"
+                          required
                           type="number"
-                          appearance="outline"
-                          style={{ width: '100%' }}
                           placeholder="50000"
+                          value={field.value !== undefined ? String(field.value) : ''}
+                          onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                          error={newKhataForm.formState.errors.creditLimit?.message}
                         />
                       )}
                     />
                   </div>
 
                   <div>
-                    <Label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Initial Debt (Opening PKR)</Label>
                     <Controller
                       control={newKhataForm.control}
                       name="currentDebt"
                       render={({ field }) => (
-                        <Input
-                          value={String(field.value ?? '')}
-                          onChange={(_, d) => field.onChange(d.value)}
+                        <CustomInput
+                          label="Initial Debt (Opening PKR)"
                           type="number"
-                          appearance="outline"
-                          style={{ width: '100%' }}
                           placeholder="0"
+                          value={field.value !== undefined ? String(field.value) : ''}
+                          onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
                         />
                       )}
                     />
@@ -1107,12 +1118,16 @@ export function KhataView(): React.JSX.Element {
 
                 {/* Address */}
                 <div>
-                  <Label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Shop / Home Address</Label>
                   <Controller
                     control={newKhataForm.control}
                     name="address"
                     render={({ field }) => (
-                      <Input {...field} appearance="outline" style={{ width: '100%' }} placeholder="e.g. Shop #4, Main Market, Lahore" />
+                      <CustomInput
+                        label="Shop / Home Address"
+                        placeholder="e.g. Shop #4, Main Market, Lahore"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
                     )}
                   />
                 </div>
@@ -1178,72 +1193,52 @@ export function KhataView(): React.JSX.Element {
 
                 {/* Amount */}
                 <div>
-                  <Label required style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Amount (PKR)</Label>
                   <Controller
                     control={transForm.control}
                     name="amount"
                     render={({ field }) => (
-                      <Input
-                        value={String(field.value ?? '')}
-                        onChange={(_, d) => field.onChange(d.value)}
+                      <CustomInput
+                        label="Amount (PKR)"
+                        required
                         type="number"
-                        appearance="outline"
-                        style={{ width: '100%', fontSize: '18px', fontWeight: 700 }}
                         placeholder="e.g. 5000"
                         autoFocus
+                        value={field.value !== undefined ? String(field.value) : ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                        error={transForm.formState.errors.amount?.message}
                       />
                     )}
                   />
-                  {transForm.formState.errors.amount && (
-                    <span style={{ color: '#E51937', fontSize: '11px' }}>{transForm.formState.errors.amount.message}</span>
-                  )}
                 </div>
 
                 {/* Payment Method */}
                 <div>
-                  <Label required style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Payment Mode</Label>
                   <Controller
                     control={transForm.control}
                     name="paymentMethod"
-                    render={({ field }) => {
-                      const methodLabels: Record<string, string> = {
-                        cash: 'Cash In Hand',
-                        bank: 'Bank Transfer / Cheque',
-                        easypaisa: 'EasyPaisa',
-                        jazzcash: 'JazzCash',
-                      };
-                      return (
-                        <Dropdown
-                          appearance="outline"
-                          style={{ width: '100%' }}
-                          value={methodLabels[field.value] || field.value || 'Select Payment Method'}
-                          selectedOptions={[field.value]}
-                          onOptionSelect={(_, d) => {
-                            if (d.optionValue) field.onChange(d.optionValue);
-                          }}
-                        >
-                          <Option value="cash" text="Cash In Hand">Cash In Hand</Option>
-                          <Option value="bank" text="Bank Transfer / Cheque">Bank Transfer / Cheque</Option>
-                          <Option value="easypaisa" text="EasyPaisa">EasyPaisa</Option>
-                          <Option value="jazzcash" text="JazzCash">JazzCash</Option>
-                        </Dropdown>
-                      );
-                    }}
+                    render={({ field }) => (
+                      <CustomSelect
+                        label="Payment Mode"
+                        required
+                        value={field.value}
+                        options={PAYMENT_METHOD_OPTIONS}
+                        onChange={(val) => field.onChange(val)}
+                      />
+                    )}
                   />
                 </div>
 
                 {/* Description */}
                 <div>
-                  <Label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Description / Bill Reference</Label>
                   <Controller
                     control={transForm.control}
                     name="description"
                     render={({ field }) => (
-                      <Input
-                        {...field}
-                        appearance="outline"
-                        style={{ width: '100%' }}
+                      <CustomInput
+                        label="Description / Bill Reference"
                         placeholder={transType === 'CREDIT' ? 'e.g. Cash received by cashier Ali' : 'e.g. 3x Oil Filter & Grocery'}
+                        value={field.value || ''}
+                        onChange={field.onChange}
                       />
                     )}
                   />

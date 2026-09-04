@@ -35,6 +35,16 @@ import { StockMovement, Product } from '@shared/types';
 import { uid } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
+import { CustomInput, CustomSelect } from '@/components/ui';
+
+const STOCK_OUT_REASONS = [
+  { value: 'Kitchen Usage', label: 'Kitchen Usage / Consumption' },
+  { value: 'Damage / Broken', label: 'Damage / Broken' },
+  { value: 'Expired', label: 'Expired' },
+  { value: 'Audit Adjustment', label: 'Audit Adjustment' },
+  { value: 'Theft / Lost', label: 'Theft / Lost' },
+  { value: 'Other', label: 'Other Reason' },
+];
 
 /* ── Zod Form Validation Schemas ───────────────────────────────────── */
 const stockInSchema = z.object({
@@ -466,89 +476,70 @@ export function InventoryView(): React.JSX.Element {
                 {/* Quantity & Unit Cost */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Quantity (Units)</Label>
                     <Controller
                       control={stockInForm.control}
                       name="quantity"
                       render={({ field }) => (
-                        <Input
-                          appearance="outline"
+                        <CustomInput
+                          label="Quantity (Units)"
+                          required
                           type="number"
-                          style={{ width: '100%' }}
                           placeholder="e.g. 50"
-                          value={String(field.value ?? '')}
-                          onChange={(_, d) => field.onChange(d.value)}
+                          value={field.value !== undefined ? String(field.value) : ''}
+                          onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                          error={stockInForm.formState.errors.quantity?.message}
                         />
                       )}
                     />
-                    {stockInForm.formState.errors.quantity && (
-                      <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                        {stockInForm.formState.errors.quantity.message}
-                      </span>
-                    )}
                   </div>
 
                   <div>
-                    <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Purchase Cost per Unit (PKR)</Label>
                     <Controller
                       control={stockInForm.control}
                       name="unitCost"
                       render={({ field }) => (
-                        <Input
-                          appearance="outline"
+                        <CustomInput
+                          label="Purchase Cost per Unit (PKR)"
                           type="number"
-                          style={{ width: '100%' }}
                           placeholder="e.g. 350"
                           value={field.value !== undefined ? String(field.value) : ''}
-                          onChange={(_, d) => field.onChange(d.value)}
+                          onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                          error={stockInForm.formState.errors.unitCost?.message}
                         />
                       )}
                     />
-                    {stockInForm.formState.errors.unitCost && (
-                      <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                        {stockInForm.formState.errors.unitCost.message}
-                      </span>
-                    )}
                   </div>
                 </div>
 
                 {/* Retail Price */}
                 <div>
-                  <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Retail Selling Price (PKR)</Label>
                   <Controller
                     control={stockInForm.control}
                     name="unitPrice"
                     render={({ field }) => (
-                      <Input
-                        appearance="outline"
+                      <CustomInput
+                        label="Retail Selling Price (PKR)"
                         type="number"
-                        style={{ width: '100%' }}
                         placeholder="e.g. 550"
                         value={field.value !== undefined ? String(field.value) : ''}
-                        onChange={(_, d) => field.onChange(d.value)}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                        error={stockInForm.formState.errors.unitPrice?.message}
                       />
                     )}
                   />
-                  {stockInForm.formState.errors.unitPrice && (
-                    <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                      {stockInForm.formState.errors.unitPrice.message}
-                    </span>
-                  )}
                 </div>
 
                 {/* Supplier Note */}
                 <div>
-                  <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Supplier or Receipt Note (Optional)</Label>
                   <Controller
                     control={stockInForm.control}
                     name="note"
                     render={({ field }) => (
-                      <Input
-                        appearance="outline"
-                        style={{ width: '100%' }}
+                      <CustomInput
+                        label="Supplier or Receipt Note (Optional)"
                         placeholder="e.g. Invoice #9021 from Metro Cash & Carry"
                         value={field.value || ''}
-                        onChange={(_, d) => field.onChange(d.value)}
+                        onChange={field.onChange}
                       />
                     )}
                   />
@@ -627,68 +618,51 @@ export function InventoryView(): React.JSX.Element {
 
                 {/* Quantity */}
                 <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Quantity to Deduct (Units)</Label>
                   <Controller
                     control={stockOutForm.control}
                     name="quantity"
                     render={({ field }) => (
-                      <Input
-                        appearance="outline"
+                      <CustomInput
+                        label="Quantity to Deduct (Units)"
+                        required
                         type="number"
-                        style={{ width: '100%' }}
                         placeholder="e.g. 5"
-                        value={String(field.value ?? '')}
-                        onChange={(_, d) => field.onChange(d.value)}
+                        value={field.value !== undefined ? String(field.value) : ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                        error={stockOutForm.formState.errors.quantity?.message}
                       />
                     )}
                   />
-                  {stockOutForm.formState.errors.quantity && (
-                    <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                      {stockOutForm.formState.errors.quantity.message}
-                    </span>
-                  )}
                 </div>
 
                 {/* Reason */}
                 <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Reason for Deduction</Label>
                   <Controller
                     control={stockOutForm.control}
                     name="reason"
                     render={({ field }) => (
-                      <Dropdown
-                        appearance="outline"
-                        style={{ width: '100%' }}
-                        value={field.value || 'Select Reason'}
-                        selectedOptions={field.value ? [field.value] : []}
-                        onOptionSelect={(_, d) => {
-                          if (d.optionValue) field.onChange(d.optionValue);
-                        }}
-                      >
-                        <Option value="Kitchen Usage" text="Kitchen Usage / Consumption">Kitchen Usage / Consumption</Option>
-                        <Option value="Damage / Broken" text="Damage / Broken">Damage / Broken</Option>
-                        <Option value="Expired" text="Expired">Expired</Option>
-                        <Option value="Audit Adjustment" text="Audit Adjustment">Audit Adjustment</Option>
-                        <Option value="Theft / Lost" text="Theft / Lost">Theft / Lost</Option>
-                        <Option value="Other" text="Other Reason">Other Reason</Option>
-                      </Dropdown>
+                      <CustomSelect
+                        label="Reason for Deduction"
+                        required
+                        value={field.value || 'Kitchen Usage'}
+                        options={STOCK_OUT_REASONS}
+                        onChange={(val) => field.onChange(val)}
+                      />
                     )}
                   />
                 </div>
 
                 {/* Note */}
                 <div>
-                  <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Reason Note (Optional)</Label>
                   <Controller
                     control={stockOutForm.control}
                     name="note"
                     render={({ field }) => (
-                      <Input
-                        appearance="outline"
-                        style={{ width: '100%' }}
+                      <CustomInput
+                        label="Reason Note (Optional)"
                         placeholder="Additional details about disposal/usage"
                         value={field.value || ''}
-                        onChange={(_, d) => field.onChange(d.value)}
+                        onChange={field.onChange}
                       />
                     )}
                   />

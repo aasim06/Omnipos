@@ -41,6 +41,17 @@ import { StockMovement, Product } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
+import { CustomInput, CustomSelect } from '@/components/ui';
+
+const STOCK_OUT_REASONS = [
+  { value: 'Kitchen Usage', label: 'Kitchen Usage / Consumption' },
+  { value: 'Damage / Broken', label: 'Damage / Broken' },
+  { value: 'Expired Goods', label: 'Expired Goods' },
+  { value: 'Audit Adjustment', label: 'Audit Adjustment / Physical Discrepancy' },
+  { value: 'Theft / Lost', label: 'Theft / Unaccounted Lost' },
+  { value: 'Staff Meal', label: 'Staff Meal / Sampling' },
+  { value: 'Other Reason', label: 'Other Reason' },
+];
 
 const stockOutSchema = z.object({
   selectedProductId: z.string().optional(),
@@ -475,26 +486,17 @@ export function StockOutView(): React.JSX.Element {
           {/* Row 1: Reason & Product Select */}
           <div className={styles.row1}>
             <div>
-              <label className={styles.fieldLabel}>DEDUCTION REASON *</label>
               <Controller
                 control={form.control}
                 name="reason"
                 render={({ field }) => (
-                  <Dropdown
-                    placeholder="Select Reason"
-                    value={field.value || ''}
-                    selectedOptions={field.value ? [field.value] : []}
-                    onOptionSelect={(_, d) => field.onChange(d.optionValue || '')}
-                    style={{ width: '100%' }}
-                  >
-                    <Option value="Kitchen Usage" text="Kitchen Usage / Consumption">Kitchen Usage / Consumption</Option>
-                    <Option value="Damage / Broken" text="Damage / Broken">Damage / Broken</Option>
-                    <Option value="Expired Goods" text="Expired Goods">Expired Goods</Option>
-                    <Option value="Audit Adjustment" text="Audit Adjustment / Physical Discrepancy">Audit Adjustment / Physical Discrepancy</Option>
-                    <Option value="Theft / Lost" text="Theft / Unaccounted Lost">Theft / Unaccounted Lost</Option>
-                    <Option value="Staff Meal" text="Staff Meal / Sampling">Staff Meal / Sampling</Option>
-                    <Option value="Other Reason" text="Other Reason">Other Reason</Option>
-                  </Dropdown>
+                  <CustomSelect
+                    label="DEDUCTION REASON *"
+                    required
+                    value={field.value || 'Kitchen Usage'}
+                    options={STOCK_OUT_REASONS}
+                    onChange={(val) => field.onChange(val)}
+                  />
                 )}
               />
             </div>
@@ -531,58 +533,49 @@ export function StockOutView(): React.JSX.Element {
           {/* Row 2: QTY, Unit Cost, Note, Total Loss, Save Button */}
           <div className={styles.row2}>
             <div>
-              <label className={styles.fieldLabel}>QTY TO DEDUCT *</label>
               <Controller
                 control={form.control}
                 name="quantity"
                 render={({ field }) => (
-                  <Input
-                    appearance="outline"
+                  <CustomInput
+                    label="QTY TO DEDUCT *"
+                    required
                     type="number"
-                    style={{ width: '100%' }}
                     placeholder="1"
-                    value={String(field.value ?? '')}
-                    onChange={(_, d) => field.onChange(d.value)}
+                    value={field.value !== undefined ? String(field.value) : ''}
+                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                    error={form.formState.errors.quantity?.message}
                   />
                 )}
               />
-              {form.formState.errors.quantity && (
-                <span style={{ color: '#E51937', fontSize: '11px', marginTop: '2px', display: 'block' }}>
-                  {form.formState.errors.quantity.message}
-                </span>
-              )}
             </div>
 
             <div>
-              <label className={styles.fieldLabel}>UNIT COST (PKR)</label>
               <Controller
                 control={form.control}
                 name="unitCost"
                 render={({ field }) => (
-                  <Input
-                    appearance="outline"
+                  <CustomInput
+                    label="UNIT COST (PKR)"
                     type="number"
-                    style={{ width: '100%' }}
                     placeholder="0"
-                    value={String(field.value ?? '')}
-                    onChange={(_, d) => field.onChange(d.value)}
+                    value={field.value !== undefined ? String(field.value) : ''}
+                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                   />
                 )}
               />
             </div>
 
             <div>
-              <label className={styles.fieldLabel}>DISPOSAL / AUDIT NOTE</label>
               <Controller
                 control={form.control}
                 name="note"
                 render={({ field }) => (
-                  <Input
-                    appearance="outline"
-                    style={{ width: '100%' }}
+                  <CustomInput
+                    label="DISPOSAL / AUDIT NOTE"
                     placeholder="e.g. Broken in fridge, expired batch..."
                     value={field.value || ''}
-                    onChange={(_, d) => field.onChange(d.value)}
+                    onChange={field.onChange}
                   />
                 )}
               />
@@ -615,16 +608,17 @@ export function StockOutView(): React.JSX.Element {
       <div className={styles.card}>
         <span className={styles.cardTitle}>Stock Out (Deduction Logs)</span>
 
-        {/* Filter Bar */}
         <div className={styles.filterBar}>
-          <Input
-            appearance="outline"
-            placeholder="Search Stock Out logs by Name..."
-            contentBefore={<Search20Regular style={{ color: tokens.colorNeutralForeground3 }} />}
-            value={searchQuery}
-            onChange={(_, d) => setSearchQuery(d.value)}
-            style={{ minWidth: '280px', maxWidth: '420px', width: '100%' }}
-          />
+          <div style={{ minWidth: '280px', maxWidth: '420px', width: '100%' }}>
+            <CustomInput
+              label="Search Stock Out Logs"
+              placeholder="Search by product, reason, note..."
+              icon={<Search20Regular />}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onClear={searchQuery ? () => setSearchQuery('') : undefined}
+            />
+          </div>
 
           <Caption1 style={{ color: tokens.colorNeutralForeground3, fontWeight: 600 }}>
             Total {filteredMovements.length} Stock Out Records
@@ -799,19 +793,16 @@ export function StockOutView(): React.JSX.Element {
             <form id="editOutDrawerForm" onSubmit={editForm.handleSubmit(onUpdate)} className={styles.drawerBody}>
               {/* Product Name */}
               <div>
-                <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                  Item / Product Name
-                </Label>
                 <Controller
                   control={editForm.control}
                   name="productName"
                   render={({ field }) => (
-                    <Input
-                      appearance="outline"
-                      style={{ width: '100%' }}
+                    <CustomInput
+                      label="Item / Product Name"
+                      required
                       placeholder="Product name"
                       value={field.value}
-                      onChange={(_, d) => field.onChange(d.value)}
+                      onChange={field.onChange}
                     />
                   )}
                 />
@@ -819,28 +810,17 @@ export function StockOutView(): React.JSX.Element {
 
               {/* Deduction Reason */}
               <div>
-                <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                  Deduction Reason Category
-                </Label>
                 <Controller
                   control={editForm.control}
                   name="reason"
                   render={({ field }) => (
-                    <Dropdown
-                      placeholder="Select Reason"
-                      value={field.value || ''}
-                      selectedOptions={field.value ? [field.value] : []}
-                      onOptionSelect={(_, d) => field.onChange(d.optionValue || '')}
-                      style={{ width: '100%' }}
-                    >
-                      <Option value="Kitchen Usage" text="Kitchen Usage / Consumption">Kitchen Usage / Consumption</Option>
-                      <Option value="Damage / Broken" text="Damage / Broken">Damage / Broken</Option>
-                      <Option value="Expired Goods" text="Expired Goods">Expired Goods</Option>
-                      <Option value="Audit Adjustment" text="Audit Adjustment / Physical Discrepancy">Audit Adjustment / Physical Discrepancy</Option>
-                      <Option value="Theft / Lost" text="Theft / Unaccounted Lost">Theft / Unaccounted Lost</Option>
-                      <Option value="Staff Meal" text="Staff Meal / Sampling">Staff Meal / Sampling</Option>
-                      <Option value="Other Reason" text="Other Reason">Other Reason</Option>
-                    </Dropdown>
+                    <CustomSelect
+                      label="Deduction Reason Category"
+                      required
+                      value={field.value || 'Kitchen Usage'}
+                      options={STOCK_OUT_REASONS}
+                      onChange={(val) => field.onChange(val)}
+                    />
                   )}
                 />
               </div>
@@ -848,40 +828,33 @@ export function StockOutView(): React.JSX.Element {
               {/* Quantity & Unit Cost */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                    Quantity Deducted
-                  </Label>
                   <Controller
                     control={editForm.control}
                     name="quantity"
                     render={({ field }) => (
-                      <Input
-                        appearance="outline"
+                      <CustomInput
+                        label="Quantity Deducted"
+                        required
                         type="number"
-                        style={{ width: '100%' }}
                         placeholder="1"
-                        value={String(field.value ?? '')}
-                        onChange={(_, d) => field.onChange(d.value)}
+                        value={field.value !== undefined ? String(field.value) : ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                       />
                     )}
                   />
                 </div>
 
                 <div>
-                  <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                    Unit Cost (PKR)
-                  </Label>
                   <Controller
                     control={editForm.control}
                     name="unitCost"
                     render={({ field }) => (
-                      <Input
-                        appearance="outline"
+                      <CustomInput
+                        label="Unit Cost (PKR)"
                         type="number"
-                        style={{ width: '100%' }}
                         placeholder="0"
-                        value={String(field.value ?? '')}
-                        onChange={(_, d) => field.onChange(d.value)}
+                        value={field.value !== undefined ? String(field.value) : ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                       />
                     )}
                   />
@@ -890,9 +863,6 @@ export function StockOutView(): React.JSX.Element {
 
               {/* Estimated Loss Display */}
               <div>
-                <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                  Updated Estimated Loss (PKR)
-                </Label>
                 <div className={styles.lineTotalBox}>
                   <span className={styles.lineTotalValue}>Rs. {editTotalLossValue.toLocaleString()}</span>
                 </div>
@@ -900,19 +870,15 @@ export function StockOutView(): React.JSX.Element {
 
               {/* Remarks / Reference Note */}
               <div>
-                <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                  Disposal / Audit Remarks
-                </Label>
                 <Controller
                   control={editForm.control}
                   name="note"
                   render={({ field }) => (
-                    <Input
-                      appearance="outline"
-                      style={{ width: '100%' }}
+                    <CustomInput
+                      label="Disposal / Audit Remarks"
                       placeholder="e.g. Broken in fridge, expired batch..."
                       value={field.value || ''}
-                      onChange={(_, d) => field.onChange(d.value)}
+                      onChange={field.onChange}
                     />
                   )}
                 />

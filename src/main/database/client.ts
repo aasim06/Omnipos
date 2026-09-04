@@ -244,97 +244,22 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     )
   `);
 
-  // Auto-seed initial products if none exist
-  const count = await database.product.count();
-  if (count === 0) {
-    await seedInitialData(database);
+  // Cleanup any legacy dummy/seed products and categories
+  try {
+    await database.product.deleteMany({
+      where: {
+        id: { in: ['prod_ff_1', 'prod_ff_2', 'prod_mm_1', 'prod_mm_2'] },
+      },
+    });
+    await database.category.deleteMany({
+      where: {
+        id: { in: ['cat_1', 'cat_2', 'cat_3', 'cat_4', 'cat_5'] },
+      },
+    });
+  } catch {
+    /* ignore if clean */
   }
 
   isInitialized = true;
 }
 
-async function seedInitialData(db: PrismaClient): Promise<void> {
-  const initialProducts = [
-    {
-      id: "prod_ff_1",
-      module: "fastfood",
-      name: "Crispy Zinger Burger",
-      category: "Burger",
-      costPrice: 320,
-      price: 550,
-      skuCode: "SKU-89915275",
-      rackLocation: "Kitchen A-01",
-      unit: "PCS",
-      minThreshold: 10,
-      openingStock: 50,
-      description: "Crispy chicken fillet with Mayo & Lettuce",
-      imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
-    },
-    {
-      id: "prod_ff_2",
-      module: "fastfood",
-      name: "Double Cheese Burger",
-      category: "Burger",
-      costPrice: 450,
-      price: 720,
-      skuCode: "SKU-61339903",
-      rackLocation: "Kitchen A-02",
-      unit: "PCS",
-      minThreshold: 10,
-      openingStock: 40,
-      description: "Two beef patties with double cheddar cheese",
-      imageUrl: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=600&q=80",
-    },
-    {
-      id: "prod_mm_1",
-      module: "minimart",
-      name: "seal 80*10",
-      category: "General",
-      costPrice: 18,
-      price: 25,
-      skuCode: "SKU-89915275",
-      rackLocation: "Rack A-01",
-      unit: "PCS",
-      minThreshold: 10,
-      openingStock: 50,
-      description: "Industrial Seal 80x10",
-      imageUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
-    },
-    {
-      id: "prod_mm_2",
-      module: "minimart",
-      name: "Oil Filter Premium",
-      category: "Automotive",
-      costPrice: 850,
-      price: 1200,
-      skuCode: "SKU-61339903",
-      rackLocation: "Rack B-03",
-      unit: "PCS",
-      minThreshold: 5,
-      openingStock: 25,
-      description: "Universal High Flow Oil Filter",
-      imageUrl: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=600&q=80",
-    }
-  ];
-
-  for (const p of initialProducts) {
-    await db.product.create({
-      data: {
-        ...p,
-        updatedAt: new Date(),
-      },
-    });
-  }
-
-  const initialCategories = [
-    { id: "cat_1", module: "fastfood", name: "Burger" },
-    { id: "cat_2", module: "fastfood", name: "Pizza" },
-    { id: "cat_3", module: "fastfood", name: "Beverages" },
-    { id: "cat_4", module: "minimart", name: "General" },
-    { id: "cat_5", module: "minimart", name: "Automotive" },
-  ];
-
-  for (const c of initialCategories) {
-    await db.category.create({ data: c });
-  }
-}

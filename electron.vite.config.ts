@@ -13,6 +13,15 @@ export default defineConfig({
     build: {
       rollupOptions: {
         external: ['@prisma/client'],
+        onwarn(warning, defaultHandler) {
+          if (
+            warning.code === 'INVALID_ANNOTATION' ||
+            (warning.message && warning.message.includes('contains an annotation that Rollup cannot interpret'))
+          ) {
+            return;
+          }
+          defaultHandler(warning);
+        },
       },
     },
   },
@@ -26,6 +35,19 @@ export default defineConfig({
       alias: {
         '@': resolve('src/renderer/src'),
         '@shared': resolve('src/shared'),
+      },
+    },
+    build: {
+      rollupOptions: {
+        onwarn(warning, defaultHandler) {
+          if (
+            warning.code === 'INVALID_ANNOTATION' ||
+            (warning.message && warning.message.includes('contains an annotation that Rollup cannot interpret'))
+          ) {
+            return;
+          }
+          defaultHandler(warning);
+        },
       },
     },
     plugins: [react()],

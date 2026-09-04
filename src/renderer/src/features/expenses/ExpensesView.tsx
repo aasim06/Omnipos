@@ -8,10 +8,6 @@ import {
   Body1,
   Caption1,
   Badge,
-  Input,
-  Dropdown,
-  Option,
-  Label,
   Dialog,
   DialogSurface,
   DialogTitle,
@@ -36,6 +32,23 @@ import { z } from 'zod';
 import { resolveApiUrl } from '@/lib/api';
 import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
+import { CustomInput, CustomSelect } from '@/components/ui';
+
+const EXPENSE_CATEGORY_OPTIONS = [
+  { value: 'Petty Cash', label: 'Tea / Refreshments / Cleaning' },
+  { value: 'Rent', label: 'Shop Rent' },
+  { value: 'Utilities', label: 'Electricity / Gas / Water Bill' },
+  { value: 'Salaries', label: 'Staff Salary / Daily Wages' },
+  { value: 'Vendor', label: 'Vendor & Raw Material Supply' },
+  { value: 'Maintenance', label: 'Equipment Repair & Maintenance' },
+  { value: 'Other', label: 'Other Expenses' },
+];
+
+const PAYMENT_MODE_OPTIONS = [
+  { value: 'cash', label: 'Paid via Cash (Draw from Register Drawer)' },
+  { value: 'bank', label: 'Paid via Bank Transfer' },
+  { value: 'card', label: 'Paid via Company Card' },
+];
 
 /* ── Zod Schemas ───────────────────────────────────────────────────── */
 const expenseSchema = z.object({
@@ -509,141 +522,83 @@ export function ExpensesView(): React.JSX.Element {
             <DialogBody style={{ overflowX: 'hidden' }}>
               <DialogTitle>Record New Expense</DialogTitle>
               <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px', overflowX: 'hidden', overflowY: 'auto' }}>
-                
                 {/* Category */}
-                <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Expense Category</Label>
-                  <Controller
-                    control={expenseForm.control}
-                    name="category"
-                    render={({ field }) => {
-                      const categoryLabels: Record<string, string> = {
-                        'Petty Cash': 'Tea / Refreshments / Cleaning',
-                        Rent: 'Shop Rent',
-                        Utilities: 'Electricity / Gas / Water Bill',
-                        Salaries: 'Staff Salary / Daily Wages',
-                        Vendor: 'Vendor & Raw Material Supply',
-                        Maintenance: 'Equipment Repair & Maintenance',
-                        Other: 'Other Expenses',
-                      };
-                      return (
-                        <Dropdown
-                          appearance="outline"
-                          style={{ width: '100%' }}
-                          value={categoryLabels[field.value] || field.value || 'Select Expense Category'}
-                          selectedOptions={field.value ? [field.value] : []}
-                          onOptionSelect={(_, d) => {
-                            if (d.optionValue) field.onChange(d.optionValue);
-                          }}
-                        >
-                          <Option value="Petty Cash" text="Tea / Refreshments / Cleaning">Tea / Refreshments / Cleaning</Option>
-                          <Option value="Rent" text="Shop Rent">Shop Rent</Option>
-                          <Option value="Utilities" text="Electricity / Gas / Water Bill">Electricity / Gas / Water Bill</Option>
-                          <Option value="Salaries" text="Staff Salary / Daily Wages">Staff Salary / Daily Wages</Option>
-                          <Option value="Vendor" text="Vendor & Raw Material Supply">Vendor &amp; Raw Material Supply</Option>
-                          <Option value="Maintenance" text="Equipment Repair & Maintenance">Equipment Repair &amp; Maintenance</Option>
-                          <Option value="Other" text="Other Expenses">Other Expenses</Option>
-                        </Dropdown>
-                      );
-                    }}
-                  />
-                  {expenseForm.formState.errors.category && (
-                    <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                      {expenseForm.formState.errors.category.message}
-                    </span>
+                <Controller
+                  control={expenseForm.control}
+                  name="category"
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="Expense Category"
+                      required
+                      placeholder="Select Expense Category"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      options={EXPENSE_CATEGORY_OPTIONS}
+                      error={expenseForm.formState.errors.category?.message}
+                    />
                   )}
-                </div>
+                />
 
                 {/* Amount */}
-                <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Expense Amount (PKR)</Label>
-                  <Controller
-                    control={expenseForm.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <Input
-                        appearance="outline"
-                        type="number"
-                        style={{ width: '100%' }}
-                        placeholder="e.g. 1500"
-                        value={field.value !== undefined ? String(field.value) : ''}
-                        onChange={(_, d) => field.onChange(d.value)}
-                      />
-                    )}
-                  />
-                  {expenseForm.formState.errors.amount && (
-                    <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                      {expenseForm.formState.errors.amount.message}
-                    </span>
+                <Controller
+                  control={expenseForm.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Expense Amount (PKR)"
+                      required
+                      type="number"
+                      placeholder="e.g. 1500"
+                      value={field.value !== undefined ? String(field.value) : ''}
+                      onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                      error={expenseForm.formState.errors.amount?.message}
+                    />
                   )}
-                </div>
+                />
 
                 {/* Payment Mode */}
-                <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Payment Method</Label>
-                  <Controller
-                    control={expenseForm.control}
-                    name="paymentMode"
-                    render={({ field }) => {
-                      const modeLabels: Record<string, string> = {
-                        cash: 'Paid via Cash (Draw from Register Drawer)',
-                        bank: 'Paid via Bank Transfer',
-                        card: 'Paid via Company Card',
-                      };
-                      return (
-                        <Dropdown
-                          appearance="outline"
-                          style={{ width: '100%' }}
-                          value={modeLabels[field.value] || field.value || 'Select Payment Method'}
-                          selectedOptions={field.value ? [field.value] : []}
-                          onOptionSelect={(_, d) => {
-                            if (d.optionValue) field.onChange(d.optionValue);
-                          }}
-                        >
-                          <Option value="cash" text="Paid via Cash (Draw from Register Drawer)">Paid via Cash (Draw from Register Drawer)</Option>
-                          <Option value="bank" text="Paid via Bank Transfer">Paid via Bank Transfer</Option>
-                          <Option value="card" text="Paid via Company Card">Paid via Company Card</Option>
-                        </Dropdown>
-                      );
-                    }}
-                  />
-                </div>
+                <Controller
+                  control={expenseForm.control}
+                  name="paymentMode"
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="Payment Method"
+                      required
+                      placeholder="Select Payment Method"
+                      value={field.value || 'cash'}
+                      onChange={field.onChange}
+                      options={PAYMENT_MODE_OPTIONS}
+                    />
+                  )}
+                />
 
                 {/* Payee / Vendor Name */}
-                <div>
-                  <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Payee / Vendor Name (Optional)</Label>
-                  <Controller
-                    control={expenseForm.control}
-                    name="vendorName"
-                    render={({ field }) => (
-                      <Input
-                        appearance="outline"
-                        style={{ width: '100%' }}
-                        placeholder="e.g. K-Electric, Metro Cash & Carry, or Tea Stall"
-                        value={field.value || ''}
-                        onChange={(_, d) => field.onChange(d.value)}
-                      />
-                    )}
-                  />
-                </div>
+                <Controller
+                  control={expenseForm.control}
+                  name="vendorName"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Payee / Vendor Name (Optional)"
+                      placeholder="e.g. K-Electric, Metro Cash & Carry, or Tea Stall"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
 
                 {/* Description Note */}
-                <div>
-                  <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Description / Note (Optional)</Label>
-                  <Controller
-                    control={expenseForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <Input
-                        appearance="outline"
-                        style={{ width: '100%' }}
-                        placeholder="e.g. Morning shift refreshments"
-                        value={field.value || ''}
-                        onChange={(_, d) => field.onChange(d.value)}
-                      />
-                    )}
-                  />
-                </div>
+                <Controller
+                  control={expenseForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Description / Note (Optional)"
+                      placeholder="e.g. Morning shift refreshments"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
               </DialogContent>
               <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <Button
@@ -695,53 +650,38 @@ export function ExpensesView(): React.JSX.Element {
                 {drawerActionType === 'CLOSE' && 'End of Day Drawer Close & Reconciliation'}
               </DialogTitle>
               <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px', overflowX: 'hidden', overflowY: 'auto' }}>
-                
                 {/* Amount */}
-                <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Amount (PKR)</Label>
-                  <Controller
-                    control={drawerForm.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <Input
-                        appearance="outline"
-                        type="number"
-                        style={{ width: '100%' }}
-                        placeholder="e.g. 5000"
-                        value={field.value !== undefined ? String(field.value) : ''}
-                        onChange={(_, d) => field.onChange(d.value)}
-                      />
-                    )}
-                  />
-                  {drawerForm.formState.errors.amount && (
-                    <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                      {drawerForm.formState.errors.amount.message}
-                    </span>
+                <Controller
+                  control={drawerForm.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Amount (PKR)"
+                      required
+                      type="number"
+                      placeholder="e.g. 5000"
+                      value={field.value !== undefined ? String(field.value) : ''}
+                      onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                      error={drawerForm.formState.errors.amount?.message}
+                    />
                   )}
-                </div>
+                />
 
                 {/* Notes */}
-                <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Reason / Audit Note</Label>
-                  <Controller
-                    control={drawerForm.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <Input
-                        appearance="outline"
-                        style={{ width: '100%' }}
-                        placeholder="e.g. Morning float injection or end of day closing"
-                        value={field.value}
-                        onChange={(_, d) => field.onChange(d.value)}
-                      />
-                    )}
-                  />
-                  {drawerForm.formState.errors.notes && (
-                    <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                      {drawerForm.formState.errors.notes.message}
-                    </span>
+                <Controller
+                  control={drawerForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Reason / Audit Note"
+                      required
+                      placeholder="e.g. Morning float injection or end of day closing"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      error={drawerForm.formState.errors.notes?.message}
+                    />
                   )}
-                </div>
+                />
               </DialogContent>
               <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <Button

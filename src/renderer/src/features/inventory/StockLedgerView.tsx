@@ -8,9 +8,6 @@ import {
   Caption1,
   Badge,
   Button,
-  Input,
-  Dropdown,
-  Option,
   TabList,
   Tab,
 } from '@fluentui/react-components';
@@ -27,6 +24,14 @@ import { resolveApiUrl } from '@/lib/api';
 import { StockMovement } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
+import { CustomInput, CustomSelect } from '@/components/ui';
+
+const TIME_FILTER_OPTIONS = [
+  { value: 'all', label: 'All Dates' },
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'This Week' },
+  { value: 'month', label: 'This Month' },
+];
 
 const useStyles = makeStyles({
   container: {
@@ -506,14 +511,14 @@ export function StockLedgerView(): React.JSX.Element {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <Input
-              appearance="outline"
-              placeholder="Search product, reason, or notes..."
-              contentBefore={<Search20Regular style={{ color: tokens.colorNeutralForeground3 }} />}
-              value={searchQuery}
-              onChange={(_, d) => setSearchQuery(d.value)}
-              style={{ minWidth: '240px' }}
-            />
+            <div style={{ minWidth: '240px' }}>
+              <CustomInput
+                placeholder="Search product, reason, or notes..."
+                leftIcon={<Search20Regular />}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
 
             <TabList
               selectedValue={typeTab}
@@ -524,19 +529,13 @@ export function StockLedgerView(): React.JSX.Element {
               <Tab value="out">Stock Out</Tab>
             </TabList>
 
-            <Dropdown
-              value={timeFilter === 'all' ? 'All Dates' : timeFilter === 'today' ? 'Today' : timeFilter === 'week' ? 'This Week' : 'This Month'}
-              selectedOptions={[timeFilter]}
-              onOptionSelect={(_, data) => {
-                if (data.optionValue) setTimeFilter(data.optionValue as any);
-              }}
-              style={{ minWidth: '135px' }}
-            >
-              <Option value="all">All Dates</Option>
-              <Option value="today">Today</Option>
-              <Option value="week">This Week</Option>
-              <Option value="month">This Month</Option>
-            </Dropdown>
+            <div style={{ minWidth: '140px' }}>
+              <CustomSelect
+                value={timeFilter}
+                onChange={(val) => setTimeFilter(val as any)}
+                options={TIME_FILTER_OPTIONS}
+              />
+            </div>
 
             <Button
               appearance="primary"

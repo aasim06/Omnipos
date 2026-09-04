@@ -1,14 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  tokens,
-  Input,
-  Label,
-  Caption1,
-} from '@fluentui/react-components';
+import { tokens } from '@fluentui/react-components';
 import { Food24Filled, BuildingRetail24Regular } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
 import { Product } from '@shared/types';
+import { CustomInput } from '@/components/ui';
 
 export interface ProductAutocompleteProps {
   id?: string;
@@ -102,20 +98,11 @@ export function ProductAutocomplete({
   };
 
   return (
-    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative', ...style }}>
-      {label && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Label required={required} htmlFor={id} style={{ fontWeight: 600 }}>
-            {label}
-          </Label>
-          <Caption1 style={{ color: tokens.colorBrandForeground1, fontSize: '11px', fontWeight: 600 }}>
-            {availableProducts.length} items available
-          </Caption1>
-        </div>
-      )}
-
-      <Input
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', ...style }}>
+      <CustomInput
         id={id}
+        label={label}
+        required={required}
         value={value}
         disabled={disabled}
         placeholder={placeholder}
@@ -133,14 +120,15 @@ export function ProductAutocomplete({
             }
           }
         }}
-        style={{ width: '100%' }}
+        error={error}
+        rightElement={
+          availableProducts.length > 0 ? (
+            <span style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, whiteSpace: 'nowrap', marginRight: '6px' }}>
+              {availableProducts.length} items
+            </span>
+          ) : undefined
+        }
       />
-
-      {error && (
-        <span style={{ color: tokens.colorPaletteRedForeground1, fontSize: '12px', fontWeight: 500 }}>
-          {error}
-        </span>
-      )}
 
       {/* Floating Autocomplete Dropdown */}
       {isOpen && !disabled && (

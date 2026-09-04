@@ -49,6 +49,9 @@ import {
   Keyboard20Regular,
   ChevronLeft20Regular,
   ChevronRight20Regular,
+  ChevronDown20Regular,
+  ChevronUp20Regular,
+  Person20Regular,
 } from '@fluentui/react-icons';
 import { posApi, resolveApiUrl } from '@/lib/api';
 import { Product, CartLine, Order, Category } from '@shared/types';
@@ -222,6 +225,47 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
   /* Minimart Customer Phone & Loyalty Lookup */
   const [customerPhone, setCustomerPhone] = useState('');
 
+  /* Collapsible Sections (for maximizing cart item room) */
+  const [isTopSectionCollapsed, setIsTopSectionCollapsed] = useState(false);
+  const [isPromoCollapsed, setIsPromoCollapsed] = useState(true);
+
+  /* Customer Autocomplete (MUI floating-label outline style matching reference screenshot) */
+  interface CustomerOption {
+    id?: string;
+    name: string;
+    phone?: string;
+    currentDebt?: number;
+    creditLimit?: number;
+  }
+  const defaultGuestCustomer: CustomerOption = {
+    id: '',
+    name: 'Guest',
+    currentDebt: -24734.70, // Matches reference screenshot: Guest | -24734.70
+  };
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption>(defaultGuestCustomer);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const customerDropdownRef = React.useRef<HTMLDivElement>(null);
+  const customerInputRef = React.useRef<HTMLInputElement>(null);
+
+  const formatCustomerBalance = (cust: CustomerOption | null | undefined) => {
+    if (!cust) return '0.00';
+    if (cust.currentDebt === undefined || cust.currentDebt === null) return '0.00';
+    if (cust.currentDebt === 0) return '0.00';
+    return cust.currentDebt > 0 ? `-${cust.currentDebt.toFixed(2)}` : `${Math.abs(cust.currentDebt).toFixed(2)}`;
+  };
+
+  /* Close customer dropdown when clicking outside */
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(e.target as Node)) {
+        setIsCustomerDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   /* Quick Size / Variant Picker for Apparel, Shoes & Products with Variants */
   const [variantPickerProduct, setVariantPickerProduct] = useState<Product | null>(null);
 
@@ -235,6 +279,75 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
       return res.json();
     },
   });
+
+  /* Auto-sync selected customer with Khatas when loaded */
+  React.useEffect(() => {
+    if (customerKhatas.length > 0) {
+      if (selectedCustomer.id) {
+        const found = customerKhatas.find((k: any) => k.id === selectedCustomer.id);
+        if (found) setSelectedCustomer(found);
+      } else if (selectedCustomer.name.toLowerCase() === 'guest') {
+        const guestInDb = customerKhatas.find((k: any) => k.name.toLowerCase() === 'guest');
+        if (guestInDb) setSelectedCustomer(guestInDb);
+      }
+    }
+  }, [customerKhatas]);
+
+  const handleSelectCustomer = (cust: CustomerOption) => {
+    setSelectedCustomer(cust);
+    setCustomerSearchQuery('');
+    setIsCustomerDropdownOpen(false);
+    if (cust.id) {
+      setSelectedKhataId(cust.id);
+    } else {
+      setSelectedKhataId('');
+    }
+    if (cust.phone) {
+      setCustomerPhone(cust.phone);
+      if (orderType === 'delivery') {
+        setDeliveryDetails((prev) => ({
+          ...prev,
+          customerName: cust.name,
+          phone: cust.phone || prev.phone,
+        }));
+      }
+    } else if (orderType === 'delivery' && cust.name !== 'Guest') {
+      setDeliveryDetails((prev) => ({
+        ...prev,
+        customerName: cust.name,
+      }));
+    }
+    playBeep();
+  };
+
+  const handleClearCustomer = () => {
+    const guestInDb = customerKhatas.find((k: any) => k.name.toLowerCase() === 'guest');
+    setSelectedCustomer(guestInDb || defaultGuestCustomer);
+    setCustomerSearchQuery('');
+    setSelectedKhataId(guestInDb?.id || '');
+    setIsCustomerDropdownOpen(false);
+    playBeep();
+  };
+
+  const filteredCustomerOptions = React.useMemo(() => {
+    const q = customerSearchQuery.trim().toLowerCase();
+    const list: CustomerOption[] = [];
+    const guestInDb = customerKhatas.find((k: any) => k.name.toLowerCase() === 'guest');
+    list.push(guestInDb || defaultGuestCustomer);
+
+    customerKhatas.forEach((k: any) => {
+      if (k.name.toLowerCase() !== 'guest') {
+        list.push(k);
+      }
+    });
+
+    if (!q) return list;
+    return list.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.phone && c.phone.toLowerCase().includes(q))
+    );
+  }, [customerSearchQuery, customerKhatas, defaultGuestCustomer]);
 
   /* Query Products */
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
@@ -587,16 +700,17 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
   /* Checkout Mutation */
   const { mutate: checkout, isPending } = useMutation({
     mutationFn: async () => {
-      const selectedCustomer = customerKhatas.find((k: any) => k.id === selectedKhataId);
-
+      const hasCustomCust = selectedCustomer.name && selectedCustomer.name !== 'Guest';
       let assignedCustomerName: string | undefined;
       let assignedOrderType: 'dine-in' | 'takeaway' | 'delivery' | 'khata' = orderType;
 
       if (paymentMode === 'khata') {
         assignedOrderType = 'khata';
-        assignedCustomerName = selectedCustomer?.name;
+        assignedCustomerName = selectedCustomer?.name || 'Khata Customer';
       } else if (module === 'minimart') {
-        if (matchedCustomer) {
+        if (hasCustomCust) {
+          assignedCustomerName = `${selectedCustomer.name}${selectedCustomer.phone ? ` (${selectedCustomer.phone})` : ''}`;
+        } else if (matchedCustomer) {
           assignedCustomerName = `${matchedCustomer.name} (${matchedCustomer.phone || customerPhone})`;
         } else if (customerPhone.trim()) {
           assignedCustomerName = `Customer (${customerPhone.trim()})`;
@@ -605,11 +719,15 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
         }
         assignedOrderType = 'takeaway';
       } else if (orderType === 'dine-in') {
-        assignedCustomerName = `Dine-In (${tableNo || 'Table 1'})`;
+        assignedCustomerName = hasCustomCust
+          ? `${selectedCustomer.name} · Dine-In (${tableNo || 'Table 1'})`
+          : `Dine-In (${tableNo || 'Table 1'})`;
       } else if (orderType === 'takeaway') {
-        assignedCustomerName = `Takeaway (Token #${String(tokenNo).padStart(2, '0')})`;
+        assignedCustomerName = hasCustomCust
+          ? `${selectedCustomer.name} · Takeaway (Token #${String(tokenNo).padStart(2, '0')})`
+          : `Takeaway (Token #${String(tokenNo).padStart(2, '0')})`;
       } else if (orderType === 'delivery') {
-        assignedCustomerName = `Delivery (${deliveryDetails.customerName || 'Customer'} · ${deliveryDetails.phone || 'No phone'})`;
+        assignedCustomerName = `Delivery (${deliveryDetails.customerName || selectedCustomer.name || 'Customer'} · ${deliveryDetails.phone || selectedCustomer.phone || 'No phone'})`;
       }
 
       const order: Order = {
@@ -659,6 +777,9 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
       setDiscountPct(0);
       setPaymentMode('cash');
       setSelectedKhataId('');
+      const guestInDb = customerKhatas.find((k: any) => k.name.toLowerCase() === 'guest');
+      setSelectedCustomer(guestInDb || defaultGuestCustomer);
+      setCustomerSearchQuery('');
       setTenderedAmount('');
       setCustomerPhone('');
       if (orderType === 'takeaway') {
@@ -1935,284 +2056,543 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
           </div>
         </div>
 
-        {/* ── Order Type Switcher & Table / Token Selector (Fast Food Mode) ── */}
-        {module === 'fastfood' && (
+        {/* ── Collapsible Order Header & Customer Selection ── */}
+        {isTopSectionCollapsed ? (
+          /* Collapsed Compact 1-line Summary Bar (~32px) */
+          <div
+            onClick={() => setIsTopSectionCollapsed(false)}
+            style={{
+              padding: '6px 14px',
+              borderBottom: `1px solid ${F.borderSubtle}`,
+              backgroundColor: F.bgSubtle,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              userSelect: 'none',
+              transition: 'background-color 0.12s ease',
+            }}
+            title="Click to expand order details and customer selector"
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = F.bgHover)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = F.bgSubtle)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', minWidth: 0 }}>
+              {module === 'fastfood' && (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: '#FFFFFF',
+                    backgroundColor: F.accentRed,
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  {orderType === 'dine-in'
+                    ? `Dine-In (${tableNo || 'T-1'})`
+                    : orderType === 'takeaway'
+                    ? `Takeaway #${String(tokenNo).padStart(2, '0')}`
+                    : 'Delivery'}
+                </span>
+              )}
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: F.textPrimary,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                👤 {selectedCustomer.name} | {formatCustomerBalance(selectedCustomer)}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: F.accentRed, fontSize: '11px', fontWeight: 700, flexShrink: 0, marginLeft: '8px' }}>
+              <span>Expand</span>
+              <ChevronDown20Regular style={{ width: 14, height: 14 }} />
+            </div>
+          </div>
+        ) : (
+          /* Expanded Order Details & Customer Section */
           <div
             style={{
-              padding: '10px 16px',
+              padding: '10px 14px',
               borderBottom: `1px solid ${F.borderSubtle}`,
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px',
+              gap: '10px',
               backgroundColor: F.bgSubtle,
             }}
           >
-            {/* 3-option Segmented Pill Switcher */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '4px',
-                backgroundColor: F.bgCard,
-                padding: '3px',
-                borderRadius: F.radiusMd,
-                border: `1px solid ${F.border}`,
-              }}
-            >
+            {/* Header: Label and Collapse Button */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '10.5px', fontWeight: 800, color: F.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Order Info & Customer
+              </span>
               <button
                 type="button"
-                onClick={() => {
-                  setOrderType('dine-in');
-                  playBeep();
-                }}
+                onClick={() => setIsTopSectionCollapsed(true)}
+                title="Collapse to make more room for order items"
                 style={{
-                  padding: '6px 0',
-                  borderRadius: F.radiusSm,
-                  border: 'none',
-                  backgroundColor: orderType === 'dine-in' ? F.accentRed : 'transparent',
-                  color: orderType === 'dine-in' ? '#FFFFFF' : F.textSecondary,
-                  fontWeight: orderType === 'dine-in' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '5px',
-                  transition: 'all 0.12s ease',
-                }}
-              >
-                <PeopleCommunity20Regular style={{ width: 14, height: 14 }} />
-                <span>Dine-In</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setOrderType('takeaway');
-                  playBeep();
-                }}
-                style={{
-                  padding: '6px 0',
-                  borderRadius: F.radiusSm,
+                  gap: '4px',
+                  background: 'none',
                   border: 'none',
-                  backgroundColor: orderType === 'takeaway' ? F.accentRed : 'transparent',
-                  color: orderType === 'takeaway' ? '#FFFFFF' : F.textSecondary,
-                  fontWeight: orderType === 'takeaway' ? 700 : 500,
-                  fontSize: '12px',
+                  color: F.textMuted,
+                  fontSize: '11px',
+                  fontWeight: 600,
                   cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '5px',
-                  transition: 'all 0.12s ease',
+                  padding: '1px 5px',
+                  borderRadius: '3px',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = F.accentRed)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = F.textMuted)}
               >
-                <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
-                <span>Takeaway</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setOrderType('delivery');
-                  playBeep();
-                }}
-                style={{
-                  padding: '6px 0',
-                  borderRadius: F.radiusSm,
-                  border: 'none',
-                  backgroundColor: orderType === 'delivery' ? F.accentRed : 'transparent',
-                  color: orderType === 'delivery' ? '#FFFFFF' : F.textSecondary,
-                  fontWeight: orderType === 'delivery' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '5px',
-                  transition: 'all 0.12s ease',
-                }}
-              >
-                <VehicleTruckProfile20Regular style={{ width: 14, height: 14 }} />
-                <span>Delivery</span>
+                <span>Collapse</span>
+                <ChevronUp20Regular style={{ width: 14, height: 14 }} />
               </button>
             </div>
 
-            {/* Contextual Sub-bar */}
-            {orderType === 'dine-in' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', overflowX: 'auto', paddingBottom: '2px' }}>
-                <span style={{ fontSize: '10.5px', fontWeight: 700, color: F.textMuted, whiteSpace: 'nowrap' }}>
-                  TABLE:
-                </span>
-                {['T-1', 'T-2', 'T-3', 'T-4', 'T-5'].map((t) => {
-                  const fullT = `Table ${t.replace('T-', '')}`;
-                  const isCur = tableNo === fullT || tableNo === t;
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => {
-                        setTableNo(fullT);
-                        playBeep();
-                      }}
-                      style={{
-                        padding: '3px 7px',
-                        borderRadius: '4px',
-                        border: `1px solid ${isCur ? F.accentRed : F.border}`,
-                        backgroundColor: isCur ? F.accentRedSubtle : F.bgCard,
-                        color: isCur ? F.accentRed : F.textSecondary,
-                        fontSize: '11px',
-                        fontWeight: isCur ? 700 : 500,
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {t}
-                    </button>
-                  );
-                })}
-                <input
-                  value={tableNo}
-                  onChange={(e) => setTableNo(e.target.value)}
-                  placeholder="Custom..."
-                  style={{
-                    width: '65px',
-                    padding: '3px 6px',
-                    borderRadius: '4px',
-                    border: `1px solid ${F.border}`,
-                    backgroundColor: F.bgCard,
-                    color: F.textPrimary,
-                    fontSize: '11px',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-            )}
-
-            {orderType === 'takeaway' && (
+            {/* Customer Autocomplete (MUI Floating Label Notch Style matching reference image) */}
+            <div style={{ position: 'relative', width: '100%' }} ref={customerDropdownRef}>
               <div
+                onClick={() => {
+                  setIsCustomerDropdownOpen(true);
+                  setTimeout(() => customerInputRef.current?.focus(), 50);
+                }}
                 style={{
+                  position: 'relative',
+                  border: `1px solid ${isCustomerDropdownOpen ? F.accentRed : isDark ? '#4A4A4A' : '#767676'}`,
+                  borderRadius: '4px',
+                  backgroundColor: F.bgCard,
+                  minHeight: '38px',
+                  padding: '4px 10px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  backgroundColor: F.bgCard,
-                  padding: '5px 10px',
-                  borderRadius: F.radiusSm,
-                  border: `1px solid ${F.borderSubtle}`,
+                  cursor: 'text',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.15s ease',
                 }}
               >
-                <span style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary }}>
-                  ASSIGNED TOKEN NUMBER
+                {/* Floating notch label */}
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    left: '10px',
+                    backgroundColor: F.bgSubtle,
+                    padding: '0 4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: isCustomerDropdownOpen ? F.accentRed : isDark ? '#B0B0B0' : '#5F6368',
+                    lineHeight: 1,
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                  }}
+                >
+                  Customer
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '15px', fontWeight: 900, color: F.accentRed, fontFamily: 'monospace' }}>
-                    #{String(tokenNo).padStart(2, '0')}
-                  </span>
+
+                {/* Text or Search Input */}
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
+                  {isCustomerDropdownOpen ? (
+                    <input
+                      ref={customerInputRef}
+                      value={customerSearchQuery}
+                      onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                      placeholder={`${selectedCustomer.name} | ${formatCustomerBalance(selectedCustomer)}`}
+                      style={{
+                        border: 'none',
+                        outline: 'none',
+                        background: 'transparent',
+                        width: '100%',
+                        fontSize: '13.5px',
+                        fontFamily: F.font,
+                        color: F.textPrimary,
+                        padding: 0,
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setIsCustomerDropdownOpen(false);
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (filteredCustomerOptions.length > 0) {
+                            handleSelectCustomer(filteredCustomerOptions[0]);
+                          } else if (customerSearchQuery.trim()) {
+                            handleSelectCustomer({ name: customerSearchQuery.trim(), currentDebt: 0 });
+                          }
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: '13.5px',
+                        color: F.textPrimary,
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {`${selectedCustomer.name} | ${formatCustomerBalance(selectedCustomer)}`}
+                    </span>
+                  )}
+                </div>
+
+                {/* Right Action Icons: Clear (X) and Dropdown Arrow (v) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                  {(selectedCustomer.name !== 'Guest' || customerSearchQuery) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClearCustomer();
+                      }}
+                      title="Clear customer selection"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '3px',
+                        color: F.textMuted,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Dismiss16Regular style={{ width: 14, height: 14 }} />
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setTokenNo((t) => Math.max(1, t - 1))}
-                    style={{ padding: '1px 7px', fontSize: '11px', border: `1px solid ${F.border}`, borderRadius: '3px', background: F.bgSubtle, cursor: 'pointer', color: F.textPrimary }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsCustomerDropdownOpen((prev) => !prev);
+                      if (!isCustomerDropdownOpen) {
+                        setTimeout(() => customerInputRef.current?.focus(), 50);
+                      }
+                    }}
+                    title="Toggle customer list"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '3px',
+                      color: F.textSecondary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transform: isCustomerDropdownOpen ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.15s ease',
+                    }}
                   >
-                    -
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTokenNo((t) => t + 1)}
-                    style={{ padding: '1px 7px', fontSize: '11px', border: `1px solid ${F.border}`, borderRadius: '3px', background: F.bgSubtle, cursor: 'pointer', color: F.textPrimary }}
-                  >
-                    +
+                    <ChevronDown20Regular style={{ width: 16, height: 16 }} />
                   </button>
                 </div>
               </div>
-            )}
 
-            {orderType === 'delivery' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                <input
-                  value={deliveryDetails.customerName}
-                  onChange={(e) => setDeliveryDetails({ ...deliveryDetails, customerName: e.target.value })}
-                  placeholder="Customer Name..."
-                  style={{ padding: '4px 8px', borderRadius: '4px', border: `1px solid ${F.border}`, backgroundColor: F.bgCard, color: F.textPrimary, fontSize: '11.5px', outline: 'none' }}
-                />
-                <input
-                  value={deliveryDetails.phone}
-                  onChange={(e) => setDeliveryDetails({ ...deliveryDetails, phone: e.target.value })}
-                  placeholder="Phone Number..."
-                  style={{ padding: '4px 8px', borderRadius: '4px', border: `1px solid ${F.border}`, backgroundColor: F.bgCard, color: F.textPrimary, fontSize: '11.5px', outline: 'none' }}
-                />
-                <input
-                  value={deliveryDetails.address}
-                  onChange={(e) => setDeliveryDetails({ ...deliveryDetails, address: e.target.value })}
-                  placeholder="Delivery Address..."
-                  style={{ gridColumn: 'span 2', padding: '4px 8px', borderRadius: '4px', border: `1px solid ${F.border}`, backgroundColor: F.bgCard, color: F.textPrimary, fontSize: '11.5px', outline: 'none' }}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Customer Phone & Loyalty / Khata Lookup (Mini Mart Mode) ── */}
-        {module === 'minimart' && (
-          <div
-            style={{
-              padding: '10px 16px',
-              borderBottom: `1px solid ${F.borderSubtle}`,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              backgroundColor: F.bgSubtle,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Customer Account / Phone
-              </span>
-              {matchedCustomer && (
-                <span style={{ fontSize: '10.5px', color: '#10B981', fontWeight: 700, backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5', padding: '1px 6px', borderRadius: '4px' }}>
-                  Registered Customer
-                </span>
-              )}
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backgroundColor: F.bgCard,
-                padding: '6px 10px',
-                borderRadius: F.radiusSm,
-                border: `1px solid ${matchedCustomer ? '#10B981' : F.border}`,
-              }}
-            >
-              <Phone20Regular style={{ width: 15, height: 15, color: matchedCustomer ? '#10B981' : F.textMuted }} />
-              <input
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="Search customer phone or name..."
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  outline: 'none',
-                  fontSize: '12.5px',
-                  fontFamily: F.font,
-                  color: F.textPrimary,
-                  width: '100%',
-                }}
-              />
-              {customerPhone && (
-                <Dismiss16Regular
-                  style={{ width: 14, height: 14, cursor: 'pointer', color: F.textMuted }}
-                  onClick={() => {
-                    setCustomerPhone('');
-                    if (paymentMode === 'khata') setSelectedKhataId('');
+              {/* Dropdown Options Popover */}
+              {isCustomerDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: F.bgCard,
+                    border: `1px solid ${F.border}`,
+                    borderRadius: F.radiusSm,
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.28)',
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    zIndex: 200,
+                    padding: '4px',
                   }}
-                />
+                >
+                  {filteredCustomerOptions.map((cust, idx) => {
+                    const isCur = (cust.id && cust.id === selectedCustomer.id) || (!cust.id && !selectedCustomer.id && cust.name === selectedCustomer.name);
+                    return (
+                      <div
+                        key={cust.id || `guest-${idx}`}
+                        onClick={() => handleSelectCustomer(cust)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '7px 10px',
+                          borderRadius: F.radiusSm,
+                          backgroundColor: isCur ? (isDark ? 'rgba(229, 25, 55, 0.15)' : '#FEF2F2') : 'transparent',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.1s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isCur) e.currentTarget.style.backgroundColor = F.bgHover;
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isCur) e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <div style={{ minWidth: 0, flex: 1, paddingRight: '8px' }}>
+                          <div style={{ fontSize: '12.5px', fontWeight: isCur ? 700 : 600, color: isCur ? F.accentRed : F.textPrimary }}>
+                            {cust.name}
+                          </div>
+                          {cust.phone && (
+                            <div style={{ fontSize: '11px', color: F.textMuted }}>
+                              {cust.phone}
+                            </div>
+                          )}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            color: (cust.currentDebt || 0) > 0 ? F.accentRed : '#10B981',
+                            fontFamily: 'monospace',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {formatCustomerBalance(cust)}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {filteredCustomerOptions.length === 0 && customerSearchQuery.trim() && (
+                    <div
+                      onClick={() => handleSelectCustomer({ name: customerSearchQuery.trim(), currentDebt: 0 })}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: F.radiusSm,
+                        cursor: 'pointer',
+                        color: F.accentRed,
+                        fontSize: '12px',
+                        fontWeight: 600,
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = F.bgHover)}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      + Use "{customerSearchQuery.trim()}" as Walk-In Customer
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
-            {/* Matched Customer Khata Status Card */}
-            {matchedCustomer && (
+            {/* Fast Food Mode: Order Type Tabs & Contextual Sub-bar */}
+            {module === 'fastfood' && (
+              <>
+                {/* 3-option Segmented Pill Switcher */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: '4px',
+                    backgroundColor: F.bgCard,
+                    padding: '3px',
+                    borderRadius: F.radiusMd,
+                    border: `1px solid ${F.border}`,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderType('dine-in');
+                      playBeep();
+                    }}
+                    style={{
+                      padding: '6px 0',
+                      borderRadius: F.radiusSm,
+                      border: 'none',
+                      backgroundColor: orderType === 'dine-in' ? F.accentRed : 'transparent',
+                      color: orderType === 'dine-in' ? '#FFFFFF' : F.textSecondary,
+                      fontWeight: orderType === 'dine-in' ? 700 : 500,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                      transition: 'all 0.12s ease',
+                    }}
+                  >
+                    <PeopleCommunity20Regular style={{ width: 14, height: 14 }} />
+                    <span>Dine-In</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderType('takeaway');
+                      playBeep();
+                    }}
+                    style={{
+                      padding: '6px 0',
+                      borderRadius: F.radiusSm,
+                      border: 'none',
+                      backgroundColor: orderType === 'takeaway' ? F.accentRed : 'transparent',
+                      color: orderType === 'takeaway' ? '#FFFFFF' : F.textSecondary,
+                      fontWeight: orderType === 'takeaway' ? 700 : 500,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                      transition: 'all 0.12s ease',
+                    }}
+                  >
+                    <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                    <span>Takeaway</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderType('delivery');
+                      playBeep();
+                    }}
+                    style={{
+                      padding: '6px 0',
+                      borderRadius: F.radiusSm,
+                      border: 'none',
+                      backgroundColor: orderType === 'delivery' ? F.accentRed : 'transparent',
+                      color: orderType === 'delivery' ? '#FFFFFF' : F.textSecondary,
+                      fontWeight: orderType === 'delivery' ? 700 : 500,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                      transition: 'all 0.12s ease',
+                    }}
+                  >
+                    <VehicleTruckProfile20Regular style={{ width: 14, height: 14 }} />
+                    <span>Delivery</span>
+                  </button>
+                </div>
+
+                {/* Contextual Sub-bar */}
+                {orderType === 'dine-in' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', overflowX: 'auto', paddingBottom: '2px' }}>
+                    <span style={{ fontSize: '10.5px', fontWeight: 700, color: F.textMuted, whiteSpace: 'nowrap' }}>
+                      TABLE:
+                    </span>
+                    {['T-1', 'T-2', 'T-3', 'T-4', 'T-5'].map((t) => {
+                      const fullT = `Table ${t.replace('T-', '')}`;
+                      const isCur = tableNo === fullT || tableNo === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => {
+                            setTableNo(fullT);
+                            playBeep();
+                          }}
+                          style={{
+                            padding: '3px 7px',
+                            borderRadius: '4px',
+                            border: `1px solid ${isCur ? F.accentRed : F.border}`,
+                            backgroundColor: isCur ? F.accentRedSubtle : F.bgCard,
+                            color: isCur ? F.accentRed : F.textSecondary,
+                            fontSize: '11px',
+                            fontWeight: isCur ? 700 : 500,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {t}
+                        </button>
+                      );
+                    })}
+                    <input
+                      value={tableNo}
+                      onChange={(e) => setTableNo(e.target.value)}
+                      placeholder="Custom..."
+                      style={{
+                        width: '65px',
+                        padding: '3px 6px',
+                        borderRadius: '4px',
+                        border: `1px solid ${F.border}`,
+                        backgroundColor: F.bgCard,
+                        color: F.textPrimary,
+                        fontSize: '11px',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                )}
+
+                {orderType === 'takeaway' && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: F.bgCard,
+                      padding: '5px 10px',
+                      borderRadius: F.radiusSm,
+                      border: `1px solid ${F.borderSubtle}`,
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary }}>
+                      ASSIGNED TOKEN NUMBER
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '15px', fontWeight: 900, color: F.accentRed, fontFamily: 'monospace' }}>
+                        #{String(tokenNo).padStart(2, '0')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setTokenNo((t) => Math.max(1, t - 1))}
+                        style={{ padding: '1px 7px', fontSize: '11px', border: `1px solid ${F.border}`, borderRadius: '3px', background: F.bgSubtle, cursor: 'pointer', color: F.textPrimary }}
+                      >
+                        -
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTokenNo((t) => t + 1)}
+                        style={{ padding: '1px 7px', fontSize: '11px', border: `1px solid ${F.border}`, borderRadius: '3px', background: F.bgSubtle, cursor: 'pointer', color: F.textPrimary }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {orderType === 'delivery' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                    <input
+                      value={deliveryDetails.customerName}
+                      onChange={(e) => setDeliveryDetails({ ...deliveryDetails, customerName: e.target.value })}
+                      placeholder="Customer Name..."
+                      style={{ padding: '4px 8px', borderRadius: '4px', border: `1px solid ${F.border}`, backgroundColor: F.bgCard, color: F.textPrimary, fontSize: '11.5px', outline: 'none' }}
+                    />
+                    <input
+                      value={deliveryDetails.phone}
+                      onChange={(e) => setDeliveryDetails({ ...deliveryDetails, phone: e.target.value })}
+                      placeholder="Phone Number..."
+                      style={{ padding: '4px 8px', borderRadius: '4px', border: `1px solid ${F.border}`, backgroundColor: F.bgCard, color: F.textPrimary, fontSize: '11.5px', outline: 'none' }}
+                    />
+                    <input
+                      value={deliveryDetails.address}
+                      onChange={(e) => setDeliveryDetails({ ...deliveryDetails, address: e.target.value })}
+                      placeholder="Delivery Address..."
+                      style={{ gridColumn: 'span 2', padding: '4px 8px', borderRadius: '4px', border: `1px solid ${F.border}`, backgroundColor: F.bgCard, color: F.textPrimary, fontSize: '11.5px', outline: 'none' }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Mini Mart Mode: Customer Khata Balance Card if customer has credit account */}
+            {module === 'minimart' && selectedCustomer.id && (
               <div
                 style={{
                   padding: '8px 10px',
@@ -2226,10 +2606,10 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
               >
                 <div>
                   <div style={{ fontSize: '12px', fontWeight: 800, color: F.textPrimary }}>
-                    {matchedCustomer.name}
+                    {selectedCustomer.name}
                   </div>
                   <div style={{ fontSize: '11px', color: F.textSecondary, marginTop: '2px' }}>
-                    Khata Balance: <b style={{ color: (matchedCustomer.currentDebt || 0) > 0 ? F.accentRed : '#10B981' }}>PKR {(matchedCustomer.currentDebt || 0).toLocaleString()}</b>
+                    Khata Balance: <b style={{ color: (selectedCustomer.currentDebt || 0) > 0 ? F.accentRed : '#10B981' }}>PKR {(selectedCustomer.currentDebt || 0).toLocaleString()}</b>
                   </div>
                 </div>
                 {paymentMode !== 'khata' ? (
@@ -2237,7 +2617,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                     type="button"
                     onClick={() => {
                       setPaymentMode('khata');
-                      setSelectedKhataId(matchedCustomer.id);
+                      setSelectedKhataId(selectedCustomer.id!);
                       playBeep();
                     }}
                     style={{
@@ -2477,86 +2857,176 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
             flexShrink: 0,
           }}
         >
-          {/* Promo code field */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '6px 12px',
-              borderRadius: F.radiusMd,
-              backgroundColor: F.bgSubtle,
-              border: `1px dashed ${F.border}`,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Tag20Regular style={{ width: 14, height: 14, color: F.textMuted }} />
-              <span style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, letterSpacing: '0.04em' }}>
-                PROMOCODE
-              </span>
-            </div>
-
-            {appliedPromo ? (
+          {/* Collapsible Promo Code Field */}
+          {isPromoCollapsed ? (
+            /* Collapsed Promo Bar */
+            appliedPromo ? (
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
-                  backgroundColor: isDark ? 'rgba(229, 25, 55, 0.2)' : '#FEF2F2',
-                  color: F.accentRed,
-                  padding: '2px 8px',
+                  justifyContent: 'space-between',
+                  padding: '4px 10px',
                   borderRadius: F.radiusSm,
-                  fontSize: '11px',
-                  fontWeight: 700,
+                  backgroundColor: isDark ? 'rgba(229, 25, 55, 0.15)' : '#FEF2F2',
+                  border: `1px solid ${isDark ? 'rgba(229, 25, 55, 0.3)' : '#FECACA'}`,
                 }}
               >
-                <span>{appliedPromo.toUpperCase()}</span>
-                <Dismiss16Regular
-                  style={{ width: 12, height: 12, cursor: 'pointer' }}
-                  onClick={() => {
-                    setAppliedPromo('');
-                    setDiscountPct(0);
-                  }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Tag20Regular style={{ width: 13, height: 13, color: F.accentRed }} />
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: F.accentRed }}>
+                    {appliedPromo.toUpperCase()} (-{discountPct}%)
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Dismiss16Regular
+                    style={{ width: 13, height: 13, cursor: 'pointer', color: F.accentRed }}
+                    title="Remove promocode"
+                    onClick={() => {
+                      setAppliedPromo('');
+                      setDiscountPct(0);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsPromoCollapsed(false)}
+                    title="Expand promocode"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: F.accentRed, padding: 0, display: 'flex' }}
+                  >
+                    <ChevronDown20Regular style={{ width: 14, height: 14 }} />
+                  </button>
+                </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <input
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && applyPromo()}
-                  placeholder="Code..."
-                  style={{
-                    width: '80px',
-                    padding: '3px 8px',
-                    borderRadius: F.radiusSm,
-                    border: `1px solid ${F.border}`,
-                    backgroundColor: F.bgSubtle,
-                    color: F.textPrimary,
-                    fontSize: '11.5px',
-                    fontFamily: F.font,
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  onClick={applyPromo}
-                  style={{
-                    padding: '3px 10px',
-                    borderRadius: F.radiusSm,
-                    border: 'none',
-                    backgroundColor: isDark ? F.accentRed : '#1A1A1E',
-                    color: '#FFFFFF',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontFamily: F.font,
-                  }}
-                >
-                  Apply
-                </button>
+              <div
+                onClick={() => setIsPromoCollapsed(false)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '5px 10px',
+                  borderRadius: F.radiusSm,
+                  backgroundColor: F.bgSubtle,
+                  border: `1px dashed ${F.border}`,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  transition: 'all 0.12s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = F.accentRed)}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = F.border)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Tag20Regular style={{ width: 13, height: 13, color: F.textMuted }} />
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: F.textSecondary }}>
+                    PROMOCODE
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: F.textMuted, fontSize: '10.5px' }}>
+                  <span>+ Add Code</span>
+                  <ChevronDown20Regular style={{ width: 14, height: 14 }} />
+                </div>
               </div>
-            )}
-          </div>
+            )
+          ) : (
+            /* Expanded Promo Field */
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '6px 12px',
+                borderRadius: F.radiusMd,
+                backgroundColor: F.bgSubtle,
+                border: `1px dashed ${F.border}`,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Tag20Regular style={{ width: 14, height: 14, color: F.textMuted }} />
+                <span style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, letterSpacing: '0.04em' }}>
+                  PROMOCODE
+                </span>
+              </div>
+
+              {appliedPromo ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      backgroundColor: isDark ? 'rgba(229, 25, 55, 0.2)' : '#FEF2F2',
+                      color: F.accentRed,
+                      padding: '2px 8px',
+                      borderRadius: F.radiusSm,
+                      fontSize: '11px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <span>{appliedPromo.toUpperCase()}</span>
+                    <Dismiss16Regular
+                      style={{ width: 12, height: 12, cursor: 'pointer' }}
+                      onClick={() => {
+                        setAppliedPromo('');
+                        setDiscountPct(0);
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPromoCollapsed(true)}
+                    title="Collapse promocode"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: F.textMuted, padding: '2px', display: 'flex', alignItems: 'center' }}
+                  >
+                    <ChevronUp20Regular style={{ width: 14, height: 14 }} />
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && applyPromo()}
+                    placeholder="Code..."
+                    style={{
+                      width: '80px',
+                      padding: '3px 8px',
+                      borderRadius: F.radiusSm,
+                      border: `1px solid ${F.border}`,
+                      backgroundColor: F.bgSubtle,
+                      color: F.textPrimary,
+                      fontSize: '11.5px',
+                      fontFamily: F.font,
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    onClick={applyPromo}
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: F.radiusSm,
+                      border: 'none',
+                      backgroundColor: isDark ? F.accentRed : '#1A1A1E',
+                      color: '#FFFFFF',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: F.font,
+                    }}
+                  >
+                    Apply
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPromoCollapsed(true)}
+                    title="Collapse promocode"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: F.textMuted, padding: '2px', display: 'flex', alignItems: 'center' }}
+                  >
+                    <ChevronUp20Regular style={{ width: 14, height: 14 }} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Financial Breakdown */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>

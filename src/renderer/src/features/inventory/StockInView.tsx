@@ -43,6 +43,7 @@ import { uid, formatPKR } from '@/lib/utils';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { vendorStorage } from './vendorStorage';
+import { CustomInput, CustomSelect } from '@/components/ui';
 
 const stockInSchema = z.object({
   selectedProductId: z.string().optional(),
@@ -1089,30 +1090,24 @@ export function StockInView(): React.JSX.Element {
           {/* Row 1: Vendor & Product Select */}
           <div className={styles.row1}>
             <div>
-              <label className={styles.fieldLabel}>SELECT VENDOR / SUPPLIER</label>
               <Controller
                 control={form.control}
                 name="vendorName"
                 render={({ field }) => (
-                  <Dropdown
+                  <CustomSelect
+                    label="SELECT VENDOR / SUPPLIER"
                     placeholder="Select Vendor / Supplier"
                     value={field.value || ''}
-                    selectedOptions={field.value ? [field.value] : []}
-                    onOptionSelect={(_, d) => {
-                      const val = d.optionValue || '';
+                    options={[
+                      { value: '', label: 'Direct Supplier / Purchase' },
+                      ...vendors.map((v) => ({ value: v.name, label: v.name }))
+                    ]}
+                    onChange={(val) => {
                       field.onChange(val);
                       const matched = vendors.find((v) => v.name === val || v.companyName === val);
                       if (matched) form.setValue('vendorId', matched.id);
                     }}
-                    style={{ width: '100%' }}
-                  >
-                    <Option value="" text="Select Vendor / Supplier">Select Vendor / Supplier</Option>
-                    {vendors.map((v) => (
-                      <Option key={v.id} value={v.name} text={v.name}>
-                        {v.name}
-                      </Option>
-                    ))}
-                  </Dropdown>
+                  />
                 )}
               />
             </div>
@@ -1322,62 +1317,53 @@ export function StockInView(): React.JSX.Element {
           {/* Row 2: QTY, Unit Price, Discount (%), Line Total, Save Button */}
           <div className={styles.row2}>
             <div>
-              <label className={styles.fieldLabel}>QTY *</label>
               <Controller
                 control={form.control}
                 name="quantity"
                 render={({ field }) => (
-                  <Input
-                    appearance="outline"
+                  <CustomInput
+                    label="QTY *"
+                    required
                     type="number"
-                    style={{ width: '100%' }}
                     placeholder="1"
-                    value={String(field.value ?? '')}
-                    onChange={(_, d) => field.onChange(d.value)}
+                    value={field.value !== undefined ? String(field.value) : ''}
+                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                    error={form.formState.errors.quantity?.message}
                   />
                 )}
               />
-              {form.formState.errors.quantity && (
-                <span style={{ color: '#E51937', fontSize: '11px', marginTop: '2px', display: 'block' }}>
-                  {form.formState.errors.quantity.message}
-                </span>
-              )}
             </div>
 
             <div>
-              <label className={styles.fieldLabel}>UNIT PRICE (PKR)</label>
               <Controller
                 control={form.control}
                 name="unitPrice"
                 render={({ field }) => (
-                  <Input
-                    appearance="outline"
+                  <CustomInput
+                    label="UNIT PRICE (PKR)"
                     type="number"
-                    style={{ width: '100%' }}
                     placeholder="0"
-                    value={String(field.value ?? '')}
-                    onChange={(_, d) => field.onChange(d.value)}
+                    value={field.value !== undefined ? String(field.value) : ''}
+                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                   />
                 )}
               />
             </div>
 
             <div>
-              <label className={styles.fieldLabel}>DISCOUNT (%)</label>
               <Controller
                 control={form.control}
                 name="discountPercent"
                 render={({ field }) => (
-                  <Input
-                    appearance="outline"
+                  <CustomInput
+                    label="DISCOUNT (%)"
                     type="number"
-                    style={{ width: '100%' }}
                     placeholder="0"
-                    contentAfter="%"
                     min={0}
                     max={100}
-                    value={String(field.value ?? '')}
-                    onChange={(_, d) => field.onChange(d.value)}
+                    value={field.value !== undefined ? String(field.value) : ''}
+                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                    rightElement={<span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, fontWeight: 700, paddingRight: '4px' }}>%</span>}
                   />
                 )}
               />
@@ -1415,16 +1401,17 @@ export function StockInView(): React.JSX.Element {
       <div className={styles.card}>
         <span className={styles.cardTitle}>Stock In (Receiving Logs)</span>
 
-        {/* Filter Bar */}
         <div className={styles.filterBar}>
-          <Input
-            appearance="outline"
-            placeholder="Search Stock In logs by Name..."
-            contentBefore={<Search20Regular style={{ color: tokens.colorNeutralForeground3 }} />}
-            value={searchQuery}
-            onChange={(_, d) => setSearchQuery(d.value)}
-            style={{ minWidth: '280px', maxWidth: '420px', width: '100%' }}
-          />
+          <div style={{ minWidth: '280px', maxWidth: '420px', width: '100%' }}>
+            <CustomInput
+              label="Search Stock In Logs"
+              placeholder="Search by product, reason, note..."
+              icon={<Search20Regular />}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onClear={searchQuery ? () => setSearchQuery('') : undefined}
+            />
+          </div>
 
           <Caption1 style={{ color: tokens.colorNeutralForeground3, fontWeight: 600 }}>
             Total {filteredMovements.length} Stock In Records
@@ -1599,19 +1586,16 @@ export function StockInView(): React.JSX.Element {
             <form id="editDrawerForm" onSubmit={editForm.handleSubmit(onUpdate)} className={styles.drawerBody}>
               {/* Product Name */}
               <div>
-                <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                  Item / Product Name
-                </Label>
                 <Controller
                   control={editForm.control}
                   name="productName"
                   render={({ field }) => (
-                    <Input
-                      appearance="outline"
-                      style={{ width: '100%' }}
+                    <CustomInput
+                      label="Item / Product Name"
+                      required
                       placeholder="Product name"
                       value={field.value}
-                      onChange={(_, d) => field.onChange(d.value)}
+                      onChange={field.onChange}
                     />
                   )}
                 />
@@ -1619,27 +1603,20 @@ export function StockInView(): React.JSX.Element {
 
               {/* Vendor / Supplier */}
               <div>
-                <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                  Vendor / Supplier
-                </Label>
                 <Controller
                   control={editForm.control}
                   name="vendorName"
                   render={({ field }) => (
-                    <Dropdown
-                      placeholder="Direct Supplier / Purchase"
+                    <CustomSelect
+                      label="Vendor / Supplier"
                       value={field.value || ''}
-                      selectedOptions={field.value ? [field.value] : []}
-                      onOptionSelect={(_, d) => field.onChange(d.optionValue || '')}
-                      style={{ width: '100%' }}
-                    >
-                      <Option value="" text="Direct Supplier / Purchase">Direct Supplier / Purchase</Option>
-                      {vendors.map((v) => (
-                        <Option key={v.id} value={v.name} text={v.name}>
-                          {v.name}
-                        </Option>
-                      ))}
-                    </Dropdown>
+                      placeholder="Direct Supplier / Purchase"
+                      options={[
+                        { value: '', label: 'Direct Supplier / Purchase' },
+                        ...vendors.map((v) => ({ value: v.name, label: v.name }))
+                      ]}
+                      onChange={(val) => field.onChange(val)}
+                    />
                   )}
                 />
               </div>
@@ -1647,40 +1624,33 @@ export function StockInView(): React.JSX.Element {
               {/* Quantity & Unit Cost */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                    Quantity (Units)
-                  </Label>
                   <Controller
                     control={editForm.control}
                     name="quantity"
                     render={({ field }) => (
-                      <Input
-                        appearance="outline"
+                      <CustomInput
+                        label="Quantity (Units)"
+                        required
                         type="number"
-                        style={{ width: '100%' }}
                         placeholder="1"
-                        value={String(field.value ?? '')}
-                        onChange={(_, d) => field.onChange(d.value)}
+                        value={field.value !== undefined ? String(field.value) : ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                       />
                     )}
                   />
                 </div>
 
                 <div>
-                  <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                    Unit Price (PKR)
-                  </Label>
                   <Controller
                     control={editForm.control}
                     name="unitPrice"
                     render={({ field }) => (
-                      <Input
-                        appearance="outline"
+                      <CustomInput
+                        label="Unit Price (PKR)"
                         type="number"
-                        style={{ width: '100%' }}
                         placeholder="0"
-                        value={String(field.value ?? '')}
-                        onChange={(_, d) => field.onChange(d.value)}
+                        value={field.value !== undefined ? String(field.value) : ''}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                       />
                     )}
                   />
@@ -1689,23 +1659,19 @@ export function StockInView(): React.JSX.Element {
 
               {/* Discount (%) */}
               <div>
-                <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                  Discount (%)
-                </Label>
                 <Controller
                   control={editForm.control}
                   name="discountPercent"
                   render={({ field }) => (
-                    <Input
-                      appearance="outline"
+                    <CustomInput
+                      label="Discount (%)"
                       type="number"
-                      style={{ width: '100%' }}
                       placeholder="0"
-                      contentAfter="%"
                       min={0}
                       max={100}
-                      value={String(field.value ?? '')}
-                      onChange={(_, d) => field.onChange(d.value)}
+                      value={field.value !== undefined ? String(field.value) : ''}
+                      onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                      rightElement={<span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, fontWeight: 700, paddingRight: '4px' }}>%</span>}
                     />
                   )}
                 />
@@ -1713,9 +1679,6 @@ export function StockInView(): React.JSX.Element {
 
               {/* Line Total Display Box */}
               <div>
-                <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                  Updated Line Total (PKR)
-                </Label>
                 <div className={styles.lineTotalBox}>
                   <span className={styles.lineTotalValue}>Rs. {editLineTotal.toLocaleString()}</span>
                   {editDiscountAmount > 0 && (
@@ -1728,19 +1691,15 @@ export function StockInView(): React.JSX.Element {
 
               {/* Reference Note */}
               <div>
-                <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                  Note / Remarks
-                </Label>
                 <Controller
                   control={editForm.control}
                   name="note"
                   render={({ field }) => (
-                    <Input
-                      appearance="outline"
-                      style={{ width: '100%' }}
+                    <CustomInput
+                      label="Note / Remarks"
                       placeholder="Batch #, invoice notes, etc."
                       value={field.value || ''}
-                      onChange={(_, d) => field.onChange(d.value)}
+                      onChange={field.onChange}
                     />
                   )}
                 />

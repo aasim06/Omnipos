@@ -58,6 +58,13 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' };
   });
 
+  // Enable F12 and Ctrl+Shift+I to toggle DevTools even in production
+  mainWindow.webContents.on('before-input-event', (_, input) => {
+    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+      mainWindow.webContents.toggleDevTools();
+    }
+  });
+
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {

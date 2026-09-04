@@ -30,6 +30,7 @@ import { Category, Product, ModuleKey, CategoryProfile } from '@shared/types';
 import { uid } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
+import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 const categorySchema = z.object({
@@ -547,93 +548,59 @@ export function CategoriesView(): React.JSX.Element {
               />
             </div>
 
-            {/* Form Fields */}
+            {/* Form Fields with Floating Notch Labels */}
             <div className={styles.dialogFieldsContainer}>
-              <div>
-                <Label required className={styles.fieldLabel}>
-                  Category Name
-                </Label>
-                <Controller
-                  control={categoryForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      appearance="outline"
-                      placeholder="e.g. Burgers, Dairy, Snacks, Clothing, Hardware..."
-                      className={styles.fullWidth}
-                    />
-                  )}
-                />
-                {categoryForm.formState.errors.name && (
-                  <Caption1 className={styles.errorCaption}>
-                    {categoryForm.formState.errors.name.message}
-                  </Caption1>
+              <Controller
+                control={categoryForm.control}
+                name="name"
+                render={({ field }) => (
+                  <CustomInput
+                    {...field}
+                    label="Category Name"
+                    required
+                    placeholder="e.g. Burgers, Dairy, Snacks, Clothing, Hardware..."
+                    error={categoryForm.formState.errors.name?.message}
+                  />
                 )}
-              </div>
+              />
+
+              <Controller
+                control={categoryForm.control}
+                name="module"
+                render={({ field }) => (
+                  <CustomSelect
+                    label="Target Store Module"
+                    required
+                    value={field.value}
+                    onChange={(val) => field.onChange(val as ModuleKey)}
+                    options={[
+                      ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
+                      ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Goods' }] : []),
+                    ]}
+                  />
+                )}
+              />
 
               <div>
-                <Label required className={styles.fieldLabel}>
-                  Target Store Module
-                </Label>
-                <Controller
-                  control={categoryForm.control}
-                  name="module"
-                  render={({ field }) => (
-                    <Dropdown
-                      appearance="outline"
-                      className={styles.fullWidth}
-                      style={{ width: '100%' }}
-                      value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Goods'}
-                      selectedOptions={field.value ? [field.value] : []}
-                      onOptionSelect={(_, d) => {
-                        if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
-                      }}
-                    >
-                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
-                      {hasOmnimart && <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>}
-                    </Dropdown>
-                  )}
-                />
-              </div>
-
-              <div>
-                <Label className={styles.fieldLabel}>
-                  Industry Profile (Size &amp; Unit Presets)
-                </Label>
                 <Controller
                   control={categoryForm.control}
                   name="profile"
-render={({ field }) => {
-  const profileLabels: Record<string, string> = {
-    standard: 'Standard Retail (Grocery & General Goods)',
-    apparel: 'Apparel & Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)',
-    footwear: 'Footwear & Shoes (Sizes: 38 to 45)',
-    hardware: 'Hardware, Iron & Paint (KG, Feet, Meters, Litres, Bags)',
-    food: 'Restaurant & Fast Food (Portions: Regular, S, M, L, Family)',
-  };
-  const currentVal = field.value || 'standard';
-  return (
-    <Dropdown
-      appearance="outline"
-      className={styles.fullWidth}
-      style={{ width: '100%' }}
-      value={profileLabels[currentVal] || currentVal}
-      selectedOptions={[currentVal]}
-      onOptionSelect={(_, d) => {
-        if (d.optionValue) field.onChange(d.optionValue as CategoryProfile);
-      }}
-    >
-      <Option value="standard" text="Standard Retail (Grocery & General Goods)">Standard Retail (Grocery &amp; General Goods)</Option>
-      <Option value="apparel" text="Apparel & Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)">Apparel &amp; Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)</Option>
-      <Option value="footwear" text="Footwear & Shoes (Sizes: 38 to 45)">Footwear &amp; Shoes (Sizes: 38 to 45)</Option>
-      <Option value="hardware" text="Hardware, Iron & Paint (KG, Feet, Meters, Litres, Bags)">Hardware, Iron &amp; Paint (KG, Feet, Meters, Litres, Bags)</Option>
-      <Option value="food" text="Restaurant & Fast Food (Portions: Regular, S, M, L, Family)">Restaurant &amp; Fast Food (Portions: Regular, S, M, L, Family)</Option>
-    </Dropdown>
-  );
-}}
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="Industry Profile (Size & Unit Presets)"
+                      value={field.value || 'standard'}
+                      onChange={(val) => field.onChange(val as CategoryProfile)}
+                      options={[
+                        { value: 'standard', label: 'Standard Retail (Grocery & General Goods)' },
+                        { value: 'apparel', label: 'Apparel & Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)' },
+                        { value: 'footwear', label: 'Footwear & Shoes (Sizes: 38 to 45)' },
+                        { value: 'hardware', label: 'Hardware, Iron & Paint (KG, Feet, Meters, Litres, Bags)' },
+                        { value: 'food', label: 'Restaurant & Fast Food (Portions: Regular, S, M, L, Family)' },
+                      ]}
+                    />
+                  )}
                 />
-                <Caption1 className={styles.hintCaption}>
+                <Caption1 className={styles.hintCaption} style={{ marginTop: '4px', display: 'block' }}>
                   Auto-enables size matrices, measurement units, and decimal quantities when creating products.
                 </Caption1>
               </div>

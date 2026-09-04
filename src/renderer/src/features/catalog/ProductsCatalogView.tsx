@@ -53,6 +53,24 @@ import { Product, Category, ModuleKey } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
+import { CustomInput, CustomSelect } from '@/components/ui';
+
+const UNIT_OPTIONS = [
+  { value: 'PCS', label: 'Piece (PCS)' },
+  { value: 'KG', label: 'Kilogram (KG)' },
+  { value: 'Gram', label: 'Gram (g)' },
+  { value: 'Liter', label: 'Liter (L)' },
+  { value: 'ML', label: 'Milliliter (ml)' },
+  { value: 'PACK', label: 'Pack' },
+  { value: 'BOX', label: 'Box' },
+  { value: 'DOZEN', label: 'Dozen' },
+  { value: 'FEET', label: 'Feet (ft)' },
+  { value: 'METER', label: 'Meter (m)' },
+  { value: 'GALLON', label: 'Gallon' },
+  { value: 'BAG', label: 'Bag' },
+  { value: 'BUNDLE', label: 'Bundle' },
+  { value: 'PAIR', label: 'Pair' },
+];
 
 /* ── Zod Schemas ───────────────────────────────────────────────────── */
 const productSchema = z.object({
@@ -1088,14 +1106,14 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                 </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <Input
-                  appearance="outline"
-                  placeholder="Instant SKU / Product Search..."
-                  contentBefore={<Search20Regular />}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', width: '280px' }}>
+                <CustomInput
+                  label="Instant SKU / Search"
+                  placeholder="Search products..."
+                  icon={<Search20Regular />}
                   value={searchTerm}
-                  onChange={(_, d) => setSearchTerm(d.value)}
-                  style={{ width: '280px' }}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onClear={searchTerm ? () => setSearchTerm('') : undefined}
                 />
               </div>
             </div>
@@ -1244,31 +1262,30 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
           {/* Filter & Search Bar */}
           <div className={styles.filterBar}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <Input
-                appearance="outline"
-                placeholder="Search products by name or SKU..."
-                contentBefore={<Search20Regular />}
-                value={searchTerm}
-                onChange={(_, d) => setSearchTerm(d.value)}
-                style={{ width: '320px' }}
-              />
+              <div style={{ width: '300px' }}>
+                <CustomInput
+                  label="Search Products"
+                  placeholder="Name, SKU, or category..."
+                  icon={<Search20Regular />}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onClear={searchTerm ? () => setSearchTerm('') : undefined}
+                />
+              </div>
 
-              <Dropdown
-                appearance="outline"
-                value={selectedCategory === 'ALL' ? 'All Categories' : selectedCategory}
-                selectedOptions={[selectedCategory]}
-                onOptionSelect={(_, d) => {
-                  if (d.optionValue) setSelectedCategory(d.optionValue);
-                }}
-                style={{ width: '190px' }}
-              >
-                <Option value="ALL" text="All Categories">All Categories</Option>
-                {categories
-                  .filter((c) => (activeTab === 'fastfood' ? c.module === 'fastfood' : activeTab === 'minimart' ? c.module === 'minimart' : true))
-                  .map((c) => (
-                    <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
-                  ))}
-              </Dropdown>
+              <div style={{ width: '200px' }}>
+                <CustomSelect
+                  label="Category Filter"
+                  value={selectedCategory}
+                  options={[
+                    { value: 'ALL', label: 'All Categories' },
+                    ...categories
+                      .filter((c) => (activeTab === 'fastfood' ? c.module === 'fastfood' : activeTab === 'minimart' ? c.module === 'minimart' : true))
+                      .map((c) => ({ value: c.name, label: c.name })),
+                  ]}
+                  onChange={(val) => setSelectedCategory(val)}
+                />
+              </div>
             </div>
 
             <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
@@ -1466,35 +1483,31 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                   
                   {/* Module & Category Row */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Target Module</Label>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                       <Controller
                         control={productForm.control}
                         name="module"
                         render={({ field }) => (
-                          <Dropdown
-                            appearance="outline"
-                            style={{ width: '100%' }}
-                            value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Goods'}
-                            selectedOptions={[field.value]}
-                            onOptionSelect={(_, d) => {
-                              if (d.optionValue) {
-                                field.onChange(d.optionValue as ModuleKey);
-                                const firstCat = categories.find((c) => c.module === d.optionValue)?.name || 'General';
-                                productForm.setValue('category', firstCat);
-                              }
+                          <CustomSelect
+                            label="Target Module"
+                            required
+                            value={field.value}
+                            options={[
+                              ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
+                              ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Goods' }] : []),
+                            ]}
+                            onChange={(val) => {
+                              field.onChange(val as ModuleKey);
+                              const firstCat = categories.find((c) => c.module === val)?.name || 'General';
+                              productForm.setValue('category', firstCat);
                             }}
-                          >
-                            {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
-                            {hasOmnimart && <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>}
-                          </Dropdown>
+                          />
                         )}
                       />
                     </div>
 
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <Label required style={{ fontWeight: 600 }}>Category</Label>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '6px' }}>
                         <span
                           role="button"
                           tabIndex={0}
@@ -1525,91 +1538,70 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                           const displayList = [...activeGroupCats, ...otherGroupCats];
 
                           return (
-                            <Dropdown
-                              appearance="outline"
-                              style={{ width: '100%' }}
-                              value={field.value || 'Select Category'}
-                              selectedOptions={field.value ? [field.value] : []}
-                              onOptionSelect={(_, d) => {
-                                if (d.optionValue) field.onChange(d.optionValue);
-                              }}
-                            >
-                              {displayList.map((c) => (
-                                <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
-                              ))}
-                            </Dropdown>
+                            <CustomSelect
+                              label="Category"
+                              required
+                              placeholder="Select Category"
+                              value={field.value}
+                              options={displayList.map((c) => ({ value: c.name, label: c.name }))}
+                              onChange={(val) => field.onChange(val)}
+                              error={productForm.formState.errors.category?.message}
+                            />
                           );
                         }}
                       />
-                      {productForm.formState.errors.category && (
-                        <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                          {productForm.formState.errors.category.message}
-                        </span>
-                      )}
                     </div>
                   </div>
 
                   {/* Product Name */}
                   <div>
-                    <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Item / Product Name</Label>
                     <Controller
                       control={productForm.control}
                       name="name"
                       render={({ field }) => (
-                        <Input
-                          appearance="outline"
-                          style={{ width: '100%' }}
+                        <CustomInput
+                          label="Item / Product Name"
+                          required
                           placeholder="e.g. Crispy Zinger Burger, Super Basmati Rice, or Fresh Milk"
-                          value={field.value}
-                          onChange={(_, d) => field.onChange(d.value)}
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          error={productForm.formState.errors.name?.message}
                         />
                       )}
                     />
-                    {productForm.formState.errors.name && (
-                      <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                        {productForm.formState.errors.name.message}
-                      </span>
-                    )}
                   </div>
 
                   {/* Retail Price & Purchase Cost */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
-                      <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Retail Selling Price (PKR)</Label>
                       <Controller
                         control={productForm.control}
                         name="price"
                         render={({ field }) => (
-                          <Input
-                            appearance="outline"
+                          <CustomInput
+                            label="Retail Selling Price (PKR)"
+                            required
                             type="number"
-                            style={{ width: '100%' }}
                             placeholder="e.g. 550"
                             value={field.value !== undefined ? String(field.value) : ''}
-                            onChange={(_, d) => field.onChange(d.value)}
+                            onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                            error={productForm.formState.errors.price?.message}
                           />
                         )}
                       />
-                      {productForm.formState.errors.price && (
-                        <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                          {productForm.formState.errors.price.message}
-                        </span>
-                      )}
                     </div>
 
                     <div>
-                      <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Purchase Cost Price (PKR)</Label>
                       <Controller
                         control={productForm.control}
                         name="costPrice"
                         render={({ field }) => (
-                          <Input
-                            appearance="outline"
+                          <CustomInput
+                            label="Purchase Cost Price (PKR)"
                             type="number"
-                            style={{ width: '100%' }}
                             placeholder="e.g. 320"
                             value={field.value !== undefined ? String(field.value) : ''}
-                            onChange={(_, d) => field.onChange(d.value)}
+                            onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                           />
                         )}
                       />
@@ -1619,88 +1611,66 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                   {/* Unit of Measure & Opening Stock */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
-                      <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Unit of Measure</Label>
                       <Controller
                         control={productForm.control}
                         name="unit"
                         render={({ field }) => (
-                          <Dropdown
-                            appearance="outline"
-                            style={{ width: '100%' }}
+                          <CustomSelect
+                            label="Unit of Measure"
+                            required
                             value={field.value || 'PCS'}
-                            selectedOptions={[field.value || 'PCS']}
-                            onOptionSelect={(_, d) => {
-                              if (d.optionValue) field.onChange(d.optionValue);
-                            }}
-                          >
-                            <Option value="PCS" text="PCS (Pieces / Packaged Goods)">PCS (Pieces / Packaged Goods)</Option>
-                            <Option value="KG" text="KG (Kilograms - Sold by Weight)">KG (Kilograms - Sold by Weight)</Option>
-                            <Option value="Gram" text="Gram (Grams - Precision Weight)">Gram (Grams - Precision Weight)</Option>
-                            <Option value="Liter" text="Liter (Liters - Sold by Volume)">Liter (Liters - Sold by Volume)</Option>
-                            <Option value="ML" text="ML (Milliliters)">ML (Milliliters)</Option>
-                            <Option value="PACK" text="PACK (Packet / Bundle)">PACK (Packet / Bundle)</Option>
-                            <Option value="BOX" text="BOX (Box / Carton)">BOX (Box / Carton)</Option>
-                            <Option value="DOZEN" text="DOZEN (12 Units)">DOZEN (12 Units)</Option>
-                          </Dropdown>
+                            options={UNIT_OPTIONS}
+                            onChange={(val) => field.onChange(val)}
+                          />
                         )}
                       />
                     </div>
 
                     <div>
-                      <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Opening Stock</Label>
                       <Controller
                         control={productForm.control}
                         name="openingStock"
                         render={({ field }) => (
-                          <Input
-                            appearance="outline"
+                          <CustomInput
+                            label="Opening Stock"
                             type="number"
-                            style={{ width: '100%' }}
                             placeholder="50"
-                            value={String(field.value ?? '')}
-                            onChange={(_, d) => field.onChange(d.value)}
+                            value={field.value !== undefined ? String(field.value) : ''}
+                            onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                            error={productForm.formState.errors.openingStock?.message}
                           />
                         )}
                       />
-                      {productForm.formState.errors.openingStock && (
-                        <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                          {productForm.formState.errors.openingStock.message}
-                        </span>
-                      )}
                     </div>
                   </div>
 
                   {/* SKU & Rack Location */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
-                      <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>SKU / Barcode</Label>
                       <Controller
                         control={productForm.control}
                         name="skuCode"
                         render={({ field }) => (
-                          <Input
-                            appearance="outline"
-                            style={{ width: '100%' }}
+                          <CustomInput
+                            label="SKU / Barcode"
                             placeholder="Auto-generated"
                             value={field.value || ''}
-                            onChange={(_, d) => field.onChange(d.value)}
+                            onChange={field.onChange}
                           />
                         )}
                       />
                     </div>
 
                     <div>
-                      <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Rack / Shelf Location</Label>
                       <Controller
                         control={productForm.control}
                         name="rackLocation"
                         render={({ field }) => (
-                          <Input
-                            appearance="outline"
-                            style={{ width: '100%' }}
+                          <CustomInput
+                            label="Rack / Shelf Location"
                             placeholder="e.g. Aisle 1 or Chiller-01"
                             value={field.value || ''}
-                            onChange={(_, d) => field.onChange(d.value)}
+                            onChange={field.onChange}
                           />
                         )}
                       />
@@ -1709,17 +1679,15 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
                   {/* Description / Notes */}
                   <div>
-                    <Label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Description / Notes (Optional)</Label>
                     <Controller
                       control={productForm.control}
                       name="description"
                       render={({ field }) => (
-                        <Input
-                          appearance="outline"
-                          style={{ width: '100%' }}
+                        <CustomInput
+                          label="Description / Notes (Optional)"
                           placeholder="e.g. Fresh farm product, premium quality"
                           value={field.value || ''}
-                          onChange={(_, d) => field.onChange(d.value)}
+                          onChange={field.onChange}
                         />
                       )}
                     />
@@ -2115,53 +2083,38 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
             {/* Form Fields */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
-              <div>
-                <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '13px' }}>
-                  Category Name
-                </Label>
-                <Controller
-                  control={categoryForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <Input
-                      appearance="outline"
-                      style={{ width: '100%' }}
-                      placeholder="e.g. Desserts, Beverages, Lubricants"
-                      value={field.value}
-                      onChange={(_, d) => field.onChange(d.value)}
-                    />
-                  )}
-                />
-                {categoryForm.formState.errors.name && (
-                  <span style={{ color: '#E51937', fontSize: '11px', marginTop: '3px', display: 'block' }}>
-                    {categoryForm.formState.errors.name.message}
-                  </span>
-                )}
-              </div>
 
-              <div>
-                <Label required style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '13px' }}>
-                  Assign to Module
-                </Label>
-                <Controller
-                  control={categoryForm.control}
-                  name="module"
-                  render={({ field }) => (
-                    <Dropdown
-                      appearance="outline"
-                      style={{ width: '100%' }}
-                      value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Goods'}
-                      selectedOptions={[field.value]}
-                      onOptionSelect={(_, d) => {
-                        if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
-                      }}
-                    >
-                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
-                      {hasOmnimart && <Option value="minimart" text="Omnimart Goods">Omnimart Goods</Option>}
-                    </Dropdown>
-                  )}
-                />
-              </div>
+              <Controller
+                control={categoryForm.control}
+                name="name"
+                render={({ field }) => (
+                  <CustomInput
+                    label="Category Name"
+                    required
+                    placeholder="e.g. Desserts, Beverages, Lubricants"
+                    value={field.value}
+                    onChange={field.onChange}
+                    error={categoryForm.formState.errors.name?.message}
+                  />
+                )}
+              />
+
+              <Controller
+                control={categoryForm.control}
+                name="module"
+                render={({ field }) => (
+                  <CustomSelect
+                    label="Assign to Module"
+                    required
+                    value={field.value}
+                    options={[
+                      ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
+                      ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Goods' }] : []),
+                    ]}
+                    onChange={(val) => field.onChange(val as ModuleKey)}
+                  />
+                )}
+              />
             </div>
 
             {/* Actions */}

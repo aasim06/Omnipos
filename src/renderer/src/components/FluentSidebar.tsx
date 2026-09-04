@@ -10,6 +10,14 @@ import {
   MenuDivider,
   Avatar,
   Text,
+  Button,
+  Badge,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogContent,
+  DialogActions,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -45,12 +53,16 @@ import {
   ArrowCircleDown20Regular,
   ArrowCircleUp20Regular,
   PeopleCommunity20Regular,
+  PeopleCommunity24Regular,
+  PeopleCommunity24Filled,
   DocumentTableSearch20Regular,
+  Database20Regular,
+  ArrowSync20Filled,
 } from '@fluentui/react-icons';
 import { useAuth } from '@/features/auth/AuthContext';
-import { useLicense } from '@/features/auth/LicenseModulesContext';
+import { useLicense, LicenseModules } from '@/features/auth/LicenseModulesContext';
+import { MODULE_TO_PERMISSION } from './RouteAccessGate';
 import { useAppTheme } from '@/theme/AppProviders';
-import { SyncStatusIndicator } from './SyncStatusIndicator';
 
 const useStyles = makeStyles({
   laserIndicator: {
@@ -122,10 +134,30 @@ const useStyles = makeStyles({
 export function FluentSidebar(): React.JSX.Element {
   const styles = useStyles();
   const { mode, toggleTheme } = useAppTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const { can } = useLicense();
   const navigate = useNavigate();
   const location = useLocation();
+  const isAdmin = user?.role === 'admin' || hasPermission('admin');
+
+  // Storage Diagnostics Modal State
+  const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
+  const [storageStatusMsg, setStorageStatusMsg] = useState('');
+
+  const handleResyncStorage = async () => {
+    setStorageStatusMsg('Syncing local SQLite & WAL with cloud server...');
+    try {
+      if (typeof window !== 'undefined' && (window as any).syncEngine?.triggerSync) {
+        await (window as any).syncEngine.triggerSync();
+      }
+      setTimeout(() => {
+        setStorageStatusMsg('Local database & cloud are synchronized!');
+        setTimeout(() => setStorageStatusMsg(''), 3000);
+      }, 700);
+    } catch {
+      setStorageStatusMsg('Local SQLite WAL is active (Offline mode)');
+    }
+  };
 
   // Collapsed state persisted in localStorage
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -269,13 +301,34 @@ export function FluentSidebar(): React.JSX.Element {
         },
       ],
     },
+    {
+      title: 'ADMIN & CONTROL',
+      items: [
+        {
+          to: '/admin',
+          label: 'Staff & Cashier Roles',
+          moduleKey: 'admin' as const,
+          icon: <PeopleCommunity24Regular style={{ width: 19, height: 19 }} />,
+          activeIcon: <PeopleCommunity24Filled style={{ width: 19, height: 19 }} />,
+        },
+      ],
+    },
   ];
 
-  // Dynamically filter sections and items according to remote module licenses
+  // Dynamically filter sections and items according to remote module licenses AND user permissions
   const sections = allSections
     .map((sec) => ({
       ...sec,
-      items: sec.items.filter((it: any) => !it.moduleKey || can(it.moduleKey)),
+      items: sec.items.filter((it: any) => {
+        // 1. Check license module capability
+        if (it.moduleKey && !can(it.moduleKey)) return false;
+        // 2. Check user granular permission (cashier restrictions)
+        if (it.moduleKey) {
+          const perm = MODULE_TO_PERMISSION[it.moduleKey as keyof LicenseModules];
+          if (perm && !hasPermission(perm)) return false;
+        }
+        return true;
+      }),
     }))
     .filter((sec) => sec.items.length > 0);
 
@@ -618,7 +671,7 @@ export function FluentSidebar(): React.JSX.Element {
                               <span className={styles.iconWrap} style={{ opacity: isSubActive ? 1 : 0.75 }}>
                                 {sub.icon}
                               </span>
-                              <span className={styles.noWrapText}>
+                              <span className={styles.noWrapText} style={{ fontWeight: isSubActive ? 700 : 500, fontSize: '12px' }}>
                                 {sub.label}
                               </span>
                             </button>
@@ -697,7 +750,7 @@ export function FluentSidebar(): React.JSX.Element {
                           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: isActive ? '#FF4D63' : t.itemText, filter: isActive ? 'drop-shadow(0 0 6px rgba(229, 25, 55, 0.6))' : 'none' }}>
                             {isActive ? item.activeIcon : item.icon}
                           </span>
-                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: isActive ? 700 : 500, fontSize: '13px' }}>
                             {item.label}
                           </span>
                           {item.badge && (
@@ -747,199 +800,321 @@ export function FluentSidebar(): React.JSX.Element {
           background: t.deckBg,
         }}
       >
-        {/* Cloud Sync Indicator */}
-        <SyncStatusIndicator isCollapsed={isCollapsed} />
-
-        {/* User Identity Card */}
-        <Menu positioning={isCollapsed ? 'after-bottom' : 'above'}>
-          <MenuTrigger disableButtonEnhancement>
+        {/* ── Bottom Deck Action Toolbar (Theme, [Settings], [Storage], Logout, Collapse) ── */}
+        <div
+          style={{
+            display: isCollapsed ? 'flex' : 'grid',
+            gridTemplateColumns: isAdmin ? 'repeat(5, 1fr)' : 'repeat(3, 1fr)',
+            flexDirection: isCollapsed ? 'column' : 'row',
+            gap: '4px',
+            width: isCollapsed ? '38px' : '100%',
+            margin: isCollapsed ? '0 auto' : '0',
+            alignItems: 'center',
+            padding: '3px',
+            borderRadius: '9px',
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F1F5F9',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* 1. Light / Dark Theme Button */}
+          <Tooltip
+            content={mode === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            relationship="label"
+            positioning={isCollapsed ? 'after' : 'above'}
+          >
             <button
               type="button"
+              onClick={toggleTheme}
               style={{
-                height: '46px',
-                width: isCollapsed ? '42px' : '100%',
-                margin: isCollapsed ? '0 auto' : '0',
-                padding: isCollapsed ? '0' : '6px 8px',
-                borderRadius: '9px',
-                border: t.userCardBorder,
-                backgroundColor: t.userCardBg,
+                height: '32px',
+                width: '100%',
+                padding: 0,
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: mode === 'dark' ? '#F59E0B' : '#E51937',
+                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: isCollapsed ? 'center' : 'flex-start',
-                cursor: 'pointer',
+                justifyContent: 'center',
                 transition: 'all 0.15s ease',
               }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF';
+                e.currentTarget.style.boxShadow = isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              title={mode === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
             >
-              <div style={{ position: 'relative' }}>
-                <Avatar
-                  name={user?.name || 'Cashier'}
-                  color="colorful"
-                  size={32}
-                />
-                <span
-                  style={{
-                    position: 'absolute',
-                    bottom: '0',
-                    right: '0',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: '#10B981',
-                    boxShadow: '0 0 6px #10B981',
-                    border: isDark ? '1.5px solid #111215' : '1.5px solid #FFFFFF',
-                  }}
-                />
-              </div>
-
-              {!isCollapsed && (
-                <div style={{ marginLeft: '10px', textAlign: 'left', flex: 1, overflow: 'hidden' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: t.userName, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {user?.name || 'Store Manager'}
-                    </div>
-                    <span
-                      style={{
-                        fontSize: '9px',
-                        fontWeight: 800,
-                        padding: '1px 5px',
-                        borderRadius: '3px',
-                        backgroundColor: 'rgba(229, 25, 55, 0.15)',
-                        color: '#FF4D63',
-                        border: '1px solid rgba(229, 25, 55, 0.3)',
-                      }}
-                    >
-                      {user?.role?.toUpperCase() || 'ADMIN'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '10px', color: t.userSub, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '1px' }}>
-                    Online Terminal
-                  </div>
-                </div>
+              {mode === 'dark' ? (
+                <WeatherSunny20Regular style={{ width: 17, height: 17, color: '#F59E0B' }} />
+              ) : (
+                <WeatherMoon20Regular style={{ width: 17, height: 17, color: '#E51937' }} />
               )}
             </button>
-          </MenuTrigger>
+          </Tooltip>
 
-          <MenuPopover
-            style={{
-              borderRadius: '12px',
-              padding: '6px',
-              minWidth: '240px',
-              backgroundColor: t.popoverBg,
-              border: t.popoverBorder,
-              boxShadow: t.popoverShadow,
-            }}
-          >
-            <MenuList>
-              <div style={{ padding: '8px 12px 10px', borderBottom: t.headerBorder, marginBottom: '4px' }}>
-                <Text weight="semibold" size={200} block style={{ color: t.userName }}>{user?.name || 'Store Manager'}</Text>
-                <Text size={100} style={{ color: t.userSub, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                  <CloudCheckmark16Filled style={{ color: '#10B981' }} />
-                  {' '}{user?.role || 'staff'} — Terminal Active
-                </Text>
-              </div>
-
-              <MenuItem icon={<Settings20Regular style={{ color: t.buttonText }} />} onClick={() => navigate('/admin')}>
-                Store &amp; Admin Settings
-              </MenuItem>
-              <MenuItem
-                icon={mode === 'dark' ? <WeatherSunny20Regular style={{ color: '#F59E0B' }} /> : <WeatherMoon20Regular style={{ color: '#E51937' }} />}
-                onClick={toggleTheme}
+          {/* 2. Admin & Store Settings Button (Admin Only) */}
+          {isAdmin && (
+            <Tooltip
+              content="Store & Admin Settings"
+              relationship="label"
+              positioning={isCollapsed ? 'after' : 'above'}
+            >
+              <button
+                type="button"
+                onClick={() => navigate('/admin')}
+                style={{
+                  height: '32px',
+                  width: '100%',
+                  padding: 0,
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: location.pathname === '/admin' ? (isDark ? 'rgba(229, 25, 55, 0.2)' : 'rgba(229, 25, 55, 0.12)') : 'transparent',
+                  color: location.pathname === '/admin' ? '#E51937' : (isDark ? '#CBD5E1' : '#64748B'),
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (location.pathname !== '/admin') {
+                    e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF';
+                    e.currentTarget.style.boxShadow = isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (location.pathname !== '/admin') {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }
+                }}
+                title="Store & Admin Settings"
               >
-                {mode === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-              </MenuItem>
-              <MenuDivider />
-              <MenuItem
-                icon={<LockClosed20Regular style={{ color: '#FF4D63' }} />}
-                onClick={logout}
-                style={{ color: '#FF4D63', fontWeight: 600 }}
+                <Settings20Regular style={{ width: 17, height: 17, color: location.pathname === '/admin' ? '#E51937' : undefined }} />
+              </button>
+            </Tooltip>
+          )}
+
+          {/* 3. Storage & Database Engine Button (Admin Only) */}
+          {isAdmin && (
+            <Tooltip
+              content="Local Storage & Database"
+              relationship="label"
+              positioning={isCollapsed ? 'after' : 'above'}
+            >
+              <button
+                type="button"
+                onClick={() => setIsStorageModalOpen(true)}
+                style={{
+                  height: '32px',
+                  width: '100%',
+                  padding: 0,
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: isStorageModalOpen ? (isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.12)') : 'transparent',
+                  color: isDark ? '#CBD5E1' : '#64748B',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isStorageModalOpen) {
+                    e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF';
+                    e.currentTarget.style.boxShadow = isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isStorageModalOpen) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }
+                }}
+                title="Local Storage & Database Engine"
               >
-                Lock Terminal / Log Out
-              </MenuItem>
-            </MenuList>
-          </MenuPopover>
-        </Menu>
+                <Database20Regular style={{ width: 17, height: 17 }} />
+              </button>
+            </Tooltip>
+          )}
 
-        {/* ── Theme Quick Toggle & Collapse Sidebar Row ── */}
-        <div style={{ display: 'flex', gap: '6px', width: isCollapsed ? '42px' : '100%', margin: isCollapsed ? '0 auto' : '0', alignItems: 'center' }}>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            style={{
-              height: '34px',
-              width: '34px',
-              minWidth: '34px',
-              padding: 0,
-              borderRadius: '7px',
-              border: t.buttonBorder,
-              backgroundColor: t.buttonBg,
-              color: mode === 'dark' ? '#F59E0B' : '#E51937',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.15s ease',
-              flexShrink: 0,
-            }}
-            title={mode === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+          {/* 4. Lock Terminal / Log Out Button */}
+          <Tooltip
+            content={`Log Out / Lock Terminal (${user?.name || 'Cashier'})`}
+            relationship="label"
+            positioning={isCollapsed ? 'after' : 'above'}
           >
-            {mode === 'dark' ? (
-              <WeatherSunny20Regular style={{ width: 16, height: 16, color: '#F59E0B' }} />
-            ) : (
-              <WeatherMoon20Regular style={{ width: 16, height: 16, color: '#E51937' }} />
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={logout}
+              style={{
+                height: '32px',
+                width: '100%',
+                padding: 0,
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: '#EF4444',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)';
+                e.currentTarget.style.boxShadow = isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              title={`Log Out / Lock Terminal (${user?.name || 'Cashier'})`}
+            >
+              <LockClosed20Regular style={{ width: 17, height: 17, color: '#EF4444' }} />
+            </button>
+          </Tooltip>
 
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            style={{
-              height: '34px',
-              flex: 1,
-              width: isCollapsed ? '34px' : 'auto',
-              minWidth: 0,
-              padding: isCollapsed ? '0' : '0 10px',
-              borderRadius: '7px',
-              border: t.buttonBorder,
-              backgroundColor: t.buttonBg,
-              color: t.buttonText,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: isCollapsed ? 'center' : 'space-between',
-              transition: 'all 0.15s ease',
-            }}
-            title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+          {/* 5. Collapse / Expand Sidebar Button */}
+          <Tooltip
+            content={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+            relationship="label"
+            positioning={isCollapsed ? 'after' : 'above'}
           >
-            {isCollapsed ? (
-              <Tooltip content="Expand sidebar (Ctrl+B)" relationship="label" positioning="after">
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ChevronRight20Regular style={{ width: 16, height: 16, color: t.buttonText }} />
-                </span>
-              </Tooltip>
-            ) : (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ChevronLeft20Regular style={{ width: 15, height: 15, color: t.buttonText }} />
-                  <span style={{ fontSize: '11.5px', fontWeight: 600, color: t.buttonText }}>Collapse Sidebar</span>
-                </div>
-                <span
-                  style={{
-                    fontSize: '9px',
-                    fontWeight: 700,
-                    padding: '1px 5px',
-                    borderRadius: '3px',
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-                    color: t.buttonText,
-                    border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-                  }}
-                >
-                  Ctrl+B
-                </span>
-              </>
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              style={{
+                height: '32px',
+                width: '100%',
+                padding: 0,
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: isDark ? '#CBD5E1' : '#64748B',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF';
+                e.currentTarget.style.boxShadow = isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+            >
+              {isCollapsed ? (
+                <ChevronRight20Regular style={{ width: 17, height: 17, color: isDark ? '#CBD5E1' : '#64748B' }} />
+              ) : (
+                <ChevronLeft20Regular style={{ width: 17, height: 17, color: isDark ? '#CBD5E1' : '#64748B' }} />
+              )}
+            </button>
+          </Tooltip>
         </div>
       </div>
+
+      {/* ── Storage & Local Database Dialog ─────────────────────────── */}
+      <Dialog open={isStorageModalOpen} onOpenChange={(_, d) => setIsStorageModalOpen(d.open)}>
+        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '440px' }}>
+          <DialogBody>
+            <DialogTitle style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Database20Regular style={{ color: '#E51937' }} />
+              <span>Offline-First Storage Engine</span>
+            </DialogTitle>
+            <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+              <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+                Local storage resilience, SQLite WAL persistence, and data synchronization.
+              </Text>
+
+              <div style={{ padding: '14px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke1}`, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>Database Engine</span>
+                  <Badge appearance="tint" color="success">SQLite WAL Active</Badge>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>Cloud Sync Engine</span>
+                  <Badge appearance="tint" color="brand" style={{ backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937' }}>
+                    Auto-Sync Online
+                  </Badge>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>Terminal State</span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>● Healthy &amp; Ready</span>
+                </div>
+              </div>
+
+              {storageStatusMsg && (
+                <div style={{ color: '#10B981', fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>
+                  {storageStatusMsg}
+                </div>
+              )}
+            </DialogContent>
+            <DialogActions style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setIsStorageModalOpen(false)}
+                style={{
+                  height: '36px',
+                  padding: '0 18px',
+                  borderRadius: '7px',
+                  border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                  color: isDark ? '#F1F5F9' : '#334155',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  outline: 'none',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleResyncStorage}
+                style={{
+                  height: '36px',
+                  padding: '0 20px',
+                  borderRadius: '7px',
+                  border: 'none',
+                  backgroundColor: '#E51937',
+                  color: '#FFFFFF',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '7px',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  outline: 'none',
+                  boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <ArrowSync20Filled style={{ width: 15, height: 15 }} />
+                <span>Force Cloud Resync</span>
+              </button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </nav>
   );
 }

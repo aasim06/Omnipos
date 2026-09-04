@@ -33,6 +33,24 @@ import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
+import { CustomInput, CustomSelect } from '@/components/ui';
+
+const UNIT_OPTIONS = [
+  { value: 'PCS', label: 'Piece (PCS)' },
+  { value: 'KG', label: 'Kilogram (KG)' },
+  { value: 'Gram', label: 'Gram (g)' },
+  { value: 'Liter', label: 'Liter (L)' },
+  { value: 'ML', label: 'Milliliter (ml)' },
+  { value: 'PACK', label: 'Pack' },
+  { value: 'BOX', label: 'Box' },
+  { value: 'DOZEN', label: 'Dozen' },
+  { value: 'FEET', label: 'Feet (ft)' },
+  { value: 'METER', label: 'Meter (m)' },
+  { value: 'GALLON', label: 'Gallon' },
+  { value: 'BAG', label: 'Bag' },
+  { value: 'BUNDLE', label: 'Bundle' },
+  { value: 'PAIR', label: 'Pair' },
+];
 
 const productSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters'),
@@ -820,34 +838,27 @@ export function AddProductView(): React.JSX.Element {
           <div className={styles.cardSurface}>
             {/* Target Module & Category */}
             <div className={styles.twoColGrid}>
-              <div>
-                <Label required className={styles.fieldLabel}>
-                  Target Store Module
-                </Label>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                 <Controller
                   control={productForm.control}
                   name="module"
                   render={({ field }) => (
-                    <Dropdown
-                      appearance="outline"
-                      className={styles.fullWidth}
-                      style={{ width: '100%' }}
-                      value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Supermarket'}
-                      selectedOptions={field.value ? [field.value] : []}
-                      onOptionSelect={(_, d) => {
-                        if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
-                      }}
-                    >
-                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
-                      {hasOmnimart && <Option value="minimart" text="Omnimart Supermarket">Omnimart Supermarket</Option>}
-                    </Dropdown>
+                    <CustomSelect
+                      label="Target Store Module"
+                      required
+                      value={field.value}
+                      options={[
+                        ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
+                        ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Supermarket' }] : []),
+                      ]}
+                      onChange={(val) => field.onChange(val as ModuleKey)}
+                    />
                   )}
                 />
               </div>
 
-              <div>
-                <div className={styles.fieldHeaderRow}>
-                  <Label required className={styles.fieldLabel}>Category</Label>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '6px' }}>
                   <span
                     role="button"
                     tabIndex={0}
@@ -873,20 +884,15 @@ export function AddProductView(): React.JSX.Element {
                     const displayList = [...activeGroupCats, ...otherGroupCats];
 
                     return (
-                      <Dropdown
-                        appearance="outline"
-                        className={styles.fullWidth}
-                        style={{ width: '100%' }}
-                        value={field.value || 'Select Category'}
-                        selectedOptions={field.value ? [field.value] : []}
-                        onOptionSelect={(_, d) => {
-                          if (d.optionValue) field.onChange(d.optionValue);
-                        }}
-                      >
-                        {displayList.map((c) => (
-                          <Option key={c.id} value={c.name} text={c.name}>{c.name}</Option>
-                        ))}
-                      </Dropdown>
+                      <CustomSelect
+                        label="Category"
+                        required
+                        placeholder="Select Category"
+                        value={field.value}
+                        options={displayList.map((c) => ({ value: c.name, label: c.name }))}
+                        onChange={(val) => field.onChange(val)}
+                        error={productForm.formState.errors.category?.message}
+                      />
                     );
                   }}
                 />
@@ -895,91 +901,71 @@ export function AddProductView(): React.JSX.Element {
 
             {/* Product Name */}
             <div>
-              <Label required className={styles.fieldLabel}>Product Name</Label>
               <Controller
                 control={productForm.control}
                 name="name"
                 render={({ field }) => (
-                  <Input
-                    {...field}
-                    appearance="outline"
+                  <CustomInput
+                    label="Product Name"
+                    required
                     placeholder={watchedModule === 'fastfood' ? 'e.g. Crispy Zinger Burger' : 'e.g. Super Basmati Rice'}
-                    className={styles.fullWidth}
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    error={productForm.formState.errors.name?.message}
                   />
                 )}
               />
-              {productForm.formState.errors.name && (
-                <Caption1 className={styles.errorCaption}>
-                  {productForm.formState.errors.name.message}
-                </Caption1>
-              )}
             </div>
 
             {/* Pricing & Stock Grid */}
             <div className={styles.threeColGrid}>
               <div>
-                <Label required className={styles.fieldLabel}>
-                  Selling Price (PKR)
-                </Label>
                 <Controller
                   control={productForm.control}
                   name="price"
                   render={({ field }) => (
-                    <Input
-                      {...field}
+                    <CustomInput
+                      label="Selling Price (PKR)"
+                      required
                       type="number"
-                      appearance="outline"
                       placeholder="e.g. 550"
                       value={field.value !== undefined ? String(field.value) : ''}
-                      onChange={(_, d) => field.onChange(d.value === '' ? undefined : Number(d.value))}
-                      className={styles.fullWidth}
+                      onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                      error={productForm.formState.errors.price?.message}
                     />
                   )}
                 />
-                {productForm.formState.errors.price && (
-                  <Caption1 className={styles.errorCaption}>
-                    {productForm.formState.errors.price.message}
-                  </Caption1>
-                )}
               </div>
 
               <div>
-                <Label className={styles.fieldLabel}>
-                  Cost Price (PKR)
-                </Label>
                 <Controller
                   control={productForm.control}
                   name="costPrice"
                   render={({ field }) => (
-                    <Input
-                      {...field}
+                    <CustomInput
+                      label="Cost Price (PKR)"
                       type="number"
-                      appearance="outline"
                       placeholder="e.g. 380"
                       value={field.value !== undefined ? String(field.value) : ''}
-                      onChange={(_, d) => field.onChange(d.value === '' ? undefined : Number(d.value))}
-                      className={styles.fullWidth}
+                      onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                      error={productForm.formState.errors.costPrice?.message}
                     />
                   )}
                 />
               </div>
 
               <div>
-                <Label className={styles.fieldLabel}>
-                  Opening Stock
-                </Label>
                 <Controller
                   control={productForm.control}
                   name="openingStock"
                   render={({ field }) => (
-                    <Input
-                      {...field}
+                    <CustomInput
+                      label="Opening Stock"
                       type="number"
-                      appearance="outline"
                       placeholder="e.g. 50"
                       value={field.value !== undefined ? String(field.value) : ''}
-                      onChange={(_, d) => field.onChange(d.value === '' ? 0 : Number(d.value))}
-                      className={styles.fullWidth}
+                      onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                      error={productForm.formState.errors.openingStock?.message}
                     />
                   )}
                 />
@@ -989,69 +975,32 @@ export function AddProductView(): React.JSX.Element {
             {/* Unit & Barcode / SKU */}
             <div className={styles.threeColGrid}>
               <div>
-                <Label className={styles.fieldLabel}>Measurement Unit</Label>
                 <Controller
                   control={productForm.control}
                   name="unit"
                   render={({ field }) => (
-                    <Dropdown
-                      appearance="outline"
-                      className={styles.fullWidth}
-                      style={{ width: '100%' }}
+                    <CustomSelect
+                      label="Measurement Unit"
                       value={field.value || 'PCS'}
-                      selectedOptions={[field.value || 'PCS']}
-                      onOptionSelect={(_, d) => {
-                        if (d.optionValue) field.onChange(d.optionValue);
-                      }}
-                    >
-                      <Option value="PCS" text="Piece (PCS)">Piece (PCS)</Option>
-                      <Option value="KG" text="Kilogram (KG)">Kilogram (KG)</Option>
-                      <Option value="Gram" text="Gram (g)">Gram (g)</Option>
-                      <Option value="Liter" text="Liter (L)">Liter (L)</Option>
-                      <Option value="ML" text="Milliliter (ml)">Milliliter (ml)</Option>
-                      <Option value="PACK" text="Pack">Pack</Option>
-                      <Option value="BOX" text="Box">Box</Option>
-                      <Option value="DOZEN" text="Dozen">Dozen</Option>
-                      <Option value="FEET" text="Feet (ft)">Feet (ft)</Option>
-                      <Option value="METER" text="Meter (m)">Meter (m)</Option>
-                      <Option value="GALLON" text="Gallon">Gallon</Option>
-                      <Option value="BAG" text="Bag">Bag</Option>
-                      <Option value="BUNDLE" text="Bundle">Bundle</Option>
-                      <Option value="PAIR" text="Pair">Pair</Option>
-                    </Dropdown>
+                      options={UNIT_OPTIONS}
+                      onChange={(val) => field.onChange(val)}
+                    />
                   )}
                 />
               </div>
 
               <div>
-                <div className={styles.fieldHeaderRow}>
-                  <Label className={styles.fieldLabel}>
-                    {watchedModule === 'fastfood' ? 'Kitchen Prep Time (mins)' : 'SKU / Barcode'}
-                  </Label>
-                  {watchedModule !== 'fastfood' && (
-                    <button
-                      type="button"
-                      onClick={() => productForm.setValue('skuCode', generateRandomSku())}
-                      title="Generate new unique barcode / SKU"
-                      className={styles.linkBtn}
-                    >
-                      ↻ Auto Generate
-                    </button>
-                  )}
-                </div>
                 {watchedModule === 'fastfood' ? (
                   <Controller
                     control={productForm.control}
                     name="prepTime"
                     render={({ field }) => (
-                      <Input
-                        {...field}
+                      <CustomInput
+                        label="Kitchen Prep Time (mins)"
                         type="number"
-                        appearance="outline"
                         placeholder="e.g. 15"
                         value={field.value !== undefined ? String(field.value) : ''}
-                        onChange={(_, d) => field.onChange(d.value === '' ? undefined : Number(d.value))}
-                        className={styles.fullWidth}
+                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                       />
                     )}
                   />
@@ -1060,11 +1009,21 @@ export function AddProductView(): React.JSX.Element {
                     control={productForm.control}
                     name="skuCode"
                     render={({ field }) => (
-                      <Input
-                        {...field}
-                        appearance="outline"
+                      <CustomInput
+                        label="SKU / Barcode"
                         placeholder="e.g. 89915275 (or scan barcode)"
-                        className={styles.fullWidth}
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        rightElement={
+                          <button
+                            type="button"
+                            onClick={() => productForm.setValue('skuCode', generateRandomSku())}
+                            title="Generate new unique barcode / SKU"
+                            className={styles.linkBtn}
+                          >
+                            ↻ Auto
+                          </button>
+                        }
                       />
                     )}
                   />
@@ -1072,22 +1031,17 @@ export function AddProductView(): React.JSX.Element {
               </div>
 
               <div>
-                <Label className={styles.fieldLabel}>
-                  {watchedModule === 'fastfood' ? 'Low Stock Alert' : 'Store Rack Location'}
-                </Label>
                 {watchedModule === 'fastfood' ? (
                   <Controller
                     control={productForm.control}
                     name="minThreshold"
                     render={({ field }) => (
-                      <Input
-                        {...field}
+                      <CustomInput
+                        label="Low Stock Alert"
                         type="number"
-                        appearance="outline"
                         placeholder="e.g. 10"
                         value={field.value !== undefined ? String(field.value) : ''}
-                        onChange={(_, d) => field.onChange(d.value === '' ? 10 : Number(d.value))}
-                        className={styles.fullWidth}
+                        onChange={(e) => field.onChange(e.target.value === '' ? 10 : Number(e.target.value))}
                       />
                     )}
                   />
@@ -1096,11 +1050,11 @@ export function AddProductView(): React.JSX.Element {
                     control={productForm.control}
                     name="rackLocation"
                     render={({ field }) => (
-                      <Input
-                        {...field}
-                        appearance="outline"
+                      <CustomInput
+                        label="Store Rack Location"
                         placeholder="e.g. Aisle 3, Shelf B"
-                        className={styles.fullWidth}
+                        value={field.value || ''}
+                        onChange={field.onChange}
                       />
                     )}
                   />
@@ -1357,15 +1311,13 @@ export function AddProductView(): React.JSX.Element {
                   control={productForm.control}
                   name="imageUrl"
                   render={({ field }) => (
-                    <Input
-                      {...field}
-                      size="small"
-                      appearance="outline"
-                      placeholder="Or paste web image URL..."
-                      className={styles.fullWidth}
-                      onChange={(_, d) => {
-                        field.onChange(d.value);
-                        setImagePreview(d.value || null);
+                    <CustomInput
+                      label="Or paste web image URL..."
+                      placeholder="https://..."
+                      value={field.value || ''}
+                      onChange={(e) => {
+                        field.onChange(e.target.value);
+                        setImagePreview(e.target.value || null);
                       }}
                     />
                   )}
@@ -1480,53 +1432,37 @@ export function AddProductView(): React.JSX.Element {
 
             {/* Form Fields */}
             <div className={styles.dialogFieldsContainer}>
-              <div>
-                <Label required className={styles.fieldLabel}>
-                  Category Name
-                </Label>
-                <Controller
-                  control={categoryForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      appearance="outline"
-                      placeholder="e.g. Burgers, Dairy, Shirts, Shoes..."
-                      className={styles.fullWidth}
-                    />
-                  )}
-                />
-                {categoryForm.formState.errors.name && (
-                  <Caption1 className={styles.errorCaption}>
-                    {categoryForm.formState.errors.name.message}
-                  </Caption1>
+              <Controller
+                control={categoryForm.control}
+                name="name"
+                render={({ field }) => (
+                  <CustomInput
+                    label="Category Name"
+                    required
+                    placeholder="e.g. Burgers, Dairy, Shirts, Shoes..."
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    error={categoryForm.formState.errors.name?.message}
+                  />
                 )}
-              </div>
+              />
 
-              <div>
-                <Label required className={styles.fieldLabel}>
-                  Target Store Module
-                </Label>
-                <Controller
-                  control={categoryForm.control}
-                  name="module"
-                  render={({ field }) => (
-                    <Dropdown
-                      appearance="outline"
-                      className={styles.fullWidth}
-                      style={{ width: '100%' }}
-                      value={field.value === 'fastfood' ? 'Fast Food Menu' : 'Omnimart Supermarket'}
-                      selectedOptions={field.value ? [field.value] : []}
-                      onOptionSelect={(_, d) => {
-                        if (d.optionValue) field.onChange(d.optionValue as ModuleKey);
-                      }}
-                    >
-                      {hasFastFood && <Option value="fastfood" text="Fast Food Menu">Fast Food Menu</Option>}
-                      {hasOmnimart && <Option value="minimart" text="Omnimart Supermarket">Omnimart Supermarket</Option>}
-                    </Dropdown>
-                  )}
-                />
-              </div>
+              <Controller
+                control={categoryForm.control}
+                name="module"
+                render={({ field }) => (
+                  <CustomSelect
+                    label="Target Store Module"
+                    required
+                    value={field.value}
+                    options={[
+                      ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
+                      ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Supermarket' }] : []),
+                    ]}
+                    onChange={(val) => field.onChange(val as ModuleKey)}
+                  />
+                )}
+              />
             </div>
 
             {/* Modal Actions */}

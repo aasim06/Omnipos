@@ -21,6 +21,7 @@ import {
   CheckmarkCircle20Filled,
 } from '@fluentui/react-icons';
 import { useAuth } from './AuthContext';
+import { userStorage } from './userStorage';
 import { useNavigate } from 'react-router-dom';
 
 const useStyles = makeStyles({
@@ -103,22 +104,59 @@ export function LoginView(): React.JSX.Element {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
+
     if (!username.trim()) {
       setErrorMsg('Please enter your username');
       return;
     }
 
-    const role = username.toLowerCase().includes('admin') ? 'admin' : 'cashier';
-    login(username, role);
-    navigate('/pos/fastfood');
+    if (!password) {
+      setErrorMsg('Please enter your password');
+      return;
+    }
+
+    const result = userStorage.verifyCredentials(username, password);
+    if (!result.success || !result.user) {
+      setErrorMsg(result.error || 'Invalid credentials');
+      return;
+    }
+
+    login(result.user);
+
+    // Navigate to first accessible route
+    if (result.user.role === 'admin' || result.user.permissions.includes('pos_fastfood')) {
+      navigate('/pos/fastfood');
+    } else if (result.user.permissions.includes('pos_omnimart')) {
+      navigate('/pos/omnimart');
+    } else if (result.user.permissions.includes('kitchen')) {
+      navigate('/kitchen');
+    } else if (result.user.permissions.includes('catalog')) {
+      navigate('/catalog');
+    } else if (result.user.permissions.includes('inventory')) {
+      navigate('/inventory');
+    } else if (result.user.permissions.includes('khata')) {
+      navigate('/khata');
+    } else if (result.user.permissions.includes('expenses')) {
+      navigate('/expenses');
+    } else if (result.user.permissions.includes('reports')) {
+      navigate('/reports');
+    } else {
+      navigate('/pos/fastfood');
+    }
   };
 
   const handleQuickDemo = (user: string, pass: string) => {
     setUsername(user);
     setPassword(pass);
-    const role = user === 'admin' ? 'admin' : 'cashier';
-    login(user, role);
-    navigate('/pos/fastfood');
+    setErrorMsg('');
+    const result = userStorage.verifyCredentials(user, pass);
+    if (result.success && result.user) {
+      login(result.user);
+      navigate(result.user.role === 'admin' || result.user.permissions.includes('pos_fastfood') ? '/pos/fastfood' : '/pos/omnimart');
+    } else {
+      setErrorMsg(result.error || 'Quick login failed');
+    }
   };
 
   return (
