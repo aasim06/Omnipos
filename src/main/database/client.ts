@@ -244,22 +244,6 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     )
   `);
 
-  // Cleanup any legacy dummy/seed products and categories
-  try {
-    await database.product.deleteMany({
-      where: {
-        id: { in: ['prod_ff_1', 'prod_ff_2', 'prod_mm_1', 'prod_mm_2'] },
-      },
-    });
-    await database.category.deleteMany({
-      where: {
-        id: { in: ['cat_1', 'cat_2', 'cat_3', 'cat_4', 'cat_5'] },
-      },
-    });
-  } catch {
-    /* ignore if clean */
-  }
-
   isInitialized = true;
 }
 

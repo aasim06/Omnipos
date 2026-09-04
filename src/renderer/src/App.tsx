@@ -59,13 +59,18 @@ export default function App(): React.JSX.Element {
       if (window.posApi?.license?.gate) {
         const next = await window.posApi.license.gate();
         setGate(next);
-        if (next.state === 'ok' && window.posApi?.getLicenseMeta) {
-          try {
-            const meta = await window.posApi.getLicenseMeta();
-            if (meta?.key) localStorage.setItem('omnipos_active_key', meta.key);
-            if (meta?.schemaId) localStorage.setItem('omnipos_active_schema', meta.schemaId);
-          } catch {
-            /* ignore */
+        if (next.state === 'ok') {
+          if ((next as any).businessProfiles) {
+            localStorage.setItem('omnipos_business_profiles', JSON.stringify((next as any).businessProfiles));
+          }
+          if (window.posApi?.getLicenseMeta) {
+            try {
+              const meta = await window.posApi.getLicenseMeta();
+              if (meta?.key) localStorage.setItem('omnipos_active_key', meta.key);
+              if (meta?.schemaId) localStorage.setItem('omnipos_active_schema', meta.schemaId);
+            } catch {
+              /* ignore */
+            }
           }
         }
       } else {
@@ -107,6 +112,9 @@ export default function App(): React.JSX.Element {
               }
               if (data.modules) {
                 localStorage.setItem('omnipos_cached_modules', JSON.stringify(data.modules));
+              }
+              if (data.businessProfiles) {
+                localStorage.setItem('omnipos_business_profiles', JSON.stringify(data.businessProfiles));
               }
               setGate({ state: 'ok', modules: data.modules });
             }

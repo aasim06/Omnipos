@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   makeStyles,
   tokens,
@@ -279,6 +279,20 @@ const useStyles = makeStyles({
   },
 });
 
+interface ProfileOption {
+  value: CategoryProfile;
+  label: string;
+  module: ModuleKey;
+}
+
+const ALL_PROFILE_OPTIONS: ProfileOption[] = [
+  { value: 'standard', label: 'Standard Retail (Grocery & General Goods)', module: 'minimart' },
+  { value: 'apparel', label: 'Apparel & Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)', module: 'minimart' },
+  { value: 'footwear', label: 'Footwear & Shoes (Sizes: 38 to 45)', module: 'minimart' },
+  { value: 'hardware', label: 'Hardware, Iron & Paint (KG, Feet, Meters, Litres, Bags)', module: 'minimart' },
+  { value: 'food', label: 'Restaurant & Fast Food (Portions: Regular, S, M, L, Family)', module: 'fastfood' },
+];
+
 export function CategoriesView(): React.JSX.Element {
   const styles = useStyles();
   const queryClient = useQueryClient();
@@ -327,17 +341,49 @@ export function CategoriesView(): React.JSX.Element {
     },
   });
 
-  const { can } = useLicense();
+  const { can, businessProfiles = ['standard', 'food'] } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
 
+  // Filtered by active license business profile(s)
+  const allowedProfiles = useMemo<ProfileOption[]>(() => {
+    const valid = ALL_PROFILE_OPTIONS.filter((opt: ProfileOption) => businessProfiles.includes(opt.value));
+    return valid.length > 0 ? valid : ALL_PROFILE_OPTIONS;
+  }, [businessProfiles]);
+
+  const watchedModule = categoryForm.watch('module');
+
+  // Profile options matching the current store module (fastfood vs minimart)
+  const filteredProfileOptions = useMemo<ProfileOption[]>(() => {
+    const forModule = allowedProfiles.filter((opt: ProfileOption) => opt.module === watchedModule);
+    return forModule.length > 0 ? forModule : allowedProfiles;
+  }, [allowedProfiles, watchedModule]);
+
+  const isSingleBusinessProfile = businessProfiles.length === 1;
+  const isProfileLocked = isSingleBusinessProfile || filteredProfileOptions.length === 1;
+
   const handleOpenDialog = (module?: ModuleKey) => {
-    const selected = module || (hasFastFood ? 'fastfood' : 'minimart');
-    setTargetModule(selected);
+    let selectedModule: ModuleKey = module || (hasFastFood ? 'fastfood' : 'minimart');
+    let selectedProfile: CategoryProfile = 'standard';
+
+    if (isSingleBusinessProfile) {
+      const single = businessProfiles[0];
+      selectedProfile = single;
+      selectedModule = single === 'food' ? 'fastfood' : 'minimart';
+    } else {
+      const optionsForModule = allowedProfiles.filter((opt) => opt.module === selectedModule);
+      if (optionsForModule.length > 0) {
+        selectedProfile = optionsForModule[0].value;
+      } else {
+        selectedProfile = allowedProfiles[0]?.value || (selectedModule === 'fastfood' ? 'food' : 'standard');
+      }
+    }
+
+    setTargetModule(selectedModule);
     categoryForm.reset({
       name: '',
-      module: selected,
-      profile: selected === 'fastfood' ? 'food' : 'standard',
+      module: selectedModule,
+      profile: selectedProfile,
     });
     setIsDialogOpen(true);
   };
@@ -564,18 +610,30 @@ export function CategoriesView(): React.JSX.Element {
               <Controller
                 control={categoryForm.control}
                 name="module"
-                render={({ field }) => (
-                  <CustomSelect
-                    label="Target Store Module"
-                    required
-                    value={field.value}
-                    onChange={(val) => field.onChange(val as ModuleKey)}
-                    options={[
-                      ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
-                      ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Goods' }] : []),
-                    ]}
-                  />
-                )}
+                render={({ field }) => {
+                  const moduleOptions = [
+                    ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
+                    ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Goods' }] : []),
+                  ];
+                  return (
+                    <CustomSelect
+                      label="Target Store Module"
+                      required
+                      value={field.value}
+                      disabled={isSingleBusinessProfile || moduleOptions.length <= 1}
+                      onChange={(val) => {
+                        const newMod = val as ModuleKey;
+                        field.onChange(newMod);
+                        setTargetModule(newMod);
+                        const forNewMod = allowedProfiles.filter((opt) => opt.module === newMod);
+                        if (forNewMod.length > 0) {
+                          categoryForm.setValue('profile', forNewMod[0].value);
+                        }
+                      }}
+                      options={moduleOptions}
+                    />
+                  );
+                }}
               />
 
               <div>
@@ -585,20 +643,34 @@ export function CategoriesView(): React.JSX.Element {
                   render={({ field }) => (
                     <CustomSelect
                       label="Industry Profile (Size & Unit Presets)"
-                      value={field.value || 'standard'}
+                      value={field.value || filteredProfileOptions[0]?.value || 'standard'}
+                      disabled={isProfileLocked}
                       onChange={(val) => field.onChange(val as CategoryProfile)}
-                      options={[
-                        { value: 'standard', label: 'Standard Retail (Grocery & General Goods)' },
-                        { value: 'apparel', label: 'Apparel & Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)' },
-                        { value: 'footwear', label: 'Footwear & Shoes (Sizes: 38 to 45)' },
-                        { value: 'hardware', label: 'Hardware, Iron & Paint (KG, Feet, Meters, Litres, Bags)' },
-                        { value: 'food', label: 'Restaurant & Fast Food (Portions: Regular, S, M, L, Family)' },
-                      ]}
+                      options={filteredProfileOptions.map((opt) => ({
+                        value: opt.value,
+                        label: opt.label,
+                      }))}
                     />
                   )}
                 />
-                <Caption1 className={styles.hintCaption} style={{ marginTop: '4px', display: 'block' }}>
-                  Auto-enables size matrices, measurement units, and decimal quantities when creating products.
+                <Caption1
+                  className={styles.hintCaption}
+                  style={{
+                    marginTop: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    color: isProfileLocked ? '#059669' : undefined,
+                    fontWeight: isProfileLocked ? 600 : undefined,
+                  }}
+                >
+                  {isProfileLocked ? (
+                    <>
+                      <span>🔒</span> Auto-selected & locked to your license business profile ({CATEGORY_PROFILES[categoryForm.watch('profile') || filteredProfileOptions[0]?.value || 'standard']?.shortTag})
+                    </>
+                  ) : (
+                    'Industry presets filtered according to your active business license key.'
+                  )}
                 </Caption1>
               </div>
             </div>

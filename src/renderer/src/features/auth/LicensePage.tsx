@@ -13,6 +13,7 @@ function formatSuffix(raw: string): string {
 }
 
 import { getOrCreateBrowserHwid, getBrowserDeviceName, getWebLicenseApiBase } from '@/lib/webLicense';
+import { userStorage } from './userStorage';
 
 export function LicensePage({ onActivated }: { onActivated: () => void }): React.JSX.Element {
   const [suffix, setSuffix] = useState('');
@@ -35,6 +36,11 @@ export function LicensePage({ onActivated }: { onActivated: () => void }): React
       if (window.posApi?.license?.activate) {
         const result = await window.posApi.license.activate(fullKey);
         if (result.ok) {
+          localStorage.setItem('omnipos_active_key', fullKey);
+          if ((result as any).businessProfiles) {
+            localStorage.setItem('omnipos_business_profiles', JSON.stringify((result as any).businessProfiles));
+          }
+          userStorage.initAdminForLicense(fullKey, (result as any).adminUser || { name: (result as any).userName });
           onActivated();
         } else {
           setError(result.error || 'Invalid or disabled license key.');
@@ -60,6 +66,10 @@ export function LicensePage({ onActivated }: { onActivated: () => void }): React
           if (data.modules) {
             localStorage.setItem('omnipos_cached_modules', JSON.stringify(data.modules));
           }
+          if (data.businessProfiles) {
+            localStorage.setItem('omnipos_business_profiles', JSON.stringify(data.businessProfiles));
+          }
+          userStorage.initAdminForLicense(fullKey, data.adminUser || { name: data.userName });
           onActivated();
         } else {
           setError(data.error || 'Invalid or disabled license key.');

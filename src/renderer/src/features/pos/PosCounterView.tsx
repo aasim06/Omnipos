@@ -241,7 +241,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
   const defaultGuestCustomer: CustomerOption = {
     id: '',
     name: 'Guest',
-    currentDebt: -24734.70, // Matches reference screenshot: Guest | -24734.70
+    currentDebt: 0,
   };
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption>(defaultGuestCustomer);
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');

@@ -265,13 +265,6 @@ export function LoginView(): React.JSX.Element {
             >
               Manager (Admin)
             </Button>
-            <Button
-              size="small"
-              appearance="secondary"
-              onClick={() => handleQuickDemo('cashier', '1234')}
-            >
-              Counter Cashier
-            </Button>
           </div>
         </div>
 
