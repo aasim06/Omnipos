@@ -5,6 +5,8 @@ export interface CategoryProfileConfig {
   label: string;
   shortTag: string;
   description: string;
+  defaultItemRole: 'food_menu' | 'retail_product' | 'raw_ingredient';
+  isKitchenRouted: boolean;
   suggestedSizes: string[];
   suggestedUnits: string[];
   allowDecimals: boolean;
@@ -17,6 +19,8 @@ export const CATEGORY_PROFILES: Record<CategoryProfile, CategoryProfileConfig> =
     label: 'Standard Retail (General / Mart)',
     shortTag: 'Standard',
     description: 'Packaged goods, supermarket items, and general retail',
+    defaultItemRole: 'retail_product',
+    isKitchenRouted: false,
     suggestedSizes: [],
     suggestedUnits: ['PCS', 'PACK', 'BOX', 'DOZEN', 'KG', 'LITER'],
     allowDecimals: false,
@@ -27,6 +31,8 @@ export const CATEGORY_PROFILES: Record<CategoryProfile, CategoryProfileConfig> =
     label: 'Apparel & Clothing (Sizes XS - 3XL)',
     shortTag: 'Clothing',
     description: 'Shirts, pants, suits, kurtas, and garments with size matrix',
+    defaultItemRole: 'retail_product',
+    isKitchenRouted: false,
     suggestedSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
     suggestedUnits: ['PCS', 'SUIT', 'SET'],
     allowDecimals: false,
@@ -37,6 +43,8 @@ export const CATEGORY_PROFILES: Record<CategoryProfile, CategoryProfileConfig> =
     label: 'Footwear & Shoes (Sizes 38 - 45)',
     shortTag: 'Shoes',
     description: 'Shoes, boots, sneakers, sandals, and slippers with shoe size matrix',
+    defaultItemRole: 'retail_product',
+    isKitchenRouted: false,
     suggestedSizes: ['38', '39', '40', '41', '42', '43', '44', '45'],
     suggestedUnits: ['PAIR', 'PCS'],
     allowDecimals: false,
@@ -47,6 +55,8 @@ export const CATEGORY_PROFILES: Record<CategoryProfile, CategoryProfileConfig> =
     label: 'Hardware, Iron & Building Materials',
     shortTag: 'Hardware',
     description: 'Sariya, keel, paints, wires, pipes with loose measurement & decimals',
+    defaultItemRole: 'retail_product',
+    isKitchenRouted: false,
     suggestedSizes: [],
     suggestedUnits: ['KG', 'FEET', 'METER', 'LITER', 'GALLON', 'BAG', 'BUNDLE', 'PCS'],
     allowDecimals: true,
@@ -57,6 +67,8 @@ export const CATEGORY_PROFILES: Record<CategoryProfile, CategoryProfileConfig> =
     label: 'Restaurant & Fast Food (Portions)',
     shortTag: 'Food Menu',
     description: 'Meals, burgers, pizzas, portions & recipe items',
+    defaultItemRole: 'food_menu',
+    isKitchenRouted: true,
     suggestedSizes: ['Regular', 'Small', 'Medium', 'Large', 'Family'],
     suggestedUnits: ['PCS', 'SERVING', 'PACK'],
     allowDecimals: false,
