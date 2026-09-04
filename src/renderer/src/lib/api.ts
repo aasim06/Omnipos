@@ -142,8 +142,7 @@ export const posApi = {
       const allDexie = await offlineDb.products.toArray();
       if (allDexie && allDexie.length > 0) {
         if (module) {
-          const filtered = allDexie.filter((p) => p.module === module);
-          if (filtered.length > 0) return filtered;
+          return allDexie.filter((p) => p.module === module);
         }
         return allDexie;
       }
@@ -156,8 +155,7 @@ export const posApi = {
       const localFallback = storage.getList<Product>(KEYS.products);
       if (localFallback && localFallback.length > 0) {
         if (module) {
-          const filtered = localFallback.filter((p) => p.module === module);
-          if (filtered.length > 0) return filtered;
+          return localFallback.filter((p) => p.module === module);
         }
         return localFallback;
       }

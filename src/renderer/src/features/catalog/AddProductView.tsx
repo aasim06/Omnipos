@@ -893,6 +893,8 @@ export function AddProductView(): React.JSX.Element {
         price: data.price,
         costPrice: data.costPrice,
         pricingType: data.pricingType || pricingType,
+        itemRole: data.module === 'fastfood' ? 'food_menu' : 'retail_product',
+        isKitchenRouted: data.module === 'fastfood',
         unit: data.unit,
         skuCode: data.skuCode || generateRandomSku(),
         rackLocation: data.rackLocation,

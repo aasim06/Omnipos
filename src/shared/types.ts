@@ -8,6 +8,8 @@ export interface Product {
   costPrice?: number; // PKR purchase cost per unit
   price: number; // PKR retail selling price per unit
   pricingType?: string; // 'fixed' | 'smlxl' | 'halffull' | 'perkg' | 'amountse' | 'perpiece' | 'custom'
+  itemRole?: 'food_menu' | 'retail_product' | 'raw_ingredient';
+  isKitchenRouted?: boolean; // Send line to Kitchen Display System / KOT
   category: string;
   skuCode?: string; // e.g. SKU-62658411
   rackLocation?: string; // e.g. Rack A-01
