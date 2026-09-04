@@ -2,7 +2,7 @@ import { Product, Category, Order, StockMovement } from './types';
 import { offlineDb, LocalOrder } from './offlineDb';
 import { syncEngine } from './syncEngine';
 import { KEYS, storage } from './storage';
-import { INITIAL_PRODUCTS, INITIAL_CATEGORIES } from './seedData';
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, isDemoLicense } from './seedData';
 
 let cachedApiUrl: string | null = null;
 let cachedTenantMeta: { key?: string; schemaId?: string } | null = null;
@@ -164,9 +164,14 @@ export const posApi = {
       console.warn('[Storage] localStorage product query error:', storageErr);
     }
 
-    // 4. Bundled INITIAL_PRODUCTS catalog fallback (guarantees non-empty screen on fresh install / offline)
-    const seed = module ? INITIAL_PRODUCTS.filter((p) => p.module === module) : INITIAL_PRODUCTS;
-    return seed;
+    // 4. Bundled INITIAL_PRODUCTS catalog fallback (STRICTLY ONLY FOR DEMO LICENSES!)
+    if (isDemoLicense()) {
+      const seed = module ? INITIAL_PRODUCTS.filter((p) => p.module === module) : INITIAL_PRODUCTS;
+      return seed;
+    }
+
+    // For real production client keys: return empty array if no products exist yet
+    return [];
   },
 
   async saveProduct(product: Product): Promise<Product> {
@@ -282,8 +287,13 @@ export const posApi = {
       if (filtered && filtered.length > 0) return filtered;
     } catch {}
 
-    // 4. Bundled INITIAL_CATEGORIES fallback
-    return module ? INITIAL_CATEGORIES.filter((c) => c.module === module) : INITIAL_CATEGORIES;
+    // 4. Bundled INITIAL_CATEGORIES fallback (STRICTLY ONLY FOR DEMO LICENSES!)
+    if (isDemoLicense()) {
+      return module ? INITIAL_CATEGORIES.filter((c) => c.module === module) : INITIAL_CATEGORIES;
+    }
+
+    // For real production client keys: return empty array if no categories exist yet
+    return [];
   },
 
   async saveCategory(cat: Category): Promise<Category> {

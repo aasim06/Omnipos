@@ -244,22 +244,110 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
 ];
 
-export async function ensureInitialData(): Promise<void> {
+export function isDemoLicense(): boolean {
+  if (typeof window === "undefined") return false;
+  const activeKey = (
+    localStorage.getItem("omnipos_active_key") ||
+    localStorage.getItem("omnipos_license_key") ||
+    ""
+  ).toUpperCase().trim();
+  return activeKey.includes("DEMO") || activeKey === "OMNI-DEMO-2026-LIVE";
+}
+
+export const DEMO_PRODUCT_IDS = new Set(INITIAL_PRODUCTS.map((p) => p.id));
+export const DEMO_CATEGORY_IDS = new Set(INITIAL_CATEGORIES.map((c) => c.id));
+
+export async function ensureInitialData(forceDemo: boolean = false): Promise<void> {
   if (typeof window === "undefined") return;
 
-  // 1. Ensure LocalStorage Products
+  let activeKey = (
+    localStorage.getItem("omnipos_active_key") ||
+    localStorage.getItem("omnipos_license_key") ||
+    ""
+  ).toUpperCase().trim();
+
+  if (!activeKey && (window as any).posApi?.getLicenseMeta) {
+    try {
+      const meta = await (window as any).posApi.getLicenseMeta();
+      if (meta?.key) {
+        activeKey = String(meta.key).toUpperCase().trim();
+        localStorage.setItem("omnipos_active_key", meta.key);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const isDemo = forceDemo || activeKey.includes("DEMO") || activeKey === "OMNI-DEMO-2026-LIVE";
+
+  // If this is a real client license (NOT demo): NEVER seed mock products, and purge any demo artifacts!
+  if (!isDemo) {
+    try {
+      // 1. Purge demo products from localStorage
+      const existingProducts = storage.getList<Product>(KEYS.products);
+      const cleanedProducts = existingProducts.filter(
+        (p) =>
+          !DEMO_PRODUCT_IDS.has(p.id) &&
+          !p.id.startsWith("prod_ff_") &&
+          !p.id.startsWith("prod_mm_") &&
+          p.id !== "prod_1788263921165" &&
+          p.name !== "Neon Grilled Burger"
+      );
+      if (cleanedProducts.length !== existingProducts.length) {
+        storage.setList(KEYS.products, cleanedProducts);
+      }
+
+      // Purge demo categories from localStorage
+      const existingCategories = storage.getList<Category>(KEYS.categories);
+      const cleanedCategories = existingCategories.filter(
+        (c) => !DEMO_CATEGORY_IDS.has(c.id) && !c.id.startsWith("cat_ff_") && !c.id.startsWith("cat_mm_")
+      );
+      if (cleanedCategories.length !== existingCategories.length) {
+        storage.setList(KEYS.categories, cleanedCategories);
+      }
+
+      // 2. Purge demo items from Dexie IndexedDB
+      const allDexieProds = await offlineDb.products.toArray();
+      const demoProdIds = allDexieProds
+        .filter(
+          (p) =>
+            DEMO_PRODUCT_IDS.has(p.id) ||
+            p.id.startsWith("prod_ff_") ||
+            p.id.startsWith("prod_mm_") ||
+            p.id === "prod_1788263921165" ||
+            p.name === "Neon Grilled Burger"
+        )
+        .map((p) => p.id);
+      if (demoProdIds.length > 0) {
+        await offlineDb.products.bulkDelete(demoProdIds);
+      }
+
+      const allDexieCats = await offlineDb.categories.toArray();
+      const demoCatIds = allDexieCats
+        .filter((c) => DEMO_CATEGORY_IDS.has(c.id) || c.id.startsWith("cat_ff_") || c.id.startsWith("cat_mm_"))
+        .map((c) => c.id);
+      if (demoCatIds.length > 0) {
+        await offlineDb.categories.bulkDelete(demoCatIds);
+      }
+    } catch (err) {
+      console.warn("[OfflineDB] Clean demo data error:", err);
+    }
+    return;
+  }
+
+  // 1. Ensure LocalStorage Products (ONLY for Demo key)
   const existingProducts = storage.getList<Product>(KEYS.products);
   if (existingProducts.length === 0) {
     storage.setList(KEYS.products, INITIAL_PRODUCTS);
   }
 
-  // 2. Ensure LocalStorage Categories
+  // 2. Ensure LocalStorage Categories (ONLY for Demo key)
   const existingCategories = storage.getList<Category>(KEYS.categories);
   if (existingCategories.length === 0) {
     storage.setList(KEYS.categories, INITIAL_CATEGORIES);
   }
 
-  // 3. Ensure Dexie IndexedDB has items
+  // 3. Ensure Dexie IndexedDB has items (ONLY for Demo key)
   try {
     const dexieCount = await offlineDb.products.count();
     if (dexieCount === 0) {
