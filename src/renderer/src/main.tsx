@@ -4,10 +4,12 @@ import { BrowserRouter, HashRouter } from 'react-router-dom';
 import { AppProviders } from '@/theme/AppProviders';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { setupTenantInterceptor } from '@/lib/setupTenantInterceptor';
+import { ensureInitialData } from '@/lib/seedData';
 import App from './App';
 import './index.css';
 
 setupTenantInterceptor();
+void ensureInitialData();
 
 // Detect whether running in Electron desktop app or standard web browser
 const isElectron =

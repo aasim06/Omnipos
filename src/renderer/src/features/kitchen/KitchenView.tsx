@@ -32,12 +32,15 @@ import {
   BowlSalad24Regular,
   Add20Regular,
   Delete16Regular,
+  Print16Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { resolveApiUrl } from '@/lib/api';
+import { offlineDb } from '@/lib/offlineDb';
+import { printKitchenKot } from '@/lib/kotPrinter';
 import { KitchenPageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 
@@ -276,10 +279,58 @@ export function KitchenView(): React.JSX.Element {
   const { data: tickets = [], isLoading } = useQuery<KitchenTicket[]>({
     queryKey: ['kitchen-tickets'],
     queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/kitchen/tickets`);
-      if (!res.ok) throw new Error(`Kitchen API error: ${res.statusText}`);
-      return res.json();
+      try {
+        if (typeof navigator === 'undefined' || navigator.onLine) {
+          const base = await resolveApiUrl();
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          const res = await fetch(`${base}/api/kitchen/tickets`, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            const remote = await res.json();
+            if (Array.isArray(remote)) {
+              try {
+                localStorage.setItem('cached_kitchen_tickets', JSON.stringify(remote));
+              } catch {}
+              return remote;
+            }
+          }
+        }
+      } catch {
+        /* Offline: proceed with local cached tickets or Dexie orders */
+      }
+
+      // Offline fallback 1: load from cached tickets
+      try {
+        const cached = localStorage.getItem('cached_kitchen_tickets');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+
+      // Offline fallback 2: load from local FastFood orders in Dexie
+      try {
+        const localOrders = await offlineDb.orders.where('module').equals('fastfood').reverse().limit(25).toArray();
+        if (localOrders && localOrders.length > 0) {
+          return localOrders.map((o) => ({
+            id: o.id,
+            orderId: o.id,
+            orderType: o.orderType || 'dine-in',
+            status: 'pending',
+            createdAt: o.createdAt,
+            order: {
+              id: o.id,
+              lines: (o.lines || []).map((l: any) => ({
+                id: l.productId || l.id,
+                name: l.name,
+                quantity: l.quantity,
+                notes: l.notes || '',
+                variantLabel: l.variantLabel || '',
+              })),
+            },
+          })) as any;
+        }
+      } catch {}
+
+      return [];
     },
     // When server is offline or fails, back off to 30s instead of spamming every 4s
     refetchInterval: (query) => {
@@ -730,6 +781,37 @@ export function KitchenView(): React.JSX.Element {
                       icon={<Delete16Regular />}
                       title="Cancel / Delete Ticket"
                       onClick={() => deleteTicketMutation.mutate(ticket.id)}
+                    />
+                    <Button
+                      appearance="subtle"
+                      size="small"
+                      icon={<Print16Regular />}
+                      title="Print KOT Ticket (Kitchen Thermal Printer)"
+                      onClick={() => {
+                        void printKitchenKot(
+                          {
+                            id: ticket.orderId || ticket.id,
+                            module: 'fastfood',
+                            lines: (ticket.order?.lines || []).map((l: any) => ({
+                              productId: l.id || '',
+                              name: l.name,
+                              unitPrice: 0,
+                              quantity: l.quantity || 1,
+                              notes: l.notes,
+                              variantLabel: l.variantLabel,
+                            })),
+                            discountPercent: 0,
+                            stage: 'kot',
+                            createdAt: ticket.createdAt,
+                            updatedAt: ticket.createdAt,
+                            orderType: (ticket.orderType || 'dine-in') as any,
+                          },
+                          {
+                            tableOrToken: ticket.orderType?.toUpperCase(),
+                            cashierName: 'Kitchen KDS',
+                          },
+                        );
+                      }}
                     />
                     <Caption1 style={{ color: tokens.colorNeutralForeground3, fontSize: '11px' }}>
                       Ref: #{ticket.orderId?.slice(-6) || '—'}

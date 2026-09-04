@@ -54,6 +54,7 @@ import {
   Person20Regular,
 } from '@fluentui/react-icons';
 import { posApi, resolveApiUrl } from '@/lib/api';
+import { printKitchenKot } from '@/lib/kotPrinter';
 import { Product, CartLine, Order, Category } from '@shared/types';
 import { uid, nowISO } from '@/lib/utils';
 import { useAppTheme } from '@/theme/AppProviders';
@@ -272,12 +273,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
   /* Query Khatas for Credit / Udhaar payment */
   const { data: customerKhatas = [] } = useQuery({
     queryKey: ['khatas'],
-    queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/khata`);
-      if (!res.ok) return [];
-      return res.json();
-    },
+    queryFn: () => posApi.fetchKhatas(),
   });
 
   /* Auto-sync selected customer with Khatas when loaded */
@@ -792,6 +788,18 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
         });
       }
       setIsSuccess(true);
+      // Automatically print Kitchen KOT to thermal printer immediately upon order placement
+      if (module === 'fastfood') {
+        const tableOrToken =
+          orderType === 'dine-in'
+            ? `TABLE: ${tableNo}`
+            : orderType === 'takeaway'
+            ? `TOKEN: #${tokenNo}`
+            : 'DELIVERY';
+        void printKitchenKot(savedOrder, {
+          tableOrToken,
+        });
+      }
       setShowReceiptModal(true);
       playSuccessChime();
       setTimeout(() => setIsSuccess(false), 3000);

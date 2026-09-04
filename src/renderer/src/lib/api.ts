@@ -2,6 +2,7 @@ import { Product, Category, Order, StockMovement } from './types';
 import { offlineDb, LocalOrder } from './offlineDb';
 import { syncEngine } from './syncEngine';
 import { KEYS, storage } from './storage';
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES } from './seedData';
 
 let cachedApiUrl: string | null = null;
 let cachedTenantMeta: { key?: string; schemaId?: string } | null = null;
@@ -29,7 +30,7 @@ export async function getTenantHeaders(): Promise<Record<string, string>> {
     }
   }
 
-  // Web Browser fallback (e.g. running on localhost:5174)
+  // Web Browser fallback (e.g. running on localhost:5174 or online)
   if (typeof window !== 'undefined' && window.localStorage) {
     const key = localStorage.getItem('omnipos_active_key');
     const schemaId = localStorage.getItem('omnipos_active_schema');
@@ -47,26 +48,41 @@ export async function getTenantHeaders(): Promise<Record<string, string>> {
 export async function resolveApiUrl(): Promise<string> {
   if (cachedApiUrl) return cachedApiUrl;
 
-  // 1. Central Backend (Live Neon PostgreSQL on Vercel)
+  // 1. Embedded local Electron Express backend (Primary for Desktop Offline)
+  if (typeof window !== 'undefined' && window.posApi?.getApiUrl) {
+    try {
+      const url = await window.posApi.getApiUrl();
+      if (url) {
+        cachedApiUrl = url;
+        return url;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // 2. Central Cloud Backend (Vercel)
   const envUrl = (import.meta as any).env?.VITE_API_URL || 'https://omni-server-seven.vercel.app';
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return envUrl;
+  }
+
   try {
     const tenantHeaders = await getTenantHeaders();
-    const res = await fetch(`${envUrl}/api/products`, { headers: tenantHeaders });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+    const res = await fetch(`${envUrl}/api/products`, {
+      headers: tenantHeaders,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
     if (res.ok) {
       cachedApiUrl = envUrl;
       return envUrl;
     }
   } catch {
-    /* Central server unreachable */
-  }
-
-  // 2. Embedded local Electron Express backend
-  if (typeof window !== 'undefined' && window.posApi?.getApiUrl) {
-    const url = await window.posApi.getApiUrl();
-    if (url) {
-      cachedApiUrl = url;
-      return url;
-    }
+    /* Central server unreachable or network offline */
   }
 
   cachedApiUrl = envUrl;
@@ -75,32 +91,54 @@ export async function resolveApiUrl(): Promise<string> {
 
 export const posApi = {
   /**
-   * Fetch products: Live first, fallback to Dexie IndexedDB
+   * Fetch products: Live first (if online), fallback to Dexie IndexedDB,
+   * then localStorage, and finally bundled seed catalog.
    */
   async fetchProducts(module?: string): Promise<Product[]> {
-    try {
-      const tenantHeaders = await getTenantHeaders();
-
-      // 1. Try to fetch live from backend first and sync to Dexie
+    // 1. Try to fetch live from backend when online, and cache locally
+    if (typeof navigator === 'undefined' || navigator.onLine) {
       try {
+        const tenantHeaders = await getTenantHeaders();
         const base = await resolveApiUrl();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
         const res = await fetch(`${base}/api/products${module ? `?module=${module}` : ''}`, {
           headers: tenantHeaders,
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
+
         if (res.ok) {
           const remoteData = await res.json();
-          if (Array.isArray(remoteData)) {
-            if (remoteData.length > 0) {
+          if (Array.isArray(remoteData) && remoteData.length > 0) {
+            // Save to Dexie IndexedDB
+            try {
               await offlineDb.products.bulkPut(remoteData);
+            } catch (err) {
+              console.warn('[OfflineDB] bulkPut products error:', err);
             }
+
+            // Save to LocalStorage Dual-Cache
+            try {
+              const currentLocal = storage.getList<Product>(KEYS.products);
+              const map = new Map(currentLocal.map((p) => [p.id, p]));
+              remoteData.forEach((p) => map.set(p.id, p));
+              storage.setList(KEYS.products, Array.from(map.values()));
+            } catch (err) {
+              console.warn('[Storage] setList products error:', err);
+            }
+
             return remoteData;
           }
         }
       } catch {
-        /* Offline: proceed with local IndexedDB */
+        /* Offline: proceed immediately with local storage */
       }
+    }
 
-      // 2. Fallback to local Dexie IndexedDB
+    // 2. Fallback to local Dexie IndexedDB
+    try {
       let localProducts: Product[] = [];
       if (module) {
         localProducts = await offlineDb.products.where('module').equals(module).toArray();
@@ -108,21 +146,27 @@ export const posApi = {
         localProducts = await offlineDb.products.toArray();
       }
 
-      if (localProducts.length > 0) {
+      if (localProducts && localProducts.length > 0) {
         return localProducts;
       }
-    } catch {
-      /* Fallback to local storage if IndexedDB is blocked */
+    } catch (dexieErr) {
+      console.warn('[OfflineDB] Dexie product query error:', dexieErr);
     }
 
-    const activeKey = (localStorage.getItem('omnipos_active_key') || '').toUpperCase();
-    const isDemoKey = activeKey.includes('DEMO') || activeKey === 'OMNI-DEMO-2026-LIVE';
-    if (!isDemoKey) {
-      return [];
+    // 3. Fallback to LocalStorage
+    try {
+      const localFallback = storage.getList<Product>(KEYS.products);
+      const filtered = module ? localFallback.filter((p) => p.module === module) : localFallback;
+      if (filtered && filtered.length > 0) {
+        return filtered;
+      }
+    } catch (storageErr) {
+      console.warn('[Storage] localStorage product query error:', storageErr);
     }
 
-    const legacy = storage.getList<Product>(KEYS.products);
-    return module ? legacy.filter((p) => p.module === module) : legacy;
+    // 4. Bundled INITIAL_PRODUCTS catalog fallback (guarantees non-empty screen on fresh install / offline)
+    const seed = module ? INITIAL_PRODUCTS.filter((p) => p.module === module) : INITIAL_PRODUCTS;
+    return seed;
   },
 
   async saveProduct(product: Product): Promise<Product> {
@@ -130,20 +174,32 @@ export const posApi = {
       // 1. Write immediately to local Dexie IndexedDB
       await offlineDb.products.put(product);
 
-      // 2. Queue in Outbox
+      // 2. Write immediately to LocalStorage
+      const currentList = storage.getList<Product>(KEYS.products);
+      const updated = [product, ...currentList.filter((p) => p.id !== product.id)];
+      storage.setList(KEYS.products, updated);
+
+      // 3. Queue in Outbox for background cloud sync
       await syncEngine.enqueue('product', product.id, 'CREATE', product);
 
-      // 3. Try network call with tenant headers
-      const base = await resolveApiUrl();
-      const tenantHeaders = await getTenantHeaders();
-      const res = await fetch(`${base}/api/products`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-        body: JSON.stringify(product),
-      });
-      if (res.ok) return await res.json();
+      // 4. Try immediate network push if online
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        const res = await fetch(`${base}/api/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify(product),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) return await res.json();
+      }
     } catch {
-      /* Saved offline in Dexie & Outbox */
+      /* Saved safely offline in Dexie, localStorage, and Outbox */
     }
     return product;
   },
@@ -151,43 +207,64 @@ export const posApi = {
   async deleteProduct(id: string): Promise<void> {
     try {
       await offlineDb.products.delete(id);
+      const currentList = storage.getList<Product>(KEYS.products);
+      storage.setList(KEYS.products, currentList.filter((p) => p.id !== id));
       await syncEngine.enqueue('product', id, 'DELETE', { id });
 
-      const base = await resolveApiUrl();
-      const tenantHeaders = await getTenantHeaders();
-      await fetch(`${base}/api/products/${id}`, {
-        method: 'DELETE',
-        headers: tenantHeaders,
-      });
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        await fetch(`${base}/api/products/${id}`, {
+          method: 'DELETE',
+          headers: tenantHeaders,
+        });
+      }
     } catch {
       /* Handled offline */
     }
   },
 
+  /**
+   * Fetch categories: Live first (if online), fallback to Dexie, then localStorage, then seed
+   */
   async fetchCategories(module?: string): Promise<Category[]> {
-    try {
-      const tenantHeaders = await getTenantHeaders();
-
-      // 1. Try to fetch live from backend first and sync to Dexie
+    if (typeof navigator === 'undefined' || navigator.onLine) {
       try {
+        const tenantHeaders = await getTenantHeaders();
         const base = await resolveApiUrl();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
         const res = await fetch(`${base}/api/categories${module ? `?module=${module}` : ''}`, {
           headers: tenantHeaders,
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
+
         if (res.ok) {
           const remoteCats = await res.json();
-          if (Array.isArray(remoteCats)) {
-            if (remoteCats.length > 0) {
+          if (Array.isArray(remoteCats) && remoteCats.length > 0) {
+            try {
               await offlineDb.categories.bulkPut(remoteCats);
-            }
+            } catch {}
+
+            try {
+              const currentLocal = storage.getList<Category>(KEYS.categories);
+              const map = new Map(currentLocal.map((c) => [c.id, c]));
+              remoteCats.forEach((c) => map.set(c.id, c));
+              storage.setList(KEYS.categories, Array.from(map.values()));
+            } catch {}
+
             return remoteCats;
           }
         }
       } catch {
-        /* Offline: proceed with local IndexedDB */
+        /* Offline */
       }
+    }
 
-      // 2. Fallback to local Dexie IndexedDB
+    // 2. Fallback to local Dexie IndexedDB
+    try {
       let localCats: Category[] = [];
       if (module) {
         localCats = await offlineDb.categories.where('module').equals(module).toArray();
@@ -195,34 +272,38 @@ export const posApi = {
         localCats = await offlineDb.categories.toArray();
       }
 
-      if (localCats.length > 0) return localCats;
-    } catch {
-      /* Fallback */
-    }
+      if (localCats && localCats.length > 0) return localCats;
+    } catch {}
 
-    const activeKey = (localStorage.getItem('omnipos_active_key') || '').toUpperCase();
-    const isDemoKey = activeKey.includes('DEMO') || activeKey === 'OMNI-DEMO-2026-LIVE';
-    if (!isDemoKey) {
-      return [];
-    }
+    // 3. Fallback to LocalStorage
+    try {
+      const localCats = storage.getList<Category>(KEYS.categories);
+      const filtered = module ? localCats.filter((c) => c.module === module) : localCats;
+      if (filtered && filtered.length > 0) return filtered;
+    } catch {}
 
-    const legacy = storage.getList<Category>(KEYS.categories);
-    return module ? legacy.filter((c) => c.module === module) : legacy;
+    // 4. Bundled INITIAL_CATEGORIES fallback
+    return module ? INITIAL_CATEGORIES.filter((c) => c.module === module) : INITIAL_CATEGORIES;
   },
 
   async saveCategory(cat: Category): Promise<Category> {
     try {
       await offlineDb.categories.put(cat);
-      const base = await resolveApiUrl();
-      const tenantHeaders = await getTenantHeaders();
-      const res = await fetch(`${base}/api/categories`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-        body: JSON.stringify(cat),
-      });
-      if (res.ok) return await res.json();
+      const current = storage.getList<Category>(KEYS.categories);
+      storage.setList(KEYS.categories, [cat, ...current.filter((c) => c.id !== cat.id)]);
+
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const res = await fetch(`${base}/api/categories`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify(cat),
+        });
+        if (res.ok) return await res.json();
+      }
     } catch {
-      /* Saved in Dexie */
+      /* Saved in Dexie and LocalStorage */
     }
     return cat;
   },
@@ -230,35 +311,85 @@ export const posApi = {
   async deleteCategory(id: string): Promise<void> {
     try {
       await offlineDb.categories.delete(id);
-      const base = await resolveApiUrl();
-      const tenantHeaders = await getTenantHeaders();
-      await fetch(`${base}/api/categories/${id}`, {
-        method: 'DELETE',
-        headers: tenantHeaders,
-      });
+      const current = storage.getList<Category>(KEYS.categories);
+      storage.setList(KEYS.categories, current.filter((c) => c.id !== id));
+
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        await fetch(`${base}/api/categories/${id}`, {
+          method: 'DELETE',
+          headers: tenantHeaders,
+        });
+      }
     } catch {
-      /* Handled in Dexie */
+      /* Handled */
     }
+  },
+
+  /**
+   * Fetch Khatas with full offline resilience
+   */
+  async fetchKhatas(): Promise<any[]> {
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      try {
+        const base = await resolveApiUrl();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        const res = await fetch(`${base}/api/khata`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const remoteKhatas = await res.json();
+          if (Array.isArray(remoteKhatas) && remoteKhatas.length > 0) {
+            try {
+              await offlineDb.khatas.bulkPut(remoteKhatas);
+            } catch {}
+            return remoteKhatas;
+          }
+        }
+      } catch {
+        /* Offline */
+      }
+    }
+
+    try {
+      const localKhatas = await offlineDb.khatas.toArray();
+      if (localKhatas && localKhatas.length > 0) return localKhatas;
+    } catch {}
+
+    return [
+      { id: 'khata_guest', name: 'Guest', currentDebt: 0, creditLimit: 50000, synced: 1 },
+      { id: 'khata_vip', name: 'Regular VIP Customer', phone: '0300-1234567', currentDebt: 0, creditLimit: 100000, synced: 1 },
+    ];
   },
 
   /**
    * Fetch Orders: Offline-First strategy with tenant scoping
    */
   async fetchOrders(module?: string): Promise<Order[]> {
+    let localOrders: LocalOrder[] = [];
     try {
-      let localOrders: LocalOrder[] = [];
       if (module) {
         localOrders = await offlineDb.orders.where('module').equals(module).reverse().sortBy('createdAt');
       } else {
         localOrders = await offlineDb.orders.reverse().sortBy('createdAt');
       }
+    } catch {}
 
+    if (typeof navigator === 'undefined' || navigator.onLine) {
       try {
         const base = await resolveApiUrl();
         const tenantHeaders = await getTenantHeaders();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
         const res = await fetch(`${base}/api/orders${module ? `?module=${module}` : ''}`, {
           headers: tenantHeaders,
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
+
         if (res.ok) {
           const remoteOrders = await res.json();
           if (Array.isArray(remoteOrders)) {
@@ -273,12 +404,10 @@ export const posApi = {
       } catch {
         /* Offline: return local orders */
       }
+    }
 
-      if (localOrders.length > 0) {
-        return localOrders;
-      }
-    } catch {
-      /* Fallback */
+    if (localOrders.length > 0) {
+      return localOrders;
     }
 
     const legacy = storage.getList<Order>(KEYS.orders);
@@ -286,7 +415,7 @@ export const posApi = {
   },
 
   /**
-   * Save Order with Tenant Header
+   * Save Order with Tenant Header & Instant Local Stock Deduction
    */
   async saveOrder(order: Order): Promise<Order> {
     const localOrder: LocalOrder = {
@@ -320,40 +449,87 @@ export const posApi = {
       }
 
       // 2. Try immediate push if online with tenant headers
-      try {
-        const base = await resolveApiUrl();
-        const tenantHeaders = await getTenantHeaders();
-        const res = await fetch(`${base}/api/orders`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-          body: JSON.stringify(order),
-        });
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        try {
+          const base = await resolveApiUrl();
+          const tenantHeaders = await getTenantHeaders();
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        if (res.ok) {
-          const saved = await res.json();
-          await offlineDb.orders.update(order.id, { synced: 1 });
-          return saved;
-        } else {
-          // Push failed with server error: enqueue for cloud sync
+          const res = await fetch(`${base}/api/orders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+            body: JSON.stringify(order),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const saved = await res.json();
+            await offlineDb.orders.update(order.id, { synced: 1 });
+            return saved;
+          } else {
+            await syncEngine.enqueue('order', order.id, 'CREATE', order);
+          }
+        } catch {
           await syncEngine.enqueue('order', order.id, 'CREATE', order);
         }
-      } catch {
-        // Network offline: enqueue for background cloud sync
+      } else {
         await syncEngine.enqueue('order', order.id, 'CREATE', order);
       }
     } catch {
-      console.log(`[Omnipos Offline] Order #${order.id} saved in local Dexie DB. Queued for cloud sync.`);
+      console.log(`[Omnipos Offline] Order #${order.id} saved in local DB. Queued for cloud sync.`);
     }
 
     return order;
   },
 
-  async printReceipt(printerName?: string): Promise<boolean> {
+  /**
+   * Print receipt or thermal KOT ticket
+   */
+  async printReceipt(options?: { printerName?: string; silent?: boolean; html?: string }): Promise<boolean> {
+    // 1. Electron Desktop Environment
     if (typeof window !== 'undefined' && window.posApi?.printReceipt) {
-      const res = await window.posApi.printReceipt({ printerName, silent: true });
+      const res = await window.posApi.printReceipt(options);
       return res.ok;
     }
-    window.print();
+
+    // 2. Web Browser Fallback: Hidden iframe printing
+    if (typeof document !== 'undefined' && options?.html) {
+      try {
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        iframe.style.visibility = 'hidden';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentWindow?.document;
+        if (doc) {
+          doc.open();
+          doc.write(options.html);
+          doc.close();
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          setTimeout(() => {
+            try {
+              document.body.removeChild(iframe);
+            } catch {}
+          }, 3000);
+          return true;
+        }
+      } catch (err) {
+        console.warn('[Web Print] iframe print error:', err);
+      }
+    }
+
+    // 3. Native window.print fallback
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
     return true;
   },
 };
