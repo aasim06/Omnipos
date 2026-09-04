@@ -31,6 +31,66 @@ import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { Tag, Circle, PieChart, BarChart2, IndianRupee, Hash, SlidersHorizontal } from 'lucide-react';
+
+export const PRICING_TYPES = [
+  {
+    id: 'fixed',
+    label: 'Fixed Price',
+    icon: Tag,
+    desc: 'Fixed price — drinks, roti, chai etc.',
+    suggestedUnit: 'PCS',
+    defaultSizes: [] as string[],
+  },
+  {
+    id: 'smlxl',
+    label: 'S / M / L / XL',
+    icon: Circle,
+    desc: 'Multiple size variations (S, M, L, XL) — pizza, burgers, apparel etc.',
+    suggestedUnit: 'PCS',
+    defaultSizes: ['Small', 'Medium', 'Large', 'Extra Large'],
+  },
+  {
+    id: 'halffull',
+    label: 'Half / Full',
+    icon: PieChart,
+    desc: 'Portion size variations (Half, Full) — karahi, biryani, handi etc.',
+    suggestedUnit: 'SERVING',
+    defaultSizes: ['Half', 'Full'],
+  },
+  {
+    id: 'perkg',
+    label: 'Per KG',
+    icon: BarChart2,
+    desc: 'Weighed item pricing — sold per KG, gram, fruits, vegetables, meat etc.',
+    suggestedUnit: 'KG',
+    defaultSizes: ['250g', '500g', '1 KG'],
+  },
+  {
+    id: 'amountse',
+    label: 'Amount se (Meethai/Doodh)',
+    icon: IndianRupee,
+    desc: 'Flexible amount pricing — meethai, milk, loose items by customer amount etc.',
+    suggestedUnit: 'KG',
+    defaultSizes: ['Rs. 100', 'Rs. 250', 'Rs. 500', 'Rs. 1000'],
+  },
+  {
+    id: 'perpiece',
+    label: '# Per Piece',
+    icon: Hash,
+    desc: 'Piece unit rate (#) — bakery, samosa, individual units etc.',
+    suggestedUnit: 'PCS',
+    defaultSizes: [] as string[],
+  },
+  {
+    id: 'custom',
+    label: 'Custom Variants',
+    icon: SlidersHorizontal,
+    desc: 'Custom add-ons & options — flavors, sizes, portion options etc.',
+    suggestedUnit: 'PCS',
+    defaultSizes: [] as string[],
+  },
+];
 
 const UNIT_OPTIONS = [
   { value: 'PCS', label: 'Piece (PCS)' },
@@ -55,6 +115,7 @@ const productSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().positive('Retail price must be greater than 0'),
   costPrice: z.coerce.number().min(0, 'Cost price cannot be negative').optional(),
+  pricingType: z.string().default('fixed'),
   unit: z.string().default('PCS'),
   skuCode: z.string().optional(),
   rackLocation: z.string().optional(),
@@ -238,6 +299,68 @@ const useStyles = makeStyles({
     borderRadius: '6px',
     cursor: 'pointer',
     transition: 'all 0.15s ease',
+  },
+
+  // Pricing Type Section
+  pricingTypeSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    marginTop: '4px',
+    marginBottom: '6px',
+  },
+  pricingTypeLabel: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground2,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  pricingTypeRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  pricingTypeBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '7px',
+    padding: '7px 14px',
+    borderRadius: '8px',
+    fontSize: '12.5px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground2,
+    outline: 'none',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground3,
+      color: tokens.colorNeutralForeground1,
+    },
+  },
+  pricingTypeBtnActive: {
+    backgroundColor: '#FF6801',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    borderTopColor: '#FF6801',
+    borderBottomColor: '#FF6801',
+    borderLeftColor: '#FF6801',
+    borderRightColor: '#FF6801',
+    boxShadow: '0 2px 10px rgba(255, 104, 1, 0.35)',
+    ':hover': {
+      backgroundColor: '#E65D00',
+      color: '#FFFFFF',
+    },
+  },
+  pricingTypeDesc: {
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+    fontWeight: 500,
+    marginTop: '2px',
   },
 
   // Variants Section
@@ -630,6 +753,7 @@ export function AddProductView(): React.JSX.Element {
       category: 'General',
       price: undefined,
       costPrice: undefined,
+      pricingType: 'fixed',
       unit: defaultModule === 'minimart' ? 'PCS' : 'PCS',
       skuCode: generateRandomSku(),
       rackLocation: '',
@@ -648,6 +772,7 @@ export function AddProductView(): React.JSX.Element {
     },
   });
 
+  const [pricingType, setPricingType] = useState<string>('fixed');
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [hasVariants, setHasVariants] = useState(false);
 
@@ -704,6 +829,51 @@ export function AddProductView(): React.JSX.Element {
     }
   };
 
+  const handlePricingTypeSelect = (typeId: string) => {
+    setPricingType(typeId);
+    productForm.setValue('pricingType', typeId);
+
+    const typeConfig = PRICING_TYPES.find((p) => p.id === typeId);
+    if (!typeConfig) return;
+
+    // 1. Auto-select suggested measurement unit
+    if (typeConfig.suggestedUnit) {
+      productForm.setValue('unit', typeConfig.suggestedUnit);
+    }
+
+    // 2. Intelligent variant auto-population based on selected type
+    if (typeConfig.defaultSizes && typeConfig.defaultSizes.length > 0) {
+      const basePrice = productForm.getValues('price') || 0;
+      const newVariants: ProductVariant[] = typeConfig.defaultSizes.map((sizeLabel, idx) => {
+        let priceDelta = 0;
+        if (typeId === 'smlxl') {
+          priceDelta = idx === 0 ? 0 : idx === 1 ? 150 : idx === 2 ? 350 : 600;
+        } else if (typeId === 'halffull') {
+          priceDelta = idx === 0 ? 0 : Math.round(basePrice * 0.7) || 300;
+        } else if (typeId === 'perkg') {
+          priceDelta = idx === 0 ? -Math.round(basePrice * 0.75) : idx === 1 ? -Math.round(basePrice * 0.5) : 0;
+        }
+
+        return {
+          id: uid('var_'),
+          label: sizeLabel,
+          price: basePrice > 0 ? Math.max(0, basePrice + priceDelta) : undefined,
+          priceDelta,
+          costDelta: 0,
+          stock: 10,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${sizeLabel}` : undefined,
+        };
+      });
+
+      setVariants(newVariants);
+      setHasVariants(true);
+    } else if (typeId === 'fixed' || typeId === 'perpiece') {
+      // Single price mode
+      setVariants([]);
+      setHasVariants(false);
+    }
+  };
+
   useEffect(() => {
     if (categories.length > 0) {
       const match = categories.find((c) => c.module === watchedModule);
@@ -722,6 +892,7 @@ export function AddProductView(): React.JSX.Element {
         category: data.category,
         price: data.price,
         costPrice: data.costPrice,
+        pricingType: data.pricingType || pricingType,
         unit: data.unit,
         skuCode: data.skuCode || generateRandomSku(),
         rackLocation: data.rackLocation,
@@ -912,6 +1083,35 @@ export function AddProductView(): React.JSX.Element {
                   />
                 )}
               />
+            </div>
+
+            {/* ── Pricing Type Selector (Matching Design) ── */}
+            <div className={styles.pricingTypeSection}>
+              <label className={styles.pricingTypeLabel}>
+                Pricing Type <span style={{ color: '#E51937', fontWeight: 800 }}>*</span>
+              </label>
+
+              <div className={styles.pricingTypeRow}>
+                {PRICING_TYPES.map((pt) => {
+                  const Icon = pt.icon;
+                  const isSelected = pricingType === pt.id;
+                  return (
+                    <button
+                      key={pt.id}
+                      type="button"
+                      onClick={() => handlePricingTypeSelect(pt.id)}
+                      className={`${styles.pricingTypeBtn} ${isSelected ? styles.pricingTypeBtnActive : ''}`}
+                    >
+                      <Icon size={14} style={{ flexShrink: 0 }} />
+                      <span>{pt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className={styles.pricingTypeDesc}>
+                {PRICING_TYPES.find((p) => p.id === pricingType)?.desc}
+              </div>
             </div>
 
             {/* Pricing & Stock Grid */}

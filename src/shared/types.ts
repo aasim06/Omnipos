@@ -7,6 +7,7 @@ export interface Product {
   description?: string;
   costPrice?: number; // PKR purchase cost per unit
   price: number; // PKR retail selling price per unit
+  pricingType?: string; // 'fixed' | 'smlxl' | 'halffull' | 'perkg' | 'amountse' | 'perpiece' | 'custom'
   category: string;
   skuCode?: string; // e.g. SKU-62658411
   rackLocation?: string; // e.g. Rack A-01
