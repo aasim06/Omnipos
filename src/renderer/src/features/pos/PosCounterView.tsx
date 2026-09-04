@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dropdown, Option } from '@fluentui/react-components';
+import { CustomSelect } from '@/components/ui';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Food24Regular,
@@ -3266,34 +3266,19 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
 
             {/* Khata Customer Selection */}
             {paymentMode === 'khata' && (
-              <div style={{ marginTop: '8px' }}>
-                <Dropdown
-                  value={
-                    customerKhatas.find((k: any) => k.id === selectedKhataId)
-                      ? `${customerKhatas.find((k: any) => k.id === selectedKhataId).name} (Debt: PKR ${customerKhatas.find((k: any) => k.id === selectedKhataId).currentDebt?.toLocaleString()})`
-                      : '-- Select Khata Customer --'
-                  }
-                  selectedOptions={selectedKhataId ? [selectedKhataId] : []}
-                  onOptionSelect={(_, d) => {
-                    setSelectedKhataId(d.optionValue || '');
-                  }}
-                  style={{ width: '100%' }}
-                >
-                  {customerKhatas.map((k: any) => (
-                    <Option
-                      key={k.id}
-                      value={k.id}
-                      text={`${k.name} (Debt: PKR ${k.currentDebt?.toLocaleString()} | Limit: PKR ${k.creditLimit?.toLocaleString()})`}
-                    >
-                      {k.name} (Debt: PKR {k.currentDebt?.toLocaleString()} | Limit: PKR {k.creditLimit?.toLocaleString()})
-                    </Option>
-                  ))}
-                </Dropdown>
-                {paymentMode === 'khata' && !selectedKhataId && (
-                  <span style={{ fontSize: '11px', color: F.accentRed, marginTop: '3px', display: 'block' }}>
-                    * Please select customer to debit bill
-                  </span>
-                )}
+              <div style={{ marginTop: '10px' }}>
+                <CustomSelect
+                  label="Khata Customer"
+                  required
+                  value={selectedKhataId}
+                  onChange={(val) => setSelectedKhataId(val)}
+                  placeholder="-- Select Khata Customer --"
+                  options={customerKhatas.map((k: any) => ({
+                    value: k.id,
+                    label: `${k.name} (Debt: PKR ${k.currentDebt?.toLocaleString()} | Limit: PKR ${k.creditLimit?.toLocaleString()})`,
+                  }))}
+                  error={!selectedKhataId ? '* Please select customer to debit bill' : undefined}
+                />
               </div>
             )}
           </div>

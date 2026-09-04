@@ -4,7 +4,6 @@ import {
   tokens,
   Card,
   Button,
-  Input,
   Subtitle1,
   Subtitle2,
   Body1,
@@ -23,6 +22,7 @@ import {
 import { useAuth } from './AuthContext';
 import { userStorage } from './userStorage';
 import { useNavigate } from 'react-router-dom';
+import { CustomInput } from '@/components/ui';
 
 const useStyles = makeStyles({
   container: {
@@ -192,38 +192,44 @@ export function LoginView(): React.JSX.Element {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className={styles.form}>
-          <div>
-            <Caption1 style={{ fontWeight: 600, marginBottom: '4px', display: 'block' }}>Username</Caption1>
-            <Input
-              value={username}
-              onChange={(_, d) => setUsername(d.value)}
-              placeholder="Enter your username"
-              contentBefore={<Person20Regular />}
-              style={{ width: '100%' }}
-              size="large"
-            />
-          </div>
+          <CustomInput
+            label="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter your username"
+            icon={<Person20Regular />}
+            required
+            autoComplete="username"
+          />
 
-          <div>
-            <Caption1 style={{ fontWeight: 600, marginBottom: '4px', display: 'block' }}>Password</Caption1>
-            <Input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(_, d) => setPassword(d.value)}
-              placeholder="Enter your password"
-              contentBefore={<LockClosed20Regular />}
-              contentAfter={
-                <Button
-                  size="small"
-                  appearance="subtle"
-                  icon={showPassword ? <EyeOff20Regular /> : <Eye20Regular />}
-                  onClick={() => setShowPassword(!showPassword)}
-                />
-              }
-              style={{ width: '100%' }}
-              size="large"
-            />
-          </div>
+          <CustomInput
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            icon={<LockClosed20Regular />}
+            required
+            autoComplete="current-password"
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: tokens.colorNeutralForeground3,
+                }}
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff20Regular /> : <Eye20Regular />}
+              </button>
+            }
+          />
 
           <Button
             type="submit"

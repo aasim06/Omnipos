@@ -18,6 +18,7 @@ export interface ProductAutocompleteProps {
   error?: string;
   disabled?: boolean;
   style?: React.CSSProperties;
+  labelBg?: string;
 }
 
 export function ProductAutocomplete({
@@ -32,6 +33,7 @@ export function ProductAutocomplete({
   error,
   disabled = false,
   style,
+  labelBg,
 }: ProductAutocompleteProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -102,6 +104,7 @@ export function ProductAutocomplete({
       <CustomInput
         id={id}
         label={label}
+        labelBg={labelBg}
         required={required}
         value={value}
         disabled={disabled}

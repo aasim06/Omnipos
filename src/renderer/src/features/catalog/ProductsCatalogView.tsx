@@ -5,9 +5,6 @@ import {
   tokens,
   Button,
   Badge,
-  Input,
-  Dropdown,
-  Option,
   Label,
   Subtitle1,
   Body1,
@@ -1816,15 +1813,13 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                         control={productForm.control}
                         name="imageUrl"
                         render={({ field }) => (
-                          <Input
-                            appearance="outline"
-                            size="small"
-                            style={{ width: '100%' }}
+                          <CustomInput
+                            label="Image Web URL (Optional)"
                             placeholder="Or paste an image web link..."
                             value={field.value && !field.value.startsWith('data:') ? field.value : ''}
-                            onChange={(_, d) => {
-                              field.onChange(d.value);
-                              setImagePreview(d.value || null);
+                            onChange={(e) => {
+                              field.onChange(e.target.value);
+                              setImagePreview(e.target.value || null);
                             }}
                           />
                         )}

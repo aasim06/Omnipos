@@ -100,14 +100,15 @@ export function CustomSelect({
           alignItems: "center",
           justifyContent: "space-between",
           minHeight: "38px",
-          borderRadius: "4px",
+          borderRadius: "6px",
           border: `1px solid ${borderColor}`,
           backgroundColor: bgCard,
           padding: "4px 10px",
           boxSizing: "border-box",
           cursor: disabled ? "not-allowed" : "pointer",
           opacity: disabled ? 0.6 : 1,
-          transition: "border-color 0.15s ease",
+          boxShadow: isOpen ? "0 0 0 2px rgba(229, 25, 55, 0.15)" : "none",
+          transition: "border-color 0.15s ease, box-shadow 0.15s ease",
           userSelect: "none",
         }}
       >

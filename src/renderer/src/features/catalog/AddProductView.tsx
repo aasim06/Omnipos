@@ -4,9 +4,6 @@ import {
   makeStyles,
   tokens,
   Button,
-  Input,
-  Dropdown,
-  Option,
   Label,
   Subtitle1,
   Caption1,
@@ -1203,43 +1200,34 @@ export function AddProductView(): React.JSX.Element {
                           </div>
 
                           <div>
-                            <Input
-                              size="small"
+                            <CustomInput
                               type="number"
-                              appearance="outline"
                               placeholder="Stock"
                               value={v.stock !== undefined ? String(v.stock) : ''}
-                              onChange={(_, d) =>
-                                handleUpdateVariant(v.id, { stock: d.value === '' ? 0 : Number(d.value) })
+                              onChange={(e) =>
+                                handleUpdateVariant(v.id, { stock: e.target.value === '' ? 0 : Number(e.target.value) })
                               }
-                              className={styles.fullWidth}
                             />
                           </div>
 
                           <div>
-                            <Input
-                              size="small"
+                            <CustomInput
                               type="number"
-                              appearance="outline"
                               placeholder={watchedPrice ? `Rs. ${watchedPrice}` : 'Price (PKR)'}
                               value={displayPrice !== undefined ? String(displayPrice) : ''}
-                              onChange={(_, d) => {
-                                const val = d.value === '' ? undefined : Number(d.value);
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? undefined : Number(e.target.value);
                                 const pDelta = val !== undefined ? val - (watchedPrice || 0) : 0;
                                 handleUpdateVariant(v.id, { price: val, priceDelta: pDelta });
                               }}
-                              className={styles.fullWidth}
                             />
                           </div>
 
                           <div>
-                            <Input
-                              size="small"
-                              appearance="outline"
+                            <CustomInput
                               placeholder="SKU / Barcode"
                               value={v.skuCode || ''}
-                              onChange={(_, d) => handleUpdateVariant(v.id, { skuCode: d.value })}
-                              className={styles.fullWidth}
+                              onChange={(e) => handleUpdateVariant(v.id, { skuCode: e.target.value })}
                             />
                           </div>
 

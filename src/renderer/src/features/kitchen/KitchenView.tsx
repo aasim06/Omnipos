@@ -16,10 +16,6 @@ import {
   DialogBody,
   DialogActions,
   DialogContent,
-  Input,
-  Dropdown,
-  Option,
-  Label,
   TabList,
   Tab,
   TabValue,
@@ -43,6 +39,7 @@ import { offlineDb } from '@/lib/offlineDb';
 import { printKitchenKot } from '@/lib/kotPrinter';
 import { KitchenPageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
+import { CustomInput, CustomSelect } from '@/components/ui';
 
 /* ── Zod Validation Schema for Manual KDS Ticket with Multiple Items ── */
 const rushTicketLineSchema = z.object({
@@ -471,47 +468,36 @@ export function KitchenView(): React.JSX.Element {
                   <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
                     
                     {/* Top Row: Customer Name & Order Type */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <Label required htmlFor="customerName" style={{ fontWeight: 600, fontSize: '13px' }}>
-                          Customer / Table Name
-                        </Label>
-                        <Input
-                          id="customerName"
-                          {...register('customerName')}
-                          placeholder="e.g. Table 4 / Phone Order"
-                          style={{ width: '100%' }}
-                        />
-                        {errors.customerName && <span className={styles.errorMessage}>{errors.customerName.message}</span>}
-                      </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '4px' }}>
+                      <CustomInput
+                        id="customerName"
+                        label="Customer / Table Name"
+                        required
+                        placeholder="e.g. Table 4 / Phone Order"
+                        {...register('customerName')}
+                        error={errors.customerName?.message}
+                      />
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <Label required htmlFor="orderType" style={{ fontWeight: 600, fontSize: '13px' }}>
-                          Order Type
-                        </Label>
-                        <Dropdown
-                          id="orderType"
-                          value={watch('orderType') || 'Dine-In'}
-                          selectedOptions={[watch('orderType') || 'Dine-In']}
-                          onOptionSelect={(_, d) => {
-                            if (d.optionValue) setValue('orderType', d.optionValue as any);
-                          }}
-                          style={{ width: '100%' }}
-                        >
-                          <Option value="Dine-In" text="Dine-In">Dine-In</Option>
-                          <Option value="Takeaway" text="Takeaway">Takeaway</Option>
-                          <Option value="Delivery" text="Delivery">Delivery</Option>
-                          <Option value="VIP Rush" text="VIP Rush">VIP Rush</Option>
-                        </Dropdown>
-                        {errors.orderType && <span className={styles.errorMessage}>{errors.orderType.message}</span>}
-                      </div>
+                      <CustomSelect
+                        label="Order Type"
+                        required
+                        value={watch('orderType') || 'Dine-In'}
+                        onChange={(val) => setValue('orderType', val as any, { shouldValidate: true })}
+                        options={[
+                          { value: 'Dine-In', label: 'Dine-In' },
+                          { value: 'Takeaway', label: 'Takeaway' },
+                          { value: 'Delivery', label: 'Delivery' },
+                          { value: 'VIP Rush', label: 'VIP Rush' },
+                        ]}
+                        error={errors.orderType?.message}
+                      />
                     </div>
 
                     {/* Food Items Section Header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                      <Label style={{ fontWeight: 700, fontSize: '14px', color: tokens.colorNeutralForeground1 }}>
+                      <span style={{ fontWeight: 700, fontSize: '14px', color: tokens.colorNeutralForeground1 }}>
                         Food Items ({fields.length})
-                      </Label>
+                      </span>
                       <Button
                         appearance="subtle"
                         size="small"
@@ -536,7 +522,7 @@ export function KitchenView(): React.JSX.Element {
                             border: `1px solid ${tokens.colorNeutralStroke2}`,
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '12px',
+                            gap: '14px',
                           }}
                         >
                           {/* Item Header Pill & Delete */}
@@ -576,6 +562,7 @@ export function KitchenView(): React.JSX.Element {
                           <ProductAutocomplete
                             id={`lines.${index}.name`}
                             label="Food Item Name"
+                            labelBg={tokens.colorNeutralBackground3}
                             required
                             filterModule="fastfood"
                             value={watch(`lines.${index}.name`) || ''}
@@ -584,34 +571,26 @@ export function KitchenView(): React.JSX.Element {
                             error={errors.lines?.[index]?.name?.message}
                           />
 
-                          {/* Qty and Notes cleanly stacked in 2 columns */}
-                          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                            <div style={{ width: '100px', display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
-                              <Label required htmlFor={`qty-${index}`} style={{ fontWeight: 600, fontSize: '12px', display: 'block' }}>
-                                Quantity
-                              </Label>
-                              <Input
-                                id={`qty-${index}`}
-                                type="number"
-                                min={1}
-                                {...register(`lines.${index}.quantity` as const)}
-                                style={{ width: '100%' }}
-                              />
-                              {errors.lines?.[index]?.quantity && (
-                                <span className={styles.errorMessage}>{errors.lines[index]?.quantity?.message}</span>
-                              )}
-                            </div>
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <Label htmlFor={`notes-${index}`} style={{ fontWeight: 600, fontSize: '12px', display: 'block' }}>
-                                Chef Prep Note
-                              </Label>
-                              <Input
-                                id={`notes-${index}`}
-                                placeholder="e.g. Extra spicy, no onion, extra cheese"
-                                {...register(`lines.${index}.notes` as const)}
-                                style={{ width: '100%' }}
-                              />
-                            </div>
+                          {/* Qty and Notes cleanly aligned in 2 columns */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '12px' }}>
+                            <CustomInput
+                              id={`qty-${index}`}
+                              type="number"
+                              min={1}
+                              label="Quantity"
+                              labelBg={tokens.colorNeutralBackground3}
+                              required
+                              {...register(`lines.${index}.quantity` as const, { valueAsNumber: true })}
+                              error={errors.lines?.[index]?.quantity?.message}
+                            />
+                            <CustomInput
+                              id={`notes-${index}`}
+                              label="Chef Prep Note"
+                              labelBg={tokens.colorNeutralBackground3}
+                              placeholder="e.g. Extra spicy, no onion, extra cheese"
+                              {...register(`lines.${index}.notes` as const)}
+                              error={errors.lines?.[index]?.notes?.message}
+                            />
                           </div>
                         </div>
                       ))}
