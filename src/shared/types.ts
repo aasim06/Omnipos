@@ -86,4 +86,6 @@ export interface Category {
   profile?: CategoryProfile;
   suggestedSizes?: string[];
   suggestedUnits?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }

@@ -251,11 +251,10 @@ export function isDemoLicense(): boolean {
     localStorage.getItem("omnipos_license_key") ||
     ""
   ).toUpperCase().trim();
+  // If no license key is entered yet (local dev) or key contains DEMO
+  if (!activeKey) return true;
   return activeKey.includes("DEMO") || activeKey === "OMNI-DEMO-2026-LIVE";
 }
-
-export const DEMO_PRODUCT_IDS = new Set(INITIAL_PRODUCTS.map((p) => p.id));
-export const DEMO_CATEGORY_IDS = new Set(INITIAL_CATEGORIES.map((c) => c.id));
 
 export async function ensureInitialData(forceDemo: boolean = false): Promise<void> {
   if (typeof window === "undefined") return;
@@ -278,89 +277,32 @@ export async function ensureInitialData(forceDemo: boolean = false): Promise<voi
     }
   }
 
-  const isDemo = forceDemo || activeKey.includes("DEMO") || activeKey === "OMNI-DEMO-2026-LIVE";
+  // Real client license: starts with OMNI- and does not contain DEMO
+  const isRealClient =
+    Boolean(activeKey) &&
+    activeKey.startsWith("OMNI-") &&
+    !activeKey.includes("DEMO") &&
+    activeKey !== "OMNI-DEMO-2026-LIVE";
 
-  // If this is a real client license (NOT demo): NEVER seed mock products, and purge any demo artifacts!
-  if (!isDemo) {
-    try {
-      // 1. Purge demo products from localStorage
-      const existingProducts = storage.getList<Product>(KEYS.products);
-      const cleanedProducts = existingProducts.filter(
-        (p) =>
-          !DEMO_PRODUCT_IDS.has(p.id) &&
-          !p.id.startsWith("prod_ff_") &&
-          !p.id.startsWith("prod_mm_") &&
-          p.id !== "prod_1788263921165" &&
-          p.name !== "Neon Grilled Burger"
-      );
-      if (cleanedProducts.length !== existingProducts.length) {
-        storage.setList(KEYS.products, cleanedProducts);
-      }
-
-      // Purge demo categories from localStorage
-      const existingCategories = storage.getList<Category>(KEYS.categories);
-      const cleanedCategories = existingCategories.filter(
-        (c) => !DEMO_CATEGORY_IDS.has(c.id) && !c.id.startsWith("cat_ff_") && !c.id.startsWith("cat_mm_")
-      );
-      if (cleanedCategories.length !== existingCategories.length) {
-        storage.setList(KEYS.categories, cleanedCategories);
-      }
-
-      // 2. Purge demo items from Dexie IndexedDB
-      const allDexieProds = await offlineDb.products.toArray();
-      const demoProdIds = allDexieProds
-        .filter(
-          (p) =>
-            DEMO_PRODUCT_IDS.has(p.id) ||
-            p.id.startsWith("prod_ff_") ||
-            p.id.startsWith("prod_mm_") ||
-            p.id === "prod_1788263921165" ||
-            p.name === "Neon Grilled Burger"
-        )
-        .map((p) => p.id);
-      if (demoProdIds.length > 0) {
-        await offlineDb.products.bulkDelete(demoProdIds);
-      }
-
-      const allDexieCats = await offlineDb.categories.toArray();
-      const demoCatIds = allDexieCats
-        .filter((c) => DEMO_CATEGORY_IDS.has(c.id) || c.id.startsWith("cat_ff_") || c.id.startsWith("cat_mm_"))
-        .map((c) => c.id);
-      if (demoCatIds.length > 0) {
-        await offlineDb.categories.bulkDelete(demoCatIds);
-      }
-    } catch (err) {
-      console.warn("[OfflineDB] Clean demo data error:", err);
-    }
+  if (isRealClient && !forceDemo) {
+    // For real production clients: NEVER seed mock dummy products!
     return;
   }
 
-  // 1. Ensure LocalStorage Products (ONLY for Demo key)
-  const existingProducts = storage.getList<Product>(KEYS.products);
-  if (existingProducts.length === 0) {
-    storage.setList(KEYS.products, INITIAL_PRODUCTS);
-  }
-
-  // 2. Ensure LocalStorage Categories (ONLY for Demo key)
-  const existingCategories = storage.getList<Category>(KEYS.categories);
-  if (existingCategories.length === 0) {
-    storage.setList(KEYS.categories, INITIAL_CATEGORIES);
-  }
-
-  // 3. Ensure Dexie IndexedDB has items (ONLY for Demo key)
+  // For DEMO mode: ensure sample catalog exists in Dexie & LocalStorage if empty
   try {
     const dexieCount = await offlineDb.products.count();
     if (dexieCount === 0) {
-      const prodsToSeed = existingProducts.length > 0 ? existingProducts : INITIAL_PRODUCTS;
-      await offlineDb.products.bulkPut(prodsToSeed);
+      await offlineDb.products.bulkPut(INITIAL_PRODUCTS);
+      storage.setList(KEYS.products, INITIAL_PRODUCTS);
     }
 
     const catCount = await offlineDb.categories.count();
     if (catCount === 0) {
-      const catsToSeed = existingCategories.length > 0 ? existingCategories : INITIAL_CATEGORIES;
-      await offlineDb.categories.bulkPut(catsToSeed);
+      await offlineDb.categories.bulkPut(INITIAL_CATEGORIES);
+      storage.setList(KEYS.categories, INITIAL_CATEGORIES);
     }
   } catch (err) {
-    console.warn("[OfflineDB] Dexie seed check:", err);
+    console.warn("[OfflineDB] Dexie seed check error:", err);
   }
 }

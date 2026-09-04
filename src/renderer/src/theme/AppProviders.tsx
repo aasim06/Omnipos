@@ -95,9 +95,13 @@ export const useAppTheme = () => useContext(ThemeContext);
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 30,
+      staleTime: 1000 * 60 * 5,
       retry: 1,
       refetchOnWindowFocus: false,
+      networkMode: 'always',
+    },
+    mutations: {
+      networkMode: 'always',
     },
   },
 });

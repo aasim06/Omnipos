@@ -137,34 +137,35 @@ export const posApi = {
       }
     }
 
-    // 2. Fallback to local Dexie IndexedDB
+    // 2. Fallback to local Dexie IndexedDB (Offline Persistence)
     try {
-      let localProducts: Product[] = [];
-      if (module) {
-        localProducts = await offlineDb.products.where('module').equals(module).toArray();
-      } else {
-        localProducts = await offlineDb.products.toArray();
-      }
-
-      if (localProducts && localProducts.length > 0) {
-        return localProducts;
+      const allDexie = await offlineDb.products.toArray();
+      if (allDexie && allDexie.length > 0) {
+        if (module) {
+          const filtered = allDexie.filter((p) => p.module === module);
+          if (filtered.length > 0) return filtered;
+        }
+        return allDexie;
       }
     } catch (dexieErr) {
       console.warn('[OfflineDB] Dexie product query error:', dexieErr);
     }
 
-    // 3. Fallback to LocalStorage
+    // 3. Fallback to LocalStorage (Secondary Offline Cache)
     try {
       const localFallback = storage.getList<Product>(KEYS.products);
-      const filtered = module ? localFallback.filter((p) => p.module === module) : localFallback;
-      if (filtered && filtered.length > 0) {
-        return filtered;
+      if (localFallback && localFallback.length > 0) {
+        if (module) {
+          const filtered = localFallback.filter((p) => p.module === module);
+          if (filtered.length > 0) return filtered;
+        }
+        return localFallback;
       }
     } catch (storageErr) {
       console.warn('[Storage] localStorage product query error:', storageErr);
     }
 
-    // 4. Bundled INITIAL_PRODUCTS catalog fallback (STRICTLY ONLY FOR DEMO LICENSES!)
+    // 4. Bundled INITIAL_PRODUCTS catalog fallback (if Demo license)
     if (isDemoLicense()) {
       const seed = module ? INITIAL_PRODUCTS.filter((p) => p.module === module) : INITIAL_PRODUCTS;
       return seed;
@@ -270,24 +271,29 @@ export const posApi = {
 
     // 2. Fallback to local Dexie IndexedDB
     try {
-      let localCats: Category[] = [];
-      if (module) {
-        localCats = await offlineDb.categories.where('module').equals(module).toArray();
-      } else {
-        localCats = await offlineDb.categories.toArray();
+      const allCats = await offlineDb.categories.toArray();
+      if (allCats && allCats.length > 0) {
+        if (module) {
+          const filtered = allCats.filter((c) => c.module === module);
+          if (filtered.length > 0) return filtered;
+        }
+        return allCats;
       }
-
-      if (localCats && localCats.length > 0) return localCats;
     } catch {}
 
     // 3. Fallback to LocalStorage
     try {
       const localCats = storage.getList<Category>(KEYS.categories);
-      const filtered = module ? localCats.filter((c) => c.module === module) : localCats;
-      if (filtered && filtered.length > 0) return filtered;
+      if (localCats && localCats.length > 0) {
+        if (module) {
+          const filtered = localCats.filter((c) => c.module === module);
+          if (filtered.length > 0) return filtered;
+        }
+        return localCats;
+      }
     } catch {}
 
-    // 4. Bundled INITIAL_CATEGORIES fallback (STRICTLY ONLY FOR DEMO LICENSES!)
+    // 4. Bundled INITIAL_CATEGORIES fallback (if Demo key)
     if (isDemoLicense()) {
       return module ? INITIAL_CATEGORIES.filter((c) => c.module === module) : INITIAL_CATEGORIES;
     }
