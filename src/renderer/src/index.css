@@ -51,23 +51,29 @@ html, body, #root, main, table, tr, td, th, p, span, h1, h2, h3, h4, h5, h6, inp
   -ms-overflow-style: none !important;
 }
 
-/* Fluent Sidebar Smooth Thin Scrollbar */
+/* Bridge the gap between sidebar trigger button and flyout menu popover so it never flickers */
+.fui-MenuPopover::before,
+[role="menu"]::before {
+  content: "" !important;
+  position: absolute !important;
+  top: -15px !important;
+  bottom: -15px !important;
+  left: -25px !important;
+  width: 30px !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+}
+
+
+/* Fluent Sidebar Clean Hidden Scrollbar (Wheel scrollable without scrollbar clutter) */
 .fluent-sidebar-scroll {
-  scrollbar-width: thin !important;
-  scrollbar-color: rgba(148, 163, 184, 0.4) transparent !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 .fluent-sidebar-scroll::-webkit-scrollbar {
-  width: 4px !important;
-}
-.fluent-sidebar-scroll::-webkit-scrollbar-track {
-  background: transparent !important;
-}
-.fluent-sidebar-scroll::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35) !important;
-  border-radius: 4px !important;
-}
-.fluent-sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(229, 25, 55, 0.7) !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* ── Fluent UI Dropdown & Option Brand Red Theme Styling ── */

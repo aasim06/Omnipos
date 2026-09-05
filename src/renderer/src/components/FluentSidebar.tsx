@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Tooltip,
   Menu,
   MenuTrigger,
   MenuList,
@@ -432,6 +431,16 @@ const useStyles = makeStyles({
     borderRadius: '10px',
     padding: '6px',
     minWidth: '220px',
+    position: 'relative',
+    '::before': {
+      content: '""',
+      position: 'absolute',
+      top: '-15px',
+      bottom: '-15px',
+      left: '-25px',
+      width: '30px',
+      backgroundColor: 'transparent',
+    },
   },
   menuPopoverDark: {
     backgroundColor: '#121316',
@@ -1314,11 +1323,17 @@ export function FluentSidebar(): React.JSX.Element {
                   if (isCollapsed) {
                     // When collapsed: Flyout Popover Menu
                     return (
-                      <Menu key={item.label} positioning="after" openOnHover={true} hoverDelay={150}>
+                      <Menu
+                        key={item.label}
+                        positioning={{ position: 'after', align: 'top', offset: 4 }}
+                        openOnHover={true}
+                        hoverDelay={80}
+                      >
                         <MenuTrigger disableButtonEnhancement>
                           <button
                             type="button"
-                            onClick={() => navigate(item.defaultRoute)}
+                            title={item.label}
+                            aria-label={item.label}
                             className={mergeClasses(
                               styles.collapsedAccordionBtn,
                               item.isActive
@@ -1326,14 +1341,12 @@ export function FluentSidebar(): React.JSX.Element {
                                 : (isDark ? styles.collapsedBtnInactiveDark : styles.collapsedBtnInactiveLight)
                             )}
                           >
-                            <Tooltip content={item.label} relationship="label" positioning="after">
-                              <span className={styles.collapsedInnerSpan}>
-                                {item.isActive && (
-                                  <div className={styles.collapsedActiveLaser} />
-                                )}
-                                {item.isActive ? item.activeIcon : item.icon}
-                              </span>
-                            </Tooltip>
+                            <span className={styles.collapsedInnerSpan}>
+                              {item.isActive && (
+                                <div className={styles.collapsedActiveLaser} />
+                              )}
+                              {item.isActive ? item.activeIcon : item.icon}
+                            </span>
                           </button>
                         </MenuTrigger>
                         <MenuPopover
@@ -1473,22 +1486,24 @@ export function FluentSidebar(): React.JSX.Element {
                 }
 
                 // Standard NavLink Item
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    className={({ isActive }) =>
-                      mergeClasses(
-                        styles.navLink,
-                        isCollapsed ? styles.navLinkCollapsed : styles.navLinkExpanded,
-                        isActive
-                          ? (isDark ? styles.navLinkActiveDark : styles.navLinkActiveLight)
-                          : (isDark ? styles.navLinkInactiveDark : styles.navLinkInactiveLight)
-                      )
-                    }
-                  >
-                    {({ isActive }) => {
-                      const content = isCollapsed ? (
+                if (isCollapsed) {
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      title={item.label}
+                      aria-label={item.label}
+                      className={({ isActive }) =>
+                        mergeClasses(
+                          styles.navLink,
+                          styles.navLinkCollapsed,
+                          isActive
+                            ? (isDark ? styles.navLinkActiveDark : styles.navLinkActiveLight)
+                            : (isDark ? styles.navLinkInactiveDark : styles.navLinkInactiveLight)
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
                         <span className={styles.collapsedInnerSpan}>
                           {isActive && (
                             <div className={styles.collapsedActiveLaser} />
@@ -1503,46 +1518,55 @@ export function FluentSidebar(): React.JSX.Element {
                             {isActive ? item.activeIcon : item.icon}
                           </span>
                         </span>
-                      ) : (
-                        <span className={styles.navLinkRow}>
-                          {isActive && (
-                            <div className={styles.laserIndicator} />
-                          )}
-                          <span
-                            className={mergeClasses(
-                              styles.iconWrap,
-                              isActive
-                                ? styles.navLinkIconActive
-                                : (isDark ? styles.navLinkIconInactiveDark : styles.navLinkIconInactiveLight)
-                            )}
-                          >
-                            {isActive ? item.activeIcon : item.icon}
-                          </span>
-                          <span
-                            className={mergeClasses(
-                              styles.navLinkLabel,
-                              isActive ? styles.accordionLabelActive : styles.accordionLabelInactive
-                            )}
-                          >
-                            {item.label}
-                          </span>
-                          {item.badge && (
-                            <span className={styles.badgePill}>
-                              {item.badge}
-                            </span>
-                          )}
-                        </span>
-                      );
+                      )}
+                    </NavLink>
+                  );
+                }
 
-                      if (isCollapsed) {
-                        return (
-                          <Tooltip content={item.label} relationship="label" positioning="after">
-                            {content}
-                          </Tooltip>
-                        );
-                      }
-                      return content;
-                    }}
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      mergeClasses(
+                        styles.navLink,
+                        styles.navLinkExpanded,
+                        isActive
+                          ? (isDark ? styles.navLinkActiveDark : styles.navLinkActiveLight)
+                          : (isDark ? styles.navLinkInactiveDark : styles.navLinkInactiveLight)
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <span className={styles.navLinkRow}>
+                        {isActive && (
+                          <div className={styles.laserIndicator} />
+                        )}
+                        <span
+                          className={mergeClasses(
+                            styles.iconWrap,
+                            isActive
+                              ? styles.navLinkIconActive
+                              : (isDark ? styles.navLinkIconInactiveDark : styles.navLinkIconInactiveLight)
+                          )}
+                        >
+                          {isActive ? item.activeIcon : item.icon}
+                        </span>
+                        <span
+                          className={mergeClasses(
+                            styles.navLinkLabel,
+                            isActive ? styles.accordionLabelActive : styles.accordionLabelInactive
+                          )}
+                        >
+                          {item.label}
+                        </span>
+                        {item.badge && (
+                          <span className={styles.badgePill}>
+                            {item.badge}
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </NavLink>
                 );
               })}
@@ -1569,108 +1593,83 @@ export function FluentSidebar(): React.JSX.Element {
           )}
         >
           {/* 1. Light / Dark Theme Button */}
-          <Tooltip
-            content={mode === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-            relationship="label"
-            positioning={isCollapsed ? 'after' : 'above'}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={mode === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            aria-label={mode === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            className={mergeClasses(styles.toolbarBtn, isDark ? styles.themeBtnDark : styles.themeBtnLight)}
           >
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={mergeClasses(styles.toolbarBtn, isDark ? styles.themeBtnDark : styles.themeBtnLight)}
-              title={mode === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-            >
-              {mode === 'dark' ? (
-                <WeatherSunny20Regular className={mergeClasses(styles.icon17, styles.icon17Amber)} />
-              ) : (
-                <WeatherMoon20Regular className={mergeClasses(styles.icon17, styles.icon17Red)} />
-              )}
-            </button>
-          </Tooltip>
+            {mode === 'dark' ? (
+              <WeatherSunny20Regular className={mergeClasses(styles.icon17, styles.icon17Amber)} />
+            ) : (
+              <WeatherMoon20Regular className={mergeClasses(styles.icon17, styles.icon17Red)} />
+            )}
+          </button>
 
           {/* 2. Admin & Store Settings Button (Admin Only) */}
           {isAdmin && (
-            <Tooltip
-              content="Store & Admin Settings"
-              relationship="label"
-              positioning={isCollapsed ? 'after' : 'above'}
+            <button
+              type="button"
+              onClick={() => navigate('/admin')}
+              title="Store & Admin Settings"
+              aria-label="Store & Admin Settings"
+              className={mergeClasses(
+                styles.toolbarBtn,
+                location.pathname === '/admin'
+                  ? (isDark ? styles.adminBtnActiveDark : styles.adminBtnActiveLight)
+                  : (isDark ? styles.adminBtnInactiveDark : styles.adminBtnInactiveLight)
+              )}
             >
-              <button
-                type="button"
-                onClick={() => navigate('/admin')}
-                className={mergeClasses(
-                  styles.toolbarBtn,
-                  location.pathname === '/admin'
-                    ? (isDark ? styles.adminBtnActiveDark : styles.adminBtnActiveLight)
-                    : (isDark ? styles.adminBtnInactiveDark : styles.adminBtnInactiveLight)
-                )}
-                title="Store & Admin Settings"
-              >
-                <Settings20Regular
-                  className={mergeClasses(styles.icon17, location.pathname === '/admin' ? styles.icon17Red : undefined)}
-                />
-              </button>
-            </Tooltip>
+              <Settings20Regular
+                className={mergeClasses(styles.icon17, location.pathname === '/admin' ? styles.icon17Red : undefined)}
+              />
+            </button>
           )}
 
           {/* 3. Storage & Database Engine Button (Admin Only) */}
           {isAdmin && (
-            <Tooltip
-              content="Local Storage & Database"
-              relationship="label"
-              positioning={isCollapsed ? 'after' : 'above'}
+            <button
+              type="button"
+              onClick={() => setIsStorageModalOpen(true)}
+              title="Local Storage & Database Engine"
+              aria-label="Local Storage & Database Engine"
+              className={mergeClasses(
+                styles.toolbarBtn,
+                isStorageModalOpen
+                  ? (isDark ? styles.storageBtnActiveDark : styles.storageBtnActiveLight)
+                  : (isDark ? styles.storageBtnInactiveDark : styles.storageBtnInactiveLight)
+              )}
             >
-              <button
-                type="button"
-                onClick={() => setIsStorageModalOpen(true)}
-                className={mergeClasses(
-                  styles.toolbarBtn,
-                  isStorageModalOpen
-                    ? (isDark ? styles.storageBtnActiveDark : styles.storageBtnActiveLight)
-                    : (isDark ? styles.storageBtnInactiveDark : styles.storageBtnInactiveLight)
-                )}
-                title="Local Storage & Database Engine"
-              >
-                <Database20Regular className={styles.icon17} />
-              </button>
-            </Tooltip>
+              <Database20Regular className={styles.icon17} />
+            </button>
           )}
 
           {/* 4. Lock Terminal / Log Out Button */}
-          <Tooltip
-            content={`Log Out / Lock Terminal (${user?.name || 'Cashier'})`}
-            relationship="label"
-            positioning={isCollapsed ? 'after' : 'above'}
+          <button
+            type="button"
+            onClick={logout}
+            title={`Log Out / Lock Terminal (${user?.name || 'Cashier'})`}
+            aria-label={`Log Out / Lock Terminal (${user?.name || 'Cashier'})`}
+            className={mergeClasses(styles.toolbarBtn, isDark ? styles.logoutBtnDark : styles.logoutBtnLight)}
           >
-            <button
-              type="button"
-              onClick={logout}
-              className={mergeClasses(styles.toolbarBtn, isDark ? styles.logoutBtnDark : styles.logoutBtnLight)}
-              title={`Log Out / Lock Terminal (${user?.name || 'Cashier'})`}
-            >
-              <LockClosed20Regular className={mergeClasses(styles.icon17, styles.icon17Danger)} />
-            </button>
-          </Tooltip>
+            <LockClosed20Regular className={mergeClasses(styles.icon17, styles.icon17Danger)} />
+          </button>
 
           {/* 5. Collapse / Expand Sidebar Button */}
-          <Tooltip
-            content={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
-            relationship="label"
-            positioning={isCollapsed ? 'after' : 'above'}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+            aria-label={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+            className={mergeClasses(styles.toolbarBtn, isDark ? styles.collapseBtnDark : styles.collapseBtnLight)}
           >
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              className={mergeClasses(styles.toolbarBtn, isDark ? styles.collapseBtnDark : styles.collapseBtnLight)}
-              title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
-            >
-              {isCollapsed ? (
-                <ChevronRight20Regular className={styles.icon17} />
-              ) : (
-                <ChevronLeft20Regular className={styles.icon17} />
-              )}
-            </button>
-          </Tooltip>
+            {isCollapsed ? (
+              <ChevronRight20Regular className={styles.icon17} />
+            ) : (
+              <ChevronLeft20Regular className={styles.icon17} />
+            )}
+          </button>
         </div>
       </div>
 
