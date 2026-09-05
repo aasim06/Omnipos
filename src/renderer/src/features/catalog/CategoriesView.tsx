@@ -524,13 +524,13 @@ export function CategoriesView(): React.JSX.Element {
               const count = products.filter((p) => p.category === cat.name).length;
               const activeProfile = detectCategoryProfile(cat.name, cat.profile);
               const profileConfig = CATEGORY_PROFILES[activeProfile];
-              const pStyles = profile === 'food'
+              const pStyles = activeProfile === 'food'
                 ? { tagBox: styles.tagIconBoxFood, badge: styles.profileBadgeFood }
-                : profile === 'apparel'
+                : activeProfile === 'apparel'
                 ? { tagBox: styles.tagIconBoxApparel, badge: styles.profileBadgeApparel }
-                : profile === 'footwear'
+                : activeProfile === 'footwear'
                 ? { tagBox: styles.tagIconBoxFootwear, badge: styles.profileBadgeFootwear }
-                : profile === 'hardware'
+                : activeProfile === 'hardware'
                 ? { tagBox: styles.tagIconBoxHardware, badge: styles.profileBadgeHardware }
                 : { tagBox: styles.tagIconBoxStandard, badge: styles.profileBadgeStandard };
 

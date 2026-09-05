@@ -43,7 +43,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { resolveApiUrl } from '@/lib/api';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
-import { CustomInput, CustomSelect } from '@/components/ui';
+import { CustomInput, CustomSelect, DynamicBar } from '@/components/ui';
 
 const CUSTOMER_TYPE_OPTIONS = [
   { value: 'retail', label: 'Retail Customer' },
@@ -1425,11 +1425,11 @@ export function KhataView(): React.JSX.Element {
         <div>
           <Subtitle1
             as="h1"
-            style={{ fontWeight: 700, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0, display: 'block' }}
+            className={styles.headerTitle}
           >
             Khata / Udhaar Commercial Ledger
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', marginTop: '4px', fontSize: '13px' }}>
+          <Caption1 className={styles.headerSubtitle}>
             Enterprise customer credit management, passbook statements, credit limits &amp; WhatsApp reminders
           </Caption1>
         </div>
@@ -1441,7 +1441,7 @@ export function KhataView(): React.JSX.Element {
             newKhataForm.reset();
             setIsNewKhataOpen(true);
           }}
-          style={{ backgroundColor: '#E51937', borderRadius: tokens.borderRadiusMedium, fontWeight: 700 }}
+          className={styles.addCustomerBtn}
         >
           Add New Customer Khata
         </Button>
@@ -1450,50 +1450,50 @@ export function KhataView(): React.JSX.Element {
       {/* ── 4 KPI Summary Metric Cards ── */}
       <div className={styles.summaryGrid}>
         <div className={styles.statCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>
+          <Caption1 className={styles.statLabel}>
             Total Customers on Credit
           </Caption1>
-          <Subtitle1 style={{ fontSize: '28px', fontWeight: 800, marginTop: '6px', display: 'block', color: tokens.colorNeutralForeground1 }}>
+          <Subtitle1 className={styles.statVal}>
             {khatas.length}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Registered accounts</Caption1>
+          <Caption1 className={styles.statSub}>Registered accounts</Caption1>
         </div>
 
         <div className={styles.statCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>
+          <Caption1 className={styles.statLabel}>
             Total Market Receivables (Udhaar)
           </Caption1>
-          <Subtitle1 style={{ fontSize: '28px', fontWeight: 800, marginTop: '6px', display: 'block', color: '#E51937' }}>
+          <Subtitle1 className={mergeClasses(styles.statVal, styles.statValRed)}>
             PKR {totalMarketDebt.toLocaleString()}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Outstanding balance to recover</Caption1>
+          <Caption1 className={styles.statSub}>Outstanding balance to recover</Caption1>
         </div>
 
         <div className={styles.statCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>
+          <Caption1 className={styles.statLabel}>
             Approved Credit Limit Cap
           </Caption1>
-          <Subtitle1 style={{ fontSize: '28px', fontWeight: 800, marginTop: '6px', display: 'block', color: tokens.colorBrandForeground1 }}>
+          <Subtitle1 className={mergeClasses(styles.statVal, styles.statValBrand)}>
             PKR {totalCreditExtended.toLocaleString()}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Total risk ceiling</Caption1>
+          <Caption1 className={styles.statSub}>Total risk ceiling</Caption1>
         </div>
 
         <div className={styles.statCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>
+          <Caption1 className={styles.statLabel}>
             High-Risk / Near Limit Accounts
           </Caption1>
-          <Subtitle1 style={{ fontSize: '28px', fontWeight: 800, marginTop: '6px', display: 'block', color: highRiskCustomers > 0 ? '#D97706' : '#107C41' }}>
+          <Subtitle1 className={mergeClasses(styles.statVal, highRiskCustomers > 0 ? styles.statValWarn : styles.statValSuccess)}>
             {highRiskCustomers}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>&gt;80% credit limit utilized</Caption1>
+          <Caption1 className={styles.statSub}>&gt;80% credit limit utilized</Caption1>
         </div>
       </div>
 
       {/* ── Main Khata Table Card ── */}
       <div className={styles.tableCard}>
         <div className={styles.filterBar}>
-          <div style={{ width: '320px' }}>
+          <div className={styles.searchWrap}>
             <CustomInput
               label="Search Customers"
               placeholder="Name, phone, or CNIC..."
@@ -1504,7 +1504,7 @@ export function KhataView(): React.JSX.Element {
             />
           </div>
 
-          <div style={{ width: '220px' }}>
+          <div className={styles.filterWrap}>
             <CustomSelect
               label="Filter Account Type"
               value={typeFilter}
@@ -1519,23 +1519,23 @@ export function KhataView(): React.JSX.Element {
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto', width: '100%' }}>
-          <Table style={{ width: '100%', minWidth: '980px', borderCollapse: 'separate', borderSpacing: 0 }}>
+        <div className={styles.tableWrapper}>
+          <Table className={styles.table}>
             <TableHeader>
-              <TableRow style={{ backgroundColor: tokens.colorNeutralBackground3, borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                <TableHeaderCell style={{ padding: '14px 20px', width: '27%', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
+              <TableRow className={styles.tableHeaderRow}>
+                <TableHeaderCell className={styles.thProfile}>
                   Customer Profile
                 </TableHeaderCell>
-                <TableHeaderCell style={{ padding: '14px 16px', width: '18%', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
+                <TableHeaderCell className={styles.thContact}>
                   Contact &amp; CNIC
                 </TableHeaderCell>
-                <TableHeaderCell style={{ padding: '14px 16px', width: '20%', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
+                <TableHeaderCell className={styles.thUsage}>
                   Credit Limit &amp; Usage
                 </TableHeaderCell>
-                <TableHeaderCell style={{ padding: '14px 16px', width: '14%', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
+                <TableHeaderCell className={styles.thDebt}>
                   Outstanding Debt
                 </TableHeaderCell>
-                <TableHeaderCell style={{ padding: '14px 20px', width: '21%', textAlign: 'right', fontWeight: 700, fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
+                <TableHeaderCell className={styles.thActions}>
                   Actions &amp; Reminders
                 </TableHeaderCell>
               </TableRow>
@@ -1543,7 +1543,7 @@ export function KhataView(): React.JSX.Element {
             <TableBody>
               {filteredKhatas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} style={{ textAlign: 'center', padding: '40px', color: tokens.colorNeutralForeground3 }}>
+                  <TableCell colSpan={5} className={styles.emptyTableCell}>
                     No khata accounts found matching filter.
                   </TableCell>
                 </TableRow>
@@ -1557,50 +1557,32 @@ export function KhataView(): React.JSX.Element {
                   return (
                     <TableRow
                       key={khata.id}
-                      style={{
-                        borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-                        transition: 'background-color 0.15s ease',
-                      }}
+                      className={styles.tableBodyRow}
                     >
                       {/* Customer Info */}
-                      <TableCell style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div
-                            style={{
-                              width: '42px',
-                              height: '42px',
-                              borderRadius: '10px',
-                              background: 'linear-gradient(135deg, rgba(229, 25, 55, 0.12) 0%, rgba(229, 25, 55, 0.04) 100%)',
-                              border: '1px solid rgba(229, 25, 55, 0.2)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#E51937',
-                              fontWeight: 800,
-                              fontSize: '14px',
-                              flexShrink: 0,
-                            }}
-                          >
+                      <TableCell className={styles.tdProfile}>
+                        <div className={styles.avatarWrap}>
+                          <div className={styles.profileAvatar}>
                             {khata.name.slice(0, 2).toUpperCase()}
                           </div>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 700, fontSize: '14px', color: tokens.colorNeutralForeground1 }}>
+                          <div className={styles.profileInfoCol}>
+                            <div className={styles.profileTitleRow}>
+                              <span className={styles.profileName}>
                                 {khata.name}
                               </span>
                               <Badge
                                 size="small"
                                 appearance="tint"
                                 color={khata.customerType === 'wholesale' ? 'brand' : khata.customerType === 'employee' ? 'informative' : 'subtle'}
-                                style={{ textTransform: 'uppercase', fontSize: '10px', fontWeight: 700 }}
+                                className={styles.profileBadge}
                               >
                                 {khata.customerType || 'RETAIL'}
                               </Badge>
                             </div>
                             {khata.address && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px', color: tokens.colorNeutralForeground3, fontSize: '11.5px' }}>
-                                <Location16Regular style={{ width: 13, height: 13, flexShrink: 0 }} />
-                                <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <div className={styles.profileAddressRow}>
+                                <Location16Regular className={styles.locationIcon} />
+                                <span className={styles.addressText}>
                                   {khata.address}
                                 </span>
                               </div>
@@ -1610,13 +1592,13 @@ export function KhataView(): React.JSX.Element {
                       </TableCell>
 
                       {/* Contact & CNIC */}
-                      <TableCell style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                          <span style={{ fontWeight: 600, fontSize: '13px', color: tokens.colorNeutralForeground1 }}>
+                      <TableCell className={styles.tdCell}>
+                        <div className={styles.colGap3}>
+                          <span className={styles.contactPhone}>
                             {khata.phone || 'No phone'}
                           </span>
                           {khata.cnic && (
-                            <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, fontFamily: 'monospace', backgroundColor: tokens.colorNeutralBackground3, padding: '2px 6px', borderRadius: '4px', width: 'fit-content' }}>
+                            <span className={styles.contactCnic}>
                               CNIC: {khata.cnic}
                             </span>
                           )}
@@ -1624,50 +1606,46 @@ export function KhataView(): React.JSX.Element {
                       </TableCell>
 
                       {/* Credit Limit & Mini Progress Bar */}
-                      <TableCell style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '150px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px' }}>
-                            <span style={{ fontWeight: 700, color: isOverLimit ? '#DC2626' : isNearLimit ? '#D97706' : tokens.colorNeutralForeground2 }}>
+                      <TableCell className={styles.tdCell}>
+                        <div className={styles.usageContainer}>
+                          <div className={styles.usageHeaderRow}>
+                            <span
+                              className={mergeClasses(
+                                styles.usagePercent,
+                                isOverLimit ? styles.usagePercentOver : isNearLimit ? styles.usagePercentNear : undefined
+                              )}
+                            >
                               {percent}% Used
                             </span>
-                            <span style={{ color: tokens.colorNeutralForeground3, fontSize: '11px' }}>
+                            <span className={styles.usageCap}>
                               Cap: PKR {limit.toLocaleString()}
                             </span>
                           </div>
-                          <div style={{ width: '100%', height: '6px', backgroundColor: tokens.colorNeutralBackground3, borderRadius: '999px', overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                width: `${percent}%`,
-                                height: '100%',
-                                backgroundColor: isOverLimit ? '#DC2626' : isNearLimit ? '#F59E0B' : '#107C41',
-                                borderRadius: '999px',
-                                transition: 'width 0.3s ease',
-                              }}
+                          <div className={styles.progressBarTrack}>
+                            <DynamicBar
+                              className={mergeClasses(
+                                styles.progressBarFill,
+                                isOverLimit ? styles.progressBarAlert : isNearLimit ? styles.progressBarWarn : styles.progressBarNormal
+                              )}
+                              width={percent}
                             />
                           </div>
                         </div>
                       </TableCell>
 
                       {/* Debt Badge */}
-                      <TableCell style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <TableCell className={styles.tdCell}>
+                        <div className={styles.colGap3}>
                           <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '4px 10px',
-                              borderRadius: '8px',
-                              backgroundColor: khata.currentDebt > 0 ? '#FEF2F2' : '#F0FDF4',
-                              color: khata.currentDebt > 0 ? '#DC2626' : '#16A34A',
-                              border: `1px solid ${khata.currentDebt > 0 ? '#FECACA' : '#BBF7D0'}`,
-                              fontWeight: 800,
-                              fontSize: '13px',
-                              width: 'fit-content',
-                            }}
+                            className={mergeClasses(
+                              styles.debtBadge,
+                              khata.currentDebt > 0 ? styles.debtBadgeDue : styles.debtBadgeClear
+                            )}
                           >
                             PKR {khata.currentDebt.toLocaleString()}
                           </span>
                           {khata.dueDays && (
-                            <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                            <span className={styles.termText}>
                               Term: {khata.dueDays} days
                             </span>
                           )}
@@ -1675,8 +1653,8 @@ export function KhataView(): React.JSX.Element {
                       </TableCell>
 
                       {/* Actions */}
-                      <TableCell style={{ padding: '14px 20px', verticalAlign: 'middle', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                      <TableCell className={styles.tdActions}>
+                        <div className={styles.actionsGroup}>
                           {/* Passbook / Ledger History */}
                           <button
                             type="button"
@@ -1685,22 +1663,9 @@ export function KhataView(): React.JSX.Element {
                               setSelectedKhata(khata);
                               setIsPassbookOpen(true);
                             }}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 10px',
-                              borderRadius: '7px',
-                              border: `1px solid ${tokens.colorNeutralStroke1}`,
-                              backgroundColor: tokens.colorNeutralBackground1,
-                              color: tokens.colorNeutralForeground1,
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                            }}
+                            className={styles.btnPassbook}
                           >
-                            <BookOpen20Regular style={{ width: 15, height: 15 }} />
+                            <BookOpen20Regular className={styles.icon15} />
                             <span>Passbook</span>
                           </button>
 
@@ -1714,22 +1679,9 @@ export function KhataView(): React.JSX.Element {
                               transForm.reset({ amount: undefined, paymentMethod: 'cash', description: '' });
                               setIsPaymentOpen(true);
                             }}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 11px',
-                              borderRadius: '7px',
-                              border: '1px solid #A7F3D0',
-                              backgroundColor: '#ECFDF5',
-                              color: '#047857',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                            }}
+                            className={styles.btnReceive}
                           >
-                            <ArrowCircleDown20Regular style={{ width: 15, height: 15 }} />
+                            <ArrowCircleDown20Regular className={styles.icon15} />
                             <span>Receive</span>
                           </button>
 
@@ -1743,22 +1695,9 @@ export function KhataView(): React.JSX.Element {
                               transForm.reset({ amount: undefined, paymentMethod: 'cash', description: '' });
                               setIsPaymentOpen(true);
                             }}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 11px',
-                              borderRadius: '7px',
-                              border: '1px solid #FECACA',
-                              backgroundColor: '#FEF2F2',
-                              color: '#DC2626',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                            }}
+                            className={styles.btnUdhaar}
                           >
-                            <ArrowCircleUp20Regular style={{ width: 15, height: 15 }} />
+                            <ArrowCircleUp20Regular className={styles.icon15} />
                             <span>Udhaar</span>
                           </button>
 
@@ -1768,21 +1707,9 @@ export function KhataView(): React.JSX.Element {
                               type="button"
                               title="Send WhatsApp Payment Reminder"
                               onClick={() => sendWhatsAppReminder(khata)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '7px',
-                                border: '1px solid #BBF7D0',
-                                backgroundColor: '#F0FDF4',
-                                color: '#16A34A',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                              }}
+                              className={styles.btnWhatsApp}
                             >
-                              <Chat20Regular style={{ width: 16, height: 16 }} />
+                              <Chat20Regular className={styles.icon16} />
                             </button>
                           )}
 
@@ -1795,21 +1722,9 @@ export function KhataView(): React.JSX.Element {
                                 deleteMutation.mutate(khata.id);
                               }
                             }}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '7px',
-                              border: `1px solid ${tokens.colorNeutralStroke1}`,
-                              backgroundColor: 'transparent',
-                              color: tokens.colorNeutralForeground3,
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                            }}
+                            className={styles.btnDelete}
                           >
-                            <Delete16Regular style={{ width: 15, height: 15 }} />
+                            <Delete16Regular className={styles.icon15} />
                           </button>
                         </div>
                       </TableCell>
@@ -1826,11 +1741,11 @@ export function KhataView(): React.JSX.Element {
           MODAL 1: CREATE NEW KHATA ACCOUNT (FULL PROFESSIONAL KYC)
       ════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isNewKhataOpen} onOpenChange={(_, d) => setIsNewKhataOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '520px' }}>
+        <DialogSurface className={styles.dialogSurface520}>
           <form onSubmit={newKhataForm.handleSubmit(onNewKhataSubmit)}>
             <DialogBody>
-              <DialogTitle style={{ fontWeight: 800 }}>Create New Customer Khata Account</DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+              <DialogTitle className={styles.dialogTitleBold}>Create New Customer Khata Account</DialogTitle>
+              <DialogContent className={styles.dialogContent}>
                 {/* Full Name */}
                 <div>
                   <Controller
@@ -1850,7 +1765,7 @@ export function KhataView(): React.JSX.Element {
                 </div>
 
                 {/* Phone & CNIC */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className={styles.grid2Col}>
                   <div>
                     <Controller
                       control={newKhataForm.control}
@@ -1885,7 +1800,7 @@ export function KhataView(): React.JSX.Element {
                 </div>
 
                 {/* Account Type & Payment Term */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className={styles.grid2Col}>
                   <div>
                     <Controller
                       control={newKhataForm.control}
@@ -1918,7 +1833,7 @@ export function KhataView(): React.JSX.Element {
                 </div>
 
                 {/* Credit Limit & Initial Opening Debt */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className={styles.grid2Col}>
                   <div>
                     <Controller
                       control={newKhataForm.control}
@@ -1971,18 +1886,12 @@ export function KhataView(): React.JSX.Element {
                 </div>
               </DialogContent>
 
-              <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <DialogActions className={styles.dialogActions}>
                 <Button
                   appearance="subtle"
                   type="button"
                   onClick={() => setIsNewKhataOpen(false)}
-                  style={{
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    padding: '8px 18px',
-                    border: `1px solid ${tokens.colorNeutralStroke1}`,
-                    whiteSpace: 'nowrap',
-                  }}
+                  className={styles.modalCancelBtn}
                 >
                   Cancel
                 </Button>
@@ -1990,17 +1899,7 @@ export function KhataView(): React.JSX.Element {
                   appearance="primary"
                   type="submit"
                   disabled={createMutation.isPending}
-                  style={{
-                    backgroundColor: '#E51937',
-                    color: '#FFFFFF',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    padding: '9px 22px',
-                    minWidth: '140px',
-                    whiteSpace: 'nowrap',
-                    border: 'none',
-                    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-                  }}
+                  className={styles.modalSubmitBtn}
                 >
                   {createMutation.isPending ? 'Saving...' : 'Create Khata'}
                 </Button>
@@ -2014,18 +1913,18 @@ export function KhataView(): React.JSX.Element {
           MODAL 2: TRANSACTION (RECEIVE PAYMENT OR ADD UDHAAR)
       ════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isPaymentOpen} onOpenChange={(_, d) => setIsPaymentOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '440px' }}>
+        <DialogSurface className={styles.dialogSurface440}>
           <form onSubmit={transForm.handleSubmit(onTransSubmit)}>
             <DialogBody>
-              <DialogTitle style={{ fontWeight: 800 }}>
+              <DialogTitle className={styles.dialogTitleBold}>
                 {transType === 'CREDIT' ? 'Receive Payment (Wasooli)' : 'Add Udhaar (Give Credit)'}
               </DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+              <DialogContent className={styles.dialogContent}>
                 {/* Selected Customer Header */}
-                <div style={{ padding: '12px', backgroundColor: tokens.colorNeutralBackground3, borderRadius: '8px' }}>
-                  <Body1 style={{ fontWeight: 700 }}>{selectedKhata?.name}</Body1>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block' }}>
-                    Current Balance: <strong style={{ color: '#E51937' }}>PKR {selectedKhata?.currentDebt.toLocaleString()}</strong> • Limit: PKR {selectedKhata?.creditLimit.toLocaleString()}
+                <div className={styles.selectedCustCard}>
+                  <Body1 className={styles.selectedCustTitle}>{selectedKhata?.name}</Body1>
+                  <Caption1 className={styles.selectedCustSub}>
+                    Current Balance: <strong className={styles.currentBalStrong}>PKR {selectedKhata?.currentDebt.toLocaleString()}</strong> • Limit: PKR {selectedKhata?.creditLimit.toLocaleString()}
                   </Caption1>
                 </div>
 
@@ -2083,18 +1982,12 @@ export function KhataView(): React.JSX.Element {
                 </div>
               </DialogContent>
 
-              <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <DialogActions className={styles.dialogActions}>
                 <Button
                   appearance="subtle"
                   type="button"
                   onClick={() => setIsPaymentOpen(false)}
-                  style={{
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    padding: '8px 18px',
-                    border: `1px solid ${tokens.colorNeutralStroke1}`,
-                    whiteSpace: 'nowrap',
-                  }}
+                  className={styles.modalCancelBtn}
                 >
                   Cancel
                 </Button>
@@ -2102,17 +1995,7 @@ export function KhataView(): React.JSX.Element {
                   appearance="primary"
                   type="submit"
                   disabled={transactionMutation.isPending}
-                  style={{
-                    backgroundColor: transType === 'CREDIT' ? '#107C41' : '#E51937',
-                    color: '#FFFFFF',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    padding: '9px 22px',
-                    minWidth: '160px',
-                    whiteSpace: 'nowrap',
-                    border: 'none',
-                    boxShadow: transType === 'CREDIT' ? '0 2px 8px rgba(16, 124, 65, 0.25)' : '0 2px 8px rgba(229, 25, 55, 0.25)',
-                  }}
+                  className={transType === 'CREDIT' ? styles.transSubmitGreen : styles.transSubmitRed}
                 >
                   {transactionMutation.isPending ? 'Processing...' : transType === 'CREDIT' ? 'Confirm Payment Received' : 'Add Udhaar to Khata'}
                 </Button>
@@ -2125,58 +2008,39 @@ export function KhataView(): React.JSX.Element {
       {/* ════════════════════════════════════════════════════════════════════
           MODAL 3: CUSTOMER PASSBOOK / LEDGER STATEMENT
       ════════════════════════════════════════════════════════════════════ */}
-      {/* ════════════════════════════════════════════════════════════════════
-          MODAL 3: CUSTOMER PASSBOOK / LEDGER STATEMENT
-      ════════════════════════════════════════════════════════════════════ */}
       <Dialog open={isPassbookOpen} onOpenChange={(_, d) => setIsPassbookOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: '16px', maxWidth: '920px', minWidth: '780px', width: '92vw', padding: '24px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+        <DialogSurface className={styles.passbookSurface}>
+          <div className={styles.passbookInner}>
             {/* 1. Header: Title, Customer Details, Action Buttons */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingBottom: '14px',
-                borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-                gap: '16px',
-                width: '100%',
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <h2 style={{ fontWeight: 800, fontSize: '20px', margin: 0, padding: 0, color: tokens.colorNeutralForeground1, whiteSpace: 'nowrap' }}>
+            <div className={styles.passbookHeader}>
+              <div className={styles.passbookTitleCol}>
+                <div className={styles.passbookTitleRow}>
+                  <h2 className={styles.passbookTitle}>
                     Ledger Passbook Statement
                   </h2>
                   <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '3px 10px',
-                      borderRadius: '9999px',
-                      whiteSpace: 'nowrap',
-                      backgroundColor: (selectedKhata?.currentDebt || 0) > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                      color: (selectedKhata?.currentDebt || 0) > 0 ? '#EF4444' : '#10B981',
-                      border: `1px solid ${(selectedKhata?.currentDebt || 0) > 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
-                    }}
+                    className={mergeClasses(
+                      styles.passbookStatusBadge,
+                      (selectedKhata?.currentDebt || 0) > 0 ? styles.passbookStatusDue : styles.passbookStatusSettled
+                    )}
                   >
                     {(selectedKhata?.currentDebt || 0) > 0 ? 'Outstanding Due' : 'Account Settled'}
                   </span>
                 </div>
-                <div style={{ color: tokens.colorNeutralForeground2, marginTop: '2px', fontSize: '13px' }}>
-                  <strong style={{ color: tokens.colorNeutralForeground1, fontWeight: 700 }}>{selectedKhata?.name}</strong>
+                <div className={styles.passbookSubtitle}>
+                  <strong className={styles.profileName}>{selectedKhata?.name}</strong>
                   {' · '}{selectedKhata?.phone || 'No phone'}
                   {' · '}{selectedKhata?.address || 'No address'}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0 }}>
+              <div className={styles.passbookActionsRow}>
                 <Button
                   size="medium"
                   appearance="secondary"
                   icon={<Print20Regular />}
                   onClick={printStatement}
-                  style={{ borderRadius: '8px', fontWeight: 600, whiteSpace: 'nowrap' }}
+                  className={styles.passbookPrintBtn}
                 >
                   Print Statement
                 </Button>
@@ -2185,15 +2049,7 @@ export function KhataView(): React.JSX.Element {
                     size="medium"
                     appearance="primary"
                     icon={<Chat20Regular />}
-                    style={{
-                      backgroundColor: '#25D366',
-                      color: '#FFFFFF',
-                      fontWeight: 700,
-                      borderRadius: '8px',
-                      border: 'none',
-                      boxShadow: '0 2px 8px rgba(37, 211, 102, 0.25)',
-                      whiteSpace: 'nowrap',
-                    }}
+                    className={styles.passbookWhatsAppBtn}
                     onClick={() => sendWhatsAppReminder(selectedKhata)}
                   >
                     WhatsApp Reminder
@@ -2203,189 +2059,114 @@ export function KhataView(): React.JSX.Element {
             </div>
 
             {/* 2. 4 KPI Summary Metric Cards (Full Width Row) */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '12px',
-                width: '100%',
-              }}
-            >
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  backgroundColor: tokens.colorNeutralBackground3,
-                  border: `1px solid ${tokens.colorNeutralStroke2}`,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}
-              >
-                <span style={{ color: tokens.colorNeutralForeground3, fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+            <div className={styles.passbookMetricGrid}>
+              <div className={styles.passbookStatCard}>
+                <span className={styles.passbookStatTitle}>
                   Credit Limit
                 </span>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: tokens.colorNeutralForeground1, fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' }}>
+                <div className={styles.passbookStatVal}>
                   PKR {selectedKhata?.creditLimit.toLocaleString()}
                 </div>
               </div>
 
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  backgroundColor: tokens.colorNeutralBackground3,
-                  border: `1px solid ${tokens.colorNeutralStroke2}`,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}
-              >
-                <span style={{ color: tokens.colorNeutralForeground3, fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+              <div className={styles.passbookStatCard}>
+                <span className={styles.passbookStatTitle}>
                   Total Udhaar (Diya)
                 </span>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: '#EF4444', fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' }}>
+                <div className={styles.passbookStatValRed}>
                   +PKR {passbookTransactions.filter((tx) => tx.type === 'DEBIT').reduce((s, t) => s + t.amount, 0).toLocaleString()}
                 </div>
               </div>
 
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  backgroundColor: tokens.colorNeutralBackground3,
-                  border: `1px solid ${tokens.colorNeutralStroke2}`,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}
-              >
-                <span style={{ color: tokens.colorNeutralForeground3, fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+              <div className={styles.passbookStatCard}>
+                <span className={styles.passbookStatTitle}>
                   Total Wasooli (Received)
                 </span>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: '#10B981', fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' }}>
+                <div className={styles.passbookStatValGreen}>
                   -PKR {passbookTransactions.filter((tx) => tx.type === 'CREDIT').reduce((s, t) => s + t.amount, 0).toLocaleString()}
                 </div>
               </div>
 
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  backgroundColor: 'rgba(229, 25, 55, 0.08)',
-                  border: '1px solid rgba(229, 25, 55, 0.25)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}
-              >
-                <span style={{ color: '#EF4444', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+              <div className={styles.passbookStatCardAlert}>
+                <span className={styles.passbookStatTitleAlert}>
                   Net Outstanding
                 </span>
-                <div style={{ fontSize: '18px', fontWeight: 900, color: '#E51937', fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' }}>
+                <div className={styles.passbookStatValNet}>
                   PKR {selectedKhata?.currentDebt.toLocaleString()}
                 </div>
               </div>
             </div>
 
             {/* 3. Table Container */}
-            <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '2px', width: '100%' }}>
+            <div className={styles.passbookTableWrap}>
               {isLoadingPassbook ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: tokens.colorNeutralForeground2 }}>
+                <div className={styles.passbookLoadingText}>
                   Loading passbook ledger...
                 </div>
               ) : passbookTransactions.length === 0 ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+                <div className={styles.passbookEmptyText}>
                   No transactions recorded for this customer yet.
                 </div>
               ) : (
-                <div style={{ borderRadius: '10px', overflow: 'hidden', border: `1px solid ${tokens.colorNeutralStroke2}`, backgroundColor: tokens.colorNeutralBackground1 }}>
-                  <Table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0 }}>
+                <div className={styles.passbookTableCard}>
+                  <Table className={styles.passbookTable}>
                     <TableHeader>
-                      <TableRow style={{ backgroundColor: tokens.colorNeutralBackground3, borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                        <TableHeaderCell style={{ padding: '12px 14px', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2, width: '140px', whiteSpace: 'nowrap' }}>
+                      <TableRow className={styles.passbookTheadTr}>
+                        <TableHeaderCell className={styles.passbookThDate}>
                           Date &amp; Time
                         </TableHeaderCell>
-                        <TableHeaderCell style={{ padding: '12px 14px', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2, width: 'auto' }}>
+                        <TableHeaderCell className={styles.passbookThDesc}>
                           Description / Mode
                         </TableHeaderCell>
-                        <TableHeaderCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2, width: '130px', whiteSpace: 'nowrap' }}>
+                        <TableHeaderCell className={styles.passbookThDebit}>
                           Debit (Diya)
                         </TableHeaderCell>
-                        <TableHeaderCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2, width: '130px', whiteSpace: 'nowrap' }}>
+                        <TableHeaderCell className={styles.passbookThCredit}>
                           Credit (Wasooli)
                         </TableHeaderCell>
-                        <TableHeaderCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', color: tokens.colorNeutralForeground2, width: '120px', whiteSpace: 'nowrap' }}>
+                        <TableHeaderCell className={styles.passbookThBal}>
                           Balance
                         </TableHeaderCell>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {passbookTransactions.map((tx) => (
-                        <TableRow key={tx.id} style={{ borderBottom: `1px solid ${tokens.colorNeutralStroke3}` }}>
-                          <TableCell style={{ padding: '12px 14px', fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
-                            <div style={{ fontWeight: 600, color: tokens.colorNeutralForeground1, whiteSpace: 'nowrap' }}>
+                        <TableRow key={tx.id} className={styles.passbookTbodyTr}>
+                          <TableCell className={styles.passbookTdDate}>
+                            <div className={styles.passbookDatePrimary}>
                               {new Date(tx.createdAt).toLocaleDateString()}
                             </div>
-                            <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, marginTop: '2px', whiteSpace: 'nowrap' }}>
+                            <div className={styles.passbookTimeSecondary}>
                               {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                           </TableCell>
-                          <TableCell style={{ padding: '12px 14px' }}>
-                            <div style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <TableCell className={styles.passbookTdDesc}>
+                            <div className={styles.passbookDescTitle}>
                               {tx.description || 'Transaction'}
                             </div>
-                            <div style={{ color: tokens.colorNeutralForeground3, textTransform: 'capitalize', marginTop: '2px', fontSize: '11px', whiteSpace: 'nowrap' }}>
-                              Payment Mode: <strong style={{ color: tokens.colorNeutralForeground2 }}>{tx.paymentMethod}</strong>
+                            <div className={styles.passbookDescMode}>
+                              Payment Mode: <strong className={styles.selectedCustTitle}>{tx.paymentMethod}</strong>
                             </div>
                           </TableCell>
-                          <TableCell style={{ padding: '12px 14px', textAlign: 'right' }}>
+                          <TableCell className={styles.passbookTdRight}>
                             {tx.type === 'DEBIT' ? (
-                              <span
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                                  color: '#EF4444',
-                                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                                  padding: '4px 10px',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: 700,
-                                  fontFamily: tokens.fontFamilyMonospace,
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
+                              <span className={styles.debitTag}>
                                 +PKR {tx.amount.toLocaleString()}
                               </span>
                             ) : (
-                              <span style={{ color: tokens.colorNeutralForeground3 }}>—</span>
+                              <span className={styles.dashText}>—</span>
                             )}
                           </TableCell>
-                          <TableCell style={{ padding: '12px 14px', textAlign: 'right' }}>
+                          <TableCell className={styles.passbookTdRight}>
                             {tx.type === 'CREDIT' ? (
-                              <span
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                                  color: '#10B981',
-                                  border: '1px solid rgba(16, 185, 129, 0.25)',
-                                  padding: '4px 10px',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: 700,
-                                  fontFamily: tokens.fontFamilyMonospace,
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
+                              <span className={styles.creditTag}>
                                 -PKR {tx.amount.toLocaleString()}
                               </span>
                             ) : (
-                              <span style={{ color: tokens.colorNeutralForeground3 }}>—</span>
+                              <span className={styles.dashText}>—</span>
                             )}
                           </TableCell>
-                          <TableCell style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 800, fontSize: '13px', fontFamily: tokens.fontFamilyMonospace, color: tokens.colorNeutralForeground1, whiteSpace: 'nowrap' }}>
+                          <TableCell className={styles.passbookTdBal}>
                             PKR {tx.balanceAfter.toLocaleString()}
                           </TableCell>
                         </TableRow>
@@ -2397,18 +2178,14 @@ export function KhataView(): React.JSX.Element {
             </div>
 
             {/* 4. Footer */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: `1px solid ${tokens.colorNeutralStroke2}` }}>
-              <span style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+            <div className={styles.passbookFooter}>
+              <span className={styles.passbookRecordCount}>
                 Showing {passbookTransactions.length} transaction record{passbookTransactions.length !== 1 ? 's' : ''}
               </span>
               <Button
                 appearance="secondary"
                 onClick={() => setIsPassbookOpen(false)}
-                style={{
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  padding: '8px 20px',
-                }}
+                className={styles.passbookCloseBtn}
               >
                 Close Passbook
               </Button>

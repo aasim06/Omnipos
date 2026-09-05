@@ -341,8 +341,8 @@ const useStyles = makeStyles({
     gap: '12px',
   },
   addAnotherBtn: {
-    borderStyle: 'dashed',
-    borderColor: tokens.colorNeutralStroke1,
+    borderTopStyle: 'dashed', borderBottomStyle: 'dashed', borderLeftStyle: 'dashed', borderRightStyle: 'dashed',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
     fontWeight: 700,
     justifyContent: 'center',
     borderRadius: '10px',
@@ -465,7 +465,7 @@ const useStyles = makeStyles({
   },
   btnMarkReady: {
     backgroundColor: '#107C41',
-    borderColor: '#107C41',
+    borderTopColor: '#107C41', borderBottomColor: '#107C41', borderLeftColor: '#107C41', borderRightColor: '#107C41',
     borderRadius: '6px',
   },
   btnMarkServed: {

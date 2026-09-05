@@ -14,6 +14,7 @@ import { useOrders } from "@/lib/useOrders";
 import { useProducts } from "@/lib/useProducts";
 import { ModuleKey } from "@/lib/types";
 import { CustomSelect } from "@/components/ui/CustomSelect";
+import { DynamicBar } from "@/components/ui/DynamicBar";
 
 interface AnalyticsViewProps {
   module?: ModuleKey;
@@ -244,9 +245,9 @@ export function AnalyticsView({ module = "minimart" }: AnalyticsViewProps) {
                               </span>
                             </div>
                             <div className="w-full bg-[#1e222d] h-1.5 rounded-full overflow-hidden">
-                              <div
+                              <DynamicBar
                                 className="bg-[#ff6b00] h-full rounded-full transition-all duration-500"
-                                style={{ width: `${percent}%` }}
+                                width={percent}
                               />
                             </div>
                           </div>
@@ -297,9 +298,9 @@ export function AnalyticsView({ module = "minimart" }: AnalyticsViewProps) {
                         </span>
                       </div>
                       <div className="w-full bg-[#1e222d] h-2 rounded-full overflow-hidden">
-                        <div
+                        <DynamicBar
                           className="bg-indigo-500 h-full rounded-full transition-all duration-500"
-                          style={{ width: `${percent}%` }}
+                          width={percent}
                         />
                       </div>
                     </div>
@@ -321,12 +322,12 @@ export function AnalyticsView({ module = "minimart" }: AnalyticsViewProps) {
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
                     <span className="text-[10px] font-mono text-[#8b92a0]">
-                      {d.revenue > 0 ? `${d.revenue}` : "—"}
+                       {d.revenue > 0 ? `${d.revenue}` : "—"}
                     </span>
                     <div className="w-full bg-[#1e222d] rounded-t-sm relative flex items-end justify-center h-20">
-                      <div
+                      <DynamicBar
                         className="w-full bg-[#ff6b00] rounded-t-sm transition-all duration-500"
-                        style={{ height: `${heightPercent}%` }}
+                        height={heightPercent}
                       />
                     </div>
                     <span className="text-[10px] font-medium text-[#8b92a0]">{d.label}</span>
