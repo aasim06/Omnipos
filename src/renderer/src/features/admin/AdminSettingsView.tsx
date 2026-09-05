@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   makeStyles,
+  mergeClasses,
   tokens,
   Button,
   Switch,
@@ -99,6 +100,108 @@ const useStyles = makeStyles({
     borderBottomStyle: 'solid',
     borderBottomColor: tokens.colorNeutralStroke1,
   },
+  pageTitle: {
+    fontWeight: 700,
+    fontSize: '20px',
+    color: tokens.colorNeutralForeground1,
+    margin: 0,
+    display: 'block',
+  },
+  pageSubtitle: {
+    color: tokens.colorNeutralForeground2,
+    marginTop: '4px',
+    marginBottom: 0,
+    display: 'block',
+    fontSize: '13px',
+  },
+  primaryRedButton: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    borderRadius: tokens.borderRadiusMedium,
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    padding: '0 18px',
+    height: '38px',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.3)',
+    ':hover': {
+      backgroundColor: '#C4122C',
+      color: '#FFFFFF',
+    },
+  },
+  saveButton: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    borderRadius: tokens.borderRadiusMedium,
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    padding: '0 20px',
+    height: '38px',
+    ':hover': {
+      backgroundColor: '#C4122C',
+      color: '#FFFFFF',
+    },
+  },
+  tabNavContainer: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: tokens.colorNeutralStroke1,
+    paddingBottom: '12px',
+    flexWrap: 'wrap',
+  },
+  tabButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '9px 18px',
+    borderRadius: tokens.borderRadiusMedium,
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: tokens.colorNeutralStroke1,
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+    fontWeight: 700,
+    fontSize: '13px',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    boxShadow: 'none',
+    transition: 'all 0.15s ease',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
+  },
+  tabButtonActive: {
+    borderWidth: '1.5px',
+    borderColor: '#E51937',
+    backgroundColor: 'rgba(229, 25, 55, 0.08)',
+    color: '#E51937',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.12)',
+  },
+  tabIcon: {
+    width: '18px',
+    height: '18px',
+    color: 'inherit',
+  },
+  tabIconActive: {
+    color: '#E51937',
+  },
+  tabBadge: {
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    color: '#E51937',
+  },
+  tabBadgeActive: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+  },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
@@ -136,6 +239,11 @@ const useStyles = makeStyles({
     borderBottomColor: tokens.colorNeutralStroke1,
     backgroundColor: tokens.colorNeutralBackground1,
   },
+  cardHeaderBetween: {
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '12px',
+  },
   cardIconBox: {
     width: '36px',
     height: '36px',
@@ -146,6 +254,45 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     flexShrink: 0,
     color: tokens.colorNeutralForeground2,
+  },
+  cardIconBoxRed: {
+    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    color: '#E51937',
+  },
+  icon20: {
+    width: '20px',
+    height: '20px',
+  },
+  headerFlex: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  headerTextCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  headerTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  headerTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+    lineHeight: '20px',
+  },
+  headerBadge: {
+    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    color: '#E51937',
+  },
+  headerSubtitle: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+    fontSize: '12px',
+    lineHeight: '16px',
   },
   cardBody: {
     padding: '20px',
@@ -185,6 +332,16 @@ const useStyles = makeStyles({
     fontFamily: 'inherit',
     fontSize: '13px',
   },
+  segmentedItemActive: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+    fontWeight: 700,
+  },
+  segmentedItemInactive: {
+    backgroundColor: 'transparent',
+    color: tokens.colorNeutralForeground2,
+    fontWeight: 400,
+  },
   switchRow: {
     display: 'flex',
     alignItems: 'center',
@@ -196,6 +353,13 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
+  },
+  switchRowTitle: {
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+  },
+  switchRowDesc: {
+    color: tokens.colorNeutralForeground2,
   },
   statusBar: {
     display: 'flex',
@@ -237,17 +401,239 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
   },
+  thRight: {
+    textAlign: 'right',
+  },
   td: {
     padding: '14px 16px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     color: tokens.colorNeutralForeground1,
     verticalAlign: 'middle',
   },
+  tdRight: {
+    textAlign: 'right',
+  },
   tableRow: {
     transition: 'background-color 0.15s ease',
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground1Hover,
     },
+  },
+  userCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  userName: {
+    fontWeight: 700,
+    display: 'block',
+    color: tokens.colorNeutralForeground1,
+  },
+  userPhone: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+  },
+  usernamePill: {
+    fontFamily: 'monospace',
+    fontWeight: 700,
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: '2px 6px',
+    borderRadius: '4px',
+  },
+  roleBadge: {
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    fontSize: '10px',
+  },
+  statusToggleBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  statusDotActive: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#10B981',
+  },
+  statusDotInactive: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#94A3B8',
+  },
+  statusTextActive: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#10B981',
+  },
+  statusTextInactive: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground3,
+  },
+  permissionsBadgeRow: {
+    display: 'flex',
+    gap: '4px',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  permissionsCountBadge: {
+    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    color: '#E51937',
+  },
+  permissionsListText: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+  },
+  actionBtnsRow: {
+    display: 'flex',
+    gap: '6px',
+    justifyContent: 'flex-end',
+  },
+  deleteIcon: {
+    color: '#E51937',
+  },
+  engineCard: {
+    padding: '16px',
+    borderRadius: tokens.borderRadiusSmall,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: tokens.colorNeutralStroke1,
+    lineHeight: 1.6,
+  },
+  engineTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  engineSubtitle: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+    marginTop: '6px',
+  },
+  engineStatusRow: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+    marginTop: '12px',
+  },
+  engineDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#107C41',
+  },
+  engineReadyText: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#107C41',
+  },
+  paperWidthLabel: {
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground2,
+  },
+  testPrintRow: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  testPrintBtn: {
+    color: tokens.colorNeutralForeground1,
+    borderRadius: tokens.borderRadiusMedium,
+    fontWeight: 600,
+  },
+  testPrintSuccess: {
+    color: '#107C41',
+    fontWeight: 600,
+  },
+  taxHelper: {
+    color: tokens.colorNeutralForeground3,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    marginTop: '4px',
+  },
+  icon12: {
+    width: '12px',
+    height: '12px',
+  },
+  statusBarLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  statusShieldIcon: {
+    color: '#107C41',
+    width: '18px',
+    height: '18px',
+  },
+  statusTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  statusSubtitle: {
+    color: tokens.colorNeutralForeground2,
+  },
+  statusTerminalActive: {
+    color: '#107C41',
+    fontWeight: 600,
+  },
+  technicianBtn: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: '12px',
+  },
+  dialogSurfaceLarge: {
+    borderRadius: tokens.borderRadiusLarge,
+    maxWidth: '640px',
+    width: '100%',
+    overflowX: 'hidden',
+  },
+  dialogSurfaceSmall: {
+    borderRadius: tokens.borderRadiusLarge,
+    maxWidth: '440px',
+    width: '100%',
+    overflowX: 'hidden',
+  },
+  dialogBodyNoOverflow: {
+    overflowX: 'hidden',
+  },
+  dialogContentFlex: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    marginTop: '14px',
+    overflowX: 'hidden',
+    overflowY: 'auto',
+  },
+  dialogDescText: {
+    color: tokens.colorNeutralForeground2,
+  },
+  dialogGrid2: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+  },
+  permMatrixHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px',
+  },
+  permMatrixTitle: {
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    color: tokens.colorNeutralForeground1,
+  },
+  btnGroup: {
+    display: 'flex',
+    gap: '6px',
   },
   permissionGrid: {
     display: 'grid',
@@ -257,6 +643,118 @@ const useStyles = makeStyles({
     maxHeight: '340px',
     overflowY: 'auto',
     padding: '4px',
+  },
+  permItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+    padding: '10px 12px',
+    borderRadius: '8px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: tokens.colorNeutralStroke1,
+    backgroundColor: tokens.colorNeutralBackground1,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+  permItemActive: {
+    borderColor: '#E51937',
+    backgroundColor: 'rgba(229, 25, 55, 0.05)',
+  },
+  permItemDisabled: {
+    cursor: 'not-allowed',
+  },
+  permCheckbox: {
+    marginTop: '2px',
+    accentColor: '#E51937',
+  },
+  permTextCol: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  permItemTitle: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+  },
+  permItemDesc: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+  },
+  formErrorText: {
+    color: '#E51937',
+    fontWeight: 600,
+  },
+  dialogActionsRow: {
+    marginTop: '20px',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '10px',
+  },
+  dialogCancelBtn: {
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    height: '38px',
+    padding: '0 16px',
+  },
+  dialogSubmitBtn: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    padding: '0 24px',
+    height: '38px',
+    borderRadius: tokens.borderRadiusMedium,
+    ':hover': {
+      backgroundColor: '#C4122C',
+      color: '#FFFFFF',
+    },
+  },
+  userBannerRow: {
+    padding: '10px 14px',
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  userBannerName: {
+    fontWeight: 700,
+    display: 'block',
+    fontSize: '13px',
+    color: tokens.colorNeutralForeground1,
+  },
+  userBannerMeta: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+  },
+  successRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    color: '#10B981',
+  },
+  licenseDescText: {
+    color: tokens.colorNeutralForeground2,
+    marginBottom: '16px',
+    display: 'block',
+  },
+  dialogColGap14: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+  },
+  licenseErrText: {
+    color: '#E51937',
+    fontWeight: 600,
+  },
+  licenseOkText: {
+    color: '#107C41',
+    fontWeight: 600,
+  },
+  licenseActions: {
+    paddingTop: '16px',
   },
 });
 
@@ -463,17 +961,10 @@ export function AdminSettingsView(): React.JSX.Element {
       {/* ── Page Header ──────────────────────────────────── */}
       <div className={styles.pageHeader}>
         <div>
-          <Subtitle1
-            as="h1"
-            style={{ fontWeight: 700, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0, display: 'block' }}
-          >
+          <Subtitle1 as="h1" className={styles.pageTitle}>
             Store Settings &amp; Preferences
           </Subtitle1>
-          <Text
-            as="p"
-            size={200}
-            style={{ color: tokens.colorNeutralForeground2, marginTop: '4px', marginBottom: 0, display: 'block', fontSize: '13px' }}
-          >
+          <Text as="p" size={200} className={styles.pageSubtitle}>
             Customize store identity, receipt branding, cashier accounts &amp; granular role permissions.
           </Text>
         </div>
@@ -483,17 +974,7 @@ export function AdminSettingsView(): React.JSX.Element {
             appearance="primary"
             icon={<PersonAdd20Regular />}
             onClick={handleOpenAddUser}
-            style={{
-              backgroundColor: '#E51937',
-              color: '#FFFFFF',
-              borderRadius: tokens.borderRadiusMedium,
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-              padding: '0 18px',
-              height: '38px',
-              boxShadow: '0 2px 8px rgba(229, 25, 55, 0.3)',
-            }}
+            className={styles.primaryRedButton}
           >
             Add New Cashier / Staff
           </Button>
@@ -502,15 +983,7 @@ export function AdminSettingsView(): React.JSX.Element {
             appearance="primary"
             icon={saveSuccess ? <Checkmark20Filled /> : <Save20Regular />}
             onClick={handleSave}
-            style={{
-              backgroundColor: '#E51937',
-              borderRadius: tokens.borderRadiusMedium,
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-              padding: '0 20px',
-              height: '38px',
-            }}
+            className={styles.saveButton}
           >
             {saveSuccess ? 'Saved!' : 'Save Changes'}
           </Button>
@@ -518,39 +991,18 @@ export function AdminSettingsView(): React.JSX.Element {
       </div>
 
       {/* ── Navigation Tabs ─────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', borderBottom: `1px solid ${tokens.colorNeutralStroke1}`, paddingBottom: '12px', flexWrap: 'wrap' }}>
+      <div className={styles.tabNavContainer}>
         <button
           type="button"
           onClick={() => setActiveTab('staff')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '9px 18px',
-            borderRadius: tokens.borderRadiusMedium,
-            border: activeTab === 'staff' ? '1.5px solid #E51937' : `1px solid ${tokens.colorNeutralStroke1}`,
-            backgroundColor: activeTab === 'staff' ? 'rgba(229, 25, 55, 0.08)' : tokens.colorNeutralBackground1,
-            color: activeTab === 'staff' ? '#E51937' : tokens.colorNeutralForeground1,
-            fontWeight: 700,
-            fontSize: '13px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-            boxShadow: activeTab === 'staff' ? '0 2px 8px rgba(229, 25, 55, 0.12)' : 'none',
-            transition: 'all 0.15s ease',
-          }}
+          className={mergeClasses(styles.tabButton, activeTab === 'staff' && styles.tabButtonActive)}
         >
-          <PeopleCommunity24Regular style={{ width: 18, height: 18, color: activeTab === 'staff' ? '#E51937' : 'inherit' }} />
+          <PeopleCommunity24Regular className={mergeClasses(styles.tabIcon, activeTab === 'staff' && styles.tabIconActive)} />
           <span>Staff &amp; Cashier Accounts</span>
           <Badge
             appearance="tint"
             color="brand"
-            style={{
-              backgroundColor: activeTab === 'staff' ? '#E51937' : 'rgba(229, 25, 55, 0.12)',
-              color: activeTab === 'staff' ? '#FFFFFF' : '#E51937',
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-            }}
+            className={activeTab === 'staff' ? styles.tabBadgeActive : styles.tabBadge}
           >
             {users.length} Users
           </Badge>
@@ -559,50 +1011,18 @@ export function AdminSettingsView(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setActiveTab('profile')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '9px 18px',
-            borderRadius: tokens.borderRadiusMedium,
-            border: activeTab === 'profile' ? '1.5px solid #E51937' : `1px solid ${tokens.colorNeutralStroke1}`,
-            backgroundColor: activeTab === 'profile' ? 'rgba(229, 25, 55, 0.08)' : tokens.colorNeutralBackground1,
-            color: activeTab === 'profile' ? '#E51937' : tokens.colorNeutralForeground1,
-            fontWeight: 700,
-            fontSize: '13px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-            boxShadow: activeTab === 'profile' ? '0 2px 8px rgba(229, 25, 55, 0.12)' : 'none',
-            transition: 'all 0.15s ease',
-          }}
+          className={mergeClasses(styles.tabButton, activeTab === 'profile' && styles.tabButtonActive)}
         >
-          <BuildingShop24Regular style={{ width: 18, height: 18, color: activeTab === 'profile' ? '#E51937' : 'inherit' }} />
+          <BuildingShop24Regular className={mergeClasses(styles.tabIcon, activeTab === 'profile' && styles.tabIconActive)} />
           <span>Store Profile &amp; Receipts</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('hardware')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '9px 18px',
-            borderRadius: tokens.borderRadiusMedium,
-            border: activeTab === 'hardware' ? '1.5px solid #E51937' : `1px solid ${tokens.colorNeutralStroke1}`,
-            backgroundColor: activeTab === 'hardware' ? 'rgba(229, 25, 55, 0.08)' : tokens.colorNeutralBackground1,
-            color: activeTab === 'hardware' ? '#E51937' : tokens.colorNeutralForeground1,
-            fontWeight: 700,
-            fontSize: '13px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-            boxShadow: activeTab === 'hardware' ? '0 2px 8px rgba(229, 25, 55, 0.12)' : 'none',
-            transition: 'all 0.15s ease',
-          }}
+          className={mergeClasses(styles.tabButton, activeTab === 'hardware' && styles.tabButtonActive)}
         >
-          <Print24Regular style={{ width: 18, height: 18, color: activeTab === 'hardware' ? '#E51937' : 'inherit' }} />
+          <Print24Regular className={mergeClasses(styles.tabIcon, activeTab === 'hardware' && styles.tabIconActive)} />
           <span>Printer, Drawer &amp; Billing</span>
         </button>
       </div>
@@ -610,21 +1030,21 @@ export function AdminSettingsView(): React.JSX.Element {
       {/* ── TAB 1: Staff, Cashiers & Permissions Management (Full Width) ── */}
       {activeTab === 'staff' && (
         <div className={styles.card}>
-          <div className={styles.cardHeader} style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div className={styles.cardIconBox} style={{ backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937' }}>
-                <PeopleCommunity24Regular style={{ width: 20, height: 20 }} />
+          <div className={mergeClasses(styles.cardHeader, styles.cardHeaderBetween)}>
+            <div className={styles.headerFlex}>
+              <div className={mergeClasses(styles.cardIconBox, styles.cardIconBoxRed)}>
+                <PeopleCommunity24Regular className={styles.icon20} />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>
+              <div className={styles.headerTextCol}>
+                <div className={styles.headerTitleRow}>
+                  <Body1 className={styles.headerTitle}>
                     Staff, Cashiers &amp; Role Permissions
                   </Body1>
-                  <Badge appearance="tint" color="brand" style={{ backgroundColor: 'rgba(229, 25, 55, 0.12)', color: '#E51937' }}>
+                  <Badge appearance="tint" color="brand" className={styles.headerBadge}>
                     {users.length} Users
                   </Badge>
                 </div>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px' }}>
+                <Caption1 className={styles.headerSubtitle}>
                   Create cashier logins, set module access permissions, and manage staff passwords
                 </Caption1>
               </div>
@@ -634,17 +1054,7 @@ export function AdminSettingsView(): React.JSX.Element {
               appearance="primary"
               icon={<PersonAdd20Regular />}
               onClick={handleOpenAddUser}
-              style={{
-                backgroundColor: '#E51937',
-                color: '#FFFFFF',
-                fontWeight: 700,
-                borderRadius: tokens.borderRadiusMedium,
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                padding: '0 18px',
-                height: '38px',
-                boxShadow: '0 2px 8px rgba(229, 25, 55, 0.3)',
-              }}
+              className={styles.primaryRedButton}
             >
               Add New Cashier / Staff
             </Button>
@@ -659,21 +1069,21 @@ export function AdminSettingsView(): React.JSX.Element {
                   <th className={styles.th}>Role</th>
                   <th className={styles.th}>Status</th>
                   <th className={styles.th}>Allowed Modules</th>
-                  <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                  <th className={mergeClasses(styles.th, styles.thRight)}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
                   <tr key={u.id} className={styles.tableRow}>
                     <td className={styles.td}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div className={styles.userCell}>
                         <Avatar name={u.name} size={32} color={u.role === 'admin' ? 'brand' : 'colorful'} />
                         <div>
-                          <span style={{ fontWeight: 700, display: 'block', color: tokens.colorNeutralForeground1 }}>
+                          <span className={styles.userName}>
                             {u.name}
                           </span>
                           {u.phone && (
-                            <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                            <span className={styles.userPhone}>
                               {u.phone}
                             </span>
                           )}
@@ -682,7 +1092,7 @@ export function AdminSettingsView(): React.JSX.Element {
                     </td>
 
                     <td className={styles.td}>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 700, backgroundColor: tokens.colorNeutralBackground3, padding: '2px 6px', borderRadius: '4px' }}>
+                      <span className={styles.usernamePill}>
                         {u.username}
                       </span>
                     </td>
@@ -691,7 +1101,7 @@ export function AdminSettingsView(): React.JSX.Element {
                       <Badge
                         appearance="tint"
                         color={u.role === 'admin' ? 'danger' : 'informative'}
-                        style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '10px' }}
+                        className={styles.roleBadge}
                       >
                         {u.role}
                       </Badge>
@@ -701,26 +1111,11 @@ export function AdminSettingsView(): React.JSX.Element {
                       <button
                         type="button"
                         onClick={() => handleToggleUserStatus(u)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                        }}
+                        className={styles.statusToggleBtn}
                         title="Click to toggle status"
                       >
-                        <span
-                          style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: u.isActive ? '#10B981' : '#94A3B8',
-                          }}
-                        />
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: u.isActive ? '#10B981' : tokens.colorNeutralForeground3 }}>
+                        <span className={u.isActive ? styles.statusDotActive : styles.statusDotInactive} />
+                        <span className={u.isActive ? styles.statusTextActive : styles.statusTextInactive}>
                           {u.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </button>
@@ -732,19 +1127,19 @@ export function AdminSettingsView(): React.JSX.Element {
                           Full Access (All Modules)
                         </Badge>
                       ) : (
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
-                          <Badge appearance="tint" color="brand" style={{ backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937' }}>
+                        <div className={styles.permissionsBadgeRow}>
+                          <Badge appearance="tint" color="brand" className={styles.permissionsCountBadge}>
                             {u.permissions.length} Allowed
                           </Badge>
-                          <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                          <span className={styles.permissionsListText}>
                             ({u.permissions.map((p) => p.replace('pos_', '').toUpperCase()).join(', ')})
                           </span>
                         </div>
                       )}
                     </td>
 
-                    <td className={styles.td} style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                    <td className={mergeClasses(styles.td, styles.tdRight)}>
+                      <div className={styles.actionBtnsRow}>
                         <Tooltip content="Change Password" relationship="label">
                           <Button
                             size="small"
@@ -768,7 +1163,7 @@ export function AdminSettingsView(): React.JSX.Element {
                             <Button
                               size="small"
                               appearance="subtle"
-                              icon={<Delete20Regular style={{ color: '#E51937' }} />}
+                              icon={<Delete20Regular className={styles.deleteIcon} />}
                               onClick={() => handleDeleteUser(u)}
                             />
                           </Tooltip>
@@ -790,13 +1185,13 @@ export function AdminSettingsView(): React.JSX.Element {
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardIconBox}>
-                <BuildingShop24Regular style={{ width: 20, height: 20 }} />
+                <BuildingShop24Regular className={styles.icon20} />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block', lineHeight: '20px' }}>
+              <div className={styles.headerTextCol}>
+                <Body1 className={styles.headerTitle}>
                   Store Profile &amp; Branding
                 </Body1>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px', lineHeight: '16px' }}>
+                <Caption1 className={styles.headerSubtitle}>
                   Appears at the top of every customer receipt
                 </Caption1>
               </div>
@@ -844,37 +1239,29 @@ export function AdminSettingsView(): React.JSX.Element {
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardIconBox}>
-                <ShieldCheckmark20Regular style={{ width: 20, height: 20 }} />
+                <ShieldCheckmark20Regular className={styles.icon20} />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block', lineHeight: '20px' }}>
+              <div className={styles.headerTextCol}>
+                <Body1 className={styles.headerTitle}>
                   Offline-First Database Engine
                 </Body1>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px', lineHeight: '16px' }}>
+                <Caption1 className={styles.headerSubtitle}>
                   Local storage resilience and cloud synchronization
                 </Caption1>
               </div>
             </div>
 
             <div className={styles.cardBody}>
-              <div
-                style={{
-                  padding: '16px',
-                  borderRadius: tokens.borderRadiusSmall,
-                  backgroundColor: tokens.colorNeutralBackground3,
-                  border: `1px solid ${tokens.colorNeutralStroke1}`,
-                  lineHeight: 1.6,
-                }}
-              >
-                <Body2 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>
+              <div className={styles.engineCard}>
+                <Body2 className={styles.engineTitle}>
                   SQLite WAL (Write-Ahead Logging) Mode Active
                 </Body2>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', marginTop: '6px' }}>
+                <Caption1 className={styles.engineSubtitle}>
                   All store preferences, orders, products, inventory transactions, and staff accounts are committed locally to SQLite instantly with zero network latency.
                 </Caption1>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#107C41' }} />
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#107C41' }}>
+                <div className={styles.engineStatusRow}>
+                  <span className={styles.engineDot} />
+                  <span className={styles.engineReadyText}>
                     Local Database Healthy &amp; Ready
                   </span>
                 </div>
@@ -891,13 +1278,13 @@ export function AdminSettingsView(): React.JSX.Element {
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardIconBox}>
-                <Print24Regular style={{ width: 20, height: 20 }} />
+                <Print24Regular className={styles.icon20} />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block', lineHeight: '20px' }}>
+              <div className={styles.headerTextCol}>
+                <Body1 className={styles.headerTitle}>
                   Thermal Receipt Printer &amp; Drawer
                 </Body1>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px', lineHeight: '16px' }}>
+                <Caption1 className={styles.headerSubtitle}>
                   Hardware configuration for 80mm / 58mm ESC/POS printers
                 </Caption1>
               </div>
@@ -905,28 +1292,24 @@ export function AdminSettingsView(): React.JSX.Element {
 
             <div className={styles.cardBody}>
               <div className={styles.formRow}>
-                <Caption1 style={{ fontWeight: 600, color: tokens.colorNeutralForeground2 }}>Paper Roll Width</Caption1>
+                <Caption1 className={styles.paperWidthLabel}>Paper Roll Width</Caption1>
                 <div className={styles.segmentedGroup}>
                   <button
                     type="button"
-                    className={styles.segmentedItem}
-                    style={{
-                      backgroundColor: settings.paperWidth === '80mm' ? tokens.colorNeutralBackground1 : 'transparent',
-                      color: settings.paperWidth === '80mm' ? tokens.colorNeutralForeground1 : tokens.colorNeutralForeground2,
-                      fontWeight: settings.paperWidth === '80mm' ? 700 : 400,
-                    }}
+                    className={mergeClasses(
+                      styles.segmentedItem,
+                      settings.paperWidth === '80mm' ? styles.segmentedItemActive : styles.segmentedItemInactive
+                    )}
                     onClick={() => setSettings({ ...settings, paperWidth: '80mm' })}
                   >
                     80mm Standard
                   </button>
                   <button
                     type="button"
-                    className={styles.segmentedItem}
-                    style={{
-                      backgroundColor: settings.paperWidth === '58mm' ? tokens.colorNeutralBackground1 : 'transparent',
-                      color: settings.paperWidth === '58mm' ? tokens.colorNeutralForeground1 : tokens.colorNeutralForeground2,
-                      fontWeight: settings.paperWidth === '58mm' ? 700 : 400,
-                    }}
+                    className={mergeClasses(
+                      styles.segmentedItem,
+                      settings.paperWidth === '58mm' ? styles.segmentedItemActive : styles.segmentedItemInactive
+                    )}
                     onClick={() => setSettings({ ...settings, paperWidth: '58mm' })}
                   >
                     58mm Compact
@@ -938,8 +1321,8 @@ export function AdminSettingsView(): React.JSX.Element {
 
               <div className={styles.switchRow}>
                 <div className={styles.switchLabel}>
-                  <Body2 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>Auto Paper Cut</Body2>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
+                  <Body2 className={styles.switchRowTitle}>Auto Paper Cut</Body2>
+                  <Caption1 className={styles.switchRowDesc}>
                     Sends full cut command (GS V 66 0) after bill prints
                   </Caption1>
                 </div>
@@ -953,8 +1336,8 @@ export function AdminSettingsView(): React.JSX.Element {
 
               <div className={styles.switchRow}>
                 <div className={styles.switchLabel}>
-                  <Body2 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>Kick Cash Drawer</Body2>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
+                  <Body2 className={styles.switchRowTitle}>Kick Cash Drawer</Body2>
+                  <Caption1 className={styles.switchRowDesc}>
                     Sends 24V pulse to open cash drawer on cash checkout
                   </Caption1>
                 </div>
@@ -966,21 +1349,17 @@ export function AdminSettingsView(): React.JSX.Element {
 
               <Divider />
 
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div className={styles.testPrintRow}>
                 <Button
                   appearance="outline"
                   icon={<Print24Regular />}
                   onClick={handleTestPrint}
-                  style={{
-                    color: tokens.colorNeutralForeground1,
-                    borderRadius: tokens.borderRadiusMedium,
-                    fontWeight: 600,
-                  }}
+                  className={styles.testPrintBtn}
                 >
                   Send Test Print
                 </Button>
                 {printTestMsg && (
-                  <Caption1 style={{ color: '#107C41', fontWeight: 600 }}>{printTestMsg}</Caption1>
+                  <Caption1 className={styles.testPrintSuccess}>{printTestMsg}</Caption1>
                 )}
               </div>
             </div>
@@ -990,13 +1369,13 @@ export function AdminSettingsView(): React.JSX.Element {
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardIconBox}>
-                <MoneySettings24Regular style={{ width: 20, height: 20 }} />
+                <MoneySettings24Regular className={styles.icon20} />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block', lineHeight: '20px' }}>
+              <div className={styles.headerTextCol}>
+                <Body1 className={styles.headerTitle}>
                   Billing, Taxes &amp; Currency
                 </Body1>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px', lineHeight: '16px' }}>
+                <Caption1 className={styles.headerSubtitle}>
                   Currency symbol and tax calculations at checkout
                 </Caption1>
               </div>
@@ -1018,8 +1397,8 @@ export function AdminSettingsView(): React.JSX.Element {
                   onChange={(e) => setSettings({ ...settings, taxPercent: parseFloat(e.target.value) || 0 })}
                   placeholder="0"
                 />
-                <Caption2 style={{ color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                  <Info16Regular style={{ width: 12, height: 12 }} />
+                <Caption2 className={styles.taxHelper}>
+                  <Info16Regular className={styles.icon12} />
                   Set to 0 if item prices already include tax
                 </Caption2>
               </div>
@@ -1030,14 +1409,14 @@ export function AdminSettingsView(): React.JSX.Element {
 
       {/* ── Status Bar (read-only system info) ─────────────── */}
       <div className={styles.statusBar}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <ShieldCheckmark20Regular style={{ color: '#107C41', width: 18, height: 18 }} />
+        <div className={styles.statusBarLeft}>
+          <ShieldCheckmark20Regular className={styles.statusShieldIcon} />
           <div>
-            <Body2 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>
+            <Body2 className={styles.statusTitle}>
               Omnipos Counter Edition v1.0.0
             </Body2>
-            <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
-              Status: <span style={{ color: '#107C41', fontWeight: 600 }}>● Terminal Active — Offline-Ready</span>
+            <Caption1 className={styles.statusSubtitle}>
+              Status: <span className={styles.statusTerminalActive}>● Terminal Active — Offline-Ready</span>
             </Caption1>
           </div>
         </div>
@@ -1047,7 +1426,7 @@ export function AdminSettingsView(): React.JSX.Element {
           size="small"
           icon={<Key20Regular />}
           onClick={() => setIsLicenseOpen(true)}
-          style={{ color: tokens.colorNeutralForeground3, fontSize: '12px' }}
+          className={styles.technicianBtn}
         >
           Technician Access
         </Button>
@@ -1055,16 +1434,16 @@ export function AdminSettingsView(): React.JSX.Element {
 
       {/* ── MODAL 1: Add New Staff / Cashier Dialog ────────── */}
       <Dialog open={isAddUserOpen} onOpenChange={(_, d) => setIsAddUserOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '640px', width: '100%', overflowX: 'hidden' }}>
+        <DialogSurface className={styles.dialogSurfaceLarge}>
           <form onSubmit={handleSaveNewUser}>
-            <DialogBody style={{ overflowX: 'hidden' }}>
+            <DialogBody className={styles.dialogBodyNoOverflow}>
               <DialogTitle>Add New Cashier / Staff Member</DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '14px', overflowX: 'hidden', overflowY: 'auto' }}>
-                <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+              <DialogContent className={styles.dialogContentFlex}>
+                <Text size={200} className={styles.dialogDescText}>
                   Create login credentials and grant access only to the modules this staff member is allowed to operate.
                 </Text>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className={styles.dialogGrid2}>
                   <CustomInput
                     label="Username (Login ID)"
                     required
@@ -1082,7 +1461,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className={styles.dialogGrid2}>
                   <CustomSelect
                     label="Role Classification"
                     required
@@ -1112,13 +1491,13 @@ export function AdminSettingsView(): React.JSX.Element {
 
                 {/* Permissions Matrix */}
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <Caption1 style={{ fontWeight: 700, textTransform: 'uppercase', color: tokens.colorNeutralForeground1 }}>
+                  <div className={styles.permMatrixHeader}>
+                    <Caption1 className={styles.permMatrixTitle}>
                       Granular Module Permissions ({formRole === 'admin' ? 'All Modules Unlocked' : `${formPermissions.length} selected`})
                     </Caption1>
 
                     {formRole === 'cashier' && (
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      <div className={styles.btnGroup}>
                         <Button
                           size="small"
                           appearance="subtle"
@@ -1150,17 +1529,11 @@ export function AdminSettingsView(): React.JSX.Element {
                       return (
                         <label
                           key={p.key}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: '10px',
-                            padding: '10px 12px',
-                            borderRadius: '8px',
-                            border: `1px solid ${isChecked ? '#E51937' : tokens.colorNeutralStroke1}`,
-                            backgroundColor: isChecked ? 'rgba(229, 25, 55, 0.05)' : tokens.colorNeutralBackground1,
-                            cursor: formRole === 'admin' ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
+                          className={mergeClasses(
+                            styles.permItem,
+                            isChecked && styles.permItemActive,
+                            formRole === 'admin' && styles.permItemDisabled
+                          )}
                         >
                           <input
                             type="checkbox"
@@ -1173,13 +1546,13 @@ export function AdminSettingsView(): React.JSX.Element {
                                 setFormPermissions(formPermissions.filter((k) => k !== p.key));
                               }
                             }}
-                            style={{ marginTop: '2px', accentColor: '#E51937' }}
+                            className={styles.permCheckbox}
                           />
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '13px', fontWeight: 700, color: tokens.colorNeutralForeground1 }}>
+                          <div className={styles.permTextCol}>
+                            <span className={styles.permItemTitle}>
                               {p.label}
                             </span>
-                            <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                            <span className={styles.permItemDesc}>
                               {p.description}
                             </span>
                           </div>
@@ -1190,17 +1563,17 @@ export function AdminSettingsView(): React.JSX.Element {
                 </div>
 
                 {userError && (
-                  <Caption1 style={{ color: '#E51937', fontWeight: 600 }}>
+                  <Caption1 className={styles.formErrorText}>
                     {userError}
                   </Caption1>
                 )}
               </DialogContent>
 
-              <DialogActions style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <DialogActions className={styles.dialogActionsRow}>
                 <Button
                   appearance="subtle"
                   onClick={() => setIsAddUserOpen(false)}
-                  style={{ whiteSpace: 'nowrap', flexShrink: 0, height: '38px', padding: '0 16px' }}
+                  className={styles.dialogCancelBtn}
                 >
                   Cancel
                 </Button>
@@ -1208,16 +1581,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   appearance="primary"
                   type="submit"
                   icon={<Checkmark20Regular />}
-                  style={{
-                    backgroundColor: '#E51937',
-                    color: '#FFFFFF',
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    padding: '0 24px',
-                    height: '38px',
-                    borderRadius: tokens.borderRadiusMedium,
-                  }}
+                  className={styles.dialogSubmitBtn}
                 >
                   Create Staff Account
                 </Button>
@@ -1229,12 +1593,12 @@ export function AdminSettingsView(): React.JSX.Element {
 
       {/* ── MODAL 2: Edit Staff & Permissions Dialog ────────── */}
       <Dialog open={isEditUserOpen} onOpenChange={(_, d) => setIsEditUserOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '640px', width: '100%', overflowX: 'hidden' }}>
+        <DialogSurface className={styles.dialogSurfaceLarge}>
           <form onSubmit={handleSaveEditUser}>
-            <DialogBody style={{ overflowX: 'hidden' }}>
+            <DialogBody className={styles.dialogBodyNoOverflow}>
               <DialogTitle>Edit Permissions: {selectedUser?.name}</DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '14px', overflowX: 'hidden', overflowY: 'auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <DialogContent className={styles.dialogContentFlex}>
+                <div className={styles.dialogGrid2}>
                   <CustomInput
                     label="Full Name"
                     required
@@ -1260,13 +1624,13 @@ export function AdminSettingsView(): React.JSX.Element {
                 <Divider />
 
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <Caption1 style={{ fontWeight: 700, textTransform: 'uppercase', color: tokens.colorNeutralForeground1 }}>
+                  <div className={styles.permMatrixHeader}>
+                    <Caption1 className={styles.permMatrixTitle}>
                       Module Permissions ({formRole === 'admin' ? 'All Modules Unlocked' : `${formPermissions.length} selected`})
                     </Caption1>
 
                     {formRole === 'cashier' && (
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      <div className={styles.btnGroup}>
                         <Button
                           size="small"
                           appearance="subtle"
@@ -1298,17 +1662,11 @@ export function AdminSettingsView(): React.JSX.Element {
                       return (
                         <label
                           key={p.key}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: '10px',
-                            padding: '10px 12px',
-                            borderRadius: '8px',
-                            border: `1px solid ${isChecked ? '#E51937' : tokens.colorNeutralStroke1}`,
-                            backgroundColor: isChecked ? 'rgba(229, 25, 55, 0.05)' : tokens.colorNeutralBackground1,
-                            cursor: formRole === 'admin' ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
+                          className={mergeClasses(
+                            styles.permItem,
+                            isChecked && styles.permItemActive,
+                            formRole === 'admin' && styles.permItemDisabled
+                          )}
                         >
                           <input
                             type="checkbox"
@@ -1321,13 +1679,13 @@ export function AdminSettingsView(): React.JSX.Element {
                                 setFormPermissions(formPermissions.filter((k) => k !== p.key));
                               }
                             }}
-                            style={{ marginTop: '2px', accentColor: '#E51937' }}
+                            className={styles.permCheckbox}
                           />
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '13px', fontWeight: 700, color: tokens.colorNeutralForeground1 }}>
+                          <div className={styles.permTextCol}>
+                            <span className={styles.permItemTitle}>
                               {p.label}
                             </span>
-                            <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                            <span className={styles.permItemDesc}>
                               {p.description}
                             </span>
                           </div>
@@ -1338,17 +1696,17 @@ export function AdminSettingsView(): React.JSX.Element {
                 </div>
 
                 {userError && (
-                  <Caption1 style={{ color: '#E51937', fontWeight: 600 }}>
+                  <Caption1 className={styles.formErrorText}>
                     {userError}
                   </Caption1>
                 )}
               </DialogContent>
 
-              <DialogActions style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <DialogActions className={styles.dialogActionsRow}>
                 <Button
                   appearance="subtle"
                   onClick={() => setIsEditUserOpen(false)}
-                  style={{ whiteSpace: 'nowrap', flexShrink: 0, height: '38px', padding: '0 16px' }}
+                  className={styles.dialogCancelBtn}
                 >
                   Cancel
                 </Button>
@@ -1356,16 +1714,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   appearance="primary"
                   type="submit"
                   icon={<Checkmark20Regular />}
-                  style={{
-                    backgroundColor: '#E51937',
-                    color: '#FFFFFF',
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    padding: '0 24px',
-                    height: '38px',
-                    borderRadius: tokens.borderRadiusMedium,
-                  }}
+                  className={styles.dialogSubmitBtn}
                 >
                   Save Permissions
                 </Button>
@@ -1377,18 +1726,18 @@ export function AdminSettingsView(): React.JSX.Element {
 
       {/* ── MODAL 3: Change Staff Password Dialog ──────────── */}
       <Dialog open={isChangePasswordOpen} onOpenChange={(_, d) => setIsChangePasswordOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '440px', width: '100%', overflowX: 'hidden' }}>
+        <DialogSurface className={styles.dialogSurfaceSmall}>
           <form onSubmit={handleSaveChangePassword}>
-            <DialogBody style={{ overflowX: 'hidden' }}>
+            <DialogBody className={styles.dialogBodyNoOverflow}>
               <DialogTitle>Change Password</DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px', overflowX: 'hidden', overflowY: 'auto' }}>
-                <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <DialogContent className={styles.dialogContentFlex}>
+                <div className={styles.userBannerRow}>
                   <Avatar name={selectedUser?.name} size={32} />
                   <div>
-                    <span style={{ fontWeight: 700, display: 'block', fontSize: '13px', color: tokens.colorNeutralForeground1 }}>
+                    <span className={styles.userBannerName}>
                       {selectedUser?.name}
                     </span>
-                    <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                    <span className={styles.userBannerMeta}>
                       Username: {selectedUser?.username} • Role: {selectedUser?.role?.toUpperCase()}
                     </span>
                   </div>
@@ -1413,26 +1762,26 @@ export function AdminSettingsView(): React.JSX.Element {
                 />
 
                 {changePassError && (
-                  <Caption1 style={{ color: '#E51937', fontWeight: 600 }}>
+                  <Caption1 className={styles.formErrorText}>
                     {changePassError}
                   </Caption1>
                 )}
 
                 {changePassSuccess && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10B981' }}>
+                  <div className={styles.successRow}>
                     <Checkmark20Filled />
-                    <Caption1 style={{ color: '#10B981', fontWeight: 700 }}>
+                    <Caption1 className={styles.licenseOkText}>
                       Password updated successfully!
                     </Caption1>
                   </div>
                 )}
               </DialogContent>
 
-              <DialogActions style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <DialogActions className={styles.dialogActionsRow}>
                 <Button
                   appearance="subtle"
                   onClick={() => setIsChangePasswordOpen(false)}
-                  style={{ whiteSpace: 'nowrap', flexShrink: 0, height: '38px', padding: '0 16px' }}
+                  className={styles.dialogCancelBtn}
                 >
                   Cancel
                 </Button>
@@ -1440,16 +1789,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   appearance="primary"
                   type="submit"
                   icon={<LockClosed20Regular />}
-                  style={{
-                    backgroundColor: '#E51937',
-                    color: '#FFFFFF',
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    padding: '0 24px',
-                    height: '38px',
-                    borderRadius: tokens.borderRadiusMedium,
-                  }}
+                  className={styles.dialogSubmitBtn}
                 >
                   Update Password
                 </Button>
@@ -1461,14 +1801,14 @@ export function AdminSettingsView(): React.JSX.Element {
 
       {/* ── Technician License Modal ───────────────────────── */}
       <Dialog open={isLicenseOpen} onOpenChange={(_, d) => setIsLicenseOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '440px' }}>
+        <DialogSurface className={styles.dialogSurfaceSmall}>
           <DialogBody>
             <DialogTitle>Technician / Software Activation</DialogTitle>
             <DialogContent>
-              <Text as="p" size={200} style={{ color: tokens.colorNeutralForeground2, marginBottom: '16px', display: 'block' }}>
+              <Text as="p" size={200} className={styles.licenseDescText}>
                 For software provider or technician use only. Registers this machine with the cloud license server.
               </Text>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className={styles.dialogColGap14}>
                 <CustomInput
                   label="License Key"
                   value={licenseKey}
@@ -1481,20 +1821,20 @@ export function AdminSettingsView(): React.JSX.Element {
                   onChange={(e) => setCloudUrl(e.target.value)}
                 />
                 {licenseMsg && (
-                  <Caption1 style={{ color: licenseMsg.startsWith('Failed') ? '#E51937' : '#107C41', fontWeight: 600 }}>
+                  <Caption1 className={licenseMsg.startsWith('Failed') ? styles.licenseErrText : styles.licenseOkText}>
                     {licenseMsg}
                   </Caption1>
                 )}
               </div>
             </DialogContent>
-            <DialogActions style={{ paddingTop: '16px' }}>
+            <DialogActions className={styles.licenseActions}>
               <Button appearance="outline" onClick={() => setIsLicenseOpen(false)}>
                 Close
               </Button>
               <Button
                 appearance="primary"
                 onClick={handleActivateLicense}
-                style={{ backgroundColor: '#E51937', borderRadius: tokens.borderRadiusMedium }}
+                className={styles.saveButton}
               >
                 Activate License
               </Button>

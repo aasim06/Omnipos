@@ -16,6 +16,7 @@ import {
   DialogContent,
   TabList,
   Tab,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   Money24Regular,
@@ -146,6 +147,251 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     marginBottom: '8px',
   },
+  headerTitleCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  headerTitle: {
+    fontWeight: 700,
+    fontSize: '20px',
+    color: tokens.colorNeutralForeground1,
+    margin: 0,
+    display: 'block',
+  },
+  headerSubtitle: {
+    color: tokens.colorNeutralForeground2,
+    margin: 0,
+    display: 'block',
+    fontSize: '13px',
+  },
+  tabListContainer: {
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: tokens.colorNeutralStroke1,
+    paddingBottom: '4px',
+    marginBottom: '8px',
+  },
+  kpiLabel: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+    fontWeight: 600,
+  },
+  kpiValueDanger: {
+    fontSize: '26px',
+    fontWeight: 800,
+    color: '#D13438',
+    marginTop: '6px',
+    display: 'block',
+  },
+  kpiValueDefault: {
+    fontSize: '22px',
+    fontWeight: 800,
+    marginTop: '6px',
+    display: 'block',
+    color: tokens.colorNeutralForeground1,
+  },
+  kpiValueDefaultLg: {
+    fontSize: '26px',
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
+    marginTop: '6px',
+    display: 'block',
+  },
+  kpiValueBrand: {
+    fontSize: '26px',
+    fontWeight: 800,
+    marginTop: '6px',
+    color: '#0078D4',
+    display: 'block',
+  },
+  kpiValueSuccess: {
+    fontSize: '26px',
+    fontWeight: 800,
+    marginTop: '6px',
+    color: '#107C41',
+    display: 'block',
+  },
+  actionContent: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+  },
+  actionTextCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  actionTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  actionSubtitle: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+    fontSize: '12px',
+  },
+  actionIconReceipt: {
+    width: '28px',
+    height: '28px',
+    color: '#0078D4',
+    flexShrink: 0,
+    marginTop: '2px',
+  },
+  actionIconCashOut: {
+    width: '28px',
+    height: '28px',
+    color: '#107C41',
+    flexShrink: 0,
+    marginTop: '2px',
+  },
+  actionIconUpload: {
+    width: '28px',
+    height: '28px',
+    color: '#107C41',
+    flexShrink: 0,
+    marginTop: '2px',
+  },
+  actionIconLock: {
+    width: '28px',
+    height: '28px',
+    color: '#F7630C',
+    flexShrink: 0,
+    marginTop: '2px',
+  },
+  btnRecordExpense: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    borderRadius: '8px',
+    fontWeight: 700,
+    padding: '9px 18px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    border: 'none',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+  },
+  btnDrawerCashOut: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+    borderRadius: '8px',
+    fontWeight: 700,
+    padding: '8px 18px',
+    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  btnCashIn: {
+    backgroundColor: '#107C41',
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  btnCloseDrawer: {
+    backgroundColor: '#E51937',
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  historyTitleBox: {
+    marginBottom: '16px',
+  },
+  historyTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  emptyHistoryText: {
+    color: tokens.colorNeutralForeground3,
+    textAlign: 'center',
+    padding: '32px',
+    display: 'block',
+  },
+  expenseMetaCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  expenseCategoryRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  expenseCategoryText: {
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+  },
+  expenseDateCaption: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+  },
+  expenseAmountRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  expenseAmountText: {
+    fontWeight: 700,
+    color: '#D13438',
+  },
+  dialogSurfaceExpense: {
+    borderRadius: tokens.borderRadiusLarge,
+    maxWidth: '500px',
+    width: '100%',
+    overflowX: 'hidden',
+  },
+  dialogSurfaceDrawer: {
+    borderRadius: tokens.borderRadiusLarge,
+    maxWidth: '460px',
+    width: '100%',
+    overflowX: 'hidden',
+  },
+  dialogBodyNoOverflow: {
+    overflowX: 'hidden',
+  },
+  dialogContentScroll: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    marginTop: '14px',
+    overflowX: 'hidden',
+    overflowY: 'auto',
+  },
+  dialogActionsRow: {
+    marginTop: '24px',
+    display: 'flex',
+    gap: '10px',
+    justifyContent: 'flex-end',
+  },
+  dialogCancelBtn: {
+    borderRadius: '8px',
+    fontWeight: 600,
+    padding: '8px 18px',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    whiteSpace: 'nowrap',
+  },
+  dialogSubmitExpenseBtn: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    borderRadius: '8px',
+    fontWeight: 700,
+    padding: '9px 22px',
+    minWidth: '140px',
+    whiteSpace: 'nowrap',
+    border: 'none',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+  },
+  dialogSubmitCashInBtn: {
+    backgroundColor: '#107C41',
+    color: '#FFFFFF',
+    borderRadius: '8px',
+    fontWeight: 700,
+    padding: '9px 22px',
+    minWidth: '140px',
+    whiteSpace: 'nowrap',
+    border: 'none',
+    boxShadow: '0 2px 8px rgba(16, 124, 65, 0.25)',
+  },
 });
 
 interface ExpenseRecord {
@@ -274,23 +520,23 @@ export function ExpensesView(): React.JSX.Element {
     <div className={styles.container}>
       {/* ── Page Header ── */}
       <div className={styles.pageHeader}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div className={styles.headerTitleCol}>
           <Subtitle1
             as="h1"
-            style={{ fontWeight: 700, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0, display: 'block' }}
+            className={styles.headerTitle}
           >
             Daily Expenses &amp; Cash Drawer
           </Subtitle1>
           <Caption1
             as="p"
-            style={{ color: tokens.colorNeutralForeground2, margin: 0, display: 'block', fontSize: '13px' }}
+            className={styles.headerSubtitle}
           >
             Record store expenses, petty cash, and manage daily cashier drawer float audit
           </Caption1>
         </div>
       </div>
 
-      <div style={{ borderBottom: `1px solid ${tokens.colorNeutralStroke1}`, paddingBottom: '4px', marginBottom: '8px' }}>
+      <div className={styles.tabListContainer}>
         <TabList selectedValue={activeTab} onTabSelect={(_, d) => setActiveTab(d.value as any)}>
           <Tab value="expenses">Expenses Ledger</Tab>
           <Tab value="drawer">Cash Drawer Audit</Tab>
@@ -302,26 +548,26 @@ export function ExpensesView(): React.JSX.Element {
           {/* Metrics */}
           <div className={styles.metricsGrid}>
             <div className={styles.metricCard}>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Total Logged Expenses</Caption1>
-              <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, color: '#D13438', marginTop: '6px', display: 'block' }}>
+              <Caption1 className={styles.kpiLabel}>Total Logged Expenses</Caption1>
+              <Subtitle1 className={styles.kpiValueDanger}>
                 {formatPKR(totalExpenseAmount)}
               </Subtitle1>
             </div>
             <div className={styles.metricCard}>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Total Entries</Caption1>
-              <Subtitle1 style={{ fontSize: '22px', fontWeight: 800, marginTop: '6px', display: 'block', color: tokens.colorNeutralForeground1 }}>
+              <Caption1 className={styles.kpiLabel}>Total Entries</Caption1>
+              <Subtitle1 className={styles.kpiValueDefault}>
                 {expenses.length} Records
               </Subtitle1>
             </div>
             <div className={styles.metricCard}>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Top Category</Caption1>
-              <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, marginTop: '6px', color: '#0078D4', display: 'block' }}>
+              <Caption1 className={styles.kpiLabel}>Top Category</Caption1>
+              <Subtitle1 className={styles.kpiValueBrand}>
                 Rent &amp; Utilities
               </Subtitle1>
             </div>
             <div className={styles.metricCard}>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Paid via Cash Drawer</Caption1>
-              <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, marginTop: '6px', color: '#107C41', display: 'block' }}>
+              <Caption1 className={styles.kpiLabel}>Paid via Cash Drawer</Caption1>
+              <Subtitle1 className={styles.kpiValueSuccess}>
                 {formatPKR(expenses.filter((e) => e.paymentMode === 'cash').reduce((s, e) => s + (e.amount || 0), 0))}
               </Subtitle1>
             </div>
@@ -330,11 +576,11 @@ export function ExpensesView(): React.JSX.Element {
           {/* Action Row */}
           <div className={styles.actionGrid}>
             <div className={styles.actionCard}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <Receipt20Regular style={{ width: 28, height: 28, color: '#0078D4', flexShrink: 0, marginTop: '2px' }} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>Record Store Expense</Body1>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px' }}>
+              <div className={styles.actionContent}>
+                <Receipt20Regular className={styles.actionIconReceipt} />
+                <div className={styles.actionTextCol}>
+                  <Body1 className={styles.actionTitle}>Record Store Expense</Body1>
+                  <Caption1 className={styles.actionSubtitle}>
                     Log tea, salaries, utilities, repair, or raw vendor purchases
                   </Caption1>
                 </div>
@@ -342,17 +588,7 @@ export function ExpensesView(): React.JSX.Element {
               <Button
                 appearance="primary"
                 icon={<Add20Regular />}
-                style={{
-                  backgroundColor: '#E51937',
-                  color: '#FFFFFF',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  padding: '9px 18px',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                  border: 'none',
-                  boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-                }}
+                className={styles.btnRecordExpense}
                 onClick={() => {
                   expenseForm.reset();
                   setIsAddExpenseOpen(true);
@@ -363,11 +599,11 @@ export function ExpensesView(): React.JSX.Element {
             </div>
 
             <div className={styles.actionCard}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <Money24Regular style={{ width: 28, height: 28, color: '#107C41', flexShrink: 0, marginTop: '2px' }} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>Drawer Cash Out</Body1>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px' }}>
+              <div className={styles.actionContent}>
+                <Money24Regular className={styles.actionIconCashOut} />
+                <div className={styles.actionTextCol}>
+                  <Body1 className={styles.actionTitle}>Drawer Cash Out</Body1>
+                  <Caption1 className={styles.actionSubtitle}>
                     Withdraw petty cash directly from register drawer
                   </Caption1>
                 </div>
@@ -375,16 +611,7 @@ export function ExpensesView(): React.JSX.Element {
               <Button
                 appearance="outline"
                 icon={<ArrowDownload24Regular />}
-                style={{
-                  backgroundColor: tokens.colorNeutralBackground1,
-                  color: tokens.colorNeutralForeground1,
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  padding: '8px 18px',
-                  border: `1.5px solid ${tokens.colorNeutralStroke1}`,
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                }}
+                className={styles.btnDrawerCashOut}
                 onClick={() => {
                   setDrawerActionType('CASH_OUT');
                   drawerForm.reset({ amount: undefined, notes: 'Petty cash withdrawal' });
@@ -398,35 +625,35 @@ export function ExpensesView(): React.JSX.Element {
 
           {/* Expense History Ledger */}
           <div className={styles.historyCard}>
-            <div style={{ marginBottom: '16px' }}>
-              <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>
+            <div className={styles.historyTitleBox}>
+              <Body1 className={styles.historyTitle}>
                 Expense Transactions Ledger
               </Body1>
             </div>
 
             {expenses.length === 0 ? (
-              <Body1 style={{ color: tokens.colorNeutralForeground3, textAlign: 'center', padding: '32px', display: 'block' }}>
+              <Body1 className={styles.emptyHistoryText}>
                 No expense entries logged today.
               </Body1>
             ) : (
               expenses.map((exp) => (
                 <div key={exp.id} className={styles.expenseRow}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Body1 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>{exp.category}</Body1>
+                  <div className={styles.expenseMetaCol}>
+                    <div className={styles.expenseCategoryRow}>
+                      <Body1 className={styles.expenseCategoryText}>{exp.category}</Body1>
                       <Badge size="small" appearance="outline" color="informative">
                         {exp.paymentMode ? exp.paymentMode.toUpperCase() : 'CASH'}
                       </Badge>
                     </div>
-                    <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block' }}>
+                    <Caption1 className={styles.expenseDateCaption}>
                       {new Date(exp.date).toLocaleDateString()} at {new Date(exp.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       {exp.vendorName ? ` • Vendor: ${exp.vendorName}` : ''}
                       {exp.description ? ` • ${exp.description}` : ''}
                     </Caption1>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Subtitle1 style={{ fontWeight: 700, color: '#D13438' }}>
+                  <div className={styles.expenseAmountRow}>
+                    <Subtitle1 className={styles.expenseAmountText}>
                       -PKR {exp.amount.toLocaleString()}
                     </Subtitle1>
                   </div>
@@ -440,26 +667,26 @@ export function ExpensesView(): React.JSX.Element {
         <>
           <div className={styles.metricsGrid}>
             <div className={styles.metricCard}>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Opening Register Float</Caption1>
-              <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '6px', display: 'block' }}>
+              <Caption1 className={styles.kpiLabel}>Opening Register Float</Caption1>
+              <Subtitle1 className={styles.kpiValueDefaultLg}>
                 {formatPKR(drawer?.openingFloat || 5000)}
               </Subtitle1>
             </div>
             <div className={styles.metricCard}>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Total Cash Sales Today</Caption1>
-              <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, color: '#107C41', marginTop: '6px', display: 'block' }}>
+              <Caption1 className={styles.kpiLabel}>Total Cash Sales Today</Caption1>
+              <Subtitle1 className={styles.kpiValueSuccess}>
                 +{formatPKR(drawer?.cashSales || 0)}
               </Subtitle1>
             </div>
             <div className={styles.metricCard}>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Cash In / Cash Out</Caption1>
-              <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, color: tokens.colorNeutralForeground1, marginTop: '6px', display: 'block' }}>
+              <Caption1 className={styles.kpiLabel}>Cash In / Cash Out</Caption1>
+              <Subtitle1 className={styles.kpiValueDefaultLg}>
                 +{formatPKR(drawer?.cashIn || 0)} / -{formatPKR(drawer?.cashOut || 0)}
               </Subtitle1>
             </div>
             <div className={styles.metricCard}>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Expected In Drawer Right Now</Caption1>
-              <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, color: '#0078D4', marginTop: '6px', display: 'block' }}>
+              <Caption1 className={styles.kpiLabel}>Expected In Drawer Right Now</Caption1>
+              <Subtitle1 className={styles.kpiValueBrand}>
                 {formatPKR(expectedInDrawer)}
               </Subtitle1>
             </div>
@@ -467,18 +694,18 @@ export function ExpensesView(): React.JSX.Element {
 
           <div className={styles.actionGrid}>
             <div className={styles.actionCard}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <ArrowUpload24Regular style={{ width: 28, height: 28, color: '#107C41', flexShrink: 0, marginTop: '2px' }} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>Add Cash In to Register</Body1>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px' }}>
+              <div className={styles.actionContent}>
+                <ArrowUpload24Regular className={styles.actionIconUpload} />
+                <div className={styles.actionTextCol}>
+                  <Body1 className={styles.actionTitle}>Add Cash In to Register</Body1>
+                  <Caption1 className={styles.actionSubtitle}>
                     Inject change float, petty cash addition, or owner cash
                   </Caption1>
                 </div>
               </div>
               <Button
                 appearance="primary"
-                style={{ backgroundColor: '#107C41', borderRadius: tokens.borderRadiusMedium }}
+                className={styles.btnCashIn}
                 onClick={() => {
                   setDrawerActionType('CASH_IN');
                   drawerForm.reset({ amount: undefined, notes: 'Cash In float' });
@@ -490,18 +717,18 @@ export function ExpensesView(): React.JSX.Element {
             </div>
 
             <div className={styles.actionCard}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <LockClosed20Regular style={{ width: 28, height: 28, color: '#F7630C', flexShrink: 0, marginTop: '2px' }} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>Close Drawer / Audit</Body1>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px' }}>
+              <div className={styles.actionContent}>
+                <LockClosed20Regular className={styles.actionIconLock} />
+                <div className={styles.actionTextCol}>
+                  <Body1 className={styles.actionTitle}>Close Drawer / Audit</Body1>
+                  <Caption1 className={styles.actionSubtitle}>
                     Count physical cash and close daily register session
                   </Caption1>
                 </div>
               </div>
               <Button
                 appearance="primary"
-                style={{ backgroundColor: '#E51937', borderRadius: tokens.borderRadiusMedium }}
+                className={styles.btnCloseDrawer}
                 onClick={() => {
                   setDrawerActionType('CLOSE');
                   drawerForm.reset({ amount: expectedInDrawer, notes: 'End of day close' });
@@ -517,11 +744,11 @@ export function ExpensesView(): React.JSX.Element {
 
       {/* ── Record Expense Dialog with Labels & Zod + React Hook Form ─ */}
       <Dialog open={isAddExpenseOpen} onOpenChange={(_, d) => setIsAddExpenseOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '500px', width: '100%', overflowX: 'hidden' }}>
+        <DialogSurface className={styles.dialogSurfaceExpense}>
           <form onSubmit={expenseForm.handleSubmit((data) => addExpenseMutation.mutate(data))}>
-            <DialogBody style={{ overflowX: 'hidden' }}>
+            <DialogBody className={styles.dialogBodyNoOverflow}>
               <DialogTitle>Record New Expense</DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px', overflowX: 'hidden', overflowY: 'auto' }}>
+              <DialogContent className={styles.dialogContentScroll}>
                 {/* Category */}
                 <Controller
                   control={expenseForm.control}
@@ -600,18 +827,12 @@ export function ExpensesView(): React.JSX.Element {
                   )}
                 />
               </DialogContent>
-              <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <DialogActions className={styles.dialogActionsRow}>
                 <Button
                   appearance="subtle"
                   type="button"
                   onClick={() => setIsAddExpenseOpen(false)}
-                  style={{
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    padding: '8px 18px',
-                    border: `1px solid ${tokens.colorNeutralStroke1}`,
-                    whiteSpace: 'nowrap',
-                  }}
+                  className={styles.dialogCancelBtn}
                 >
                   Cancel
                 </Button>
@@ -619,17 +840,7 @@ export function ExpensesView(): React.JSX.Element {
                   appearance="primary"
                   type="submit"
                   disabled={addExpenseMutation.isPending}
-                  style={{
-                    backgroundColor: '#E51937',
-                    color: '#FFFFFF',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    padding: '9px 22px',
-                    minWidth: '130px',
-                    whiteSpace: 'nowrap',
-                    border: 'none',
-                    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-                  }}
+                  className={styles.dialogSubmitExpenseBtn}
                 >
                   {addExpenseMutation.isPending ? 'Saving...' : 'Save Expense'}
                 </Button>
@@ -641,15 +852,15 @@ export function ExpensesView(): React.JSX.Element {
 
       {/* ── Cash Drawer Action Dialog with Labels & Zod + React Hook Form ── */}
       <Dialog open={isCashDrawerActionOpen} onOpenChange={(_, d) => setIsCashDrawerActionOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '460px', width: '100%', overflowX: 'hidden' }}>
+        <DialogSurface className={styles.dialogSurfaceDrawer}>
           <form onSubmit={drawerForm.handleSubmit((data) => drawerMutation.mutate(data))}>
-            <DialogBody style={{ overflowX: 'hidden' }}>
+            <DialogBody className={styles.dialogBodyNoOverflow}>
               <DialogTitle>
                 {drawerActionType === 'CASH_IN' && 'Add Cash to Register Drawer'}
                 {drawerActionType === 'CASH_OUT' && 'Remove Cash from Register Drawer'}
                 {drawerActionType === 'CLOSE' && 'End of Day Drawer Close & Reconciliation'}
               </DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px', overflowX: 'hidden', overflowY: 'auto' }}>
+              <DialogContent className={styles.dialogContentScroll}>
                 {/* Amount */}
                 <Controller
                   control={drawerForm.control}
@@ -683,18 +894,12 @@ export function ExpensesView(): React.JSX.Element {
                   )}
                 />
               </DialogContent>
-              <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <DialogActions className={styles.dialogActionsRow}>
                 <Button
                   appearance="subtle"
                   type="button"
                   onClick={() => setIsCashDrawerActionOpen(false)}
-                  style={{
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    padding: '8px 18px',
-                    border: `1px solid ${tokens.colorNeutralStroke1}`,
-                    whiteSpace: 'nowrap',
-                  }}
+                  className={styles.dialogCancelBtn}
                 >
                   Cancel
                 </Button>
@@ -702,17 +907,7 @@ export function ExpensesView(): React.JSX.Element {
                   appearance="primary"
                   type="submit"
                   disabled={drawerMutation.isPending}
-                  style={{
-                    backgroundColor: '#E51937',
-                    color: '#FFFFFF',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    padding: '9px 22px',
-                    minWidth: '130px',
-                    whiteSpace: 'nowrap',
-                    border: 'none',
-                    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-                  }}
+                  className={styles.dialogSubmitExpenseBtn}
                 >
                   {drawerMutation.isPending ? 'Processing...' : 'Confirm Action'}
                 </Button>

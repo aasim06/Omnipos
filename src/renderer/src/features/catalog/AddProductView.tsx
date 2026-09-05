@@ -10,6 +10,7 @@ import {
   Textarea,
   Dialog,
   DialogSurface,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   ArrowLeft20Regular,
@@ -715,6 +716,174 @@ const useStyles = makeStyles({
       backgroundColor: '#be123c',
     },
   },
+
+  /* ── Layout & Typography Helpers ── */
+  colEnd: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'flex-end',
+  },
+  flexEndRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    marginBottom: '6px',
+  },
+  requiredStar: {
+    color: '#E51937',
+    fontWeight: 800,
+  },
+  flexShrink0: {
+    flexShrink: 0,
+  },
+  hiddenInput: {
+    display: 'none',
+  },
+  noPhotoIcon: {
+    width: '28px',
+    height: '28px',
+  },
+  noPhotoText: {
+    fontSize: '11px',
+  },
+  tag20Icon: {
+    width: '20px',
+    height: '20px',
+  },
+  strongForeground: {
+    color: tokens.colorNeutralForeground1,
+  },
+
+  /* ── Industry Profile Classes ── */
+  presetChipSelectedFood: {
+    fontWeight: 800,
+    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderRightColor: '#E51937',
+    backgroundColor: 'rgba(229, 25, 55, 0.15)',
+    color: '#E51937',
+  },
+  presetChipSelectedApparel: {
+    fontWeight: 800,
+    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#8b5cf6', borderBottomColor: '#8b5cf6', borderLeftColor: '#8b5cf6', borderRightColor: '#8b5cf6',
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    color: '#8b5cf6',
+  },
+  presetChipSelectedFootwear: {
+    fontWeight: 800,
+    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#3b82f6', borderBottomColor: '#3b82f6', borderLeftColor: '#3b82f6', borderRightColor: '#3b82f6',
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    color: '#3b82f6',
+  },
+  presetChipSelectedHardware: {
+    fontWeight: 800,
+    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#f59e0b', borderBottomColor: '#f59e0b', borderLeftColor: '#f59e0b', borderRightColor: '#f59e0b',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    color: '#f59e0b',
+  },
+  presetChipSelectedStandard: {
+    fontWeight: 800,
+    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#64748b', borderBottomColor: '#64748b', borderLeftColor: '#64748b', borderRightColor: '#64748b',
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    color: '#64748b',
+  },
+  variantSectionActiveFood: {
+    borderTopColor: 'rgba(229, 25, 55, 0.3)', borderBottomColor: 'rgba(229, 25, 55, 0.3)', borderLeftColor: 'rgba(229, 25, 55, 0.3)', borderRightColor: 'rgba(229, 25, 55, 0.3)',
+    backgroundColor: 'rgba(229, 25, 55, 0.04)',
+  },
+  variantSectionActiveApparel: {
+    borderTopColor: 'rgba(139, 92, 246, 0.3)', borderBottomColor: 'rgba(139, 92, 246, 0.3)', borderLeftColor: 'rgba(139, 92, 246, 0.3)', borderRightColor: 'rgba(139, 92, 246, 0.3)',
+    backgroundColor: 'rgba(139, 92, 246, 0.04)',
+  },
+  variantSectionActiveFootwear: {
+    borderTopColor: 'rgba(59, 130, 246, 0.3)', borderBottomColor: 'rgba(59, 130, 246, 0.3)', borderLeftColor: 'rgba(59, 130, 246, 0.3)', borderRightColor: 'rgba(59, 130, 246, 0.3)',
+    backgroundColor: 'rgba(59, 130, 246, 0.04)',
+  },
+  variantSectionActiveHardware: {
+    borderTopColor: 'rgba(245, 158, 11, 0.3)', borderBottomColor: 'rgba(245, 158, 11, 0.3)', borderLeftColor: 'rgba(245, 158, 11, 0.3)', borderRightColor: 'rgba(245, 158, 11, 0.3)',
+    backgroundColor: 'rgba(245, 158, 11, 0.04)',
+  },
+  variantSectionActiveStandard: {
+    borderTopColor: 'rgba(100, 116, 139, 0.3)', borderBottomColor: 'rgba(100, 116, 139, 0.3)', borderLeftColor: 'rgba(100, 116, 139, 0.3)', borderRightColor: 'rgba(100, 116, 139, 0.3)',
+    backgroundColor: 'rgba(100, 116, 139, 0.04)',
+  },
+  profileTagFood: {
+    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    color: '#E51937',
+    borderTopColor: 'rgba(229, 25, 55, 0.25)', borderBottomColor: 'rgba(229, 25, 55, 0.25)', borderLeftColor: 'rgba(229, 25, 55, 0.25)', borderRightColor: 'rgba(229, 25, 55, 0.25)',
+  },
+  profileTagApparel: {
+    backgroundColor: 'rgba(139, 92, 246, 0.12)',
+    color: '#8b5cf6',
+    borderTopColor: 'rgba(139, 92, 246, 0.25)', borderBottomColor: 'rgba(139, 92, 246, 0.25)', borderLeftColor: 'rgba(139, 92, 246, 0.25)', borderRightColor: 'rgba(139, 92, 246, 0.25)',
+  },
+  profileTagFootwear: {
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    color: '#3b82f6',
+    borderTopColor: 'rgba(59, 130, 246, 0.25)', borderBottomColor: 'rgba(59, 130, 246, 0.25)', borderLeftColor: 'rgba(59, 130, 246, 0.25)', borderRightColor: 'rgba(59, 130, 246, 0.25)',
+  },
+  profileTagHardware: {
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    color: '#f59e0b',
+    borderTopColor: 'rgba(245, 158, 11, 0.25)', borderBottomColor: 'rgba(245, 158, 11, 0.25)', borderLeftColor: 'rgba(245, 158, 11, 0.25)', borderRightColor: 'rgba(245, 158, 11, 0.25)',
+  },
+  profileTagStandard: {
+    backgroundColor: 'rgba(100, 116, 139, 0.12)',
+    color: '#64748b',
+    borderTopColor: 'rgba(100, 116, 139, 0.25)', borderBottomColor: 'rgba(100, 116, 139, 0.25)', borderLeftColor: 'rgba(100, 116, 139, 0.25)', borderRightColor: 'rgba(100, 116, 139, 0.25)',
+  },
+  textAccentFood: { color: '#E51937' },
+  textAccentApparel: { color: '#8b5cf6' },
+  textAccentFootwear: { color: '#3b82f6' },
+  textAccentHardware: { color: '#f59e0b' },
+  textAccentStandard: { color: '#64748b' },
+  sizeChipSelectedFood: {
+    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderRightColor: '#E51937',
+    backgroundColor: 'rgba(229, 25, 55, 0.15)',
+    color: '#E51937',
+    fontWeight: 800,
+  },
+  sizeChipSelectedApparel: {
+    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#8b5cf6', borderBottomColor: '#8b5cf6', borderLeftColor: '#8b5cf6', borderRightColor: '#8b5cf6',
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    color: '#8b5cf6',
+    fontWeight: 800,
+  },
+  sizeChipSelectedFootwear: {
+    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#3b82f6', borderBottomColor: '#3b82f6', borderLeftColor: '#3b82f6', borderRightColor: '#3b82f6',
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    color: '#3b82f6',
+    fontWeight: 800,
+  },
+  sizeChipSelectedHardware: {
+    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#f59e0b', borderBottomColor: '#f59e0b', borderLeftColor: '#f59e0b', borderRightColor: '#f59e0b',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    color: '#f59e0b',
+    fontWeight: 800,
+  },
+  sizeChipSelectedStandard: {
+    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#64748b', borderBottomColor: '#64748b', borderLeftColor: '#64748b', borderRightColor: '#64748b',
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    color: '#64748b',
+    fontWeight: 800,
+  },
 });
 
 export function AddProductView(): React.JSX.Element {
@@ -1008,7 +1177,7 @@ export function AddProductView(): React.JSX.Element {
           <div className={styles.cardSurface}>
             {/* Target Module & Category */}
             <div className={styles.twoColGrid}>
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+              <div className={styles.colEnd}>
                 <Controller
                   control={productForm.control}
                   name="module"
@@ -1027,8 +1196,8 @@ export function AddProductView(): React.JSX.Element {
                 />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '6px' }}>
+              <div className={styles.colEnd}>
+                <div className={styles.flexEndRow}>
                   <span
                     role="button"
                     tabIndex={0}
@@ -1090,7 +1259,7 @@ export function AddProductView(): React.JSX.Element {
             {/* ── Pricing Type Selector (Matching Design) ── */}
             <div className={styles.pricingTypeSection}>
               <label className={styles.pricingTypeLabel}>
-                Pricing Type <span style={{ color: '#E51937', fontWeight: 800 }}>*</span>
+                Pricing Type <span className={styles.requiredStar}>*</span>
               </label>
 
               <div className={styles.pricingTypeRow}>
@@ -1104,7 +1273,7 @@ export function AddProductView(): React.JSX.Element {
                       onClick={() => handlePricingTypeSelect(pt.id)}
                       className={`${styles.pricingTypeBtn} ${isSelected ? styles.pricingTypeBtnActive : ''}`}
                     >
-                      <Icon size={14} style={{ flexShrink: 0 }} />
+                      <Icon size={14} className={styles.flexShrink0} />
                       <span>{pt.label}</span>
                     </button>
                   );
@@ -1270,18 +1439,22 @@ export function AddProductView(): React.JSX.Element {
                 <div className={styles.presetsWrap}>
                   {profileConfig.suggestedUnits.map((u) => {
                     const isSelected = watchedUnit === u;
+                    const chipSelectedClass = detectedProfile === 'food'
+                      ? styles.presetChipSelectedFood
+                      : detectedProfile === 'apparel'
+                      ? styles.presetChipSelectedApparel
+                      : detectedProfile === 'footwear'
+                      ? styles.presetChipSelectedFootwear
+                      : detectedProfile === 'hardware'
+                      ? styles.presetChipSelectedHardware
+                      : styles.presetChipSelectedStandard;
+
                     return (
                       <button
                         key={u}
                         type="button"
                         onClick={() => productForm.setValue('unit', u)}
-                        className={styles.presetChip}
-                        style={{
-                          fontWeight: isSelected ? 800 : 600,
-                          border: isSelected ? `1.5px solid ${profileConfig.accentColor}` : `1px solid ${tokens.colorNeutralStroke1}`,
-                          backgroundColor: isSelected ? `${profileConfig.accentColor}25` : tokens.colorNeutralBackground1,
-                          color: isSelected ? profileConfig.accentColor : tokens.colorNeutralForeground2,
-                        }}
+                        className={mergeClasses(styles.presetChip, isSelected && chipSelectedClass)}
                       >
                         {u}
                       </button>
@@ -1292,114 +1465,145 @@ export function AddProductView(): React.JSX.Element {
             )}
 
             {/* ── Smart Product Variants & Size Matrix Section ── */}
-            <div
-              className={styles.variantSectionBox}
-              style={{
-                border: `1px solid ${hasVariants || profileConfig.suggestedSizes.length > 0 ? `${profileConfig.accentColor}44` : tokens.colorNeutralStroke1}`,
-                backgroundColor: hasVariants || profileConfig.suggestedSizes.length > 0 ? `${profileConfig.accentColor}08` : tokens.colorNeutralBackground3,
-              }}
-            >
-              <div className={styles.variantHeaderRow}>
-                <div className={styles.variantHeaderLeft}>
-                  <span
-                    className={styles.variantProfileTag}
-                    style={{
-                      backgroundColor: `${profileConfig.accentColor}22`,
-                      color: profileConfig.accentColor,
-                      border: `1px solid ${profileConfig.accentColor}44`,
-                    }}
-                  >
-                    {profileConfig.shortTag}
-                  </span>
-                  <Label className={styles.variantHeaderLabel}>
-                    {detectedProfile === 'apparel'
-                      ? 'Clothing Sizes Matrix (S, M, L, XL)'
-                      : detectedProfile === 'footwear'
-                      ? 'Shoe Sizes Matrix (38 - 45)'
-                      : detectedProfile === 'food'
-                      ? 'Food Portion Sizes'
-                      : 'Product Variants & Sizes'}
-                  </Label>
-                </div>
+            {(() => {
+              const hasVariantTheme = hasVariants || profileConfig.suggestedSizes.length > 0;
+              const sectionThemeClass = detectedProfile === 'food'
+                ? styles.variantSectionActiveFood
+                : detectedProfile === 'apparel'
+                ? styles.variantSectionActiveApparel
+                : detectedProfile === 'footwear'
+                ? styles.variantSectionActiveFootwear
+                : detectedProfile === 'hardware'
+                ? styles.variantSectionActiveHardware
+                : styles.variantSectionActiveStandard;
 
-                <Button
-                  size="small"
-                  appearance="subtle"
-                  icon={<Add20Regular />}
-                  onClick={handleAddCustomVariant}
-                  className={styles.variantCustomBtn}
-                  style={{ color: profileConfig.accentColor }}
+              const tagThemeClass = detectedProfile === 'food'
+                ? styles.profileTagFood
+                : detectedProfile === 'apparel'
+                ? styles.profileTagApparel
+                : detectedProfile === 'footwear'
+                ? styles.profileTagFootwear
+                : detectedProfile === 'hardware'
+                ? styles.profileTagHardware
+                : styles.profileTagStandard;
+
+              const textAccentClass = detectedProfile === 'food'
+                ? styles.textAccentFood
+                : detectedProfile === 'apparel'
+                ? styles.textAccentApparel
+                : detectedProfile === 'footwear'
+                ? styles.textAccentFootwear
+                : detectedProfile === 'hardware'
+                ? styles.textAccentHardware
+                : styles.textAccentStandard;
+
+              const sizeChipSelectedClass = detectedProfile === 'food'
+                ? styles.sizeChipSelectedFood
+                : detectedProfile === 'apparel'
+                ? styles.sizeChipSelectedApparel
+                : detectedProfile === 'footwear'
+                ? styles.sizeChipSelectedFootwear
+                : detectedProfile === 'hardware'
+                ? styles.sizeChipSelectedHardware
+                : styles.sizeChipSelectedStandard;
+
+              return (
+                <div
+                  className={mergeClasses(
+                    styles.variantSectionBox,
+                    hasVariantTheme && sectionThemeClass
+                  )}
                 >
-                  + Custom Variant
-                </Button>
-              </div>
+                  <div className={styles.variantHeaderRow}>
+                    <div className={styles.variantHeaderLeft}>
+                      <span className={mergeClasses(styles.variantProfileTag, tagThemeClass)}>
+                        {profileConfig.shortTag}
+                      </span>
+                      <Label className={styles.variantHeaderLabel}>
+                        {detectedProfile === 'apparel'
+                          ? 'Clothing Sizes Matrix (S, M, L, XL)'
+                          : detectedProfile === 'footwear'
+                          ? 'Shoe Sizes Matrix (38 - 45)'
+                          : detectedProfile === 'food'
+                          ? 'Food Portion Sizes'
+                          : 'Product Variants & Sizes'}
+                      </Label>
+                    </div>
 
-              {/* Size Suggestion Chips */}
-              {profileConfig.suggestedSizes.length > 0 && (
-                <div>
-                  <Caption1 className={styles.variantChipsCaption}>
-                    Click sizes to add to inventory matrix:
-                  </Caption1>
-                  <div className={styles.variantChipsWrap}>
-                    {profileConfig.suggestedSizes.map((size) => {
-                      const isSelected = variants.some((v) => v.label.toLowerCase() === size.toLowerCase());
-                      return (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => handleToggleSize(size)}
-                          className={styles.variantChipBtn}
-                          style={{
-                            border: isSelected ? `2px solid ${profileConfig.accentColor}` : `1px solid ${tokens.colorNeutralStroke1}`,
-                            backgroundColor: isSelected ? `${profileConfig.accentColor}22` : tokens.colorNeutralBackground1,
-                            color: isSelected ? profileConfig.accentColor : tokens.colorNeutralForeground1,
-                            fontWeight: isSelected ? 800 : 600,
-                          }}
-                        >
-                          <span>{size}</span>
-                          {isSelected && <span>✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Variants Matrix Table */}
-              {variants.length > 0 && (
-                <div className={styles.variantTableContainer}>
-                  <div className={styles.variantTableHeaderRow}>
-                    <Caption1 className={styles.variantTableCaption}>
-                      Configured Variants ({variants.length}) — Total Variant Stock:{' '}
-                      <strong style={{ color: tokens.colorNeutralForeground1 }}>
-                        {variants.reduce((sum, v) => sum + (v.stock || 0), 0)} {watchedUnit || 'PCS'}
-                      </strong>
-                    </Caption1>
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      icon={<Add20Regular />}
+                      onClick={handleAddCustomVariant}
+                      className={mergeClasses(styles.variantCustomBtn, textAccentClass)}
+                    >
+                      + Custom Variant
+                    </Button>
                   </div>
 
-                  {/* Table Column Headers */}
-                  <div className={styles.variantColumnHeaderRow}>
-                    <span>Portion / Size</span>
-                    <span>Stock Qty</span>
-                    <span>Price (PKR)</span>
-                    <span>SKU / Barcode</span>
-                    <span></span>
-                  </div>
+                  {/* Size Suggestion Chips */}
+                  {profileConfig.suggestedSizes.length > 0 && (
+                    <div>
+                      <Caption1 className={styles.variantChipsCaption}>
+                        Click sizes to add to inventory matrix:
+                      </Caption1>
+                      <div className={styles.variantChipsWrap}>
+                        {profileConfig.suggestedSizes.map((size) => {
+                          const isSelected = variants.some((v) => v.label.toLowerCase() === size.toLowerCase());
+                          return (
+                            <button
+                              key={size}
+                              type="button"
+                              onClick={() => handleToggleSize(size)}
+                              className={mergeClasses(
+                                styles.variantChipBtn,
+                                isSelected && sizeChipSelectedClass
+                              )}
+                            >
+                              <span>{size}</span>
+                              {isSelected && <span>✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
-                  <div className={styles.variantRowsList}>
-                    {variants.map((v) => {
-                      const displayPrice =
-                        v.price !== undefined
-                          ? v.price
-                          : v.priceDelta !== undefined && v.priceDelta !== 0
-                          ? (watchedPrice || 0) + v.priceDelta
-                          : (watchedPrice || undefined);
+                  {/* Variants Matrix Table */}
+                  {variants.length > 0 && (
+                    <div className={styles.variantTableContainer}>
+                      <div className={styles.variantTableHeaderRow}>
+                        <Caption1 className={styles.variantTableCaption}>
+                          Configured Variants ({variants.length}) — Total Variant Stock:{' '}
+                          <strong className={styles.strongForeground}>
+                            {variants.reduce((sum, v) => sum + (v.stock || 0), 0)} {watchedUnit || 'PCS'}
+                          </strong>
+                        </Caption1>
+                      </div>
 
-                      return (
-                        <div key={v.id} className={styles.variantRowItem}>
-                          <div className={styles.variantRowLabel} style={{ color: profileConfig.accentColor }}>
-                            {v.label}
-                          </div>
+                      {/* Table Column Headers */}
+                      <div className={styles.variantColumnHeaderRow}>
+                        <span>Portion / Size</span>
+                        <span>Stock Qty</span>
+                        <span>Price (PKR)</span>
+                        <span>SKU / Barcode</span>
+                        <span></span>
+                      </div>
+
+                      <div className={styles.variantRowsList}>
+                        {variants.map((v) => {
+                          const displayPrice =
+                            v.price !== undefined
+                              ? v.price
+                              : v.priceDelta !== undefined && v.priceDelta !== 0
+                              ? (watchedPrice || 0) + v.priceDelta
+                              : (watchedPrice || undefined);
+
+                          return (
+                            <div key={v.id} className={styles.variantRowItem}>
+                              <div className={mergeClasses(styles.variantRowLabel, textAccentClass)}>
+                                {v.label}
+                              </div>
 
                           <div>
                             <CustomInput
@@ -1448,6 +1652,8 @@ export function AddProductView(): React.JSX.Element {
                 </div>
               )}
             </div>
+          );
+        })()}
 
             {/* Description */}
             <div>
@@ -1484,7 +1690,7 @@ export function AddProductView(): React.JSX.Element {
                   type="file"
                   accept="image/*"
                   onChange={handleLocalImageSelect}
-                  style={{ display: 'none' }}
+                  className={styles.hiddenInput}
                 />
                 <Image20Regular className={styles.imageDropzoneIcon} />
                 <div className={styles.imageDropzoneText}>
@@ -1531,8 +1737,8 @@ export function AddProductView(): React.JSX.Element {
                     />
                   ) : (
                     <div className={styles.previewNoPhotoBox}>
-                      <Image20Regular style={{ width: 28, height: 28 }} />
-                      <span style={{ fontSize: '11px' }}>No photo</span>
+                      <Image20Regular className={styles.noPhotoIcon} />
+                      <span className={styles.noPhotoText}>No photo</span>
                     </div>
                   )}
                   <div className={styles.previewBadge}>
@@ -1603,7 +1809,7 @@ export function AddProductView(): React.JSX.Element {
             <div className={styles.dialogHeader}>
               <div className={styles.dialogHeaderLeft}>
                 <div className={styles.dialogIconBox}>
-                  <Tag20Regular style={{ width: 20, height: 20 }} />
+                  <Tag20Regular className={styles.tag20Icon} />
                 </div>
                 <div>
                   <div className={styles.dialogTitleText}>Create New Category</div>

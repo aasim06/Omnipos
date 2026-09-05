@@ -3,12 +3,12 @@ import {
   makeStyles,
   tokens,
   Button,
-        Label,
   Subtitle1,
   Body1,
   Caption1,
   Dialog,
   DialogSurface,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   Add20Regular,
@@ -277,6 +277,88 @@ const useStyles = makeStyles({
       backgroundColor: '#be123c',
     },
   },
+
+  /* ── Industry Profile Classes ── */
+  tagIconBoxStandard: {
+    backgroundColor: 'rgba(100, 116, 139, 0.1)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(100, 116, 139, 0.25)', borderBottomColor: 'rgba(100, 116, 139, 0.25)', borderLeftColor: 'rgba(100, 116, 139, 0.25)', borderRightColor: 'rgba(100, 116, 139, 0.25)',
+    color: '#64748b',
+  },
+  tagIconBoxFood: {
+    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.25)', borderBottomColor: 'rgba(229, 25, 55, 0.25)', borderLeftColor: 'rgba(229, 25, 55, 0.25)', borderRightColor: 'rgba(229, 25, 55, 0.25)',
+    color: '#E51937',
+  },
+  tagIconBoxApparel: {
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(139, 92, 246, 0.25)', borderBottomColor: 'rgba(139, 92, 246, 0.25)', borderLeftColor: 'rgba(139, 92, 246, 0.25)', borderRightColor: 'rgba(139, 92, 246, 0.25)',
+    color: '#8b5cf6',
+  },
+  tagIconBoxFootwear: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(59, 130, 246, 0.25)', borderBottomColor: 'rgba(59, 130, 246, 0.25)', borderLeftColor: 'rgba(59, 130, 246, 0.25)', borderRightColor: 'rgba(59, 130, 246, 0.25)',
+    color: '#3b82f6',
+  },
+  tagIconBoxHardware: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(245, 158, 11, 0.25)', borderBottomColor: 'rgba(245, 158, 11, 0.25)', borderLeftColor: 'rgba(245, 158, 11, 0.25)', borderRightColor: 'rgba(245, 158, 11, 0.25)',
+    color: '#f59e0b',
+  },
+  profileBadgeStandard: {
+    backgroundColor: 'rgba(100, 116, 139, 0.1)',
+    color: '#64748b',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(100, 116, 139, 0.25)', borderBottomColor: 'rgba(100, 116, 139, 0.25)', borderLeftColor: 'rgba(100, 116, 139, 0.25)', borderRightColor: 'rgba(100, 116, 139, 0.25)',
+  },
+  profileBadgeFood: {
+    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    color: '#E51937',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.25)', borderBottomColor: 'rgba(229, 25, 55, 0.25)', borderLeftColor: 'rgba(229, 25, 55, 0.25)', borderRightColor: 'rgba(229, 25, 55, 0.25)',
+  },
+  profileBadgeApparel: {
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    color: '#8b5cf6',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(139, 92, 246, 0.25)', borderBottomColor: 'rgba(139, 92, 246, 0.25)', borderLeftColor: 'rgba(139, 92, 246, 0.25)', borderRightColor: 'rgba(139, 92, 246, 0.25)',
+  },
+  profileBadgeFootwear: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    color: '#3b82f6',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(59, 130, 246, 0.25)', borderBottomColor: 'rgba(59, 130, 246, 0.25)', borderLeftColor: 'rgba(59, 130, 246, 0.25)', borderRightColor: 'rgba(59, 130, 246, 0.25)',
+  },
+  profileBadgeHardware: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    color: '#f59e0b',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(245, 158, 11, 0.25)', borderBottomColor: 'rgba(245, 158, 11, 0.25)', borderLeftColor: 'rgba(245, 158, 11, 0.25)', borderRightColor: 'rgba(245, 158, 11, 0.25)',
+  },
+  hintCaptionRow: {
+    marginTop: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+  },
+  hintCaptionLocked: {
+    color: '#059669',
+    fontWeight: 600,
+  },
 });
 
 interface ProfileOption {
@@ -442,30 +524,26 @@ export function CategoriesView(): React.JSX.Element {
               const count = products.filter((p) => p.category === cat.name).length;
               const activeProfile = detectCategoryProfile(cat.name, cat.profile);
               const profileConfig = CATEGORY_PROFILES[activeProfile];
+              const pStyles = profile === 'food'
+                ? { tagBox: styles.tagIconBoxFood, badge: styles.profileBadgeFood }
+                : profile === 'apparel'
+                ? { tagBox: styles.tagIconBoxApparel, badge: styles.profileBadgeApparel }
+                : profile === 'footwear'
+                ? { tagBox: styles.tagIconBoxFootwear, badge: styles.profileBadgeFootwear }
+                : profile === 'hardware'
+                ? { tagBox: styles.tagIconBoxHardware, badge: styles.profileBadgeHardware }
+                : { tagBox: styles.tagIconBoxStandard, badge: styles.profileBadgeStandard };
+
               return (
                 <div key={cat.id} className={styles.categoryCard}>
                   <div className={styles.categoryCardLeft}>
-                    <div
-                      className={styles.tagIconBox}
-                      style={{
-                        backgroundColor: `${profileConfig.accentColor}18`,
-                        border: `1px solid ${profileConfig.accentColor}33`,
-                        color: profileConfig.accentColor,
-                      }}
-                    >
+                    <div className={mergeClasses(styles.tagIconBox, pStyles.tagBox)}>
                       <Tag20Regular className={styles.tagIcon} />
                     </div>
                     <div className={styles.categoryInfo}>
                       <Body1 className={styles.categoryTitle}>{cat.name}</Body1>
                       <div className={styles.categoryMetaRow}>
-                        <span
-                          className={styles.profileBadge}
-                          style={{
-                            backgroundColor: `${profileConfig.accentColor}18`,
-                            color: profileConfig.accentColor,
-                            border: `1px solid ${profileConfig.accentColor}33`,
-                          }}
-                        >
+                        <span className={mergeClasses(styles.profileBadge, pStyles.badge)}>
                           {profileConfig.shortTag}
                         </span>
                         <Caption1 className={styles.productCountText}>
@@ -513,30 +591,26 @@ export function CategoriesView(): React.JSX.Element {
               const count = products.filter((p) => p.category === cat.name).length;
               const activeProfile = detectCategoryProfile(cat.name, cat.profile);
               const profileConfig = CATEGORY_PROFILES[activeProfile];
+              const pStyles = activeProfile === 'food'
+                ? { tagBox: styles.tagIconBoxFood, badge: styles.profileBadgeFood }
+                : activeProfile === 'apparel'
+                ? { tagBox: styles.tagIconBoxApparel, badge: styles.profileBadgeApparel }
+                : activeProfile === 'footwear'
+                ? { tagBox: styles.tagIconBoxFootwear, badge: styles.profileBadgeFootwear }
+                : activeProfile === 'hardware'
+                ? { tagBox: styles.tagIconBoxHardware, badge: styles.profileBadgeHardware }
+                : { tagBox: styles.tagIconBoxStandard, badge: styles.profileBadgeStandard };
+
               return (
                 <div key={cat.id} className={styles.categoryCard}>
                   <div className={styles.categoryCardLeft}>
-                    <div
-                      className={styles.tagIconBox}
-                      style={{
-                        backgroundColor: `${profileConfig.accentColor}18`,
-                        border: `1px solid ${profileConfig.accentColor}33`,
-                        color: profileConfig.accentColor,
-                      }}
-                    >
+                    <div className={mergeClasses(styles.tagIconBox, pStyles.tagBox)}>
                       <Tag20Regular className={styles.tagIcon} />
                     </div>
                     <div className={styles.categoryInfo}>
                       <Body1 className={styles.categoryTitle}>{cat.name}</Body1>
                       <div className={styles.categoryMetaRow}>
-                        <span
-                          className={styles.profileBadge}
-                          style={{
-                            backgroundColor: `${profileConfig.accentColor}18`,
-                            color: profileConfig.accentColor,
-                            border: `1px solid ${profileConfig.accentColor}33`,
-                          }}
-                        >
+                        <span className={mergeClasses(styles.profileBadge, pStyles.badge)}>
                           {profileConfig.shortTag}
                         </span>
                         <Caption1 className={styles.productCountText}>
@@ -654,15 +728,11 @@ export function CategoriesView(): React.JSX.Element {
                   )}
                 />
                 <Caption1
-                  className={styles.hintCaption}
-                  style={{
-                    marginTop: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    color: isProfileLocked ? '#059669' : undefined,
-                    fontWeight: isProfileLocked ? 600 : undefined,
-                  }}
+                  className={mergeClasses(
+                    styles.hintCaption,
+                    styles.hintCaptionRow,
+                    isProfileLocked && styles.hintCaptionLocked
+                  )}
                 >
                   {isProfileLocked ? (
                     <>

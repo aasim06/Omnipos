@@ -19,6 +19,7 @@ import {
   TabList,
   Tab,
   TabValue,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Filled,
@@ -222,6 +223,254 @@ const useStyles = makeStyles({
     fontSize: '12px',
     fontWeight: 500,
   },
+  pageTitle: {
+    fontWeight: 700,
+    fontSize: '20px',
+    color: tokens.colorNeutralForeground1,
+    margin: 0,
+    display: 'block',
+  },
+  pageSubtitle: {
+    color: tokens.colorNeutralForeground2,
+    marginTop: '4px',
+    marginBottom: 0,
+    display: 'block',
+    fontSize: '13px',
+  },
+  headerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  timerIconActive: {
+    fontSize: '18px',
+    width: '18px',
+    height: '18px',
+    color: '#E51937',
+  },
+  timerIconClear: {
+    fontSize: '18px',
+    width: '18px',
+    height: '18px',
+    color: tokens.colorNeutralForeground2,
+  },
+  dialogSurface: {
+    maxWidth: '580px',
+    width: '94vw',
+    padding: '24px',
+    borderRadius: '16px',
+  },
+  dialogTitle: {
+    fontWeight: 800,
+    fontSize: '20px',
+    margin: 0,
+    paddingBottom: '12px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  dialogContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    marginTop: '16px',
+  },
+  formRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '14px',
+    marginTop: '4px',
+  },
+  foodSectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: '4px',
+  },
+  foodSectionTitle: {
+    fontWeight: 700,
+    fontSize: '14px',
+    color: tokens.colorNeutralForeground1,
+  },
+  addItemBtn: {
+    color: '#E51937',
+    fontWeight: 700,
+    padding: '4px 10px',
+  },
+  foodListScroll: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    maxHeight: '320px',
+    overflowY: 'auto',
+    paddingRight: '4px',
+  },
+  foodItemCard: {
+    padding: '14px 16px',
+    borderRadius: '12px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+  },
+  foodItemHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  itemBadge: {
+    fontSize: '11px',
+    fontWeight: 800,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    color: '#E51937',
+    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    border: '1px solid rgba(229, 25, 55, 0.25)',
+    padding: '2px 8px',
+    borderRadius: '6px',
+  },
+  deleteIcon: {
+    color: '#EF4444',
+  },
+  removeItemBtn: {
+    minWidth: 'auto',
+    padding: '4px 8px',
+  },
+  foodItemRowInputs: {
+    display: 'grid',
+    gridTemplateColumns: '130px 1fr',
+    gap: '12px',
+  },
+  addAnotherBtn: {
+    borderStyle: 'dashed',
+    borderColor: tokens.colorNeutralStroke1,
+    fontWeight: 700,
+    justifyContent: 'center',
+    borderRadius: '10px',
+    padding: '10px',
+  },
+  dialogActions: {
+    marginTop: '24px',
+    display: 'flex',
+    gap: '10px',
+    justifyContent: 'flex-end',
+  },
+  cancelBtn: {
+    borderRadius: '8px',
+    fontWeight: 600,
+    padding: '8px 18px',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    whiteSpace: 'nowrap',
+  },
+  sendTicketBtn: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    borderRadius: '8px',
+    fontWeight: 700,
+    padding: '9px 22px',
+    minWidth: '140px',
+    whiteSpace: 'nowrap',
+    border: 'none',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+  },
+  emptyIcon: {
+    width: '56px',
+    height: '56px',
+    opacity: 0.35,
+    color: tokens.colorNeutralForeground3,
+  },
+  emptyTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+    fontSize: '16px',
+  },
+  emptySubtext: {
+    color: tokens.colorNeutralForeground3,
+  },
+  ticketHeaderReady: {
+    backgroundColor: 'rgba(16, 124, 65, 0.08)',
+  },
+  ticketHeaderCooking: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+  },
+  ticketHeaderDefault: {
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  ticketMetaCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  ticketTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  ticketTitle: {
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
+  },
+  timeUrgent: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#EF4444',
+  },
+  timeWarning: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#F59E0B',
+  },
+  timeGood: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#10B981',
+  },
+  ticketTimeSub: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+    fontSize: '12px',
+  },
+  itemName: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  itemVariant: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+    fontSize: '12px',
+  },
+  itemNotes: {
+    color: '#D97706',
+    fontStyle: 'italic',
+    display: 'block',
+    fontSize: '12px',
+  },
+  footerActionsLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  refText: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: '11px',
+  },
+  footerActionsRight: {
+    display: 'flex',
+    gap: '8px',
+  },
+  btnStartCooking: {
+    backgroundColor: '#E51937',
+    borderRadius: '6px',
+  },
+  btnMarkReady: {
+    backgroundColor: '#107C41',
+    borderColor: '#107C41',
+    borderRadius: '6px',
+  },
+  btnMarkServed: {
+    borderRadius: '6px',
+  },
 });
 
 interface KitchenTicket {
@@ -424,29 +673,24 @@ export function KitchenView(): React.JSX.Element {
         <div>
           <Subtitle1
             as="h1"
-            style={{ fontWeight: 700, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0, display: 'block' }}
+            className={styles.pageTitle}
           >
             Kitchen Display System (KDS)
           </Subtitle1>
           <Text
             as="p"
             size={200}
-            style={{ color: tokens.colorNeutralForeground2, marginTop: '4px', marginBottom: 0, display: 'block', fontSize: '13px' }}
+            className={styles.pageSubtitle}
           >
             Chef order queue — auto-synced live with POS counter &amp; online orders
           </Text>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className={styles.headerRight}>
           <div className={styles.activeOrdersChip}>
             <span className={tickets.length > 0 ? styles.chipDotActive : styles.chipDotClear} />
             <Timer24Regular
-              style={{
-                fontSize: '18px',
-                width: '18px',
-                height: '18px',
-                color: tickets.length > 0 ? '#E51937' : tokens.colorNeutralForeground2,
-              }}
+              className={tickets.length > 0 ? styles.timerIconActive : styles.timerIconClear}
             />
             <span className={styles.chipCount}>{tickets.length}</span>
             <span className={styles.chipLabel}>Active Order{tickets.length !== 1 ? 's' : ''}</span>
@@ -459,16 +703,16 @@ export function KitchenView(): React.JSX.Element {
                 Manual Rush Ticket
               </Button>
             </DialogTrigger>
-            <DialogSurface style={{ maxWidth: '580px', width: '94vw', padding: '24px', borderRadius: '16px' }}>
+            <DialogSurface className={styles.dialogSurface}>
               <form onSubmit={handleSubmit(onSubmit)}>
                 <DialogBody>
-                  <DialogTitle style={{ fontWeight: 800, fontSize: '20px', margin: 0, paddingBottom: '12px', borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                  <DialogTitle className={styles.dialogTitle}>
                     Add Manual Rush Order Ticket
                   </DialogTitle>
-                  <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                  <DialogContent className={styles.dialogContent}>
                     
                     {/* Top Row: Customer Name & Order Type */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '4px' }}>
+                    <div className={styles.formRow}>
                       <CustomInput
                         id="customerName"
                         label="Customer / Table Name"
@@ -494,8 +738,8 @@ export function KitchenView(): React.JSX.Element {
                     </div>
 
                     {/* Food Items Section Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '14px', color: tokens.colorNeutralForeground1 }}>
+                    <div className={styles.foodSectionHeader}>
+                      <span className={styles.foodSectionTitle}>
                         Food Items ({fields.length})
                       </span>
                       <Button
@@ -504,54 +748,34 @@ export function KitchenView(): React.JSX.Element {
                         icon={<Add20Regular />}
                         type="button"
                         onClick={() => append({ id: `item_${Date.now()}`, name: '', quantity: 1, notes: '' })}
-                        style={{ color: '#E51937', fontWeight: 700, padding: '4px 10px' }}
+                        className={styles.addItemBtn}
                       >
                         Add Item
                       </Button>
                     </div>
 
                     {/* Multi-Item Fields List with Scroll */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
+                    <div className={styles.foodListScroll}>
                       {fields.map((field, index) => (
                         <div
                           key={field.id}
-                          style={{
-                            padding: '14px 16px',
-                            borderRadius: '12px',
-                            backgroundColor: tokens.colorNeutralBackground3,
-                            border: `1px solid ${tokens.colorNeutralStroke2}`,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '14px',
-                          }}
+                          className={styles.foodItemCard}
                         >
                           {/* Item Header Pill & Delete */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span
-                              style={{
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px',
-                                color: '#E51937',
-                                backgroundColor: 'rgba(229, 25, 55, 0.1)',
-                                border: '1px solid rgba(229, 25, 55, 0.25)',
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                              }}
-                            >
+                          <div className={styles.foodItemHeader}>
+                            <span className={styles.itemBadge}>
                               Item #{index + 1}
                             </span>
                             {fields.length > 1 && (
                               <Button
                                 appearance="subtle"
                                 size="small"
-                                icon={<Delete16Regular style={{ color: '#EF4444' }} />}
+                                icon={<Delete16Regular className={styles.deleteIcon} />}
                                 type="button"
                                 onClick={() => remove(index)}
                                 title="Remove this item"
                                 aria-label="Remove item"
-                                style={{ minWidth: 'auto', padding: '4px 8px' }}
+                                className={styles.removeItemBtn}
                               >
                                 Remove
                               </Button>
@@ -572,7 +796,7 @@ export function KitchenView(): React.JSX.Element {
                           />
 
                           {/* Qty and Notes cleanly aligned in 2 columns */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '12px' }}>
+                          <div className={styles.foodItemRowInputs}>
                             <CustomInput
                               id={`qty-${index}`}
                               type="number"
@@ -602,31 +826,18 @@ export function KitchenView(): React.JSX.Element {
                       type="button"
                       icon={<Add20Regular />}
                       onClick={() => append({ id: `item_${Date.now()}`, name: '', quantity: 1, notes: '' })}
-                      style={{
-                        borderStyle: 'dashed',
-                        borderColor: tokens.colorNeutralStroke1,
-                        fontWeight: 700,
-                        justifyContent: 'center',
-                        borderRadius: '10px',
-                        padding: '10px',
-                      }}
+                      className={styles.addAnotherBtn}
                     >
                       Add Another Food Item
                     </Button>
                   </DialogContent>
 
-                  <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <DialogActions className={styles.dialogActions}>
                     <Button
                       appearance="subtle"
                       type="button"
                       onClick={() => setIsDialogOpen(false)}
-                      style={{
-                        borderRadius: '8px',
-                        fontWeight: 600,
-                        padding: '8px 18px',
-                        border: `1px solid ${tokens.colorNeutralStroke1}`,
-                        whiteSpace: 'nowrap',
-                      }}
+                      className={styles.cancelBtn}
                     >
                       Cancel
                     </Button>
@@ -634,17 +845,7 @@ export function KitchenView(): React.JSX.Element {
                       appearance="primary"
                       type="submit"
                       disabled={createTicketMutation.isPending}
-                      style={{
-                        backgroundColor: '#E51937',
-                        color: '#FFFFFF',
-                        borderRadius: '8px',
-                        fontWeight: 700,
-                        padding: '9px 22px',
-                        minWidth: '140px',
-                        whiteSpace: 'nowrap',
-                        border: 'none',
-                        boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-                      }}
+                      className={styles.sendTicketBtn}
                     >
                       {createTicketMutation.isPending ? 'Sending...' : 'Send to Kitchen'}
                     </Button>
@@ -669,11 +870,11 @@ export function KitchenView(): React.JSX.Element {
       {/* ── Ticket Grid or Empty State ── */}
       {filteredTickets.length === 0 ? (
         <div className={styles.emptyState}>
-          <BowlSalad24Regular style={{ width: 56, height: 56, opacity: 0.35, color: tokens.colorNeutralForeground3 }} />
-          <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground2, display: 'block', fontSize: '16px' }}>
+          <BowlSalad24Regular className={styles.emptyIcon} />
+          <Body1 className={styles.emptyTitle}>
             Kitchen Queue is Clear
           </Body1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
+          <Caption1 className={styles.emptySubtext}>
             No tickets under &quot;{String(activeTab).toUpperCase()}&quot;. New orders from POS counter will appear here automatically.
           </Caption1>
         </div>
@@ -690,27 +891,21 @@ export function KitchenView(): React.JSX.Element {
               <div key={ticket.id} className={styles.ticketCard}>
                 {/* Card Header: icon badge + number + status */}
                 <div
-                  className={styles.ticketHeader}
-                  style={{
-                    backgroundColor: isReady ? 'rgba(16, 124, 65, 0.08)' : isCooking ? 'rgba(245, 158, 11, 0.08)' : tokens.colorNeutralBackground1,
-                  }}
+                  className={mergeClasses(
+                    styles.ticketHeader,
+                    isReady ? styles.ticketHeaderReady : isCooking ? styles.ticketHeaderCooking : styles.ticketHeaderDefault
+                  )}
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Body1 style={{ fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                  <div className={styles.ticketMetaCol}>
+                    <div className={styles.ticketTitleRow}>
+                      <Body1 className={styles.ticketTitle}>
                         Ticket #{String(idx + 1).padStart(3, '0')}
                       </Body1>
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          color: elapsedMins > 15 ? '#EF4444' : elapsedMins > 8 ? '#F59E0B' : '#10B981',
-                        }}
-                      >
+                      <span className={elapsedMins > 15 ? styles.timeUrgent : elapsedMins > 8 ? styles.timeWarning : styles.timeGood}>
                         ⏱ {elapsedMins}m ago
                       </span>
                     </div>
-                    <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px' }}>
+                    <Caption1 className={styles.ticketTimeSub}>
                       {new Date(ticket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       {ticket.orderType ? ` · ${ticket.orderType}` : ' · Dine-In'}
                     </Caption1>
@@ -730,16 +925,16 @@ export function KitchenView(): React.JSX.Element {
                   {(ticket.order?.lines || []).map((line, lIdx) => (
                     <div key={line.id || lIdx} className={styles.itemRow}>
                       <div>
-                        <Body2 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>
+                        <Body2 className={styles.itemName}>
                           {line.name}
                         </Body2>
                         {line.variantLabel && (
-                          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px' }}>
+                          <Caption1 className={styles.itemVariant}>
                             {line.variantLabel}
                           </Caption1>
                         )}
                         {line.notes && (
-                          <Caption1 style={{ color: '#D97706', fontStyle: 'italic', display: 'block', fontSize: '12px' }}>
+                          <Caption1 className={styles.itemNotes}>
                             Chef Note: {line.notes}
                           </Caption1>
                         )}
@@ -753,7 +948,7 @@ export function KitchenView(): React.JSX.Element {
 
                 {/* Card Footer: actions */}
                 <div className={styles.cardFooter}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div className={styles.footerActionsLeft}>
                     <Button
                       appearance="subtle"
                       size="small"
@@ -792,18 +987,18 @@ export function KitchenView(): React.JSX.Element {
                         );
                       }}
                     />
-                    <Caption1 style={{ color: tokens.colorNeutralForeground3, fontSize: '11px' }}>
+                    <Caption1 className={styles.refText}>
                       Ref: #{ticket.orderId?.slice(-6) || '—'}
                     </Caption1>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div className={styles.footerActionsRight}>
                     {ticket.status === 'pending' && (
                       <Button
                         appearance="primary"
                         size="small"
                         icon={<Clock24Regular />}
-                        style={{ backgroundColor: '#E51937', borderRadius: '6px' }}
+                        className={styles.btnStartCooking}
                         onClick={() => updateStatusMutation.mutate({ id: ticket.id, status: 'cooking' })}
                       >
                         Start Cooking
@@ -814,7 +1009,7 @@ export function KitchenView(): React.JSX.Element {
                       <Button
                         appearance="primary"
                         size="small"
-                        style={{ backgroundColor: '#107C41', borderColor: '#107C41', borderRadius: '6px' }}
+                        className={styles.btnMarkReady}
                         icon={<CheckmarkCircle24Filled />}
                         onClick={() => updateStatusMutation.mutate({ id: ticket.id, status: 'ready' })}
                       >
@@ -826,7 +1021,7 @@ export function KitchenView(): React.JSX.Element {
                       <Button
                         appearance="outline"
                         size="small"
-                        style={{ borderRadius: '6px' }}
+                        className={styles.btnMarkServed}
                         onClick={() => updateStatusMutation.mutate({ id: ticket.id, status: 'served' })}
                       >
                         Mark Served

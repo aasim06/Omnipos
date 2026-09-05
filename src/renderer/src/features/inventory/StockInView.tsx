@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   makeStyles,
+  mergeClasses,
   tokens,
   Subtitle1,
   Subtitle2,
@@ -9,8 +10,8 @@ import {
   Caption1,
   Badge,
   Button,
-    Select,
-      Checkbox,
+  Select,
+  Checkbox,
   Tooltip,
   Label,
   Dialog,
@@ -326,6 +327,741 @@ const useStyles = makeStyles({
     color: '#000000',
     borderRadius: '8px',
     fontFamily: 'monospace',
+  },
+
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+  },
+  productImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  productEmoji: {
+    fontSize: '20px',
+  },
+  productTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  productName: {
+    fontSize: '15px',
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
+  },
+  productMetaRow: {
+    fontSize: '11.5px',
+    color: tokens.colorNeutralForeground3,
+    display: 'flex',
+    gap: '10px',
+    marginTop: '3px',
+    flexWrap: 'wrap',
+  },
+  skuCode: {
+    color: tokens.colorNeutralForeground1,
+    fontWeight: 700,
+  },
+  productActionWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  detailStatValLow: {
+    color: '#E51937',
+  },
+  detailStatValBlue: {
+    color: '#0F6CBD',
+  },
+  detailStatValGreen: {
+    color: '#107C41',
+  },
+  detailStatSubtext: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    fontWeight: 500,
+  },
+  variantsWrap: {
+    paddingTop: '8px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'dashed',
+    borderTopColor: tokens.colorNeutralStroke2,
+  },
+  variantsTitle: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    marginBottom: '6px',
+    letterSpacing: '0.4px',
+  },
+  variantsList: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+  },
+  variantItem: {
+    padding: '4px 10px',
+    borderRadius: '6px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    fontSize: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  variantLabel: {
+    color: tokens.colorBrandForeground1,
+  },
+  variantStockText: {
+    color: tokens.colorNeutralForeground3,
+  },
+  variantStockVal: {
+    color: tokens.colorNeutralForeground1,
+  },
+  variantPriceText: {
+    color: tokens.colorNeutralForeground2,
+  },
+  variantSkuBadge: {
+    fontFamily: 'monospace',
+    fontSize: '10.5px',
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: '1px 4px',
+    borderRadius: '3px',
+  },
+  percentSuffix: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    fontWeight: 700,
+    paddingRight: '4px',
+  },
+  discountPill: {
+    fontSize: '11px',
+    color: '#107C41',
+    marginLeft: '6px',
+    fontWeight: 600,
+  },
+  btnIcon18: {
+    width: '18px',
+    height: '18px',
+  },
+  btnIcon16: {
+    width: '16px',
+    height: '16px',
+  },
+  searchWrap: {
+    minWidth: '280px',
+    maxWidth: '420px',
+    width: '100%',
+  },
+  countCaption: {
+    color: tokens.colorNeutralForeground3,
+    fontWeight: 600,
+  },
+  thCenter: {
+    textAlign: 'center',
+  },
+  thRight: {
+    textAlign: 'right',
+  },
+  thCheckbox: {
+    width: '36px',
+    textAlign: 'center',
+  },
+  thActions: {
+    textAlign: 'center',
+    minWidth: '100px',
+  },
+  tdCenter: {
+    textAlign: 'center',
+  },
+  tdRight: {
+    textAlign: 'right',
+    fontWeight: 600,
+  },
+  tdRightGreen: {
+    textAlign: 'right',
+    fontWeight: 700,
+    color: '#107C41',
+  },
+  emptyTd: {
+    padding: '36px',
+    textAlign: 'center',
+    color: tokens.colorNeutralForeground3,
+  },
+  logProdName: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  badgeBold: {
+    fontWeight: 700,
+  },
+  reasonText: {
+    color: tokens.colorNeutralForeground1,
+  },
+  dateTimeText: {
+    color: tokens.colorNeutralForeground2,
+    fontSize: '12px',
+  },
+  actionGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+  },
+  actionBtnPrint: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(0, 120, 212, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(0, 120, 212, 0.25)', borderBottomColor: 'rgba(0, 120, 212, 0.25)',
+    borderLeftColor: 'rgba(0, 120, 212, 0.25)', borderRightColor: 'rgba(0, 120, 212, 0.25)',
+  },
+  actionBtnEdit: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(16, 124, 65, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(16, 124, 65, 0.25)', borderBottomColor: 'rgba(16, 124, 65, 0.25)',
+    borderLeftColor: 'rgba(16, 124, 65, 0.25)', borderRightColor: 'rgba(16, 124, 65, 0.25)',
+  },
+  actionBtnDelete: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(209, 52, 56, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(209, 52, 56, 0.25)', borderBottomColor: 'rgba(209, 52, 56, 0.25)',
+    borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
+  },
+  iconPrint: {
+    color: '#0078D4',
+    width: '16px',
+    height: '16px',
+  },
+  iconEdit: {
+    color: '#107C41',
+    width: '16px',
+    height: '16px',
+  },
+  iconDelete: {
+    color: '#D13438',
+    width: '16px',
+    height: '16px',
+  },
+  drawerHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  drawerHeaderBadge: {
+    backgroundColor: 'rgba(16, 124, 65, 0.12)',
+    color: '#107C41',
+    padding: '8px',
+    borderRadius: '8px',
+    display: 'inline-flex',
+  },
+  drawerHeaderTitle: {
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  drawerHeaderSub: {
+    color: tokens.colorNeutralForeground3,
+  },
+  iconBtn28: {
+    minWidth: '28px',
+    width: '28px',
+    height: '28px',
+    padding: 0,
+  },
+  grid2Col: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+  },
+  drawerCancelBtn: {
+    borderRadius: '8px',
+  },
+  drawerUpdateBtn: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    borderRadius: '8px',
+    fontWeight: 700,
+    borderTopStyle: 'none', borderBottomStyle: 'none',
+    borderLeftStyle: 'none', borderRightStyle: 'none',
+    ':hover': {
+      backgroundColor: '#C6172E',
+    },
+  },
+  printDialogSurface: {
+    borderRadius: '14px',
+    width: '680px',
+    maxWidth: '96vw',
+    padding: '24px',
+    boxSizing: 'border-box',
+  },
+  printHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '16px',
+  },
+  printModalTitle: {
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
+    margin: 0,
+    fontSize: '18px',
+  },
+  iconBtn32: {
+    minWidth: '32px',
+    width: '32px',
+    height: '32px',
+    padding: 0,
+  },
+  printSheet: {
+    backgroundColor: '#FFFFFF',
+    color: '#111827',
+    padding: '20px 22px',
+    borderRadius: '10px',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#E2E8F0', borderBottomColor: '#E2E8F0',
+    borderLeftColor: '#E2E8F0', borderRightColor: '#E2E8F0',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.06)',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  },
+  invoiceTopRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: '2px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#E51937',
+    paddingBottom: '12px',
+  },
+  invoiceBrandWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  logoBox: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '6px',
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 900,
+    fontSize: '15px',
+  },
+  brandName: {
+    fontWeight: 800,
+    fontSize: '16px',
+    color: '#111827',
+    lineHeight: 1.1,
+  },
+  brandSub: {
+    fontSize: '9.5px',
+    color: '#64748B',
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+  },
+  invHeaderRight: {
+    textAlign: 'right',
+  },
+  invTitle: {
+    fontSize: '14px',
+    fontWeight: 800,
+    color: '#E51937',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  invMetaText: {
+    fontSize: '10.5px',
+    color: '#475569',
+    marginTop: '2px',
+  },
+  partiesGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+  },
+  partyCard: {
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#E2E8F0', borderBottomColor: '#E2E8F0',
+    borderLeftColor: '#E2E8F0', borderRightColor: '#E2E8F0',
+    borderRadius: '8px',
+    padding: '10px 14px',
+    backgroundColor: '#F8FAFC',
+  },
+  supplierTag: {
+    fontSize: '9.5px',
+    fontWeight: 800,
+    color: '#E51937',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    marginBottom: '4px',
+  },
+  storeTag: {
+    fontSize: '9.5px',
+    fontWeight: 800,
+    color: '#15803D',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    marginBottom: '4px',
+  },
+  partyName: {
+    fontSize: '13.5px',
+    fontWeight: 800,
+    color: '#0F172A',
+    marginBottom: '3px',
+  },
+  partyDetail: {
+    fontSize: '11px',
+    color: '#475569',
+    lineHeight: 1.35,
+  },
+  vendorBalanceTag: {
+    marginTop: '8px',
+    display: 'inline-block',
+    backgroundColor: '#FEF2F2',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#FECACA', borderBottomColor: '#FECACA',
+    borderLeftColor: '#FECACA', borderRightColor: '#FECACA',
+    borderRadius: '4px',
+    padding: '3px 8px',
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#991B1B',
+  },
+  verifiedTag: {
+    marginTop: '8px',
+    fontSize: '10.5px',
+    color: '#15803D',
+    fontWeight: 700,
+  },
+  slipTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    marginTop: '4px',
+  },
+  slipTrHeader: {
+    backgroundColor: '#F1F5F9',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#CBD5E1',
+    borderBottomWidth: '2px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#94A3B8',
+  },
+  slipTh: {
+    padding: '7px 10px',
+    fontSize: '10px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    color: '#334155',
+  },
+  slipThNum: {
+    padding: '7px 10px',
+    fontSize: '10px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    color: '#334155',
+    width: '32px',
+  },
+  slipThLeft: {
+    padding: '7px 10px',
+    fontSize: '10px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    textAlign: 'left',
+    color: '#334155',
+  },
+  slipThRate: {
+    padding: '7px 10px',
+    fontSize: '10px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    textAlign: 'right',
+    color: '#334155',
+    width: '90px',
+  },
+  slipThQty: {
+    padding: '7px 10px',
+    fontSize: '10px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    color: '#334155',
+    width: '80px',
+  },
+  slipThDiscount: {
+    padding: '7px 10px',
+    fontSize: '10px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    textAlign: 'right',
+    color: '#334155',
+    width: '70px',
+  },
+  slipThTotal: {
+    padding: '7px 10px',
+    fontSize: '10px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    textAlign: 'right',
+    color: '#334155',
+    width: '110px',
+  },
+  slipTdNum: {
+    padding: '8px 10px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#E2E8F0',
+    fontSize: '11px',
+    textAlign: 'center',
+    color: '#64748B',
+  },
+  slipTdDesc: {
+    padding: '8px 10px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#E2E8F0',
+    fontSize: '11.5px',
+  },
+  slipProdTitle: {
+    fontWeight: 700,
+    color: '#0F172A',
+  },
+  slipProdNote: {
+    fontSize: '10px',
+    color: '#64748B',
+    marginTop: '2px',
+  },
+  slipTdRate: {
+    padding: '8px 10px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#E2E8F0',
+    fontSize: '11.5px',
+    textAlign: 'right',
+    fontWeight: 600,
+  },
+  slipTdQty: {
+    padding: '8px 10px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#E2E8F0',
+    fontSize: '11.5px',
+    textAlign: 'center',
+    fontWeight: 800,
+    color: '#15803D',
+  },
+  slipTdDiscount: {
+    padding: '8px 10px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#E2E8F0',
+    fontSize: '11.5px',
+    textAlign: 'right',
+    color: '#64748B',
+  },
+  slipTdTotal: {
+    padding: '8px 10px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#E2E8F0',
+    fontSize: '11.5px',
+    textAlign: 'right',
+    fontWeight: 800,
+    color: '#0F172A',
+  },
+  calcWrap: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    marginTop: '4px',
+  },
+  calcCard: {
+    width: '280px',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#E2E8F0', borderBottomColor: '#E2E8F0',
+    borderLeftColor: '#E2E8F0', borderRightColor: '#E2E8F0',
+    borderRadius: '8px',
+    padding: '10px 14px',
+    backgroundColor: '#F8FAFC',
+  },
+  calcRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '11.5px',
+    color: '#475569',
+    marginBottom: '4px',
+  },
+  calcGrossVal: {
+    fontWeight: 600,
+  },
+  calcDiscountRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '11.5px',
+    color: '#15803D',
+    marginBottom: '4px',
+  },
+  calcInvoiceTotalRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '12.5px',
+    fontWeight: 800,
+    color: '#0F172A',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#0F172A',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#0F172A',
+    padding: '5px 0',
+    margin: '5px 0',
+  },
+  calcInvoiceTotalVal: {
+    color: '#E51937',
+  },
+  calcPrevRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '11px',
+    color: '#475569',
+    marginBottom: '3px',
+  },
+  calcAddedRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '11px',
+    color: '#15803D',
+    marginBottom: '4px',
+  },
+  balanceDueBox: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '11.5px',
+    fontWeight: 800,
+    color: '#991B1B',
+    backgroundColor: '#FEF2F2',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#FECACA', borderBottomColor: '#FECACA',
+    borderLeftColor: '#FECACA', borderRightColor: '#FECACA',
+    borderRadius: '4px',
+    padding: '4px 6px',
+    marginTop: '4px',
+  },
+  signaturesRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginTop: '14px',
+    paddingTop: '10px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'dashed',
+    borderTopColor: '#CBD5E1',
+    fontSize: '10px',
+    color: '#64748B',
+  },
+  signatureBlock: {
+    textAlign: 'center',
+    width: '130px',
+  },
+  signatureLine: {
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#64748B',
+    marginBottom: '3px',
+  },
+  modalActionsBar: {
+    marginTop: '18px',
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  modalCloseBtn: {
+    height: '38px',
+    padding: '0 20px',
+    borderRadius: '8px',
+    fontWeight: 600,
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground1,
+    cursor: 'pointer',
+  },
+  modalPrintBtn: {
+    height: '38px',
+    padding: '0 22px',
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    borderRadius: '8px',
+    borderTopStyle: 'none', borderBottomStyle: 'none',
+    borderLeftStyle: 'none', borderRightStyle: 'none',
+    whiteSpace: 'nowrap',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+    ':hover': {
+      backgroundColor: '#C6172E',
+    },
   },
 });
 
@@ -1083,7 +1819,7 @@ export function StockInView(): React.JSX.Element {
       <div className={styles.card}>
         <span className={styles.cardTitle}>Record Stock In (Receiving Invoice)</span>
 
-        <form onSubmit={form.handleSubmit(onSave)} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={form.handleSubmit(onSave)} className={styles.form}>
           {/* Row 1: Vendor & Product Select */}
           <div className={styles.row1}>
             <div>
@@ -1150,15 +1886,15 @@ export function StockInView(): React.JSX.Element {
                       <img
                         src={selectedProduct.imageUrl}
                         alt={selectedProduct.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        className={styles.productImg}
                       />
                     ) : (
-                      <span style={{ fontSize: '20px' }}>📦</span>
+                      <span className={styles.productEmoji}>📦</span>
                     )}
                   </div>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '15px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                    <div className={styles.productTitleRow}>
+                      <span className={styles.productName}>
                         {selectedProduct.name}
                       </span>
                       <Badge
@@ -1179,10 +1915,10 @@ export function StockInView(): React.JSX.Element {
                           : 'In Stock'}
                       </Badge>
                     </div>
-                    <div style={{ fontSize: '11.5px', color: tokens.colorNeutralForeground3, display: 'flex', gap: '10px', marginTop: '3px', flexWrap: 'wrap' }}>
+                    <div className={styles.productMetaRow}>
                       <span>📁 {selectedProduct.category || 'General'}</span>
                       {selectedProduct.skuCode && (
-                        <span>🏷️ SKU: <code style={{ color: tokens.colorNeutralForeground1, fontWeight: 700 }}>{selectedProduct.skuCode}</code></span>
+                        <span>🏷️ SKU: <code className={styles.skuCode}>{selectedProduct.skuCode}</code></span>
                       )}
                       {selectedProduct.rackLocation && (
                         <span>📍 Rack: {selectedProduct.rackLocation}</span>
@@ -1192,7 +1928,7 @@ export function StockInView(): React.JSX.Element {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className={styles.productActionWrap}>
                   <Button
                     size="small"
                     appearance="subtle"
@@ -1213,8 +1949,10 @@ export function StockInView(): React.JSX.Element {
                 <div className={styles.detailStatBox}>
                   <span className={styles.detailStatLabel}>Current Inventory</span>
                   <span
-                    className={styles.detailStatVal}
-                    style={{ color: (selectedProduct.openingStock ?? 0) <= 0 ? '#E51937' : tokens.colorNeutralForeground1 }}
+                    className={mergeClasses(
+                      styles.detailStatVal,
+                      (selectedProduct.openingStock ?? 0) <= 0 && styles.detailStatValLow
+                    )}
                   >
                     {selectedProduct.openingStock ?? 0} {selectedProduct.unit || 'PCS'}
                   </span>
@@ -1222,14 +1960,14 @@ export function StockInView(): React.JSX.Element {
 
                 <div className={styles.detailStatBox}>
                   <span className={styles.detailStatLabel}>Stock In Addition</span>
-                  <span className={styles.detailStatVal} style={{ color: '#0F6CBD' }}>
+                  <span className={mergeClasses(styles.detailStatVal, styles.detailStatValBlue)}>
                     +{watchedQty} {selectedProduct.unit || 'PCS'}
                   </span>
                 </div>
 
                 <div className={styles.detailStatBox}>
                   <span className={styles.detailStatLabel}>Projected New Stock</span>
-                  <span className={styles.detailStatVal} style={{ color: '#107C41' }}>
+                  <span className={mergeClasses(styles.detailStatVal, styles.detailStatValGreen)}>
                     {(selectedProduct.openingStock ?? 0) + (Number(watchedQty) || 0)} {selectedProduct.unit || 'PCS'}
                   </span>
                 </div>
@@ -1238,7 +1976,7 @@ export function StockInView(): React.JSX.Element {
                   <span className={styles.detailStatLabel}>Cost vs Selling</span>
                   <span className={styles.detailStatVal}>
                     PKR {(watchedPrice || selectedProduct.costPrice || 0).toLocaleString()}{' '}
-                    <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, fontWeight: 500 }}>
+                    <span className={styles.detailStatSubtext}>
                       / {selectedProduct.price ? `Sale: PKR ${selectedProduct.price.toLocaleString()}` : ''}
                     </span>
                   </span>
@@ -1247,39 +1985,21 @@ export function StockInView(): React.JSX.Element {
 
               {/* Portion Sizes / Variants details if configured */}
               {selectedProduct.variants && selectedProduct.variants.length > 0 && (
-                <div style={{ paddingTop: '8px', borderTop: `1px dashed ${tokens.colorNeutralStroke2}` }}>
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      color: tokens.colorNeutralForeground3,
-                      textTransform: 'uppercase',
-                      marginBottom: '6px',
-                      letterSpacing: '0.4px',
-                    }}
-                  >
+                <div className={styles.variantsWrap}>
+                  <div className={styles.variantsTitle}>
                     Configured Portion Sizes / Variants ({selectedProduct.variants.length})
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <div className={styles.variantsList}>
                     {selectedProduct.variants.map((v) => (
                       <div
                         key={v.id}
-                        style={{
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          backgroundColor: tokens.colorNeutralBackground1,
-                          border: `1px solid ${tokens.colorNeutralStroke1}`,
-                          fontSize: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                        }}
+                        className={styles.variantItem}
                       >
-                        <strong style={{ color: tokens.colorBrandForeground1 }}>{v.label}</strong>
-                        <span style={{ color: tokens.colorNeutralForeground3 }}>
-                          Stock: <strong style={{ color: tokens.colorNeutralForeground1 }}>{v.stock ?? 0}</strong>
+                        <strong className={styles.variantLabel}>{v.label}</strong>
+                        <span className={styles.variantStockText}>
+                          Stock: <strong className={styles.variantStockVal}>{v.stock ?? 0}</strong>
                         </span>
-                        <span style={{ color: tokens.colorNeutralForeground2 }}>
+                        <span className={styles.variantPriceText}>
                           Price:{' '}
                           <strong>
                             PKR{' '}
@@ -1290,16 +2010,7 @@ export function StockInView(): React.JSX.Element {
                           </strong>
                         </span>
                         {v.skuCode && (
-                          <span
-                            style={{
-                              fontFamily: 'monospace',
-                              fontSize: '10.5px',
-                              color: tokens.colorNeutralForeground3,
-                              backgroundColor: tokens.colorNeutralBackground3,
-                              padding: '1px 4px',
-                              borderRadius: '3px',
-                            }}
-                          >
+                          <span className={styles.variantSkuBadge}>
                             {v.skuCode}
                           </span>
                         )}
@@ -1360,7 +2071,7 @@ export function StockInView(): React.JSX.Element {
                     max={100}
                     value={field.value !== undefined ? String(field.value) : ''}
                     onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                    rightElement={<span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, fontWeight: 700, paddingRight: '4px' }}>%</span>}
+                    rightElement={<span className={styles.percentSuffix}>%</span>}
                   />
                 )}
               />
@@ -1371,7 +2082,7 @@ export function StockInView(): React.JSX.Element {
               <div className={styles.lineTotalBox}>
                 <span className={styles.lineTotalValue}>Rs. {lineTotal.toLocaleString()}</span>
                 {discountAmount > 0 && (
-                  <span style={{ fontSize: '11px', color: '#107C41', marginLeft: '6px', fontWeight: 600 }}>
+                  <span className={styles.discountPill}>
                     (-{discountAmount.toLocaleString()})
                   </span>
                 )}
@@ -1384,9 +2095,8 @@ export function StockInView(): React.JSX.Element {
                 type="submit"
                 disabled={saveMutation.isPending}
                 className={styles.saveBtn}
-                style={{ width: '100%' }}
               >
-                <Add20Regular style={{ width: 18, height: 18 }} />
+                <Add20Regular className={styles.btnIcon18} />
                 <span>{saveMutation.isPending ? 'Saving...' : 'Save Stock In Invoice'}</span>
               </Button>
             </div>
@@ -1399,7 +2109,7 @@ export function StockInView(): React.JSX.Element {
         <span className={styles.cardTitle}>Stock In (Receiving Logs)</span>
 
         <div className={styles.filterBar}>
-          <div style={{ minWidth: '280px', maxWidth: '420px', width: '100%' }}>
+          <div className={styles.searchWrap}>
             <CustomInput
               label="Search Stock In Logs"
               placeholder="Search by product, reason, note..."
@@ -1410,7 +2120,7 @@ export function StockInView(): React.JSX.Element {
             />
           </div>
 
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, fontWeight: 600 }}>
+          <Caption1 className={styles.countCaption}>
             Total {filteredMovements.length} Stock In Records
           </Caption1>
         </div>
@@ -1420,22 +2130,22 @@ export function StockInView(): React.JSX.Element {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th} style={{ width: '36px', textAlign: 'center' }}>
+                <th className={mergeClasses(styles.th, styles.thCheckbox)}>
                   <Checkbox checked={isAllSelected} onChange={toggleSelectAll} />
                 </th>
                 <th className={styles.th}>ITEM SELECT</th>
-                <th className={styles.th} style={{ textAlign: 'center' }}>QTY</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>UNIT PRICE</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>LINE TOTAL</th>
+                <th className={mergeClasses(styles.th, styles.thCenter)}>QTY</th>
+                <th className={mergeClasses(styles.th, styles.thRight)}>UNIT PRICE</th>
+                <th className={mergeClasses(styles.th, styles.thRight)}>LINE TOTAL</th>
                 <th className={styles.th}>VENDOR / SUPPLIER</th>
                 <th className={styles.th}>DATE &amp; TIME</th>
-                <th className={styles.th} style={{ textAlign: 'center', minWidth: '100px' }}>ACTIONS</th>
+                <th className={mergeClasses(styles.th, styles.thActions)}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {filteredMovements.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+                  <td colSpan={8} className={styles.emptyTd}>
                     No Stock In shipment records found.
                   </td>
                 </tr>
@@ -1447,53 +2157,45 @@ export function StockInView(): React.JSX.Element {
 
                   return (
                     <tr key={mov.id} className={styles.tableRow}>
-                      <td className={styles.td} style={{ textAlign: 'center' }}>
+                      <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         <Checkbox checked={isChecked} onChange={() => toggleSelectRow(mov.id)} />
                       </td>
                       <td className={styles.td}>
-                        <span style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>
+                        <span className={styles.logProdName}>
                           {mov.productName}
                         </span>
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'center' }}>
-                        <Badge appearance="tint" color="success" style={{ fontWeight: 700 }}>
+                      <td className={mergeClasses(styles.td, styles.tdCenter)}>
+                        <Badge appearance="tint" color="success" className={styles.badgeBold}>
                           +{mov.quantity}
                         </Badge>
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>
+                      <td className={mergeClasses(styles.td, styles.tdRight)}>
                         {mov.unitCost !== null && mov.unitCost !== undefined ? formatPKR(mov.unitCost) : '—'}
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700, color: '#107C41' }}>
+                      <td className={mergeClasses(styles.td, styles.tdRightGreen)}>
                         {totalLine > 0 ? formatPKR(totalLine) : '—'}
                       </td>
                       <td className={styles.td}>
-                        <span style={{ color: tokens.colorNeutralForeground1 }}>
+                        <span className={styles.reasonText}>
                           {mov.reason || 'Supplier Purchase'}
                         </span>
                       </td>
                       <td className={styles.td}>
-                        <span style={{ color: tokens.colorNeutralForeground2, fontSize: '12px' }}>
+                        <span className={styles.dateTimeText}>
                           {dt.toLocaleDateString()} at {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'center' }}>
+                      <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         {/* ── ACTION ICONS: Print, Edit (Right Drawer), Delete ── */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <div className={styles.actionGroup}>
                           <Tooltip content="Print Receiving Slip" relationship="label" positioning="above">
                             <Button
                               appearance="subtle"
                               size="small"
-                              icon={<Print20Regular style={{ color: '#0078D4', width: 16, height: 16 }} />}
+                              icon={<Print20Regular className={styles.iconPrint} />}
                               onClick={() => handleOpenPrint(mov)}
-                              style={{
-                                width: '30px',
-                                height: '30px',
-                                minWidth: '30px',
-                                padding: 0,
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(0, 120, 212, 0.12)',
-                                border: '1px solid rgba(0, 120, 212, 0.25)',
-                              }}
+                              className={styles.actionBtnPrint}
                             />
                           </Tooltip>
 
@@ -1501,17 +2203,9 @@ export function StockInView(): React.JSX.Element {
                             <Button
                               appearance="subtle"
                               size="small"
-                              icon={<Edit20Regular style={{ color: '#107C41', width: 16, height: 16 }} />}
+                              icon={<Edit20Regular className={styles.iconEdit} />}
                               onClick={() => handleOpenEdit(mov)}
-                              style={{
-                                width: '30px',
-                                height: '30px',
-                                minWidth: '30px',
-                                padding: 0,
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(16, 124, 65, 0.12)',
-                                border: '1px solid rgba(16, 124, 65, 0.25)',
-                              }}
+                              className={styles.actionBtnEdit}
                             />
                           </Tooltip>
 
@@ -1519,17 +2213,9 @@ export function StockInView(): React.JSX.Element {
                             <Button
                               appearance="subtle"
                               size="small"
-                              icon={<Delete20Regular style={{ color: '#D13438', width: 16, height: 16 }} />}
+                              icon={<Delete20Regular className={styles.iconDelete} />}
                               onClick={() => handleDelete(mov.id)}
-                              style={{
-                                width: '30px',
-                                height: '30px',
-                                minWidth: '30px',
-                                padding: 0,
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(209, 52, 56, 0.12)',
-                                border: '1px solid rgba(209, 52, 56, 0.25)',
-                              }}
+                              className={styles.actionBtnDelete}
                             />
                           </Tooltip>
                         </div>
@@ -1549,23 +2235,15 @@ export function StockInView(): React.JSX.Element {
           <div className={styles.drawerPanel} onClick={(e) => e.stopPropagation()}>
             {/* Drawer Header */}
             <div className={styles.drawerHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span
-                  style={{
-                    backgroundColor: 'rgba(16, 124, 65, 0.12)',
-                    color: '#107C41',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    display: 'inline-flex',
-                  }}
-                >
+              <div className={styles.drawerHeaderLeft}>
+                <span className={styles.drawerHeaderBadge}>
                   <Edit20Regular />
                 </span>
                 <div>
-                  <Subtitle2 style={{ fontWeight: 800, color: tokens.colorNeutralForeground1, display: 'block' }}>
+                  <Subtitle2 className={styles.drawerHeaderTitle}>
                     Edit Stock In Invoice
                   </Subtitle2>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
+                  <Caption1 className={styles.drawerHeaderSub}>
                     Record #{editingMovement?.id.slice(-6).toUpperCase()}
                   </Caption1>
                 </div>
@@ -1575,7 +2253,7 @@ export function StockInView(): React.JSX.Element {
                 appearance="subtle"
                 icon={<Dismiss20Regular />}
                 onClick={() => setIsDrawerOpen(false)}
-                style={{ minWidth: '28px', width: '28px', height: '28px', padding: 0 }}
+                className={styles.iconBtn28}
               />
             </div>
 
@@ -1619,7 +2297,7 @@ export function StockInView(): React.JSX.Element {
               </div>
 
               {/* Quantity & Unit Cost */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className={styles.grid2Col}>
                 <div>
                   <Controller
                     control={editForm.control}
@@ -1668,7 +2346,7 @@ export function StockInView(): React.JSX.Element {
                       max={100}
                       value={field.value !== undefined ? String(field.value) : ''}
                       onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                      rightElement={<span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, fontWeight: 700, paddingRight: '4px' }}>%</span>}
+                      rightElement={<span className={styles.percentSuffix}>%</span>}
                     />
                   )}
                 />
@@ -1679,7 +2357,7 @@ export function StockInView(): React.JSX.Element {
                 <div className={styles.lineTotalBox}>
                   <span className={styles.lineTotalValue}>Rs. {editLineTotal.toLocaleString()}</span>
                   {editDiscountAmount > 0 && (
-                    <span style={{ fontSize: '11px', color: '#107C41', marginLeft: '6px', fontWeight: 600 }}>
+                    <span className={styles.discountPill}>
                       (-{editDiscountAmount.toLocaleString()})
                     </span>
                   )}
@@ -1709,7 +2387,7 @@ export function StockInView(): React.JSX.Element {
                 appearance="subtle"
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}
-                style={{ borderRadius: '8px' }}
+                className={styles.drawerCancelBtn}
               >
                 Cancel
               </Button>
@@ -1718,13 +2396,7 @@ export function StockInView(): React.JSX.Element {
                 type="submit"
                 form="editDrawerForm"
                 disabled={updateMutation.isPending}
-                style={{
-                  backgroundColor: '#E51937',
-                  color: '#FFFFFF',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  border: 'none',
-                }}
+                className={styles.drawerUpdateBtn}
               >
                 {updateMutation.isPending ? 'Updating...' : 'Save Changes'}
               </Button>
@@ -1735,179 +2407,141 @@ export function StockInView(): React.JSX.Element {
 
       {/* ── PRINT RECEIVING INVOICE MODAL ── */}
       <Dialog open={isPrintModalOpen} onOpenChange={(_, d) => setIsPrintModalOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: '14px', width: '680px', maxWidth: '96vw', padding: '24px', boxSizing: 'border-box' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <Subtitle2 style={{ fontWeight: 800, color: tokens.colorNeutralForeground1, margin: 0, fontSize: '18px' }}>
+        <DialogSurface className={styles.printDialogSurface}>
+          <div className={styles.printHeader}>
+            <Subtitle2 className={styles.printModalTitle}>
               Purchase Receiving Invoice
             </Subtitle2>
             <Button
               appearance="subtle"
               icon={<Dismiss20Regular />}
               onClick={() => setIsPrintModalOpen(false)}
-              style={{ minWidth: '32px', width: '32px', height: '32px', padding: 0 }}
+              className={styles.iconBtn32}
             />
           </div>
 
           <div>
             {printingMovement && (
-              <div
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  color: '#111827',
-                  padding: '20px 22px',
-                  borderRadius: '10px',
-                  border: '1px solid #E2E8F0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '14px',
-                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.06)',
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                }}
-              >
+              <div className={styles.printSheet}>
                 {/* Invoice Top Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #E51937', paddingBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '6px',
-                        backgroundColor: '#E51937',
-                        color: '#FFFFFF',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 900,
-                        fontSize: '15px',
-                      }}
-                    >
+                <div className={styles.invoiceTopRow}>
+                  <div className={styles.invoiceBrandWrap}>
+                    <div className={styles.logoBox}>
                       OP
                     </div>
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: '16px', color: '#111827', lineHeight: 1.1 }}>OmniPos</div>
-                      <div style={{ fontSize: '9.5px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      <div className={styles.brandName}>OmniPos</div>
+                      <div className={styles.brandSub}>
                         Enterprise POS &amp; Inventory
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '14px', fontWeight: 800, color: '#E51937', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <div className={styles.invHeaderRight}>
+                    <div className={styles.invTitle}>
                       RECEIVING INVOICE
                     </div>
-                    <div style={{ fontSize: '10.5px', color: '#475569', marginTop: '2px' }}>
+                    <div className={styles.invMetaText}>
                       <strong>Inv #:</strong> {printDocNo}
                     </div>
-                    <div style={{ fontSize: '10.5px', color: '#475569' }}>
+                    <div className={styles.invMetaText}>
                       <strong>Date:</strong> {printDate} {printTime}
                     </div>
                   </div>
                 </div>
 
                 {/* Parties Information (Vendor & Store) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className={styles.partiesGrid}>
                   {/* Vendor / Supplier Box */}
-                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 14px', backgroundColor: '#F8FAFC' }}>
-                    <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#E51937', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                  <div className={styles.partyCard}>
+                    <div className={styles.supplierTag}>
                       Supplier / Vendor Details
                     </div>
-                    <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A', marginBottom: '3px' }}>
+                    <div className={styles.partyName}>
                       {currentPrintVendor?.name || printingMovement.reason || 'Vendor / Supplier'}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#475569', lineHeight: 1.35 }}>
+                    <div className={styles.partyDetail}>
                       <div><strong>Rep:</strong> {currentPrintVendor?.contactPerson || 'Authorized Agent'}</div>
                       <div><strong>Phone:</strong> {currentPrintVendor?.phone || 'N/A'}</div>
                       <div><strong>Address:</strong> {currentPrintVendor?.address || 'Local Supply'}</div>
                     </div>
-                    <div
-                      style={{
-                        marginTop: '8px',
-                        display: 'inline-block',
-                        backgroundColor: '#FEF2F2',
-                        border: '1px solid #FECACA',
-                        borderRadius: '4px',
-                        padding: '3px 8px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: '#991B1B',
-                      }}
-                    >
+                    <div className={styles.vendorBalanceTag}>
                       Vendor Balance: Rs. {printVendorBalance.toLocaleString()} PKR
                     </div>
                   </div>
 
                   {/* Store / Destination Box */}
-                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 14px', backgroundColor: '#F8FAFC' }}>
-                    <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                  <div className={styles.partyCard}>
+                    <div className={styles.storeTag}>
                       Receiving Facility / Store
                     </div>
-                    <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A', marginBottom: '3px' }}>
+                    <div className={styles.partyName}>
                       OmniPos Central Branch &amp; Store
                     </div>
-                    <div style={{ fontSize: '11px', color: '#475569', lineHeight: 1.35 }}>
+                    <div className={styles.partyDetail}>
                       <div><strong>Warehouse:</strong> Inward Logistics Bay #1</div>
                       <div><strong>Received By:</strong> Store Manager (Admin)</div>
                       <div><strong>Account:</strong> Inventory Trade Payable</div>
                     </div>
-                    <div style={{ marginTop: '8px', fontSize: '10.5px', color: '#15803D', fontWeight: 700 }}>
+                    <div className={styles.verifiedTag}>
                       ✓ Stock Count Verified &amp; Added
                     </div>
                   </div>
                 </div>
 
                 {/* Itemized Table */}
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px' }}>
+                <table className={styles.slipTable}>
                   <thead>
-                    <tr style={{ background: '#F1F5F9', borderTop: '1px solid #CBD5E1', borderBottom: '2px solid #94A3B8' }}>
-                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center', color: '#334155', width: '32px' }}>#</th>
-                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'left', color: '#334155' }}>Item Description</th>
-                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'right', color: '#334155', width: '90px' }}>Unit Rate</th>
-                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center', color: '#334155', width: '80px' }}>Quantity</th>
-                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'right', color: '#334155', width: '70px' }}>Discount</th>
-                      <th style={{ padding: '7px 10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', textAlign: 'right', color: '#334155', width: '110px' }}>Total (PKR)</th>
+                    <tr className={styles.slipTrHeader}>
+                      <th className={styles.slipThNum}>#</th>
+                      <th className={styles.slipThLeft}>Item Description</th>
+                      <th className={styles.slipThRate}>Unit Rate</th>
+                      <th className={styles.slipThQty}>Quantity</th>
+                      <th className={styles.slipThDiscount}>Discount</th>
+                      <th className={styles.slipThTotal}>Total (PKR)</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11px', textAlign: 'center', color: '#64748B' }}>1</td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11.5px' }}>
-                        <div style={{ fontWeight: 700, color: '#0F172A' }}>{printingMovement.productName}</div>
-                        {printingMovement.note && <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px' }}>Note: {printingMovement.note}</div>}
+                      <td className={styles.slipTdNum}>1</td>
+                      <td className={styles.slipTdDesc}>
+                        <div className={styles.slipProdTitle}>{printingMovement.productName}</div>
+                        {printingMovement.note && <div className={styles.slipProdNote}>Note: {printingMovement.note}</div>}
                       </td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11.5px', textAlign: 'right', fontWeight: 600 }}>{formatPKR(printUnitCost)}</td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11.5px', textAlign: 'center', fontWeight: 800, color: '#15803D' }}>+{printQty} units</td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11.5px', textAlign: 'right', color: '#64748B' }}>{printDiscountPercent > 0 ? `${printDiscountPercent}%` : '—'}</td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontSize: '11.5px', textAlign: 'right', fontWeight: 800, color: '#0F172A' }}>{formatPKR(printNetTotal)}</td>
+                      <td className={styles.slipTdRate}>{formatPKR(printUnitCost)}</td>
+                      <td className={styles.slipTdQty}>+{printQty} units</td>
+                      <td className={styles.slipTdDiscount}>{printDiscountPercent > 0 ? `${printDiscountPercent}%` : '—'}</td>
+                      <td className={styles.slipTdTotal}>{formatPKR(printNetTotal)}</td>
                     </tr>
                   </tbody>
                 </table>
 
                 {/* Calculation & Vendor Balance Breakdown */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                  <div style={{ width: '280px', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 14px', backgroundColor: '#F8FAFC' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#475569', marginBottom: '4px' }}>
+                <div className={styles.calcWrap}>
+                  <div className={styles.calcCard}>
+                    <div className={styles.calcRow}>
                       <span>Gross Total:</span>
-                      <span style={{ fontWeight: 600 }}>{formatPKR(printGrossTotal)}</span>
+                      <span className={styles.calcGrossVal}>{formatPKR(printGrossTotal)}</span>
                     </div>
                     {printDiscountAmount > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#15803D', marginBottom: '4px' }}>
+                      <div className={styles.calcDiscountRow}>
                         <span>Discount ({printDiscountPercent}%):</span>
                         <span>- {formatPKR(printDiscountAmount)}</span>
                       </div>
                     )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', fontWeight: 800, color: '#0F172A', borderTop: '1px solid #0F172A', borderBottom: '1px solid #0F172A', padding: '5px 0', margin: '5px 0' }}>
+                    <div className={styles.calcInvoiceTotalRow}>
                       <span>This Invoice Total:</span>
-                      <span style={{ color: '#E51937' }}>{formatPKR(printNetTotal)}</span>
+                      <span className={styles.calcInvoiceTotalVal}>{formatPKR(printNetTotal)}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#475569', marginBottom: '3px' }}>
+                    <div className={styles.calcPrevRow}>
                       <span>Previous Vendor Balance:</span>
                       <span>{formatPKR(printPrevBalance)}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#15803D', marginBottom: '4px' }}>
+                    <div className={styles.calcAddedRow}>
                       <span>This Bill Added:</span>
                       <span>+ {formatPKR(printNetTotal)}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', fontWeight: 800, color: '#991B1B', backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '4px', padding: '4px 6px', marginTop: '4px' }}>
+                    <div className={styles.balanceDueBox}>
                       <span>Total Balance Due:</span>
                       <span>{formatPKR(printVendorBalance)}</span>
                     </div>
@@ -1915,17 +2549,17 @@ export function StockInView(): React.JSX.Element {
                 </div>
 
                 {/* Signatures */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed #CBD5E1', fontSize: '10px', color: '#64748B' }}>
-                  <div style={{ textAlign: 'center', width: '130px' }}>
-                    <div style={{ borderTop: '1px solid #64748B', marginBottom: '3px' }}></div>
+                <div className={styles.signaturesRow}>
+                  <div className={styles.signatureBlock}>
+                    <div className={styles.signatureLine}></div>
                     <div>Vendor / Delivery Sign</div>
                   </div>
-                  <div style={{ textAlign: 'center', width: '130px' }}>
-                    <div style={{ borderTop: '1px solid #64748B', marginBottom: '3px' }}></div>
+                  <div className={styles.signatureBlock}>
+                    <div className={styles.signatureLine}></div>
                     <div>Storekeeper Received</div>
                   </div>
-                  <div style={{ textAlign: 'center', width: '130px' }}>
-                    <div style={{ borderTop: '1px solid #64748B', marginBottom: '3px' }}></div>
+                  <div className={styles.signatureBlock}>
+                    <div className={styles.signatureLine}></div>
                     <div>Authorized Seal</div>
                   </div>
                 </div>
@@ -1934,42 +2568,19 @@ export function StockInView(): React.JSX.Element {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ marginTop: '18px', display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <div className={styles.modalActionsBar}>
             <Button
               appearance="secondary"
               onClick={() => setIsPrintModalOpen(false)}
-              style={{
-                height: '38px',
-                padding: '0 20px',
-                borderRadius: '8px',
-                fontWeight: 600,
-                border: `1px solid ${tokens.colorNeutralStroke1}`,
-                backgroundColor: tokens.colorNeutralBackground3,
-                color: tokens.colorNeutralForeground1,
-                cursor: 'pointer',
-              }}
+              className={styles.modalCloseBtn}
             >
               Close
             </Button>
             <Button
               appearance="primary"
-              icon={<Print20Regular style={{ width: 18, height: 18 }} />}
+              icon={<Print20Regular className={styles.btnIcon18} />}
               onClick={handlePrint}
-              style={{
-                height: '38px',
-                padding: '0 22px',
-                backgroundColor: '#E51937',
-                color: '#FFFFFF',
-                fontWeight: 700,
-                borderRadius: '8px',
-                border: 'none',
-                whiteSpace: 'nowrap',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
-              }}
+              className={styles.modalPrintBtn}
             >
               Print Invoice
             </Button>

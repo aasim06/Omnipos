@@ -15,6 +15,7 @@ import {
   DialogBody,
   DialogActions,
   DialogContent,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   Search20Regular,
@@ -105,6 +106,11 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground1,
     display: 'block',
     letterSpacing: '-0.2px',
+  },
+  cardForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
   },
   fieldLabel: {
     fontSize: '11px',
@@ -259,6 +265,297 @@ const useStyles = makeStyles({
     gap: '10px',
     backgroundColor: tokens.colorNeutralBackground3,
   },
+  saveBtnIcon: {
+    width: '16px',
+    height: '16px',
+  },
+  directoryTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+  },
+  searchBoxContainer: {
+    minWidth: '280px',
+    maxWidth: '420px',
+    width: '100%',
+  },
+  totalCountCaption: {
+    color: tokens.colorNeutralForeground3,
+    fontWeight: 600,
+  },
+  thSelect: {
+    width: '36px',
+    textAlign: 'center',
+  },
+  thRight: {
+    textAlign: 'right',
+  },
+  thCenter: {
+    textAlign: 'center',
+    minWidth: '100px',
+  },
+  emptyTd: {
+    padding: '36px',
+    textAlign: 'center',
+    color: tokens.colorNeutralForeground3,
+  },
+  tdCenter: {
+    textAlign: 'center',
+  },
+  vendorNameCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  vendorNameText: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    fontSize: '13px',
+  },
+  vendorRepText: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+  },
+  badgeBold: {
+    fontWeight: 600,
+  },
+  phoneText: {
+    color: tokens.colorNeutralForeground1,
+    fontWeight: 500,
+  },
+  secondaryText: {
+    color: tokens.colorNeutralForeground2,
+    fontSize: '12px',
+  },
+  tdBalanceDebit: {
+    textAlign: 'right',
+    fontWeight: 700,
+    color: '#D13438',
+  },
+  tdBalanceCredit: {
+    textAlign: 'right',
+    fontWeight: 700,
+    color: '#107C41',
+  },
+  actionBtnsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+  },
+  actionBtnStockIn: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(16, 124, 65, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(16, 124, 65, 0.25)', borderBottomColor: 'rgba(16, 124, 65, 0.25)', borderLeftColor: 'rgba(16, 124, 65, 0.25)', borderRightColor: 'rgba(16, 124, 65, 0.25)',
+  },
+  actionBtnPrint: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(0, 120, 212, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(0, 120, 212, 0.25)', borderBottomColor: 'rgba(0, 120, 212, 0.25)', borderLeftColor: 'rgba(0, 120, 212, 0.25)', borderRightColor: 'rgba(0, 120, 212, 0.25)',
+  },
+  actionBtnEdit: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.25)', borderBottomColor: 'rgba(229, 25, 55, 0.25)', borderLeftColor: 'rgba(229, 25, 55, 0.25)', borderRightColor: 'rgba(229, 25, 55, 0.25)',
+  },
+  actionBtnDelete: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(209, 52, 56, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(209, 52, 56, 0.25)', borderBottomColor: 'rgba(209, 52, 56, 0.25)', borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
+  },
+  iconStockIn: {
+    color: '#107C41',
+    width: '16px',
+    height: '16px',
+  },
+  iconPrint: {
+    color: '#0078D4',
+    width: '16px',
+    height: '16px',
+  },
+  iconEdit: {
+    color: '#E51937',
+    width: '16px',
+    height: '16px',
+  },
+  iconDelete: {
+    color: '#D13438',
+    width: '16px',
+    height: '16px',
+  },
+  drawerHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  drawerTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    margin: 0,
+  },
+  drawerCloseBtn: {
+    minWidth: 'auto',
+    padding: '6px',
+  },
+  drawerForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    overflow: 'hidden',
+  },
+  drawerSaveBtn: {
+    backgroundColor: '#E51937',
+  },
+  printModalSurface: {
+    maxWidth: '480px',
+    width: '92vw',
+    borderRadius: '12px',
+    padding: '24px',
+  },
+  printModalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '16px',
+  },
+  printModalTitle: {
+    margin: 0,
+    fontSize: '18px',
+    fontWeight: 800,
+  },
+  printModalCloseBtn: {
+    minWidth: 'auto',
+    padding: '4px',
+  },
+  slipContainer: {
+    backgroundColor: '#FFFFFF',
+    color: '#000000',
+    padding: '24px',
+    borderRadius: '8px',
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    lineHeight: '1.6',
+    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+  },
+  slipHeader: {
+    textAlign: 'center',
+    borderBottomTopWidth: 0,
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'dashed',
+    borderBottomColor: '#000000',
+    paddingBottom: '10px',
+    marginBottom: '12px',
+  },
+  slipStoreTitle: {
+    fontWeight: 700,
+    fontSize: '16px',
+    letterSpacing: '1px',
+  },
+  slipDateText: {
+    fontSize: '10px',
+    color: '#555555',
+  },
+  slipSection: {
+    marginBottom: '12px',
+  },
+  slipRowBetween: {
+    display: 'flex',
+    justifyContent: 'space-between',
+  },
+  slipBoldLabel: {
+    fontWeight: 700,
+  },
+  slipInvoicesBox: {
+    margin: '10px 0',
+    borderTopWidth: '1px',
+    borderTopStyle: 'dashed',
+    borderTopColor: '#BBBBBB',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'dashed',
+    borderBottomColor: '#BBBBBB',
+    padding: '8px 0',
+  },
+  slipInvoicesHeader: {
+    fontWeight: 700,
+    fontSize: '11px',
+    marginBottom: '4px',
+    textTransform: 'uppercase',
+    color: '#333333',
+  },
+  slipInvoiceRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '11px',
+    padding: '2px 0',
+  },
+  slipInvoiceCost: {
+    fontWeight: 600,
+  },
+  slipBalanceBox: {
+    borderTopWidth: '1px',
+    borderTopStyle: 'dashed',
+    borderTopColor: '#000000',
+    paddingTop: '10px',
+    marginBottom: '10px',
+  },
+  slipBalanceRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontWeight: 700,
+    fontSize: '14px',
+  },
+  slipFooterSignature: {
+    textAlign: 'center',
+    fontSize: '10px',
+    color: '#777777',
+    marginTop: '16px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#DDDDDD',
+    paddingTop: '8px',
+  },
+  printModalActions: {
+    marginTop: '20px',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px',
+  },
+  printModalCloseActionBtn: {
+    height: '38px',
+    padding: '0 20px',
+    borderRadius: '6px',
+  },
+  printModalConfirmBtn: {
+    height: '38px',
+    padding: '0 22px',
+    borderRadius: '6px',
+    backgroundColor: '#0078D4',
+    whiteSpace: 'nowrap',
+    fontWeight: 600,
+  },
 });
 
 export function VendorsView(): React.JSX.Element {
@@ -412,12 +709,12 @@ export function VendorsView(): React.JSX.Element {
       {/* ── CARD 1: Add New Vendor / Party Inline Form ───────────────── */}
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <Subtitle2 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1 }}>
+          <Subtitle2 className={styles.directoryTitle}>
             Add New Vendor / Party
           </Subtitle2>
         </div>
 
-        <form onSubmit={form.handleSubmit(onSave)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={form.handleSubmit(onSave)} className={styles.cardForm}>
           {/* Row 1: Identification & Classification */}
           <div className={styles.row1}>
             {/* Field 1: VENDOR / PERSON NAME */}
@@ -500,7 +797,7 @@ export function VendorsView(): React.JSX.Element {
             {/* Save Button */}
             <div>
               <button type="submit" className={styles.saveBtn}>
-                <Add20Regular style={{ width: 16, height: 16 }} />
+                <Add20Regular className={styles.saveBtnIcon} />
                 <span>Save Vendor / Supplier</span>
               </button>
             </div>
@@ -511,14 +808,14 @@ export function VendorsView(): React.JSX.Element {
       {/* ── CARD 2: Vendors & Suppliers Directory (Logs Table) ───────── */}
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <Subtitle2 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1 }}>
+          <Subtitle2 className={styles.directoryTitle}>
             Vendors &amp; Suppliers Directory
           </Subtitle2>
         </div>
 
         {/* Filter Bar */}
         <div className={styles.filterBar}>
-          <div style={{ minWidth: '280px', maxWidth: '420px', width: '100%' }}>
+          <div className={styles.searchBoxContainer}>
             <CustomInput
               placeholder="Search Vendors by Name, Phone, Address, Category..."
               leftIcon={<Search20Regular />}
@@ -527,7 +824,7 @@ export function VendorsView(): React.JSX.Element {
             />
           </div>
 
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, fontWeight: 600 }}>
+          <Caption1 className={styles.totalCountCaption}>
             Total {filteredVendors.length} Vendor Records
           </Caption1>
         </div>
@@ -537,22 +834,22 @@ export function VendorsView(): React.JSX.Element {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th} style={{ width: '36px', textAlign: 'center' }}>
+                <th className={mergeClasses(styles.th, styles.thSelect)}>
                   <Checkbox checked={isAllSelected} onChange={toggleSelectAll} />
                 </th>
                 <th className={styles.th}>VENDOR / PERSON NAME</th>
                 <th className={styles.th}>PARTY TYPE</th>
                 <th className={styles.th}>PHONE NUMBER</th>
                 <th className={styles.th}>COMPANY / ADDRESS NOTE</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>BALANCE</th>
+                <th className={mergeClasses(styles.th, styles.thRight)}>BALANCE</th>
                 <th className={styles.th}>REGISTERED DATE</th>
-                <th className={styles.th} style={{ textAlign: 'center', minWidth: '100px' }}>ACTIONS</th>
+                <th className={mergeClasses(styles.th, styles.thCenter)}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {filteredVendors.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+                  <td colSpan={8} className={styles.emptyTd}>
                     No vendor or supplier records found.
                   </td>
                 </tr>
@@ -563,62 +860,54 @@ export function VendorsView(): React.JSX.Element {
 
                   return (
                     <tr key={v.id} className={styles.tableRow}>
-                      <td className={styles.td} style={{ textAlign: 'center' }}>
+                      <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         <Checkbox checked={isChecked} onChange={() => toggleSelectRow(v.id)} />
                       </td>
                       <td className={styles.td}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, fontSize: '13px' }}>
+                        <div className={styles.vendorNameCol}>
+                          <span className={styles.vendorNameText}>
                             {v.name}
                           </span>
                           {v.contactPerson && (
-                            <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                            <span className={styles.vendorRepText}>
                               Rep: {v.contactPerson}
                             </span>
                           )}
                         </div>
                       </td>
                       <td className={styles.td}>
-                        <Badge appearance="tint" color="brand" style={{ fontWeight: 600 }}>
+                        <Badge appearance="tint" color="brand" className={styles.badgeBold}>
                           {v.category || 'Supplier (Vendor)'}
                         </Badge>
                       </td>
                       <td className={styles.td}>
-                        <span style={{ color: tokens.colorNeutralForeground1, fontWeight: 500 }}>
+                        <span className={styles.phoneText}>
                           {v.phone || '—'}
                         </span>
                       </td>
                       <td className={styles.td}>
-                        <span style={{ color: tokens.colorNeutralForeground2, fontSize: '12px' }}>
+                        <span className={styles.secondaryText}>
                           {v.address || '—'}
                         </span>
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700, color: (v.openingBalance || 0) > 0 ? '#D13438' : '#107C41' }}>
+                      <td className={mergeClasses(styles.td, (v.openingBalance || 0) > 0 ? styles.tdBalanceDebit : styles.tdBalanceCredit)}>
                         {formatPKR(v.openingBalance || 0)}
                       </td>
                       <td className={styles.td}>
-                        <span style={{ color: tokens.colorNeutralForeground2, fontSize: '12px' }}>
+                        <span className={styles.secondaryText}>
                           {dt.toLocaleDateString()}
                         </span>
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'center' }}>
+                      <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         {/* ── ACTION ICONS: Stock In Shortcut, Print, Edit (Right Drawer), Delete ── */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <div className={styles.actionBtnsRow}>
                           <Tooltip content="Record Stock In from this Vendor" relationship="label" positioning="above">
                             <Button
                               appearance="subtle"
                               size="small"
-                              icon={<ArrowCircleDown20Regular style={{ color: '#107C41', width: 16, height: 16 }} />}
+                              icon={<ArrowCircleDown20Regular className={styles.iconStockIn} />}
                               onClick={() => navigate('/inventory/stock-in', { state: { vendorName: v.companyName || v.name, vendorId: v.id } })}
-                              style={{
-                                width: '30px',
-                                height: '30px',
-                                minWidth: '30px',
-                                padding: 0,
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(16, 124, 65, 0.12)',
-                                border: '1px solid rgba(16, 124, 65, 0.25)',
-                              }}
+                              className={styles.actionBtnStockIn}
                             />
                           </Tooltip>
 
@@ -626,17 +915,9 @@ export function VendorsView(): React.JSX.Element {
                             <Button
                               appearance="subtle"
                               size="small"
-                              icon={<Print20Regular style={{ color: '#0078D4', width: 16, height: 16 }} />}
+                              icon={<Print20Regular className={styles.iconPrint} />}
                               onClick={() => handleOpenPrint(v)}
-                              style={{
-                                width: '30px',
-                                height: '30px',
-                                minWidth: '30px',
-                                padding: 0,
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(0, 120, 212, 0.12)',
-                                border: '1px solid rgba(0, 120, 212, 0.25)',
-                              }}
+                              className={styles.actionBtnPrint}
                             />
                           </Tooltip>
 
@@ -644,17 +925,9 @@ export function VendorsView(): React.JSX.Element {
                             <Button
                               appearance="subtle"
                               size="small"
-                              icon={<Edit20Regular style={{ color: '#E51937', width: 16, height: 16 }} />}
+                              icon={<Edit20Regular className={styles.iconEdit} />}
                               onClick={() => handleOpenEdit(v)}
-                              style={{
-                                width: '30px',
-                                height: '30px',
-                                minWidth: '30px',
-                                padding: 0,
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(229, 25, 55, 0.12)',
-                                border: '1px solid rgba(229, 25, 55, 0.25)',
-                              }}
+                              className={styles.actionBtnEdit}
                             />
                           </Tooltip>
 
@@ -662,17 +935,9 @@ export function VendorsView(): React.JSX.Element {
                             <Button
                               appearance="subtle"
                               size="small"
-                              icon={<Delete20Regular style={{ color: '#D13438', width: 16, height: 16 }} />}
+                              icon={<Delete20Regular className={styles.iconDelete} />}
                               onClick={() => handleDelete(v.id)}
-                              style={{
-                                width: '30px',
-                                height: '30px',
-                                minWidth: '30px',
-                                padding: 0,
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(209, 52, 56, 0.12)',
-                                border: '1px solid rgba(209, 52, 56, 0.25)',
-                              }}
+                              className={styles.actionBtnDelete}
                             />
                           </Tooltip>
                         </div>
@@ -691,9 +956,9 @@ export function VendorsView(): React.JSX.Element {
         <div className={styles.drawerOverlay} onClick={() => setIsDrawerOpen(false)}>
           <div className={styles.drawerPanel} onClick={(e) => e.stopPropagation()}>
             <div className={styles.drawerHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Edit20Regular style={{ color: '#E51937' }} />
-                <Subtitle2 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, margin: 0 }}>
+              <div className={styles.drawerHeaderLeft}>
+                <Edit20Regular className={styles.iconEdit} />
+                <Subtitle2 className={styles.drawerTitle}>
                   Edit Vendor / Supplier
                 </Subtitle2>
               </div>
@@ -701,11 +966,11 @@ export function VendorsView(): React.JSX.Element {
                 appearance="subtle"
                 icon={<Dismiss20Regular />}
                 onClick={() => setIsDrawerOpen(false)}
-                style={{ minWidth: 'auto', padding: '6px' }}
+                className={styles.drawerCloseBtn}
               />
             </div>
 
-            <form onSubmit={editForm.handleSubmit(onUpdate)} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+            <form onSubmit={editForm.handleSubmit(onUpdate)} className={styles.drawerForm}>
               <div className={styles.drawerBody}>
                 {/* VENDOR NAME */}
                 <Controller
@@ -790,7 +1055,7 @@ export function VendorsView(): React.JSX.Element {
                   appearance="primary"
                   type="submit"
                   icon={<Checkmark20Regular />}
-                  style={{ backgroundColor: '#E51937' }}
+                  className={styles.drawerSaveBtn}
                 >
                   Save Changes
                 </Button>
@@ -802,16 +1067,16 @@ export function VendorsView(): React.JSX.Element {
 
       {/* ── PRINT VENDOR STATEMENT MODAL ────────────────────────────── */}
       <Dialog open={isPrintModalOpen} onOpenChange={(_, d) => setIsPrintModalOpen(d.open)}>
-        <DialogSurface style={{ maxWidth: '480px', width: '92vw', borderRadius: '12px', padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <DialogTitle style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
+        <DialogSurface className={styles.printModalSurface}>
+          <div className={styles.printModalHeader}>
+            <DialogTitle className={styles.printModalTitle}>
               Vendor Account Statement
             </DialogTitle>
             <Button
               appearance="subtle"
               icon={<Dismiss20Regular />}
               onClick={() => setIsPrintModalOpen(false)}
-              style={{ minWidth: 'auto', padding: '4px' }}
+              className={styles.printModalCloseBtn}
             />
           </div>
 
@@ -820,49 +1085,40 @@ export function VendorsView(): React.JSX.Element {
               {printingVendor && (
                 <div
                   id="printable-vendor-slip"
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    color: '#000000',
-                    padding: '24px',
-                    borderRadius: '8px',
-                    fontFamily: 'monospace',
-                    fontSize: '12px',
-                    lineHeight: '1.6',
-                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-                  }}
+                  className={styles.slipContainer}
                 >
-                  <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '10px', marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '16px', letterSpacing: '1px' }}>OMNIPOS STORE</div>
+                  <div className={styles.slipHeader}>
+                    <div className={styles.slipStoreTitle}>OMNIPOS STORE</div>
                     <div>VENDOR / SUPPLIER STATEMENT</div>
-                    <div style={{ fontSize: '10px', color: '#555' }}>
+                    <div className={styles.slipDateText}>
                       Date: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}
                     </div>
                   </div>
 
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 'bold' }}>Vendor:</span>
+                  <div className={styles.slipSection}>
+                    <div className={styles.slipRowBetween}>
+                      <span className={styles.slipBoldLabel}>Vendor:</span>
                       <span>{printingVendor.name}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 'bold' }}>Type:</span>
+                    <div className={styles.slipRowBetween}>
+                      <span className={styles.slipBoldLabel}>Type:</span>
                       <span>{printingVendor.category || 'Supplier'}</span>
                     </div>
                     {printingVendor.contactPerson && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 'bold' }}>Contact Rep:</span>
+                      <div className={styles.slipRowBetween}>
+                        <span className={styles.slipBoldLabel}>Contact Rep:</span>
                         <span>{printingVendor.contactPerson}</span>
                       </div>
                     )}
                     {printingVendor.phone && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 'bold' }}>Phone:</span>
+                      <div className={styles.slipRowBetween}>
+                        <span className={styles.slipBoldLabel}>Phone:</span>
                         <span>{printingVendor.phone}</span>
                       </div>
                     )}
                     {printingVendor.address && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 'bold' }}>Address:</span>
+                      <div className={styles.slipRowBetween}>
+                        <span className={styles.slipBoldLabel}>Address:</span>
                         <span>{printingVendor.address}</span>
                       </div>
                     )}
@@ -878,39 +1134,39 @@ export function VendorsView(): React.JSX.Element {
                     );
                     if (vendorMovements.length === 0) return null;
                     return (
-                      <div style={{ margin: '10px 0', borderTop: '1px dashed #bbb', borderBottom: '1px dashed #bbb', padding: '8px 0' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '4px', textTransform: 'uppercase', color: '#333' }}>
+                      <div className={styles.slipInvoicesBox}>
+                        <div className={styles.slipInvoicesHeader}>
                           Recent Invoices Received ({vendorMovements.length}):
                         </div>
                         {vendorMovements.slice(0, 5).map((m, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '2px 0' }}>
+                          <div key={idx} className={styles.slipInvoiceRow}>
                             <span>{new Date(m.date).toLocaleDateString()} • {m.productName} ({m.quantity}x)</span>
-                            <span style={{ fontWeight: 600 }}>{formatPKR((m.quantity || 0) * (m.unitCost || 0))}</span>
+                            <span className={styles.slipInvoiceCost}>{formatPKR((m.quantity || 0) * (m.unitCost || 0))}</span>
                           </div>
                         ))}
                       </div>
                     );
                   })()}
 
-                  <div style={{ borderTop: '1px dashed #000', paddingTop: '10px', marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px' }}>
+                  <div className={styles.slipBalanceBox}>
+                    <div className={styles.slipBalanceRow}>
                       <span>CURRENT BALANCE:</span>
                       <span>{formatPKR(printingVendor.openingBalance || 0)}</span>
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'center', fontSize: '10px', color: '#777', marginTop: '16px', borderTop: '1px solid #ddd', paddingTop: '8px' }}>
+                  <div className={styles.slipFooterSignature}>
                     Authorized Signature: __________________
                   </div>
                 </div>
               )}
             </DialogContent>
 
-            <DialogActions style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <DialogActions className={styles.printModalActions}>
               <Button
                 appearance="secondary"
                 onClick={() => setIsPrintModalOpen(false)}
-                style={{ height: '38px', padding: '0 20px', borderRadius: '6px' }}
+                className={styles.printModalCloseActionBtn}
               >
                 Close
               </Button>
@@ -918,14 +1174,7 @@ export function VendorsView(): React.JSX.Element {
                 appearance="primary"
                 icon={<Print20Regular />}
                 onClick={() => window.print()}
-                style={{
-                  height: '38px',
-                  padding: '0 22px',
-                  borderRadius: '6px',
-                  backgroundColor: '#0078D4',
-                  whiteSpace: 'nowrap',
-                  fontWeight: 600,
-                }}
+                className={styles.printModalConfirmBtn}
               >
                 Print Statement
               </Button>

@@ -90,6 +90,74 @@ const useStyles = makeStyles({
     gap: '6px',
     marginTop: '12px',
   },
+  brandTitle: {
+    fontSize: '20px',
+    fontWeight: 800,
+  },
+  brandSubtitle: {
+    color: tokens.colorNeutralForeground3,
+    display: 'block',
+  },
+  accessHeaderBox: {
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2,
+    paddingTop: '16px',
+  },
+  accessHeaderRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  accessTitle: {
+    fontWeight: 700,
+  },
+  accessLockIcon: {
+    color: tokens.colorBrandForeground1,
+  },
+  accessSubtitle: {
+    color: tokens.colorNeutralForeground3,
+    marginTop: '2px',
+    display: 'block',
+  },
+  eyeBtn: {
+    backgroundColor: 'transparent',
+    borderTopStyle: 'none',
+    borderBottomStyle: 'none',
+    borderLeftStyle: 'none',
+    borderRightStyle: 'none',
+    cursor: 'pointer',
+    padding: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    color: tokens.colorNeutralForeground3,
+  },
+  signInBtn: {
+    width: '100%',
+    height: '48px',
+    fontWeight: 800,
+    fontSize: '15px',
+    marginTop: '10px',
+    backgroundColor: '#E50914',
+    borderRadius: '9999px',
+    boxShadow: '0 8px 24px rgba(229, 9, 20, 0.35)',
+  },
+  demoLabel: {
+    color: tokens.colorNeutralForeground3,
+    textAlign: 'center',
+    display: 'block',
+  },
+  statusDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#107c41',
+    display: 'inline-block',
+  },
+  statusText: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: '11px',
+  },
 });
 
 export function LoginView(): React.JSX.Element {
@@ -166,20 +234,20 @@ export function LoginView(): React.JSX.Element {
         <div className={styles.brandHeader}>
           <div className={styles.logoBox}>OP</div>
           <div>
-            <Subtitle1 style={{ fontSize: '20px', fontWeight: 800 }}>OMNIPOS STORE</Subtitle1>
-            <Caption1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+            <Subtitle1 className={styles.brandTitle}>OMNIPOS STORE</Subtitle1>
+            <Caption1 className={styles.brandSubtitle}>
               Point of Sale & Inventory System
             </Caption1>
           </div>
         </div>
 
         {/* Card Title matching screenshot */}
-        <div style={{ borderTop: `1px solid ${tokens.colorNeutralStroke2}`, paddingTop: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Subtitle2 style={{ fontWeight: 700 }}>Secure Access</Subtitle2>
-            <LockClosed20Regular style={{ color: tokens.colorBrandForeground1 }} />
+        <div className={styles.accessHeaderBox}>
+          <div className={styles.accessHeaderRow}>
+            <Subtitle2 className={styles.accessTitle}>Secure Access</Subtitle2>
+            <LockClosed20Regular className={styles.accessLockIcon} />
           </div>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '2px', display: 'block' }}>
+          <Caption1 className={styles.accessSubtitle}>
             Enter your credentials to continue
           </Caption1>
         </div>
@@ -215,15 +283,7 @@ export function LoginView(): React.JSX.Element {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  color: tokens.colorNeutralForeground3,
-                }}
+                className={styles.eyeBtn}
                 title={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff20Regular /> : <Eye20Regular />}
@@ -237,16 +297,7 @@ export function LoginView(): React.JSX.Element {
             size="large"
             icon={<ArrowRight20Filled />}
             iconPosition="after"
-            style={{
-              width: '100%',
-              height: '48px',
-              fontWeight: 800,
-              fontSize: '15px',
-              marginTop: '10px',
-              backgroundColor: '#E50914',
-              borderRadius: '9999px',
-              boxShadow: '0 8px 24px rgba(229, 9, 20, 0.35)',
-            }}
+            className={styles.signInBtn}
           >
             Sign In to Dashboard
           </Button>
@@ -254,7 +305,7 @@ export function LoginView(): React.JSX.Element {
 
         {/* Quick Demo Sign In Pills */}
         <div>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, textAlign: 'center', display: 'block' }}>
+          <Caption1 className={styles.demoLabel}>
             Quick Demo Login:
           </Caption1>
           <div className={styles.quickPills}>
@@ -270,16 +321,8 @@ export function LoginView(): React.JSX.Element {
 
         {/* Connected Indicator footer matching screenshot */}
         <div className={styles.footerStatus}>
-          <span
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: '#107c41',
-              display: 'inline-block',
-            }}
-          />
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, fontSize: '11px' }}>
+          <span className={styles.statusDot} />
+          <Caption1 className={styles.statusText}>
             Connected to Local SQLite Database (Offline-Ready)
           </Caption1>
         </div>

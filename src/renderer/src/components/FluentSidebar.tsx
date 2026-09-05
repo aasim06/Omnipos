@@ -20,6 +20,7 @@ import {
   DialogActions,
   makeStyles,
   tokens,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   Food24Regular,
@@ -129,6 +130,886 @@ const useStyles = makeStyles({
   noWrapText: {
     whiteSpace: 'nowrap',
   },
+  icon19: {
+    width: '19px',
+    height: '19px',
+  },
+  icon15: {
+    width: '15px',
+    height: '15px',
+  },
+  icon15Red: {
+    width: '15px',
+    height: '15px',
+    color: '#FF4D63',
+  },
+  icon17: {
+    width: '17px',
+    height: '17px',
+  },
+  icon17Red: {
+    width: '17px',
+    height: '17px',
+    color: '#E51937',
+  },
+  icon17Amber: {
+    width: '17px',
+    height: '17px',
+    color: '#F59E0B',
+  },
+  icon17Danger: {
+    width: '17px',
+    height: '17px',
+    color: '#EF4444',
+  },
+  iconBrand: {
+    color: '#E51937',
+  },
+  nav: {
+    height: '100vh',
+    maxHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    boxSizing: 'border-box',
+    flexShrink: 0,
+    overflow: 'hidden',
+    transitionProperty: 'width, background, border-color',
+    transitionDuration: '0.25s, 0.2s, 0.2s',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1), ease, ease',
+    position: 'relative',
+    userSelect: 'none',
+  },
+  navCollapsed: {
+    width: '64px',
+  },
+  navExpanded: {
+    width: '236px',
+  },
+  navDark: {
+    background: 'linear-gradient(180deg, #111215 0%, #0c0d10 100%)',
+    borderRightWidth: '1px',
+    borderRightStyle: 'solid',
+    borderRightColor: 'rgba(255, 255, 255, 0.08)',
+    boxShadow: '4px 0 24px rgba(0, 0, 0, 0.35)',
+  },
+  navLight: {
+    background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+    borderRightWidth: '1px',
+    borderRightStyle: 'solid',
+    borderRightColor: '#E2E8F0',
+    boxShadow: '4px 0 20px rgba(0, 0, 0, 0.04)',
+  },
+  header: {
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  headerCollapsed: {
+    padding: '16px 0 12px',
+    justifyContent: 'center',
+  },
+  headerExpanded: {
+    padding: '16px 14px 14px',
+    justifyContent: 'flex-start',
+  },
+  headerDark: {
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    background: 'radial-gradient(circle at 50% 0%, rgba(229, 25, 55, 0.12) 0%, transparent 75%)',
+  },
+  headerLight: {
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#F1F5F9',
+    background: 'radial-gradient(circle at 50% 0%, rgba(229, 25, 55, 0.06) 0%, transparent 75%)',
+  },
+  brandToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    cursor: 'pointer',
+    gap: '10px',
+  },
+  brandToggleCollapsed: {
+    width: 'auto',
+  },
+  brandToggleExpanded: {
+    width: '100%',
+  },
+  brandBadge: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '8px',
+    background: 'linear-gradient(135deg, #FF1E3C 0%, #B30018 100%)',
+    color: '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 900,
+    fontSize: '14px',
+    letterSpacing: '-0.5px',
+    boxShadow: '0 0 16px rgba(229, 25, 55, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.35)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(255, 255, 255, 0.2)', borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+    borderLeftColor: 'rgba(255, 255, 255, 0.2)', borderRightColor: 'rgba(255, 255, 255, 0.2)',
+    flexShrink: 0,
+  },
+  brandTextWrap: {
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    flex: 1,
+  },
+  brandTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  brandTitle: {
+    fontWeight: 800,
+    fontSize: '14.5px',
+    letterSpacing: '-0.02em',
+    lineHeight: 1.2,
+  },
+  brandTitleDark: {
+    color: '#FFFFFF',
+  },
+  brandTitleLight: {
+    color: '#0F172A',
+  },
+  brandDot: {
+    width: '5px',
+    height: '5px',
+    borderRadius: '50%',
+    backgroundColor: '#E51937',
+    boxShadow: '0 0 6px #E51937',
+  },
+  brandSubtitle: {
+    fontSize: '9.5px',
+    color: '#64748B',
+    fontWeight: 600,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+  },
+  scrollContainer: {
+    flex: '1 1 0%',
+    minHeight: 0,
+    maxHeight: '100%',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  scrollCollapsed: {
+    padding: '12px 6px',
+  },
+  scrollExpanded: {
+    padding: '12px 10px',
+  },
+  sectionContainer: {
+    marginBottom: '8px',
+  },
+  sectionTitleRow: {
+    fontSize: '9.5px',
+    fontWeight: 800,
+    letterSpacing: '0.14em',
+    textTransform: 'uppercase',
+    padding: '10px 10px 4px',
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  sectionTitleDark: {
+    color: '#475569',
+  },
+  sectionTitleLight: {
+    color: '#94A3B8',
+  },
+  sectionDotDark: {
+    width: '4px',
+    height: '4px',
+    borderRadius: '1px',
+    backgroundColor: '#334155',
+  },
+  sectionDotLight: {
+    width: '4px',
+    height: '4px',
+    borderRadius: '1px',
+    backgroundColor: '#CBD5E1',
+  },
+  dividerDark: {
+    height: '1px',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    margin: '8px 6px',
+  },
+  dividerLight: {
+    height: '1px',
+    backgroundColor: '#E2E8F0',
+    margin: '8px 6px',
+  },
+  sectionItems: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+  },
+  collapsedAccordionBtn: {
+    width: '42px',
+    height: '40px',
+    padding: 0,
+    margin: '0 auto',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    transition: 'all 0.15s ease',
+  },
+  collapsedBtnActiveDark: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.28)', borderBottomColor: 'rgba(229, 25, 55, 0.28)',
+    borderLeftColor: 'rgba(229, 25, 55, 0.28)', borderRightColor: 'rgba(229, 25, 55, 0.28)',
+    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.16) 0%, rgba(229, 25, 55, 0.04) 100%)',
+    color: '#FF4D63',
+  },
+  collapsedBtnActiveLight: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.22)', borderBottomColor: 'rgba(229, 25, 55, 0.22)',
+    borderLeftColor: 'rgba(229, 25, 55, 0.22)', borderRightColor: 'rgba(229, 25, 55, 0.22)',
+    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.12) 0%, rgba(229, 25, 55, 0.03) 100%)',
+    color: '#FF4D63',
+  },
+  collapsedBtnInactiveDark: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    background: 'transparent',
+    color: '#94A3B8',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+      color: '#F1F5F9',
+    },
+  },
+  collapsedBtnInactiveLight: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    background: 'transparent',
+    color: '#475569',
+    ':hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+      color: '#0F172A',
+    },
+  },
+  collapsedInnerSpan: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  collapsedActiveLaser: {
+    position: 'absolute',
+    left: '0',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: '3.5px',
+    height: '20px',
+    borderRadius: '0 3px 3px 0',
+    backgroundColor: '#E51937',
+    boxShadow: '0 0 8px #E51937',
+  },
+  menuPopover: {
+    borderRadius: '10px',
+    padding: '6px',
+    minWidth: '220px',
+  },
+  menuPopoverDark: {
+    backgroundColor: '#121316',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(255, 255, 255, 0.1)', borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderLeftColor: 'rgba(255, 255, 255, 0.1)', borderRightColor: 'rgba(255, 255, 255, 0.1)',
+    boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6)',
+  },
+  menuPopoverLight: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#E2E8F0', borderBottomColor: '#E2E8F0',
+    borderLeftColor: '#E2E8F0', borderRightColor: '#E2E8F0',
+    boxShadow: '0 12px 36px rgba(0, 0, 0, 0.08)',
+  },
+  menuHeader: {
+    padding: '6px 12px 8px',
+    marginBottom: '4px',
+  },
+  menuHeaderDark: {
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  menuHeaderLight: {
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#F1F5F9',
+  },
+  menuHeaderTitle: {
+    color: '#FF4D63',
+  },
+  menuHeaderSubtitle: {
+    color: '#64748B',
+  },
+  menuItemActive: {
+    fontWeight: 700,
+    color: '#FF4D63',
+  },
+  menuItemSpecial: {
+    fontWeight: 500,
+    color: '#FF4D63',
+  },
+  menuItemInactiveDark: {
+    fontWeight: 500,
+    color: '#E2E8F0',
+  },
+  menuItemInactiveLight: {
+    fontWeight: 500,
+    color: '#1E293B',
+  },
+  accordionBtnActiveDark: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.28)', borderBottomColor: 'rgba(229, 25, 55, 0.28)',
+    borderLeftColor: 'rgba(229, 25, 55, 0.28)', borderRightColor: 'rgba(229, 25, 55, 0.28)',
+    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.16) 0%, rgba(229, 25, 55, 0.04) 100%)',
+    color: '#FFFFFF',
+  },
+  accordionBtnActiveLight: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.22)', borderBottomColor: 'rgba(229, 25, 55, 0.22)',
+    borderLeftColor: 'rgba(229, 25, 55, 0.22)', borderRightColor: 'rgba(229, 25, 55, 0.22)',
+    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.12) 0%, rgba(229, 25, 55, 0.03) 100%)',
+    color: '#E51937',
+  },
+  accordionBtnInactiveDark: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    background: 'transparent',
+    color: '#94A3B8',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+      color: '#F1F5F9',
+    },
+  },
+  accordionBtnInactiveLight: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    background: 'transparent',
+    color: '#475569',
+    ':hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+      color: '#0F172A',
+    },
+  },
+  accordionIconWrapActive: {
+    color: '#FF4D63',
+  },
+  accordionIconWrapInactiveDark: {
+    color: '#94A3B8',
+  },
+  accordionIconWrapInactiveLight: {
+    color: '#475569',
+  },
+  accordionLabelActive: {
+    fontSize: '13px',
+    fontWeight: 700,
+  },
+  accordionLabelInactive: {
+    fontSize: '13px',
+    fontWeight: 500,
+  },
+  chevronIcon: {
+    width: '15px',
+    height: '15px',
+    transition: 'transform 0.22s ease',
+  },
+  chevronDark: {
+    color: '#475569',
+  },
+  chevronLight: {
+    color: '#94A3B8',
+  },
+  chevronRotated: {
+    transform: 'rotate(180deg)',
+  },
+  chevronNormal: {
+    transform: 'rotate(0deg)',
+  },
+  submenuContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    marginLeft: '14px',
+    paddingLeft: '10px',
+    overflow: 'hidden',
+    transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+  submenuBorderDark: {
+    borderLeftWidth: '1.5px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  submenuBorderLight: {
+    borderLeftWidth: '1.5px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: '#E2E8F0',
+  },
+  submenuOpen: {
+    maxHeight: '240px',
+    opacity: 1,
+    marginTop: '4px',
+    marginBottom: '4px',
+  },
+  submenuClosed: {
+    maxHeight: 0,
+    opacity: 0,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  subItemActiveDark: {
+    color: '#E51937',
+    background: 'rgba(229, 25, 55, 0.1)',
+    fontWeight: 700,
+  },
+  subItemActiveLight: {
+    color: '#E51937',
+    background: 'rgba(229, 25, 55, 0.08)',
+    fontWeight: 700,
+  },
+  subItemInactiveDark: {
+    color: '#94A3B8',
+    background: 'transparent',
+    fontWeight: 500,
+    ':hover': {
+      color: '#F1F5F9',
+      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    },
+  },
+  subItemInactiveLight: {
+    color: '#64748B',
+    background: 'transparent',
+    fontWeight: 500,
+    ':hover': {
+      color: '#0F172A',
+      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    },
+  },
+  subItemLabelActive: {
+    fontWeight: 700,
+    fontSize: '12px',
+  },
+  subItemLabelInactive: {
+    fontWeight: 500,
+    fontSize: '12px',
+  },
+  subItemIconWrapActive: {
+    opacity: 1,
+  },
+  subItemIconWrapInactive: {
+    opacity: 0.75,
+  },
+  navLink: {
+    display: 'flex',
+    alignItems: 'center',
+    height: '38px',
+    borderRadius: '8px',
+    textDecoration: 'none',
+    fontSize: '13px',
+    position: 'relative',
+    boxSizing: 'border-box',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+  navLinkCollapsed: {
+    width: '42px',
+    margin: '0 auto',
+    padding: 0,
+    justifyContent: 'center',
+  },
+  navLinkExpanded: {
+    width: '100%',
+    margin: 0,
+    padding: '0 10px',
+    justifyContent: 'flex-start',
+  },
+  navLinkActiveDark: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.28)', borderBottomColor: 'rgba(229, 25, 55, 0.28)',
+    borderLeftColor: 'rgba(229, 25, 55, 0.28)', borderRightColor: 'rgba(229, 25, 55, 0.28)',
+    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.16) 0%, rgba(229, 25, 55, 0.04) 100%)',
+    color: '#FFFFFF',
+    fontWeight: 700,
+  },
+  navLinkActiveLight: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.22)', borderBottomColor: 'rgba(229, 25, 55, 0.22)',
+    borderLeftColor: 'rgba(229, 25, 55, 0.22)', borderRightColor: 'rgba(229, 25, 55, 0.22)',
+    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.12) 0%, rgba(229, 25, 55, 0.03) 100%)',
+    color: '#E51937',
+    fontWeight: 700,
+  },
+  navLinkInactiveDark: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    background: 'transparent',
+    color: '#94A3B8',
+    fontWeight: 500,
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+      color: '#F1F5F9',
+    },
+  },
+  navLinkInactiveLight: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    background: 'transparent',
+    color: '#475569',
+    fontWeight: 500,
+    ':hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+      color: '#0F172A',
+    },
+  },
+  navLinkIconActive: {
+    color: '#FF4D63',
+    filter: 'drop-shadow(0 0 6px rgba(229, 25, 55, 0.6))',
+  },
+  navLinkIconInactiveDark: {
+    color: '#94A3B8',
+    filter: 'none',
+  },
+  navLinkIconInactiveLight: {
+    color: '#475569',
+    filter: 'none',
+  },
+  navLinkRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    width: '100%',
+  },
+  navLinkLabel: {
+    flex: 1,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    fontSize: '13px',
+  },
+  badgePill: {
+    fontSize: '9.5px',
+    fontWeight: 800,
+    padding: '1px 6px',
+    borderRadius: '4px',
+    backgroundColor: 'rgba(229, 25, 55, 0.15)',
+    color: '#FF4D63',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.3)', borderBottomColor: 'rgba(229, 25, 55, 0.3)',
+    borderLeftColor: 'rgba(229, 25, 55, 0.3)', borderRightColor: 'rgba(229, 25, 55, 0.3)',
+  },
+  bottomDeck: {
+    flexShrink: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  bottomDeckCollapsed: {
+    padding: '10px 6px 14px',
+  },
+  bottomDeckExpanded: {
+    padding: '10px 10px 14px',
+  },
+  bottomDeckDark: {
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.3) 100%)',
+  },
+  bottomDeckLight: {
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#E2E8F0',
+    background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.02) 100%)',
+  },
+  toolbar: {
+    padding: '3px',
+    borderRadius: '9px',
+    boxSizing: 'border-box',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  toolbarCollapsed: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '38px',
+    margin: '0 auto',
+  },
+  toolbarExpanded: {
+    display: 'grid',
+    width: '100%',
+    margin: 0,
+  },
+  toolbarAdmin: {
+    gridTemplateColumns: 'repeat(5, 1fr)',
+  },
+  toolbarNonAdmin: {
+    gridTemplateColumns: 'repeat(3, 1fr)',
+  },
+  toolbarDark: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(255, 255, 255, 0.08)', borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderLeftColor: 'rgba(255, 255, 255, 0.08)', borderRightColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  toolbarLight: {
+    backgroundColor: '#F1F5F9',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#E2E8F0', borderBottomColor: '#E2E8F0',
+    borderLeftColor: '#E2E8F0', borderRightColor: '#E2E8F0',
+  },
+  toolbarBtn: {
+    height: '32px',
+    width: '100%',
+    padding: 0,
+    borderRadius: '6px',
+    border: 'none',
+    backgroundColor: 'transparent',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.15s ease',
+  },
+  themeBtnDark: {
+    color: '#F59E0B',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+    },
+  },
+  themeBtnLight: {
+    color: '#E51937',
+    ':hover': {
+      backgroundColor: '#FFFFFF',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    },
+  },
+  adminBtnActiveDark: {
+    backgroundColor: 'rgba(229, 25, 55, 0.2)',
+    color: '#E51937',
+  },
+  adminBtnActiveLight: {
+    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    color: '#E51937',
+  },
+  adminBtnInactiveDark: {
+    color: '#CBD5E1',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+    },
+  },
+  adminBtnInactiveLight: {
+    color: '#64748B',
+    ':hover': {
+      backgroundColor: '#FFFFFF',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    },
+  },
+  storageBtnActiveDark: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    color: '#CBD5E1',
+  },
+  storageBtnActiveLight: {
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    color: '#64748B',
+  },
+  storageBtnInactiveDark: {
+    color: '#CBD5E1',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+    },
+  },
+  storageBtnInactiveLight: {
+    color: '#64748B',
+    ':hover': {
+      backgroundColor: '#FFFFFF',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    },
+  },
+  logoutBtnDark: {
+    color: '#EF4444',
+    ':hover': {
+      backgroundColor: 'rgba(239, 68, 68, 0.15)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+    },
+  },
+  logoutBtnLight: {
+    color: '#EF4444',
+    ':hover': {
+      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    },
+  },
+  collapseBtnDark: {
+    color: '#CBD5E1',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+    },
+  },
+  collapseBtnLight: {
+    color: '#64748B',
+    ':hover': {
+      backgroundColor: '#FFFFFF',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    },
+  },
+  storageDialogSurface: {
+    borderRadius: tokens.borderRadiusLarge,
+    maxWidth: '440px',
+  },
+  storageDialogTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  storageDialogContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    marginTop: '12px',
+  },
+  storageStatusCard: {
+    padding: '14px',
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  storageStatusRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  storageLabel: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground2,
+  },
+  storageHealthy: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#10B981',
+  },
+  storageBadgeAuto: {
+    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    color: '#E51937',
+  },
+  storageMsg: {
+    color: '#10B981',
+    fontSize: '12px',
+    fontWeight: 600,
+    textAlign: 'center',
+  },
+  storageActions: {
+    marginTop: '20px',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  storageCloseBtn: {
+    height: '36px',
+    padding: '0 18px',
+    borderRadius: '7px',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    outline: 'none',
+    transition: 'all 0.15s ease',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+  },
+  storageCloseDark: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(255, 255, 255, 0.15)', borderBottomColor: 'rgba(255, 255, 255, 0.15)',
+    borderLeftColor: 'rgba(255, 255, 255, 0.15)', borderRightColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    color: '#F1F5F9',
+  },
+  storageCloseLight: {
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#CBD5E1', borderBottomColor: '#CBD5E1',
+    borderLeftColor: '#CBD5E1', borderRightColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+    color: '#334155',
+  },
+  storageResyncBtn: {
+    height: '36px',
+    padding: '0 20px',
+    borderRadius: '7px',
+    border: 'none',
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    fontSize: '13px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '7px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    outline: 'none',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+    transition: 'all 0.15s ease',
+  },
+  textMuted: {
+    color: tokens.colorNeutralForeground2,
+  },
 });
 
 export function FluentSidebar(): React.JSX.Element {
@@ -212,23 +1093,23 @@ export function FluentSidebar(): React.JSX.Element {
           to: '/pos/fastfood',
           label: 'Fast Food POS',
           moduleKey: 'fastfood' as const,
-          icon: <Food24Regular style={{ width: 19, height: 19 }} />,
-          activeIcon: <Food24Filled style={{ width: 19, height: 19 }} />,
+          icon: <Food24Regular className={styles.icon19} />,
+          activeIcon: <Food24Filled className={styles.icon19} />,
         },
         {
           to: '/pos/omnimart',
           label: 'Omnimart POS',
           moduleKey: 'omnimart' as const,
-          icon: <BuildingRetail24Regular style={{ width: 19, height: 19 }} />,
-          activeIcon: <BuildingRetail24Filled style={{ width: 19, height: 19 }} />,
+          icon: <BuildingRetail24Regular className={styles.icon19} />,
+          activeIcon: <BuildingRetail24Filled className={styles.icon19} />,
         },
         {
           to: '/kitchen',
           label: 'Kitchen Display',
           badge: 'KDS',
           moduleKey: 'kitchen' as const,
-          icon: <BowlSalad24Regular style={{ width: 19, height: 19 }} />,
-          activeIcon: <BowlSalad24Filled style={{ width: 19, height: 19 }} />,
+          icon: <BowlSalad24Regular className={styles.icon19} />,
+          activeIcon: <BowlSalad24Filled className={styles.icon19} />,
         },
       ],
     },
@@ -244,14 +1125,14 @@ export function FluentSidebar(): React.JSX.Element {
           setIsOpen: setIsCatalogOpen,
           isActive: isCatalogActive,
           defaultRoute: '/catalog',
-          icon: <Tag24Regular style={{ width: 19, height: 19 }} />,
-          activeIcon: <Tag24Filled style={{ width: 19, height: 19 }} />,
+          icon: <Tag24Regular className={styles.icon19} />,
+          activeIcon: <Tag24Filled className={styles.icon19} />,
           subItems: [
-            { to: '/catalog', label: 'All Store Items', icon: <Tag20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/catalog/fastfood', label: 'Fast Food Menu', moduleKey: 'fastfood' as const, icon: <Food24Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/catalog/omnimart', label: 'Omnimart Goods', moduleKey: 'omnimart' as const, icon: <BuildingRetail24Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/catalog/categories', label: 'Categories Manager', icon: <Grid20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/catalog/new', label: '+ Add Product', icon: <Add20Regular style={{ width: 15, height: 15, color: '#FF4D63' }} />, isSpecial: true },
+            { to: '/catalog', label: 'All Store Items', icon: <Tag20Regular className={styles.icon15} /> },
+            { to: '/catalog/fastfood', label: 'Fast Food Menu', moduleKey: 'fastfood' as const, icon: <Food24Regular className={styles.icon15} /> },
+            { to: '/catalog/omnimart', label: 'Omnimart Goods', moduleKey: 'omnimart' as const, icon: <BuildingRetail24Regular className={styles.icon15} /> },
+            { to: '/catalog/categories', label: 'Categories Manager', icon: <Grid20Regular className={styles.icon15} /> },
+            { to: '/catalog/new', label: '+ Add Product', icon: <Add20Regular className={styles.icon15Red} />, isSpecial: true },
           ],
         },
         {
@@ -263,22 +1144,22 @@ export function FluentSidebar(): React.JSX.Element {
           setIsOpen: setIsInventoryOpen,
           isActive: isInventoryActive,
           defaultRoute: '/inventory/dashboard',
-          icon: <Box24Regular style={{ width: 19, height: 19 }} />,
-          activeIcon: <Box24Filled style={{ width: 19, height: 19 }} />,
+          icon: <Box24Regular className={styles.icon19} />,
+          activeIcon: <Box24Filled className={styles.icon19} />,
           subItems: [
-            { to: '/inventory/dashboard', label: 'Inventory Dashboard', icon: <Box20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/inventory/stock-in', label: 'Stock In', icon: <ArrowCircleDown20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/inventory/stock-out', label: 'Stock Out', icon: <ArrowCircleUp20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/inventory/vendors', label: 'Vendors & Suppliers', icon: <PeopleCommunity20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/inventory/ledger', label: 'Stock Movement Ledger', icon: <DocumentTableSearch20Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/inventory/dashboard', label: 'Inventory Dashboard', icon: <Box20Regular className={styles.icon15} /> },
+            { to: '/inventory/stock-in', label: 'Stock In', icon: <ArrowCircleDown20Regular className={styles.icon15} /> },
+            { to: '/inventory/stock-out', label: 'Stock Out', icon: <ArrowCircleUp20Regular className={styles.icon15} /> },
+            { to: '/inventory/vendors', label: 'Vendors & Suppliers', icon: <PeopleCommunity20Regular className={styles.icon15} /> },
+            { to: '/inventory/ledger', label: 'Stock Movement Ledger', icon: <DocumentTableSearch20Regular className={styles.icon15} /> },
           ],
         },
         {
           to: '/khata',
           label: 'Khata Ledger Book',
           moduleKey: 'khata' as const,
-          icon: <BookContacts24Regular style={{ width: 19, height: 19 }} />,
-          activeIcon: <BookContacts24Filled style={{ width: 19, height: 19 }} />,
+          icon: <BookContacts24Regular className={styles.icon19} />,
+          activeIcon: <BookContacts24Filled className={styles.icon19} />,
         },
       ],
     },
@@ -289,15 +1170,15 @@ export function FluentSidebar(): React.JSX.Element {
           to: '/expenses',
           label: 'Expenses & Cash',
           moduleKey: 'expenses' as const,
-          icon: <Money24Regular style={{ width: 19, height: 19 }} />,
-          activeIcon: <Money24Filled style={{ width: 19, height: 19 }} />,
+          icon: <Money24Regular className={styles.icon19} />,
+          activeIcon: <Money24Filled className={styles.icon19} />,
         },
         {
           to: '/reports',
           label: 'Profit & Loss Analytics',
           moduleKey: 'reports' as const,
-          icon: <DataTrending24Regular style={{ width: 19, height: 19 }} />,
-          activeIcon: <DataTrending24Filled style={{ width: 19, height: 19 }} />,
+          icon: <DataTrending24Regular className={styles.icon19} />,
+          activeIcon: <DataTrending24Filled className={styles.icon19} />,
         },
       ],
     },
@@ -308,8 +1189,8 @@ export function FluentSidebar(): React.JSX.Element {
           to: '/admin',
           label: 'Staff & Cashier Roles',
           moduleKey: 'admin' as const,
-          icon: <PeopleCommunity24Regular style={{ width: 19, height: 19 }} />,
-          activeIcon: <PeopleCommunity24Filled style={{ width: 19, height: 19 }} />,
+          icon: <PeopleCommunity24Regular className={styles.icon19} />,
+          activeIcon: <PeopleCommunity24Filled className={styles.icon19} />,
         },
       ],
     },
@@ -334,130 +1215,44 @@ export function FluentSidebar(): React.JSX.Element {
 
   const isDark = mode === 'dark';
 
-  const t = {
-    sidebarBg: isDark ? 'linear-gradient(180deg, #111215 0%, #0c0d10 100%)' : 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
-    sidebarBorder: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-    sidebarShadow: isDark ? '4px 0 24px rgba(0, 0, 0, 0.35)' : '4px 0 20px rgba(0, 0, 0, 0.04)',
-    headerBorder: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #F1F5F9',
-    brandTitle: isDark ? '#FFFFFF' : '#0F172A',
-    brandSubtitle: isDark ? '#64748B' : '#64748B',
-    sectionTitle: isDark ? '#475569' : '#94A3B8',
-    sectionDot: isDark ? '#334155' : '#CBD5E1',
-    divider: isDark ? 'rgba(255, 255, 255, 0.05)' : '#E2E8F0',
-
-    // Items
-    itemText: isDark ? '#94A3B8' : '#475569',
-    itemHoverBg: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
-    itemHoverText: isDark ? '#F1F5F9' : '#0F172A',
-    itemActiveText: isDark ? '#FFFFFF' : '#E51937',
-    itemActiveBg: isDark
-      ? 'linear-gradient(90deg, rgba(229, 25, 55, 0.16) 0%, rgba(229, 25, 55, 0.04) 100%)'
-      : 'linear-gradient(90deg, rgba(229, 25, 55, 0.12) 0%, rgba(229, 25, 55, 0.03) 100%)',
-    itemActiveBorder: isDark ? '1px solid rgba(229, 25, 55, 0.28)' : '1px solid rgba(229, 25, 55, 0.22)',
-
-    // Submenu
-    submenuBorder: isDark ? '1.5px solid rgba(255, 255, 255, 0.08)' : '1.5px solid #E2E8F0',
-    submenuText: isDark ? '#94A3B8' : '#64748B',
-    submenuActiveText: '#E51937',
-    submenuActiveBg: isDark ? 'rgba(229, 25, 55, 0.1)' : 'rgba(229, 25, 55, 0.08)',
-
-    // Bottom Deck
-    deckBorder: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #E2E8F0',
-    deckBg: isDark
-      ? 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.3) 100%)'
-      : 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.02) 100%)',
-    userCardBg: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
-    userCardBorder: isDark ? '1px solid rgba(255, 255, 255, 0.07)' : '1px solid #E2E8F0',
-    userName: isDark ? '#F1F5F9' : '#0F172A',
-    userSub: '#64748B',
-
-    // Buttons
-    buttonBg: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F1F5F9',
-    buttonBorder: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-    buttonText: isDark ? '#94A3B8' : '#475569',
-
-    // Popovers
-    popoverBg: isDark ? '#121316' : '#FFFFFF',
-    popoverBorder: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
-    popoverShadow: isDark ? '0 12px 36px rgba(0, 0, 0, 0.6)' : '0 12px 36px rgba(0, 0, 0, 0.08)',
-  };
-
   return (
     <nav
-      style={{
-        width: isCollapsed ? '64px' : '236px',
-        height: '100vh',
-        maxHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        background: t.sidebarBg,
-        borderRight: t.sidebarBorder,
-        boxSizing: 'border-box',
-        flexShrink: 0,
-        overflow: 'hidden',
-        transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, border-color 0.2s ease',
-        position: 'relative',
-        userSelect: 'none',
-        boxShadow: t.sidebarShadow,
-      }}
+      className={mergeClasses(
+        styles.nav,
+        isCollapsed ? styles.navCollapsed : styles.navExpanded,
+        isDark ? styles.navDark : styles.navLight
+      )}
     >
       {/* ── Top Ambient Glow Header ─────────────────────────────── */}
       <div
-        style={{
-          flexShrink: 0,
-          padding: isCollapsed ? '16px 0 12px' : '16px 14px 14px',
-          borderBottom: t.headerBorder,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: isCollapsed ? 'center' : 'flex-start',
-          background: isDark
-            ? 'radial-gradient(circle at 50% 0%, rgba(229, 25, 55, 0.12) 0%, transparent 75%)'
-            : 'radial-gradient(circle at 50% 0%, rgba(229, 25, 55, 0.06) 0%, transparent 75%)',
-        }}
+        className={mergeClasses(
+          styles.header,
+          isCollapsed ? styles.headerCollapsed : styles.headerExpanded,
+          isDark ? styles.headerDark : styles.headerLight
+        )}
       >
         <div
           onClick={toggleSidebar}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-            width: isCollapsed ? 'auto' : '100%',
-            gap: '10px',
-          }}
+          className={mergeClasses(
+            styles.brandToggle,
+            isCollapsed ? styles.brandToggleCollapsed : styles.brandToggleExpanded
+          )}
           title={isCollapsed ? 'Click to expand sidebar (Ctrl+B)' : 'Click to collapse sidebar (Ctrl+B)'}
         >
           {/* Futuristic Hexagon/Square Logo Badge */}
-          <div
-            style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #FF1E3C 0%, #B30018 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 900,
-              fontSize: '14px',
-              letterSpacing: '-0.5px',
-              boxShadow: '0 0 16px rgba(229, 25, 55, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.35)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              flexShrink: 0,
-            }}
-          >
+          <div className={styles.brandBadge}>
             OP
           </div>
 
           {!isCollapsed && (
-            <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 800, fontSize: '14.5px', color: t.brandTitle, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+            <div className={styles.brandTextWrap}>
+              <div className={styles.brandTitleRow}>
+                <span className={mergeClasses(styles.brandTitle, isDark ? styles.brandTitleDark : styles.brandTitleLight)}>
                   OmniPos
                 </span>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#E51937', boxShadow: '0 0 6px #E51937' }} />
+                <span className={styles.brandDot} />
               </div>
-              <div style={{ fontSize: '9.5px', color: t.brandSubtitle, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              <div className={styles.brandSubtitle}>
                 Enterprise POS &amp; ERP
               </div>
             </div>
@@ -467,47 +1262,30 @@ export function FluentSidebar(): React.JSX.Element {
 
       {/* ── Scrollable Navigation Items ─────────────────────────── */}
       <div
-        className="fluent-sidebar-scroll"
-        style={{
-          flex: '1 1 0%',
-          minHeight: 0,
-          maxHeight: '100%',
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          padding: isCollapsed ? '12px 6px' : '12px 10px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '2px',
-        }}
+        className={mergeClasses(
+          'fluent-sidebar-scroll',
+          styles.scrollContainer,
+          isCollapsed ? styles.scrollCollapsed : styles.scrollExpanded
+        )}
       >
         {sections.map((section, secIdx) => (
-          <div key={section.title} style={{ marginBottom: '8px' }}>
+          <div key={section.title} className={styles.sectionContainer}>
             {!isCollapsed && (
               <div
-                style={{
-                  fontSize: '9.5px',
-                  fontWeight: 800,
-                  color: t.sectionTitle,
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  padding: '10px 10px 4px',
-                  overflow: 'hidden',
-                  whiteSpace: 'nowrap',
-                  textOverflow: 'ellipsis',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                className={mergeClasses(
+                  styles.sectionTitleRow,
+                  isDark ? styles.sectionTitleDark : styles.sectionTitleLight
+                )}
               >
-                <span style={{ width: '4px', height: '4px', borderRadius: '1px', backgroundColor: t.sectionDot }} />
+                <span className={isDark ? styles.sectionDotDark : styles.sectionDotLight} />
                 <span>{section.title}</span>
               </div>
             )}
             {isCollapsed && secIdx > 0 && (
-              <div style={{ height: '1px', backgroundColor: t.divider, margin: '8px 6px' }} />
+              <div className={isDark ? styles.dividerDark : styles.dividerLight} />
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            <div className={styles.sectionItems}>
               {section.items.map((item: any) => {
                 // Special Accordion handling (Products & Catalog + Inventory & Stock)
                 if (item.isAccordion) {
@@ -519,39 +1297,17 @@ export function FluentSidebar(): React.JSX.Element {
                           <button
                             type="button"
                             onClick={() => navigate(item.defaultRoute)}
-                            style={{
-                              width: '42px',
-                              height: '40px',
-                              padding: 0,
-                              margin: '0 auto',
-                              borderRadius: '8px',
-                              border: item.isActive ? t.itemActiveBorder : '1px solid transparent',
-                              background: item.isActive ? t.itemActiveBg : 'transparent',
-                              color: item.isActive ? '#FF4D63' : t.itemText,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              position: 'relative',
-                              transition: 'all 0.15s ease',
-                            }}
+                            className={mergeClasses(
+                              styles.collapsedAccordionBtn,
+                              item.isActive
+                                ? (isDark ? styles.collapsedBtnActiveDark : styles.collapsedBtnActiveLight)
+                                : (isDark ? styles.collapsedBtnInactiveDark : styles.collapsedBtnInactiveLight)
+                            )}
                           >
                             <Tooltip content={item.label} relationship="label" positioning="after">
-                              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                              <span className={styles.collapsedInnerSpan}>
                                 {item.isActive && (
-                                  <div
-                                    style={{
-                                      position: 'absolute',
-                                      left: '0',
-                                      top: '50%',
-                                      transform: 'translateY(-50%)',
-                                      width: '3.5px',
-                                      height: '20px',
-                                      borderRadius: '0 3px 3px 0',
-                                      backgroundColor: '#E51937',
-                                      boxShadow: '0 0 8px #E51937',
-                                    }}
-                                  />
+                                  <div className={styles.collapsedActiveLaser} />
                                 )}
                                 {item.isActive ? item.activeIcon : item.icon}
                               </span>
@@ -559,21 +1315,17 @@ export function FluentSidebar(): React.JSX.Element {
                           </button>
                         </MenuTrigger>
                         <MenuPopover
-                          style={{
-                            borderRadius: '10px',
-                            padding: '6px',
-                            minWidth: '220px',
-                            backgroundColor: t.popoverBg,
-                            border: t.popoverBorder,
-                            boxShadow: t.popoverShadow,
-                          }}
+                          className={mergeClasses(
+                            styles.menuPopover,
+                            isDark ? styles.menuPopoverDark : styles.menuPopoverLight
+                          )}
                         >
                           <MenuList>
-                            <div style={{ padding: '6px 12px 8px', borderBottom: t.headerBorder, marginBottom: '4px' }}>
-                              <Text weight="bold" size={200} block style={{ color: '#FF4D63' }}>
+                            <div className={mergeClasses(styles.menuHeader, isDark ? styles.menuHeaderDark : styles.menuHeaderLight)}>
+                              <Text weight="bold" size={200} block className={styles.menuHeaderTitle}>
                                 {item.label}
                               </Text>
-                              <Text size={100} style={{ color: t.brandSubtitle }}>
+                              <Text size={100} className={styles.menuHeaderSubtitle}>
                                 {item.subtitle || 'Module navigation'}
                               </Text>
                             </div>
@@ -582,10 +1334,15 @@ export function FluentSidebar(): React.JSX.Element {
                                 key={sub.to}
                                 icon={sub.icon}
                                 onClick={() => navigate(sub.to)}
-                                style={{
-                                  fontWeight: location.pathname === sub.to ? 700 : 500,
-                                  color: location.pathname === sub.to ? '#FF4D63' : sub.isSpecial ? '#FF4D63' : isDark ? '#E2E8F0' : '#1E293B',
-                                }}
+                                className={
+                                  location.pathname === sub.to
+                                    ? styles.menuItemActive
+                                    : sub.isSpecial
+                                    ? styles.menuItemSpecial
+                                    : isDark
+                                    ? styles.menuItemInactiveDark
+                                    : styles.menuItemInactiveLight
+                                }
                               >
                                 {sub.label}
                               </MenuItem>
@@ -602,81 +1359,92 @@ export function FluentSidebar(): React.JSX.Element {
                       <button
                         type="button"
                         onClick={() => item.setIsOpen((prev: boolean) => !prev)}
-                        className={styles.accordionBtn}
-                        style={{
-                          border: item.isActive ? t.itemActiveBorder : '1px solid transparent',
-                          background: item.isActive ? t.itemActiveBg : 'transparent',
-                          color: item.isActive ? t.itemActiveText : t.itemText,
-                        }}
+                        className={mergeClasses(
+                          styles.accordionBtn,
+                          item.isActive
+                            ? (isDark ? styles.accordionBtnActiveDark : styles.accordionBtnActiveLight)
+                            : (isDark ? styles.accordionBtnInactiveDark : styles.accordionBtnInactiveLight)
+                        )}
                       >
                         <div className={styles.accordionInner}>
                           {item.isActive && (
                             <div className={styles.laserIndicator} />
                           )}
-                          <span className={styles.iconWrap} style={{ color: item.isActive ? '#FF4D63' : t.itemText }}>
+                          <span
+                            className={mergeClasses(
+                              styles.iconWrap,
+                              item.isActive
+                                ? styles.accordionIconWrapActive
+                                : (isDark ? styles.accordionIconWrapInactiveDark : styles.accordionIconWrapInactiveLight)
+                            )}
+                          >
                             {item.isActive ? item.activeIcon : item.icon}
                           </span>
-                          <span className={styles.noWrapText} style={{ fontSize: '13px', fontWeight: item.isActive ? 700 : 500 }}>
+                          <span
+                            className={mergeClasses(
+                              styles.noWrapText,
+                              item.isActive ? styles.accordionLabelActive : styles.accordionLabelInactive
+                            )}
+                          >
                             {item.label}
                           </span>
                         </div>
                         <ChevronDown20Regular
-                          style={{
-                            width: 15,
-                            height: 15,
-                            color: t.sectionTitle,
-                            transition: 'transform 0.22s ease',
-                            transform: item.isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                          }}
+                          className={mergeClasses(
+                            styles.chevronIcon,
+                            isDark ? styles.chevronDark : styles.chevronLight,
+                            item.isOpen ? styles.chevronRotated : styles.chevronNormal
+                          )}
                         />
                       </button>
 
                       {/* Smooth slide-down Submenu with glowing guide line */}
                       <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '2px',
-                          marginLeft: '14px',
-                          paddingLeft: '10px',
-                          borderLeft: t.submenuBorder,
-                          overflow: 'hidden',
-                          maxHeight: item.isOpen ? '240px' : '0',
-                          opacity: item.isOpen ? 1 : 0,
-                          marginTop: item.isOpen ? '4px' : '0',
-                          marginBottom: item.isOpen ? '4px' : '0',
-                          transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
-                        }}
+                        className={mergeClasses(
+                          styles.submenuContainer,
+                          isDark ? styles.submenuBorderDark : styles.submenuBorderLight,
+                          item.isOpen ? styles.submenuOpen : styles.submenuClosed
+                        )}
                       >
                         {item.subItems
                           .filter((sub: any) => !sub.moduleKey || can(sub.moduleKey))
                           .map((sub: any) => {
                             const isSubActive = location.pathname === sub.to;
-                          return (
-                            <button
-                              key={sub.to}
-                              type="button"
-                              onClick={() => navigate(sub.to)}
-                              className={styles.subItemBtn}
-                              style={{
-                                color: isSubActive ? t.submenuActiveText : t.submenuText,
-                                background: isSubActive ? t.submenuActiveBg : 'transparent',
-                                fontWeight: isSubActive ? 700 : 500,
-                              }}
-                            >
-                              {/* Glowing Laser Notch right over the line */}
-                              {isSubActive && (
-                                <div className={styles.submenuLaserNotch} />
-                              )}
-                              <span className={styles.iconWrap} style={{ opacity: isSubActive ? 1 : 0.75 }}>
-                                {sub.icon}
-                              </span>
-                              <span className={styles.noWrapText} style={{ fontWeight: isSubActive ? 700 : 500, fontSize: '12px' }}>
-                                {sub.label}
-                              </span>
-                            </button>
-                          );
-                        })}
+                            return (
+                              <button
+                                key={sub.to}
+                                type="button"
+                                onClick={() => navigate(sub.to)}
+                                className={mergeClasses(
+                                  styles.subItemBtn,
+                                  isSubActive
+                                    ? (isDark ? styles.subItemActiveDark : styles.subItemActiveLight)
+                                    : (isDark ? styles.subItemInactiveDark : styles.subItemInactiveLight)
+                                )}
+                              >
+                                {/* Glowing Laser Notch right over the line */}
+                                {isSubActive && (
+                                  <div className={styles.submenuLaserNotch} />
+                                )}
+                                <span
+                                  className={mergeClasses(
+                                    styles.iconWrap,
+                                    isSubActive ? styles.subItemIconWrapActive : styles.subItemIconWrapInactive
+                                  )}
+                                >
+                                  {sub.icon}
+                                </span>
+                                <span
+                                  className={mergeClasses(
+                                    styles.noWrapText,
+                                    isSubActive ? styles.subItemLabelActive : styles.subItemLabelInactive
+                                  )}
+                                >
+                                  {sub.label}
+                                </span>
+                              </button>
+                            );
+                          })}
                       </div>
                     </div>
                   );
@@ -687,84 +1455,57 @@ export function FluentSidebar(): React.JSX.Element {
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    style={({ isActive }) => ({
-                      display: 'flex',
-                      alignItems: 'center',
-                      height: '38px',
-                      width: isCollapsed ? '42px' : '100%',
-                      margin: isCollapsed ? '0 auto' : '0',
-                      padding: isCollapsed ? '0' : '0 10px',
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      fontSize: '13px',
-                      fontWeight: isActive ? 700 : 500,
-                      position: 'relative',
-                      boxSizing: 'border-box',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      border: isActive ? t.itemActiveBorder : '1px solid transparent',
-                      background: isActive ? t.itemActiveBg : 'transparent',
-                      color: isActive ? t.itemActiveText : t.itemText,
-                      justifyContent: isCollapsed ? 'center' : 'flex-start',
-                    })}
+                    className={({ isActive }) =>
+                      mergeClasses(
+                        styles.navLink,
+                        isCollapsed ? styles.navLinkCollapsed : styles.navLinkExpanded,
+                        isActive
+                          ? (isDark ? styles.navLinkActiveDark : styles.navLinkActiveLight)
+                          : (isDark ? styles.navLinkInactiveDark : styles.navLinkInactiveLight)
+                      )
+                    }
                   >
                     {({ isActive }) => {
                       const content = isCollapsed ? (
-                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                        <span className={styles.collapsedInnerSpan}>
                           {isActive && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                left: '0',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                width: '3.5px',
-                                height: '20px',
-                                borderRadius: '0 3px 3px 0',
-                                backgroundColor: '#E51937',
-                                boxShadow: '0 0 8px #E51937',
-                              }}
-                            />
+                            <div className={styles.collapsedActiveLaser} />
                           )}
-                          <span style={{ color: isActive ? '#FF4D63' : t.itemText, filter: isActive ? 'drop-shadow(0 0 6px rgba(229, 25, 55, 0.6))' : 'none' }}>
+                          <span
+                            className={
+                              isActive
+                                ? styles.navLinkIconActive
+                                : (isDark ? styles.navLinkIconInactiveDark : styles.navLinkIconInactiveLight)
+                            }
+                          >
                             {isActive ? item.activeIcon : item.icon}
                           </span>
                         </span>
                       ) : (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                        <span className={styles.navLinkRow}>
                           {isActive && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                left: '0',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                width: '3.5px',
-                                height: '22px',
-                                borderRadius: '0 3px 3px 0',
-                                backgroundColor: '#E51937',
-                                boxShadow: '0 0 10px #E51937',
-                              }}
-                            />
+                            <div className={styles.laserIndicator} />
                           )}
-                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: isActive ? '#FF4D63' : t.itemText, filter: isActive ? 'drop-shadow(0 0 6px rgba(229, 25, 55, 0.6))' : 'none' }}>
+                          <span
+                            className={mergeClasses(
+                              styles.iconWrap,
+                              isActive
+                                ? styles.navLinkIconActive
+                                : (isDark ? styles.navLinkIconInactiveDark : styles.navLinkIconInactiveLight)
+                            )}
+                          >
                             {isActive ? item.activeIcon : item.icon}
                           </span>
-                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: isActive ? 700 : 500, fontSize: '13px' }}>
+                          <span
+                            className={mergeClasses(
+                              styles.navLinkLabel,
+                              isActive ? styles.accordionLabelActive : styles.accordionLabelInactive
+                            )}
+                          >
                             {item.label}
                           </span>
                           {item.badge && (
-                            <span
-                              style={{
-                                fontSize: '9.5px',
-                                fontWeight: 800,
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                backgroundColor: 'rgba(229, 25, 55, 0.15)',
-                                color: '#FF4D63',
-                                border: '1px solid rgba(229, 25, 55, 0.3)',
-                              }}
-                            >
+                            <span className={styles.badgePill}>
                               {item.badge}
                             </span>
                           )}
@@ -790,32 +1531,20 @@ export function FluentSidebar(): React.JSX.Element {
 
       {/* ── Bottom Deck ─────────────────────────── */}
       <div
-        style={{
-          flexShrink: 0,
-          padding: isCollapsed ? '10px 6px 14px' : '10px 10px 14px',
-          borderTop: t.deckBorder,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          background: t.deckBg,
-        }}
+        className={mergeClasses(
+          styles.bottomDeck,
+          isCollapsed ? styles.bottomDeckCollapsed : styles.bottomDeckExpanded,
+          isDark ? styles.bottomDeckDark : styles.bottomDeckLight
+        )}
       >
         {/* ── Bottom Deck Action Toolbar (Theme, [Settings], [Storage], Logout, Collapse) ── */}
         <div
-          style={{
-            display: isCollapsed ? 'flex' : 'grid',
-            gridTemplateColumns: isAdmin ? 'repeat(5, 1fr)' : 'repeat(3, 1fr)',
-            flexDirection: isCollapsed ? 'column' : 'row',
-            gap: '4px',
-            width: isCollapsed ? '38px' : '100%',
-            margin: isCollapsed ? '0 auto' : '0',
-            alignItems: 'center',
-            padding: '3px',
-            borderRadius: '9px',
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F1F5F9',
-            border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-            boxSizing: 'border-box',
-          }}
+          className={mergeClasses(
+            styles.toolbar,
+            isCollapsed ? styles.toolbarCollapsed : styles.toolbarExpanded,
+            isAdmin ? styles.toolbarAdmin : styles.toolbarNonAdmin,
+            isDark ? styles.toolbarDark : styles.toolbarLight
+          )}
         >
           {/* 1. Light / Dark Theme Button */}
           <Tooltip
@@ -826,34 +1555,13 @@ export function FluentSidebar(): React.JSX.Element {
             <button
               type="button"
               onClick={toggleTheme}
-              style={{
-                height: '32px',
-                width: '100%',
-                padding: 0,
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: mode === 'dark' ? '#F59E0B' : '#E51937',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF';
-                e.currentTarget.style.boxShadow = isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className={mergeClasses(styles.toolbarBtn, isDark ? styles.themeBtnDark : styles.themeBtnLight)}
               title={mode === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
             >
               {mode === 'dark' ? (
-                <WeatherSunny20Regular style={{ width: 17, height: 17, color: '#F59E0B' }} />
+                <WeatherSunny20Regular className={mergeClasses(styles.icon17, styles.icon17Amber)} />
               ) : (
-                <WeatherMoon20Regular style={{ width: 17, height: 17, color: '#E51937' }} />
+                <WeatherMoon20Regular className={mergeClasses(styles.icon17, styles.icon17Red)} />
               )}
             </button>
           </Tooltip>
@@ -868,35 +1576,17 @@ export function FluentSidebar(): React.JSX.Element {
               <button
                 type="button"
                 onClick={() => navigate('/admin')}
-                style={{
-                  height: '32px',
-                  width: '100%',
-                  padding: 0,
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: location.pathname === '/admin' ? (isDark ? 'rgba(229, 25, 55, 0.2)' : 'rgba(229, 25, 55, 0.12)') : 'transparent',
-                  color: location.pathname === '/admin' ? '#E51937' : (isDark ? '#CBD5E1' : '#64748B'),
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (location.pathname !== '/admin') {
-                    e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF';
-                    e.currentTarget.style.boxShadow = isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (location.pathname !== '/admin') {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }
-                }}
+                className={mergeClasses(
+                  styles.toolbarBtn,
+                  location.pathname === '/admin'
+                    ? (isDark ? styles.adminBtnActiveDark : styles.adminBtnActiveLight)
+                    : (isDark ? styles.adminBtnInactiveDark : styles.adminBtnInactiveLight)
+                )}
                 title="Store & Admin Settings"
               >
-                <Settings20Regular style={{ width: 17, height: 17, color: location.pathname === '/admin' ? '#E51937' : undefined }} />
+                <Settings20Regular
+                  className={mergeClasses(styles.icon17, location.pathname === '/admin' ? styles.icon17Red : undefined)}
+                />
               </button>
             </Tooltip>
           )}
@@ -911,35 +1601,15 @@ export function FluentSidebar(): React.JSX.Element {
               <button
                 type="button"
                 onClick={() => setIsStorageModalOpen(true)}
-                style={{
-                  height: '32px',
-                  width: '100%',
-                  padding: 0,
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: isStorageModalOpen ? (isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.12)') : 'transparent',
-                  color: isDark ? '#CBD5E1' : '#64748B',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isStorageModalOpen) {
-                    e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF';
-                    e.currentTarget.style.boxShadow = isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isStorageModalOpen) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }
-                }}
+                className={mergeClasses(
+                  styles.toolbarBtn,
+                  isStorageModalOpen
+                    ? (isDark ? styles.storageBtnActiveDark : styles.storageBtnActiveLight)
+                    : (isDark ? styles.storageBtnInactiveDark : styles.storageBtnInactiveLight)
+                )}
                 title="Local Storage & Database Engine"
               >
-                <Database20Regular style={{ width: 17, height: 17 }} />
+                <Database20Regular className={styles.icon17} />
               </button>
             </Tooltip>
           )}
@@ -953,31 +1623,10 @@ export function FluentSidebar(): React.JSX.Element {
             <button
               type="button"
               onClick={logout}
-              style={{
-                height: '32px',
-                width: '100%',
-                padding: 0,
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: '#EF4444',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)';
-                e.currentTarget.style.boxShadow = isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className={mergeClasses(styles.toolbarBtn, isDark ? styles.logoutBtnDark : styles.logoutBtnLight)}
               title={`Log Out / Lock Terminal (${user?.name || 'Cashier'})`}
             >
-              <LockClosed20Regular style={{ width: 17, height: 17, color: '#EF4444' }} />
+              <LockClosed20Regular className={mergeClasses(styles.icon17, styles.icon17Danger)} />
             </button>
           </Tooltip>
 
@@ -990,34 +1639,13 @@ export function FluentSidebar(): React.JSX.Element {
             <button
               type="button"
               onClick={toggleSidebar}
-              style={{
-                height: '32px',
-                width: '100%',
-                padding: 0,
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: isDark ? '#CBD5E1' : '#64748B',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF';
-                e.currentTarget.style.boxShadow = isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className={mergeClasses(styles.toolbarBtn, isDark ? styles.collapseBtnDark : styles.collapseBtnLight)}
               title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
             >
               {isCollapsed ? (
-                <ChevronRight20Regular style={{ width: 17, height: 17, color: isDark ? '#CBD5E1' : '#64748B' }} />
+                <ChevronRight20Regular className={styles.icon17} />
               ) : (
-                <ChevronLeft20Regular style={{ width: 17, height: 17, color: isDark ? '#CBD5E1' : '#64748B' }} />
+                <ChevronLeft20Regular className={styles.icon17} />
               )}
             </button>
           </Tooltip>
@@ -1026,89 +1654,54 @@ export function FluentSidebar(): React.JSX.Element {
 
       {/* ── Storage & Local Database Dialog ─────────────────────────── */}
       <Dialog open={isStorageModalOpen} onOpenChange={(_, d) => setIsStorageModalOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '440px' }}>
+        <DialogSurface className={styles.storageDialogSurface}>
           <DialogBody>
-            <DialogTitle style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Database20Regular style={{ color: '#E51937' }} />
+            <DialogTitle className={styles.storageDialogTitle}>
+              <Database20Regular className={styles.iconBrand} />
               <span>Offline-First Storage Engine</span>
             </DialogTitle>
-            <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
-              <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+            <DialogContent className={styles.storageDialogContent}>
+              <Text size={200} className={styles.textMuted}>
                 Local storage resilience, SQLite WAL persistence, and data synchronization.
               </Text>
 
-              <div style={{ padding: '14px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke1}`, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>Database Engine</span>
+              <div className={styles.storageStatusCard}>
+                <div className={styles.storageStatusRow}>
+                  <span className={styles.storageLabel}>Database Engine</span>
                   <Badge appearance="tint" color="success">SQLite WAL Active</Badge>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>Cloud Sync Engine</span>
-                  <Badge appearance="tint" color="brand" style={{ backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937' }}>
+                <div className={styles.storageStatusRow}>
+                  <span className={styles.storageLabel}>Cloud Sync Engine</span>
+                  <Badge appearance="tint" color="brand" className={styles.storageBadgeAuto}>
                     Auto-Sync Online
                   </Badge>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>Terminal State</span>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>● Healthy &amp; Ready</span>
+                <div className={styles.storageStatusRow}>
+                  <span className={styles.storageLabel}>Terminal State</span>
+                  <span className={styles.storageHealthy}>● Healthy &amp; Ready</span>
                 </div>
               </div>
 
               {storageStatusMsg && (
-                <div style={{ color: '#10B981', fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>
+                <div className={styles.storageMsg}>
                   {storageStatusMsg}
                 </div>
               )}
             </DialogContent>
-            <DialogActions style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
+            <DialogActions className={styles.storageActions}>
               <button
                 type="button"
                 onClick={() => setIsStorageModalOpen(false)}
-                style={{
-                  height: '36px',
-                  padding: '0 18px',
-                  borderRadius: '7px',
-                  border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1',
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
-                  color: isDark ? '#F1F5F9' : '#334155',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  outline: 'none',
-                  transition: 'all 0.15s ease',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                }}
+                className={mergeClasses(styles.storageCloseBtn, isDark ? styles.storageCloseDark : styles.storageCloseLight)}
               >
                 Close
               </button>
               <button
                 type="button"
                 onClick={handleResyncStorage}
-                style={{
-                  height: '36px',
-                  padding: '0 20px',
-                  borderRadius: '7px',
-                  border: 'none',
-                  backgroundColor: '#E51937',
-                  color: '#FFFFFF',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '7px',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                  outline: 'none',
-                  boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
-                  transition: 'all 0.15s ease',
-                }}
+                className={styles.storageResyncBtn}
               >
-                <ArrowSync20Filled style={{ width: 15, height: 15 }} />
+                <ArrowSync20Filled className={styles.icon15} />
                 <span>Force Cloud Resync</span>
               </button>
             </DialogActions>

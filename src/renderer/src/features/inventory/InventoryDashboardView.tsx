@@ -10,6 +10,7 @@ import {
   Badge,
   Button,
   ProgressBar,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   Box24Regular,
@@ -117,7 +118,214 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusSmall,
     backgroundColor: tokens.colorNeutralBackground3,
     marginBottom: '8px',
-    borderLeft: '3px solid #D13438',
+    borderLeftWidth: '3px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: '#D13438',
+  },
+  cardSubtitle: {
+    color: tokens.colorNeutralForeground2,
+    fontWeight: 600,
+  },
+  cardMetricNum: {
+    fontSize: '28px',
+    fontWeight: 800,
+    marginTop: '8px',
+    color: tokens.colorNeutralForeground1,
+  },
+  cardMetricNumBlue: {
+    fontSize: '28px',
+    fontWeight: 800,
+    marginTop: '8px',
+    color: '#0078D4',
+  },
+  cardMetricNumGreen: {
+    fontSize: '28px',
+    fontWeight: 800,
+    marginTop: '8px',
+    color: '#107C41',
+  },
+  cardMetricNumRed: {
+    fontSize: '28px',
+    fontWeight: 800,
+    marginTop: '8px',
+    color: '#E51937',
+  },
+  cardHint: {
+    color: tokens.colorNeutralForeground3,
+    marginTop: '4px',
+  },
+  cursorPointer: {
+    cursor: 'pointer',
+  },
+  quickLinkLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  quickLinkIconGreen: {
+    color: '#107C41',
+    backgroundColor: 'rgba(16, 124, 65, 0.1)',
+    padding: '10px',
+    borderRadius: '8px',
+    display: 'inline-flex',
+  },
+  quickLinkIconRed: {
+    color: '#D13438',
+    backgroundColor: 'rgba(209, 52, 56, 0.1)',
+    padding: '10px',
+    borderRadius: '8px',
+    display: 'inline-flex',
+  },
+  quickLinkIconBlue: {
+    color: '#0078D4',
+    backgroundColor: 'rgba(0, 120, 212, 0.1)',
+    padding: '10px',
+    borderRadius: '8px',
+    display: 'inline-flex',
+  },
+  quickLinkIconBrand: {
+    color: '#E51937',
+    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    padding: '10px',
+    borderRadius: '8px',
+    display: 'inline-flex',
+  },
+  quickLinkTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  quickLinkDesc: {
+    color: tokens.colorNeutralForeground2,
+  },
+  quickLinkChevron: {
+    color: tokens.colorNeutralForeground3,
+  },
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '14px',
+  },
+  sectionHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  warningIcon: {
+    color: '#D13438',
+  },
+  sectionTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+  },
+  reorderAllBtn: {
+    fontWeight: 600,
+    color: '#E51937',
+  },
+  emptyText: {
+    padding: '24px',
+    textAlign: 'center',
+    color: tokens.colorNeutralForeground3,
+  },
+  alertItemLeft: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  alertItemTitle: {
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+  },
+  alertItemSubtitle: {
+    color: tokens.colorNeutralForeground2,
+  },
+  alertItemRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  badgeBold: {
+    fontWeight: 700,
+  },
+  restockBtn: {
+    backgroundColor: '#E51937',
+    color: '#fff',
+    fontSize: '11px',
+    padding: '4px 10px',
+    height: '26px',
+  },
+  viewFullBtn: {
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground2,
+  },
+  movementItemLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  movementInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  movementTitle: {
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+    fontSize: '13px',
+  },
+  movementMeta: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: '11px',
+  },
+  movementCostIn: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#107C41',
+  },
+  movementCostOut: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#D13438',
+  },
+  distributionTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    marginBottom: '16px',
+    display: 'block',
+  },
+  distributionGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: '12px',
+  },
+  catCard: {
+    padding: '14px',
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  catCardHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  catCardTitle: {
+    fontWeight: 700,
+    fontSize: '13px',
+    color: tokens.colorNeutralForeground1,
+  },
+  catCardUnits: {
+    color: tokens.colorNeutralForeground2,
+    fontWeight: 600,
+  },
+  catProgressBar: {
+    height: '4px',
+  },
+  catCardFooter: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: '11px',
   },
 });
 
@@ -181,45 +389,45 @@ export function InventoryDashboardView(): React.JSX.Element {
       {/* ── KPI Metrics Row (5 Connected Cards) ── */}
       <div className={styles.metricsGrid}>
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Total Catalog Items</Caption1>
-          <Subtitle1 style={{ fontSize: '28px', fontWeight: 800, marginTop: '8px', color: tokens.colorNeutralForeground1 }}>
+          <Caption1 className={styles.cardSubtitle}>Total Catalog Items</Caption1>
+          <Subtitle1 className={styles.cardMetricNum}>
             {totalStockItems}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '4px' }}>Products in database</Caption1>
+          <Caption1 className={styles.cardHint}>Products in database</Caption1>
         </div>
 
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Total Units in Stock</Caption1>
-          <Subtitle1 style={{ fontSize: '28px', fontWeight: 800, marginTop: '8px', color: '#0078D4' }}>
+          <Caption1 className={styles.cardSubtitle}>Total Units in Stock</Caption1>
+          <Subtitle1 className={styles.cardMetricNumBlue}>
             {totalUnitsInStock.toLocaleString()}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '4px' }}>Live units physically available</Caption1>
+          <Caption1 className={styles.cardHint}>Live units physically available</Caption1>
         </div>
 
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Total Purchase Cost</Caption1>
-          <Subtitle1 style={{ fontSize: '28px', fontWeight: 800, marginTop: '8px', color: tokens.colorNeutralForeground1 }}>
+          <Caption1 className={styles.cardSubtitle}>Total Purchase Cost</Caption1>
+          <Subtitle1 className={styles.cardMetricNum}>
             {formatPKR(totalPurchaseValue)}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '4px' }}>Procurement investment</Caption1>
+          <Caption1 className={styles.cardHint}>Procurement investment</Caption1>
         </div>
 
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Retail Selling Valuation</Caption1>
-          <Subtitle1 style={{ fontSize: '28px', fontWeight: 800, marginTop: '8px', color: '#107C41' }}>
+          <Caption1 className={styles.cardSubtitle}>Retail Selling Valuation</Caption1>
+          <Subtitle1 className={styles.cardMetricNumGreen}>
             {formatPKR(totalRetailValue)}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '4px' }}>
+          <Caption1 className={styles.cardHint}>
             Estimated margin: <strong>{profitMarginPercent}%</strong>
           </Caption1>
         </div>
 
-        <div className={styles.metricCard} onClick={() => navigate('/inventory/vendors')} style={{ cursor: 'pointer' }}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Total Vendor Payables</Caption1>
-          <Subtitle1 style={{ fontSize: '28px', fontWeight: 800, marginTop: '8px', color: totalVendorPayables > 0 ? '#E51937' : '#107C41' }}>
+        <div className={mergeClasses(styles.metricCard, styles.cursorPointer)} onClick={() => navigate('/inventory/vendors')}>
+          <Caption1 className={styles.cardSubtitle}>Total Vendor Payables</Caption1>
+          <Subtitle1 className={totalVendorPayables > 0 ? styles.cardMetricNumRed : styles.cardMetricNumGreen}>
             {formatPKR(totalVendorPayables)}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '4px' }}>
+          <Caption1 className={styles.cardHint}>
             {vendors.filter((v) => (v.openingBalance || 0) > 0).length} suppliers pending &rarr;
           </Caption1>
         </div>
@@ -228,55 +436,55 @@ export function InventoryDashboardView(): React.JSX.Element {
       {/* ── Quick Hub Links ── */}
       <div className={styles.quickLinksGrid}>
         <div className={styles.quickLinkCard} onClick={() => navigate('/inventory/stock-in')}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ color: '#107C41', backgroundColor: 'rgba(16, 124, 65, 0.1)', padding: '10px', borderRadius: '8px' }}>
+          <div className={styles.quickLinkLeft}>
+            <span className={styles.quickLinkIconGreen}>
               <ArrowCircleDown24Regular />
             </span>
             <div>
-              <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>Stock In (Receiving)</Body1>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>Receive purchases &amp; vendor deliveries</Caption1>
+              <Body1 className={styles.quickLinkTitle}>Stock In (Receiving)</Body1>
+              <Caption1 className={styles.quickLinkDesc}>Receive purchases &amp; vendor deliveries</Caption1>
             </div>
           </div>
-          <ArrowRight16Regular style={{ color: tokens.colorNeutralForeground3 }} />
+          <ArrowRight16Regular className={styles.quickLinkChevron} />
         </div>
 
         <div className={styles.quickLinkCard} onClick={() => navigate('/inventory/stock-out')}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ color: '#D13438', backgroundColor: 'rgba(209, 52, 56, 0.1)', padding: '10px', borderRadius: '8px' }}>
+          <div className={styles.quickLinkLeft}>
+            <span className={styles.quickLinkIconRed}>
               <ArrowCircleUp24Regular />
             </span>
             <div>
-              <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>Stock Out (Waste/Usage)</Body1>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>Log kitchen usage, damage, or expiry</Caption1>
+              <Body1 className={styles.quickLinkTitle}>Stock Out (Waste/Usage)</Body1>
+              <Caption1 className={styles.quickLinkDesc}>Log kitchen usage, damage, or expiry</Caption1>
             </div>
           </div>
-          <ArrowRight16Regular style={{ color: tokens.colorNeutralForeground3 }} />
+          <ArrowRight16Regular className={styles.quickLinkChevron} />
         </div>
 
         <div className={styles.quickLinkCard} onClick={() => navigate('/inventory/vendors')}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ color: '#0078D4', backgroundColor: 'rgba(0, 120, 212, 0.1)', padding: '10px', borderRadius: '8px' }}>
+          <div className={styles.quickLinkLeft}>
+            <span className={styles.quickLinkIconBlue}>
               <PeopleCommunity24Regular />
             </span>
             <div>
-              <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>Vendors &amp; Suppliers</Body1>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>{vendors.length} registered suppliers</Caption1>
+              <Body1 className={styles.quickLinkTitle}>Vendors &amp; Suppliers</Body1>
+              <Caption1 className={styles.quickLinkDesc}>{vendors.length} registered suppliers</Caption1>
             </div>
           </div>
-          <ArrowRight16Regular style={{ color: tokens.colorNeutralForeground3 }} />
+          <ArrowRight16Regular className={styles.quickLinkChevron} />
         </div>
 
         <div className={styles.quickLinkCard} onClick={() => navigate('/inventory/ledger')}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ color: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.1)', padding: '10px', borderRadius: '8px' }}>
+          <div className={styles.quickLinkLeft}>
+            <span className={styles.quickLinkIconBrand}>
               <DocumentTableSearch24Regular />
             </span>
             <div>
-              <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>Movement Ledger</Body1>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>{movements.length} audit logs recorded</Caption1>
+              <Body1 className={styles.quickLinkTitle}>Movement Ledger</Body1>
+              <Caption1 className={styles.quickLinkDesc}>{movements.length} audit logs recorded</Caption1>
             </div>
           </div>
-          <ArrowRight16Regular style={{ color: tokens.colorNeutralForeground3 }} />
+          <ArrowRight16Regular className={styles.quickLinkChevron} />
         </div>
       </div>
 
@@ -284,10 +492,10 @@ export function InventoryDashboardView(): React.JSX.Element {
       <div className={styles.twoColGrid}>
         {/* Left: Low Stock Critical Alerts */}
         <div className={styles.sectionCard}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Warning20Filled style={{ color: '#D13438' }} />
-              <Subtitle2 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1 }}>
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionHeaderLeft}>
+              <Warning20Filled className={styles.warningIcon} />
+              <Subtitle2 className={styles.sectionTitle}>
                 Low Stock Reorder Alerts
               </Subtitle2>
               <Badge appearance="filled" color="danger" size="small">
@@ -299,34 +507,34 @@ export function InventoryDashboardView(): React.JSX.Element {
               size="small"
               icon={<Add20Regular />}
               onClick={() => navigate('/inventory/stock-in')}
-              style={{ fontWeight: 600, color: '#E51937' }}
+              className={styles.reorderAllBtn}
             >
               Reorder All
             </Button>
           </div>
 
           {lowStockProducts.length === 0 ? (
-            <div style={{ padding: '24px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+            <div className={styles.emptyText}>
               All inventory levels are healthy. No items below threshold.
             </div>
           ) : (
             lowStockProducts.slice(0, 5).map((prod) => (
               <div key={prod.id} className={styles.alertItem}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <Body1 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>{prod.name}</Body1>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
+                <div className={styles.alertItemLeft}>
+                  <Body1 className={styles.alertItemTitle}>{prod.name}</Body1>
+                  <Caption1 className={styles.alertItemSubtitle}>
                     Category: {prod.category} • Cost: {formatPKR(prod.costPrice || 0)}
                   </Caption1>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Badge appearance="tint" color="danger" style={{ fontWeight: 700 }}>
+                <div className={styles.alertItemRight}>
+                  <Badge appearance="tint" color="danger" className={styles.badgeBold}>
                     {prod.openingStock || 0} units left
                   </Badge>
                   <Button
                     appearance="primary"
                     size="small"
                     onClick={() => navigate('/inventory/stock-in', { state: { productName: prod.name, productId: prod.id, costPrice: prod.costPrice } })}
-                    style={{ backgroundColor: '#E51937', color: '#fff', fontSize: '11px', padding: '4px 10px', height: '26px' }}
+                    className={styles.restockBtn}
                   >
                     Restock
                   </Button>
@@ -338,22 +546,22 @@ export function InventoryDashboardView(): React.JSX.Element {
 
         {/* Right: Recent Stock Movements Snapshot */}
         <div className={styles.sectionCard}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <Subtitle2 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1 }}>
+          <div className={styles.sectionHeader}>
+            <Subtitle2 className={styles.sectionTitle}>
               Recent Stock Movements
             </Subtitle2>
             <Button
               appearance="subtle"
               size="small"
               onClick={() => navigate('/inventory/ledger')}
-              style={{ fontWeight: 600, color: tokens.colorNeutralForeground2 }}
+              className={styles.viewFullBtn}
             >
               View Full Ledger &rarr;
             </Button>
           </div>
 
           {movements.length === 0 ? (
-            <div style={{ padding: '24px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+            <div className={styles.emptyText}>
               No recent movements recorded yet.
             </div>
           ) : (
@@ -362,30 +570,29 @@ export function InventoryDashboardView(): React.JSX.Element {
               return (
                 <div
                   key={mov.id}
-                  className={styles.movementRow}
+                  className={mergeClasses(styles.movementRow, styles.cursorPointer)}
                   onClick={() => navigate('/inventory/ledger')}
-                  style={{ cursor: 'pointer' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className={styles.movementItemLeft}>
                     <Badge
                       appearance="filled"
                       color={isIn ? 'success' : 'danger'}
                       size="medium"
-                      style={{ fontWeight: 700 }}
+                      className={styles.badgeBold}
                     >
                       {isIn ? `+${mov.quantity}` : `-${mov.quantity}`}
                     </Badge>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <Body1 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1, fontSize: '13px' }}>
+                    <div className={styles.movementInfo}>
+                      <Body1 className={styles.movementTitle}>
                         {mov.productName}
                       </Body1>
-                      <Caption1 style={{ color: tokens.colorNeutralForeground3, fontSize: '11px' }}>
+                      <Caption1 className={styles.movementMeta}>
                         {new Date(mov.date).toLocaleDateString()} • {mov.reason || (isIn ? 'Stock In' : 'Damage/Waste')}
                       </Caption1>
                     </div>
                   </div>
                   {mov.unitCost && (
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: isIn ? '#107C41' : '#D13438' }}>
+                    <span className={isIn ? styles.movementCostIn : styles.movementCostOut}>
                       {formatPKR(mov.quantity * mov.unitCost)}
                     </span>
                   )}
@@ -398,30 +605,23 @@ export function InventoryDashboardView(): React.JSX.Element {
 
       {/* ── Category Stock Distribution ── */}
       <div className={styles.sectionCard}>
-        <Subtitle2 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, marginBottom: '16px', display: 'block' }}>
+        <Subtitle2 className={styles.distributionTitle}>
           Category Stock Distribution
         </Subtitle2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+        <div className={styles.distributionGrid}>
           {Object.entries(categoryMap).map(([catName, data]) => {
             const percent = totalUnitsInStock > 0 ? Math.round((data.units / totalUnitsInStock) * 100) : 0;
             return (
               <div
                 key={catName}
-                style={{
-                  padding: '14px',
-                  borderRadius: '8px',
-                  backgroundColor: tokens.colorNeutralBackground3,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                }}
+                className={styles.catCard}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Body1 style={{ fontWeight: 700, fontSize: '13px', color: tokens.colorNeutralForeground1 }}>{catName}</Body1>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>{data.units} units</Caption1>
+                <div className={styles.catCardHeader}>
+                  <Body1 className={styles.catCardTitle}>{catName}</Body1>
+                  <Caption1 className={styles.catCardUnits}>{data.units} units</Caption1>
                 </div>
-                <ProgressBar value={percent / 100} color={percent > 20 ? 'brand' : 'warning'} style={{ height: '4px' }} />
-                <Caption1 style={{ color: tokens.colorNeutralForeground3, fontSize: '11px' }}>
+                <ProgressBar value={percent / 100} color={percent > 20 ? 'brand' : 'warning'} className={styles.catProgressBar} />
+                <Caption1 className={styles.catCardFooter}>
                   {data.count} items ({percent}%)
                 </Caption1>
               </div>

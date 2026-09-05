@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { tokens } from '@fluentui/react-components';
+import { makeStyles, tokens, mergeClasses } from '@fluentui/react-components';
 import { Food24Filled, BuildingRetail24Regular } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
@@ -21,6 +21,154 @@ export interface ProductAutocompleteProps {
   labelBg?: string;
 }
 
+const useStyles = makeStyles({
+  container: {
+    position: 'relative',
+    width: '100%',
+  },
+  countBadge: {
+    fontSize: '10.5px',
+    color: tokens.colorNeutralForeground3,
+    whiteSpace: 'nowrap',
+    marginRight: '6px',
+  },
+  dropdown: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 2500,
+    marginTop: '4px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderTopWidth: '1px',
+    borderBottomWidth: '1px',
+    borderLeftWidth: '1px',
+    borderRightWidth: '1px',
+    borderTopStyle: 'solid',
+    borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid',
+    borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1,
+    borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1,
+    borderRightColor: tokens.colorNeutralStroke1,
+    borderRadius: '10px',
+    boxShadow: tokens.shadow16,
+    maxHeight: '220px',
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '6px',
+  },
+  dropdownHeader: {
+    padding: '6px 10px',
+    fontSize: '11px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  noItems: {
+    padding: '12px 10px',
+    textAlign: 'center',
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+  },
+  itemRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '7px 10px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transitionProperty: 'background-color',
+    transitionDuration: '0.12s',
+    transitionTimingFunction: 'ease',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground3,
+    },
+  },
+  thumb: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '6px',
+    overflow: 'hidden',
+    backgroundColor: tokens.colorNeutralBackground2,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    borderTopWidth: '1px',
+    borderBottomWidth: '1px',
+    borderLeftWidth: '1px',
+    borderRightWidth: '1px',
+    borderTopStyle: 'solid',
+    borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid',
+    borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2,
+    borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2,
+    borderRightColor: tokens.colorNeutralStroke2,
+  },
+  thumbImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  thumbIconBrand: {
+    width: '16px',
+    height: '16px',
+    color: tokens.colorBrandForeground1,
+  },
+  thumbIconNeutral: {
+    width: '16px',
+    height: '16px',
+    color: tokens.colorNeutralForeground2,
+  },
+  itemInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  itemName: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  itemMeta: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    marginTop: '2px',
+    flexWrap: 'wrap',
+  },
+  skuBadge: {
+    fontFamily: 'monospace',
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: '1px 5px',
+    borderRadius: '4px',
+    fontSize: '10.5px',
+  },
+  variantBadge: {
+    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    color: '#E51937',
+    padding: '1px 5px',
+    borderRadius: '4px',
+    fontSize: '10.5px',
+    fontWeight: 700,
+  },
+  priceText: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: tokens.colorBrandForeground1,
+  },
+});
+
 export function ProductAutocomplete({
   id = 'product-autocomplete',
   value = '',
@@ -35,6 +183,7 @@ export function ProductAutocomplete({
   style,
   labelBg,
 }: ProductAutocompleteProps): React.JSX.Element {
+  const styles = useStyles();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -100,7 +249,7 @@ export function ProductAutocomplete({
   };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%', ...style }}>
+    <div ref={containerRef} className={styles.container} style={style}>
       <CustomInput
         id={id}
         label={label}
@@ -126,7 +275,7 @@ export function ProductAutocomplete({
         error={error}
         rightElement={
           availableProducts.length > 0 ? (
-            <span style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, whiteSpace: 'nowrap', marginRight: '6px' }}>
+            <span className={styles.countBadge}>
               {availableProducts.length} items
             </span>
           ) : undefined
@@ -135,33 +284,13 @@ export function ProductAutocomplete({
 
       {/* Floating Autocomplete Dropdown */}
       {isOpen && !disabled && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            zIndex: 2500,
-            marginTop: '4px',
-            backgroundColor: tokens.colorNeutralBackground1,
-            borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-            borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-            borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-            borderRadius: '10px',
-            boxShadow: tokens.shadow16,
-            maxHeight: '220px',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '6px',
-          }}
-        >
-          <div style={{ padding: '6px 10px', fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className={styles.dropdown}>
+          <div className={styles.dropdownHeader}>
             Catalog Quick Select ({suggestions.length} items)
           </div>
 
           {suggestions.length === 0 ? (
-            <div style={{ padding: '12px 10px', textAlign: 'center', fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+            <div className={styles.noItems}>
               No items match &quot;{value}&quot;. Custom name will be used.
             </div>
           ) : (
@@ -181,56 +310,33 @@ export function ProductAutocomplete({
                     e.preventDefault();
                     handleSelect(prod);
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '7px 10px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.12s ease',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground3)}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  className={styles.itemRow}
                 >
                   {/* Thumbnail Preview */}
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '6px',
-                      overflow: 'hidden',
-                      backgroundColor: tokens.colorNeutralBackground2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      border: `1px solid ${tokens.colorNeutralStroke2}`,
-                    }}
-                  >
+                  <div className={styles.thumb}>
                     {prod.imageUrl ? (
-                      <img src={prod.imageUrl} alt={prod.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={prod.imageUrl} alt={prod.name} className={styles.thumbImg} />
                     ) : prod.module === 'fastfood' ? (
-                      <Food24Filled style={{ width: 16, height: 16, color: tokens.colorBrandForeground1 }} />
+                      <Food24Filled className={styles.thumbIconBrand} />
                     ) : (
-                      <BuildingRetail24Regular style={{ width: 16, height: 16, color: tokens.colorNeutralForeground2 }} />
+                      <BuildingRetail24Regular className={styles.thumbIconNeutral} />
                     )}
                   </div>
 
                   {/* Name & Category / SKU */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div className={styles.itemInfo}>
+                    <div className={styles.itemName}>
                       {prod.name}
                     </div>
-                    <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', flexWrap: 'wrap' }}>
+                    <div className={styles.itemMeta}>
                       <span>{prod.category || 'Product'}</span>
                       {prod.skuCode && (
-                        <span style={{ fontFamily: 'monospace', backgroundColor: tokens.colorNeutralBackground3, padding: '1px 5px', borderRadius: '4px', fontSize: '10.5px' }}>
+                        <span className={styles.skuBadge}>
                           SKU: {prod.skuCode}
                         </span>
                       )}
                       {matchedVariant && (
-                        <span style={{ backgroundColor: 'rgba(229, 25, 55, 0.12)', color: '#E51937', padding: '1px 5px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 700 }}>
+                        <span className={styles.variantBadge}>
                           Variant: {matchedVariant.label} {matchedVariant.skuCode ? `(${matchedVariant.skuCode})` : ''}
                         </span>
                       )}
@@ -241,7 +347,7 @@ export function ProductAutocomplete({
                   </div>
 
                   {/* Price */}
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: tokens.colorBrandForeground1 }}>
+                  <div className={styles.priceText}>
                     PKR {(matchedVariant && matchedVariant.price !== undefined ? matchedVariant.price : prod.price).toLocaleString()}
                   </div>
                 </div>

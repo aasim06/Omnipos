@@ -5,7 +5,17 @@ import {
   createLightTheme,
   createDarkTheme,
   BrandVariants,
+  makeStyles,
 } from '@fluentui/react-components';
+
+const useStyles = makeStyles({
+  rootProvider: {
+    width: '100vw',
+    height: '100vh',
+    display: 'flex',
+    overflow: 'hidden',
+  },
+});
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Microsoft Fluent 2 Red Brand Accent (#E51937)
@@ -107,6 +117,7 @@ const queryClient = new QueryClient({
 });
 
 export function AppProviders({ children }: PropsWithChildren): React.JSX.Element {
+  const styles = useStyles();
   const [mode, setMode] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('omnipos-theme');
     // Default to 'dark'
@@ -133,7 +144,7 @@ export function AppProviders({ children }: PropsWithChildren): React.JSX.Element
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeContext.Provider value={{ mode, toggleTheme }}>
-        <FluentProvider theme={currentTheme} style={{ width: '100vw', height: '100vh', display: 'flex', overflow: 'hidden' }}>
+        <FluentProvider theme={currentTheme} className={styles.rootProvider}>
           {children}
         </FluentProvider>
       </ThemeContext.Provider>
