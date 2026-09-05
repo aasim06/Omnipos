@@ -18,71 +18,13 @@ export interface Vendor {
 
 const STORAGE_KEY = 'pos.vendors';
 
-const INITIAL_VENDORS: Vendor[] = [
-  {
-    id: 'vend_1',
-    name: 'Metro Cash & Carry Wholesale',
-    companyName: 'Metro Cash & Carry Wholesale',
-    contactPerson: 'Muhammad Tariq',
-    phone: '0300-1234567',
-    email: 'metro.supplies@gmail.com',
-    address: 'Thokar Niaz Baig, Multan Road, Lahore',
-    openingBalance: 0,
-    category: 'Groceries & Bulk Items',
-    notes: 'Primary supplier for cooking oil, grains, and beverages',
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'vend_2',
-    name: 'Dawn Bread & Bun Distributors',
-    companyName: 'Dawn Bread & Bun Distributors',
-    contactPerson: 'Adeel Khan',
-    phone: '0321-9876543',
-    email: 'dawn.orderdesk@dawn.com',
-    address: 'Industrial Area, Kot Lakhpat, Lahore',
-    openingBalance: 15000,
-    category: 'Bakery & Buns',
-    notes: 'Supplies fresh burger buns and bakery items every morning',
-    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'vend_3',
-    name: 'Prime Meat & Chicken Supplies',
-    companyName: 'Prime Meat & Chicken Supplies',
-    contactPerson: 'Chaudhry Bilal',
-    phone: '0333-5551234',
-    email: 'primemeat.lhr@gmail.com',
-    address: 'Meat Market, Tollinton Market, Lahore',
-    openingBalance: 28500,
-    category: 'Poultry & Meat',
-    notes: 'Supplies daily fresh chicken fillets, wings, and patties',
-    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'vend_4',
-    name: 'Pak Packaging & Disposables',
-    companyName: 'Pak Packaging & Disposables',
-    contactPerson: 'Rashid Mehmood',
-    phone: '0312-4447788',
-    email: 'rashid.packaging@yahoo.com',
-    address: 'Urdu Bazar, Lahore',
-    openingBalance: 0,
-    category: 'Packaging & Cartons',
-    notes: 'Burger boxes, kraft bags, cups, and napkins',
-    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+const INITIAL_VENDORS: Vendor[] = [];
 
 export const vendorStorage = {
   getVendors(): Vendor[] {
     const list = storage.getList<Vendor>(STORAGE_KEY);
     if (!list || list.length === 0) {
-      storage.setList(STORAGE_KEY, INITIAL_VENDORS);
-      return INITIAL_VENDORS;
+      return [];
     }
 
     // Auto-migrate legacy entries so that business name is consistently in 'name'

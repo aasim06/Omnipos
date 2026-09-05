@@ -88,7 +88,15 @@ export interface AppUser {
   updatedAt: string;
 }
 
-const STORAGE_KEY = 'omnipos.users';
+function getStorageKey(): string {
+  if (typeof window === 'undefined') return 'omnipos.users';
+  const key = (
+    localStorage.getItem('omnipos_active_key') ||
+    localStorage.getItem('omnipos_license_key') ||
+    'DEFAULT'
+  ).toUpperCase().trim();
+  return `omnipos.users.${key}`;
+}
 
 const DEFAULT_ADMIN_PERMISSIONS: UserPermissionKey[] = [
   'pos_fastfood',
@@ -107,55 +115,101 @@ const DEFAULT_CASHIER_PERMISSIONS: UserPermissionKey[] = [
   'pos_omnimart',
 ];
 
-const INITIAL_USERS: AppUser[] = [
-  {
-    id: 'user_admin_01',
-    username: 'admin',
-    name: 'Store Manager (Admin)',
+export function createLicenseAdmin(custom?: { username?: string; password?: string; name?: string }): AppUser {
+  return {
+    id: `user_admin_${Date.now()}`,
+    username: custom?.username?.trim() || 'admin',
+    name: custom?.name?.trim() || 'Store Manager (Admin)',
     role: 'admin',
-    password: '1234',
+    password: custom?.password?.trim() || '1234',
     permissions: DEFAULT_ADMIN_PERMISSIONS,
     isActive: true,
-    phone: '0300-1234567',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'user_cashier_01',
-    username: 'cashier',
-    name: 'Counter Cashier',
-    role: 'cashier',
-    password: '1234',
-    permissions: DEFAULT_CASHIER_PERMISSIONS,
-    isActive: true,
-    phone: '0321-7654321',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+  };
+}
 
 class UserStorage {
+  /**
+   * Initializes or updates the Admin account for a specific license key.
+   */
+  initAdminForLicense(
+    licenseKey: string,
+    custom?: { username?: string; password?: string; name?: string },
+  ): AppUser {
+    const normKey = (licenseKey || 'DEFAULT').toUpperCase().trim();
+    const storageKey = `omnipos.users.${normKey}`;
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
+
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingAdmin = parsed.find((u: AppUser) => u.role === 'admin' && u.isActive);
+          if (existingAdmin) {
+            // Update admin name or password if provided
+            let changed = false;
+            if (custom?.name && custom.name !== existingAdmin.name) {
+              existingAdmin.name = custom.name;
+              changed = true;
+            }
+            if (custom?.password && custom.password !== existingAdmin.password) {
+              existingAdmin.password = custom.password;
+              changed = true;
+            }
+            if (changed) {
+              localStorage.setItem(storageKey, JSON.stringify(parsed));
+            }
+            return existingAdmin;
+          }
+        }
+      } catch {}
+    }
+
+    const admin = createLicenseAdmin(custom);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(storageKey, JSON.stringify([admin]));
+    }
+    return admin;
+  }
+
   private load(): AppUser[] {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        this.save(INITIAL_USERS);
-        return INITIAL_USERS;
+      const storageKey = getStorageKey();
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Ensure at least one active admin exists
+          const hasAdmin = parsed.some((u) => u.role === 'admin' && u.isActive);
+          if (!hasAdmin) {
+            const admin = createLicenseAdmin();
+            const updated = [admin, ...parsed];
+            this.save(updated);
+            return updated;
+          }
+          return parsed;
+        }
       }
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-      this.save(INITIAL_USERS);
-      return INITIAL_USERS;
+
+      // First time loading this license key: dynamically generate its designated admin
+      const activeKey = (
+        localStorage.getItem('omnipos_active_key') ||
+        localStorage.getItem('omnipos_license_key') ||
+        'DEFAULT'
+      ).toUpperCase().trim();
+
+      const admin = this.initAdminForLicense(activeKey);
+      return [admin];
     } catch {
-      return INITIAL_USERS;
+      return [];
     }
   }
 
   private save(users: AppUser[]): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+      const storageKey = getStorageKey();
+      localStorage.setItem(storageKey, JSON.stringify(users));
     } catch (e) {
       console.error('[UserStorage] Failed to save users:', e);
     }

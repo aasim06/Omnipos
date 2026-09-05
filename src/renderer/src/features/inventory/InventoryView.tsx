@@ -17,6 +17,7 @@ import {
   DialogContent,
   TabList,
   Tab,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   ArrowCircleDown20Regular,
@@ -142,6 +143,197 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusSmall,
     backgroundColor: tokens.colorNeutralBackground3,
     marginBottom: '8px',
+  },
+  headerTitleCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  headerTitle: {
+    fontWeight: 700,
+    fontSize: '20px',
+    color: tokens.colorNeutralForeground1,
+    margin: 0,
+    display: 'block',
+  },
+  headerSubtitle: {
+    color: tokens.colorNeutralForeground2,
+    margin: 0,
+    display: 'block',
+    fontSize: '13px',
+  },
+  kpiLabel: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+    fontWeight: 600,
+  },
+  kpiValueDefault: {
+    fontSize: '26px',
+    fontWeight: 800,
+    marginTop: '6px',
+    display: 'block',
+    color: tokens.colorNeutralForeground1,
+  },
+  kpiValueUnits: {
+    fontSize: '26px',
+    fontWeight: 800,
+    marginTop: '6px',
+    display: 'block',
+    color: '#0078D4',
+  },
+  kpiValueValuation: {
+    fontSize: '26px',
+    fontWeight: 800,
+    marginTop: '6px',
+    display: 'block',
+    color: '#107C41',
+  },
+  actionContent: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+  },
+  actionIconIn: {
+    width: '28px',
+    height: '28px',
+    color: '#107C41',
+    flexShrink: 0,
+    marginTop: '2px',
+  },
+  actionIconOut: {
+    width: '28px',
+    height: '28px',
+    color: '#D13438',
+    flexShrink: 0,
+    marginTop: '2px',
+  },
+  actionTextCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  actionTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  actionSubtitle: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+    fontSize: '12px',
+  },
+  btnStockIn: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    borderRadius: '8px',
+    fontWeight: 700,
+    padding: '9px 18px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    border: 'none',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+  },
+  btnStockOut: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+    borderRadius: '8px',
+    fontWeight: 700,
+    padding: '8px 18px',
+    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  historyHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '16px',
+  },
+  historyTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  emptyHistory: {
+    color: tokens.colorNeutralForeground3,
+    textAlign: 'center',
+    padding: '32px',
+    display: 'block',
+  },
+  movementMetaCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  movementProductName: {
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  movementDateCaption: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+  },
+  movementRightCol: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  movementUnitCostCaption: {
+    color: tokens.colorNeutralForeground3,
+    display: 'block',
+  },
+  movementBadge: {
+    minWidth: '90px',
+    textAlign: 'center',
+    fontWeight: 700,
+  },
+  dialogSurfaceIn: {
+    borderRadius: tokens.borderRadiusLarge,
+    maxWidth: '520px',
+  },
+  dialogSurfaceOut: {
+    borderRadius: tokens.borderRadiusLarge,
+    maxWidth: '500px',
+  },
+  dialogContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    marginTop: '14px',
+  },
+  formRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+  },
+  dialogActions: {
+    marginTop: '24px',
+    display: 'flex',
+    gap: '10px',
+    justifyContent: 'flex-end',
+  },
+  dialogCancelBtn: {
+    borderRadius: '8px',
+    fontWeight: 600,
+    padding: '8px 18px',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    whiteSpace: 'nowrap',
+  },
+  dialogSubmitBtn: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    borderRadius: '8px',
+    fontWeight: 700,
+    padding: '9px 22px',
+    minWidth: '140px',
+    whiteSpace: 'nowrap',
+    border: 'none',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
   },
 });
 
@@ -277,16 +469,16 @@ export function InventoryView(): React.JSX.Element {
     <div className={styles.container}>
       {/* ── Page Header ── */}
       <div className={styles.pageHeader}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div className={styles.headerTitleCol}>
           <Subtitle1
             as="h1"
-            style={{ fontWeight: 700, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0, display: 'block' }}
+            className={styles.headerTitle}
           >
             Inventory &amp; Stock Control
           </Subtitle1>
           <Caption1
             as="p"
-            style={{ color: tokens.colorNeutralForeground2, margin: 0, display: 'block', fontSize: '13px' }}
+            className={styles.headerSubtitle}
           >
             Record Stock In (purchases), Stock Out (waste/usage), and track live valuation
           </Caption1>
@@ -296,24 +488,24 @@ export function InventoryView(): React.JSX.Element {
       {/* Metrics Row */}
       <div className={styles.metricsGrid}>
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Total Catalog Items</Caption1>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, marginTop: '6px', display: 'block', color: tokens.colorNeutralForeground1 }}>{totalStockItems}</Subtitle1>
+          <Caption1 className={styles.kpiLabel}>Total Catalog Items</Caption1>
+          <Subtitle1 className={styles.kpiValueDefault}>{totalStockItems}</Subtitle1>
         </div>
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Total Units in Stock</Caption1>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, marginTop: '6px', display: 'block', color: '#0078D4' }}>
+          <Caption1 className={styles.kpiLabel}>Total Units in Stock</Caption1>
+          <Subtitle1 className={styles.kpiValueUnits}>
             {totalUnitsInStock.toLocaleString()} units
           </Subtitle1>
         </div>
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Inventory Purchase Cost</Caption1>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, marginTop: '6px', display: 'block', color: tokens.colorNeutralForeground1 }}>
+          <Caption1 className={styles.kpiLabel}>Inventory Purchase Cost</Caption1>
+          <Subtitle1 className={styles.kpiValueDefault}>
             PKR {totalPurchaseValue.toLocaleString()}
           </Subtitle1>
         </div>
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontWeight: 600 }}>Retail Selling Valuation</Caption1>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, marginTop: '6px', display: 'block', color: '#107C41' }}>
+          <Caption1 className={styles.kpiLabel}>Retail Selling Valuation</Caption1>
+          <Subtitle1 className={styles.kpiValueValuation}>
             PKR {totalRetailValue.toLocaleString()}
           </Subtitle1>
         </div>
@@ -322,11 +514,11 @@ export function InventoryView(): React.JSX.Element {
       {/* Action Buttons */}
       <div className={styles.actionGrid}>
         <div className={styles.actionCard}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <ArrowCircleDown20Regular style={{ width: 28, height: 28, color: '#107C41', flexShrink: 0, marginTop: '2px' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>Stock In (Purchases)</Body1>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px' }}>
+          <div className={styles.actionContent}>
+            <ArrowCircleDown20Regular className={styles.actionIconIn} />
+            <div className={styles.actionTextCol}>
+              <Body1 className={styles.actionTitle}>Stock In (Purchases)</Body1>
+              <Caption1 className={styles.actionSubtitle}>
                 Receive new items, vendor supplies, and update warehouse count
               </Caption1>
             </div>
@@ -334,17 +526,7 @@ export function InventoryView(): React.JSX.Element {
           <Button
             appearance="primary"
             icon={<Add20Regular />}
-            style={{
-              backgroundColor: '#E51937',
-              color: '#FFFFFF',
-              borderRadius: '8px',
-              fontWeight: 700,
-              padding: '9px 18px',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-              border: 'none',
-              boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-            }}
+            className={styles.btnStockIn}
             onClick={() => {
               stockInForm.reset();
               setIsStockInOpen(true);
@@ -355,11 +537,11 @@ export function InventoryView(): React.JSX.Element {
         </div>
 
         <div className={styles.actionCard}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <ArrowCircleUp20Regular style={{ width: 28, height: 28, color: '#D13438', flexShrink: 0, marginTop: '2px' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>Stock Out / Damage / Waste</Body1>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', fontSize: '12px' }}>
+          <div className={styles.actionContent}>
+            <ArrowCircleUp20Regular className={styles.actionIconOut} />
+            <div className={styles.actionTextCol}>
+              <Body1 className={styles.actionTitle}>Stock Out / Damage / Waste</Body1>
+              <Caption1 className={styles.actionSubtitle}>
                 Log inventory reduction, expired items, waste, or kitchen dispatch
               </Caption1>
             </div>
@@ -367,16 +549,7 @@ export function InventoryView(): React.JSX.Element {
           <Button
             appearance="outline"
             icon={<ArrowCircleUp20Regular />}
-            style={{
-              backgroundColor: tokens.colorNeutralBackground1,
-              color: tokens.colorNeutralForeground1,
-              borderRadius: '8px',
-              fontWeight: 700,
-              padding: '8px 18px',
-              border: `1.5px solid ${tokens.colorNeutralStroke1}`,
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-            }}
+            className={styles.btnStockOut}
             onClick={() => {
               stockOutForm.reset();
               setIsStockOutOpen(true);
@@ -389,8 +562,8 @@ export function InventoryView(): React.JSX.Element {
 
       {/* Movements Table / History */}
       <div className={styles.historyCard}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>
+        <div className={styles.historyHeader}>
+          <Body1 className={styles.historyTitle}>
             Stock Movement Ledger
           </Body1>
 
@@ -402,23 +575,23 @@ export function InventoryView(): React.JSX.Element {
         </div>
 
         {filteredMovements.length === 0 ? (
-          <Body1 style={{ color: tokens.colorNeutralForeground3, textAlign: 'center', padding: '32px', display: 'block' }}>
+          <Body1 className={styles.emptyHistory}>
             No stock movement entries found.
           </Body1>
         ) : (
           filteredMovements.map((mov) => (
             <div key={mov.id} className={styles.movementRow}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <Body1 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1, display: 'block' }}>{mov.productName}</Body1>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block' }}>
+              <div className={styles.movementMetaCol}>
+                <Body1 className={styles.movementProductName}>{mov.productName}</Body1>
+                <Caption1 className={styles.movementDateCaption}>
                   {new Date(mov.date).toLocaleDateString()} at {new Date(mov.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Reason: {mov.reason || 'General'}
                   {mov.note ? ` • Note: ${mov.note}` : ''}
                 </Caption1>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className={styles.movementRightCol}>
                 {mov.unitCost && (
-                  <Caption1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                  <Caption1 className={styles.movementUnitCostCaption}>
                     @ PKR {mov.unitCost} / unit
                   </Caption1>
                 )}
@@ -426,7 +599,7 @@ export function InventoryView(): React.JSX.Element {
                   appearance="filled"
                   color={mov.type === 'in' ? 'success' : 'danger'}
                   size="large"
-                  style={{ minWidth: '90px', textAlign: 'center', fontWeight: 700 }}
+                  className={styles.movementBadge}
                 >
                   {mov.type === 'in' ? '+' : '-'}{mov.quantity} units
                 </Badge>
@@ -438,11 +611,11 @@ export function InventoryView(): React.JSX.Element {
 
       {/* ── Stock In Dialog with Labels & Zod + React Hook Form ─────── */}
       <Dialog open={isStockInOpen} onOpenChange={(_, d) => setIsStockInOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '520px' }}>
+        <DialogSurface className={styles.dialogSurfaceIn}>
           <form onSubmit={stockInForm.handleSubmit(onStockInSubmit)}>
             <DialogBody>
               <DialogTitle>Stock In (Receive Inventory)</DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px' }}>
+              <DialogContent className={styles.dialogContent}>
                 
                 {/* Product Autocomplete Field */}
                 <div>
@@ -471,7 +644,7 @@ export function InventoryView(): React.JSX.Element {
                 </div>
 
                 {/* Quantity & Unit Cost */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className={styles.formRow}>
                   <div>
                     <Controller
                       control={stockInForm.control}
@@ -542,18 +715,12 @@ export function InventoryView(): React.JSX.Element {
                   />
                 </div>
               </DialogContent>
-              <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <DialogActions className={styles.dialogActions}>
                 <Button
                   appearance="subtle"
                   type="button"
                   onClick={() => setIsStockInOpen(false)}
-                  style={{
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    padding: '8px 18px',
-                    border: `1px solid ${tokens.colorNeutralStroke1}`,
-                    whiteSpace: 'nowrap',
-                  }}
+                  className={styles.dialogCancelBtn}
                 >
                   Cancel
                 </Button>
@@ -561,17 +728,7 @@ export function InventoryView(): React.JSX.Element {
                   appearance="primary"
                   type="submit"
                   disabled={stockMutation.isPending}
-                  style={{
-                    backgroundColor: '#E51937',
-                    color: '#FFFFFF',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    padding: '9px 22px',
-                    minWidth: '140px',
-                    whiteSpace: 'nowrap',
-                    border: 'none',
-                    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-                  }}
+                  className={styles.dialogSubmitBtn}
                 >
                   {stockMutation.isPending ? 'Saving...' : 'Confirm Stock In'}
                 </Button>
@@ -583,11 +740,11 @@ export function InventoryView(): React.JSX.Element {
 
       {/* ── Stock Out Dialog with Labels & Zod + React Hook Form ────── */}
       <Dialog open={isStockOutOpen} onOpenChange={(_, d) => setIsStockOutOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: tokens.borderRadiusLarge, maxWidth: '500px' }}>
+        <DialogSurface className={styles.dialogSurfaceOut}>
           <form onSubmit={stockOutForm.handleSubmit(onStockOutSubmit)}>
             <DialogBody>
               <DialogTitle>Stock Out / Waste / Usage</DialogTitle>
-              <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px' }}>
+              <DialogContent className={styles.dialogContent}>
                 
                 {/* Product Autocomplete Field */}
                 <div>
@@ -665,18 +822,12 @@ export function InventoryView(): React.JSX.Element {
                   />
                 </div>
               </DialogContent>
-              <DialogActions style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <DialogActions className={styles.dialogActions}>
                 <Button
                   appearance="subtle"
                   type="button"
                   onClick={() => setIsStockOutOpen(false)}
-                  style={{
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    padding: '8px 18px',
-                    border: `1px solid ${tokens.colorNeutralStroke1}`,
-                    whiteSpace: 'nowrap',
-                  }}
+                  className={styles.dialogCancelBtn}
                 >
                   Cancel
                 </Button>
@@ -684,17 +835,7 @@ export function InventoryView(): React.JSX.Element {
                   appearance="primary"
                   type="submit"
                   disabled={stockMutation.isPending}
-                  style={{
-                    backgroundColor: '#E51937',
-                    color: '#FFFFFF',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    padding: '9px 22px',
-                    minWidth: '140px',
-                    whiteSpace: 'nowrap',
-                    border: 'none',
-                    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-                  }}
+                  className={styles.dialogSubmitBtn}
                 >
                   {stockMutation.isPending ? 'Saving...' : 'Confirm Stock Out'}
                 </Button>

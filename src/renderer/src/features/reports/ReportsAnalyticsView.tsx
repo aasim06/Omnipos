@@ -8,6 +8,7 @@ import {
   Caption1,
   Badge,
   ProgressBar,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   ArrowTrendingLines24Regular,
@@ -87,6 +88,177 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusSmall,
     backgroundColor: tokens.colorNeutralBackground3,
   },
+  headerTitleCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  headerTitle: {
+    fontWeight: 700,
+    fontSize: '20px',
+    color: tokens.colorNeutralForeground1,
+    margin: 0,
+    display: 'block',
+  },
+  headerSubtitle: {
+    color: tokens.colorNeutralForeground2,
+    margin: 0,
+    display: 'block',
+    fontSize: '13px',
+  },
+  metricHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '8px',
+  },
+  salesIcon: {
+    color: '#0078D4',
+  },
+  cogsIcon: {
+    color: '#881798',
+  },
+  expenseIcon: {
+    color: '#D13438',
+  },
+  netProfitIconSuccess: {
+    color: '#107C41',
+  },
+  netProfitIconDanger: {
+    color: '#D13438',
+  },
+  metricLabel: {
+    color: tokens.colorNeutralForeground2,
+    fontWeight: 600,
+  },
+  netProfitLabelSuccess: {
+    fontWeight: 600,
+    color: '#107C41',
+  },
+  netProfitLabelDanger: {
+    fontWeight: 600,
+    color: '#D13438',
+  },
+  salesValue: {
+    fontSize: '26px',
+    fontWeight: 800,
+    color: '#0078D4',
+    display: 'block',
+  },
+  cogsValue: {
+    fontSize: '26px',
+    fontWeight: 800,
+    color: '#881798',
+    display: 'block',
+  },
+  expenseValue: {
+    fontSize: '26px',
+    fontWeight: 800,
+    color: '#D13438',
+    display: 'block',
+  },
+  netProfitValueSuccess: {
+    fontSize: '30px',
+    fontWeight: 800,
+    color: '#107C41',
+    display: 'block',
+  },
+  netProfitValueDanger: {
+    fontSize: '30px',
+    fontWeight: 800,
+    color: '#D13438',
+    display: 'block',
+  },
+  metricSubtext: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+    marginTop: '4px',
+  },
+  netProfitCardSuccess: {
+    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#107C41', borderBottomColor: '#107C41', borderLeftColor: '#107C41', borderRightColor: '#107C41',
+  },
+  netProfitCardDanger: {
+    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#D13438', borderBottomColor: '#D13438', borderLeftColor: '#D13438', borderRightColor: '#D13438',
+  },
+  sectionTitleRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: tokens.colorNeutralStroke1,
+    paddingBottom: '12px',
+  },
+  sectionTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  emptyText: {
+    color: tokens.colorNeutralForeground3,
+    textAlign: 'center',
+    padding: '24px',
+    display: 'block',
+  },
+  rankingList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  rankMetaCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  rankItemName: {
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  rankItemRevenue: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+  },
+  ratioStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  ratioHeaderRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: '6px',
+  },
+  ratioLabel: {
+    color: tokens.colorNeutralForeground1,
+  },
+  ratioValueDefault: {
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+  },
+  ratioValueSuccess: {
+    fontWeight: 600,
+    color: '#107C41',
+  },
+  ratioValueDanger: {
+    fontWeight: 600,
+    color: '#D13438',
+  },
+  formulaBox: {
+    padding: '12px',
+    borderRadius: tokens.borderRadiusSmall,
+    backgroundColor: tokens.colorNeutralBackground3,
+  },
+  formulaText: {
+    color: tokens.colorNeutralForeground2,
+    display: 'block',
+  },
 });
 
 export function ReportsAnalyticsView(): React.JSX.Element {
@@ -117,16 +289,16 @@ export function ReportsAnalyticsView(): React.JSX.Element {
     <div className={styles.container}>
       {/* ── Page Header ── */}
       <div className={styles.pageHeader}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div className={styles.headerTitleCol}>
           <Subtitle1
             as="h1"
-            style={{ fontWeight: 700, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0, display: 'block' }}
+            className={styles.headerTitle}
           >
             Profit &amp; Loss Financial Analytics
           </Subtitle1>
           <Caption1
             as="p"
-            style={{ color: tokens.colorNeutralForeground2, margin: 0, display: 'block', fontSize: '13px' }}
+            className={styles.headerSubtitle}
           >
             Live revenue, inventory cost of goods, daily expenses, and net earnings
           </Caption1>
@@ -139,55 +311,55 @@ export function ReportsAnalyticsView(): React.JSX.Element {
       {/* P&L Statement Grid */}
       <div className={styles.pnlGrid}>
         <div className={styles.metricCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <ShoppingBag24Regular style={{ color: '#0078D4' }} />
-            <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Total Gross Sales</Caption1>
+          <div className={styles.metricHeader}>
+            <ShoppingBag24Regular className={styles.salesIcon} />
+            <Caption1 className={styles.metricLabel}>Total Gross Sales</Caption1>
           </div>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, color: '#0078D4', display: 'block' }}>
+          <Subtitle1 className={styles.salesValue}>
             {formatPKR(grossSales)}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', marginTop: '4px' }}>
+          <Caption1 className={styles.metricSubtext}>
             From {totalOrders} completed orders
           </Caption1>
         </div>
 
         <div className={styles.metricCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <BuildingShop24Regular style={{ color: '#881798' }} />
-            <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Cost of Goods (COGS)</Caption1>
+          <div className={styles.metricHeader}>
+            <BuildingShop24Regular className={styles.cogsIcon} />
+            <Caption1 className={styles.metricLabel}>Cost of Goods (COGS)</Caption1>
           </div>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, color: '#881798', display: 'block' }}>
+          <Subtitle1 className={styles.cogsValue}>
             - {formatPKR(cogs)}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', marginTop: '4px' }}>
+          <Caption1 className={styles.metricSubtext}>
             Direct raw material / wholesale cost
           </Caption1>
         </div>
 
         <div className={styles.metricCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Money24Regular style={{ color: '#D13438' }} />
-            <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Operational Expenses</Caption1>
+          <div className={styles.metricHeader}>
+            <Money24Regular className={styles.expenseIcon} />
+            <Caption1 className={styles.metricLabel}>Operational Expenses</Caption1>
           </div>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, color: '#D13438', display: 'block' }}>
+          <Subtitle1 className={styles.expenseValue}>
             - {formatPKR(expenses)}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', marginTop: '4px' }}>
+          <Caption1 className={styles.metricSubtext}>
             Rent, utilities, staff &amp; petty cash
           </Caption1>
         </div>
 
-        <div className={styles.metricCard} style={{ border: `2px solid ${netProfit >= 0 ? '#107C41' : '#D13438'}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <ArrowTrendingLines24Regular style={{ color: netProfit >= 0 ? '#107C41' : '#D13438' }} />
-            <Caption1 style={{ fontWeight: 600, color: netProfit >= 0 ? '#107C41' : '#D13438' }}>
+        <div className={mergeClasses(styles.metricCard, netProfit >= 0 ? styles.netProfitCardSuccess : styles.netProfitCardDanger)}>
+          <div className={styles.metricHeader}>
+            <ArrowTrendingLines24Regular className={netProfit >= 0 ? styles.netProfitIconSuccess : styles.netProfitIconDanger} />
+            <Caption1 className={netProfit >= 0 ? styles.netProfitLabelSuccess : styles.netProfitLabelDanger}>
               Clean Net Profit (Earnings)
             </Caption1>
           </div>
-          <Subtitle1 style={{ fontSize: '30px', fontWeight: 800, color: netProfit >= 0 ? '#107C41' : '#D13438', display: 'block' }}>
+          <Subtitle1 className={netProfit >= 0 ? styles.netProfitValueSuccess : styles.netProfitValueDanger}>
             {formatPKR(netProfit)}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', marginTop: '4px' }}>
+          <Caption1 className={styles.metricSubtext}>
             Sales minus COGS minus Expenses
           </Caption1>
         </div>
@@ -197,23 +369,23 @@ export function ReportsAnalyticsView(): React.JSX.Element {
       <div className={styles.sectionGrid}>
         {/* Top Selling Items */}
         <div className={styles.sectionCard}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', borderBottom: `1px solid ${tokens.colorNeutralStroke1}`, paddingBottom: '12px' }}>
-            <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className={styles.sectionTitleRow}>
+            <Body1 className={styles.sectionTitle}>
               <ArrowTrendingLines24Regular /> Top 5 Best Selling Items
             </Body1>
           </div>
 
           {topItems.length === 0 ? (
-            <Body1 style={{ color: tokens.colorNeutralForeground3, textAlign: 'center', padding: '24px', display: 'block' }}>
+            <Body1 className={styles.emptyText}>
               No items sold yet.
             </Body1>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className={styles.rankingList}>
               {topItems.map((item: any, i: number) => (
                 <div key={i} className={styles.rankRow}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <Body1 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1, display: 'block' }}>#{i + 1} {item.name}</Body1>
-                    <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block' }}>
+                  <div className={styles.rankMetaCol}>
+                    <Body1 className={styles.rankItemName}>#{i + 1} {item.name}</Body1>
+                    <Caption1 className={styles.rankItemRevenue}>
                       Total Volume: {formatPKR(item.revenue)}
                     </Caption1>
                   </div>
@@ -228,17 +400,17 @@ export function ReportsAnalyticsView(): React.JSX.Element {
 
         {/* Financial Flow Ratio */}
         <div className={styles.sectionCard}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', borderBottom: `1px solid ${tokens.colorNeutralStroke1}`, paddingBottom: '12px' }}>
-            <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className={styles.sectionTitleRow}>
+            <Body1 className={styles.sectionTitle}>
               <Receipt24Regular /> Profit Margin Efficiency
             </Body1>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className={styles.ratioStack}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <Caption1 style={{ color: tokens.colorNeutralForeground1 }}>Gross Margin (Sales vs COGS)</Caption1>
-                <Caption1 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>
+              <div className={styles.ratioHeaderRow}>
+                <Caption1 className={styles.ratioLabel}>Gross Margin (Sales vs COGS)</Caption1>
+                <Caption1 className={styles.ratioValueDefault}>
                   {grossSales > 0 ? Math.round(((grossSales - cogs) / grossSales) * 100) : 0}%
                 </Caption1>
               </div>
@@ -249,9 +421,9 @@ export function ReportsAnalyticsView(): React.JSX.Element {
             </div>
 
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <Caption1 style={{ color: tokens.colorNeutralForeground1 }}>Net Profit Margin (Final Take Home)</Caption1>
-                <Caption1 style={{ fontWeight: 600, color: netProfit >= 0 ? '#107C41' : '#D13438' }}>
+              <div className={styles.ratioHeaderRow}>
+                <Caption1 className={styles.ratioLabel}>Net Profit Margin (Final Take Home)</Caption1>
+                <Caption1 className={netProfit >= 0 ? styles.ratioValueSuccess : styles.ratioValueDanger}>
                   {grossSales > 0 ? Math.round((netProfit / grossSales) * 100) : 0}%
                 </Caption1>
               </div>
@@ -261,8 +433,8 @@ export function ReportsAnalyticsView(): React.JSX.Element {
               />
             </div>
 
-            <div style={{ padding: '12px', borderRadius: tokens.borderRadiusSmall, backgroundColor: tokens.colorNeutralBackground3 }}>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block' }}>
+            <div className={styles.formulaBox}>
+              <Caption1 className={styles.formulaText}>
                 Formula: Net Profit = Total Gross Sales ({formatPKR(grossSales)}) - Estimated Product Cost ({formatPKR(cogs)}) - Operational Expenses ({formatPKR(expenses)}).
               </Caption1>
             </div>

@@ -46,6 +46,58 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: '20px',
   },
+
+  headerLeft: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  headerTitle: {
+    fontWeight: 800,
+    fontSize: '20px',
+    color: tokens.colorNeutralForeground1,
+    margin: 0,
+  },
+  headerSubtitle: {
+    color: tokens.colorNeutralForeground2,
+  },
+  headerActions: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  arrowUpIcon: {
+    color: '#D13438',
+  },
+  stockOutBtn: {
+    borderRadius: '8px',
+    fontWeight: 600,
+    fontSize: '13px',
+    borderTopWidth: '1px',
+    borderBottomWidth: '1px',
+    borderLeftWidth: '1px',
+    borderRightWidth: '1px',
+    borderTopStyle: 'solid',
+    borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid',
+    borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1,
+    borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1,
+    borderRightColor: tokens.colorNeutralStroke1,
+  },
+  stockInBtn: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    borderRadius: '8px',
+    fontWeight: 700,
+    fontSize: '13px',
+    borderTopStyle: 'none',
+    borderBottomStyle: 'none',
+    borderLeftStyle: 'none',
+    borderRightStyle: 'none',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+  },
 });
 
 const pageMeta: Record<string, { title: string; subtitle: string }> = {
@@ -88,28 +140,23 @@ export function InventoryLayout(): React.JSX.Element {
     <div className={styles.layoutContainer}>
       {/* ── Sleek Top Header Bar ── */}
       <div className={styles.viewTopBar}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <Subtitle1 as="h1" style={{ fontWeight: 800, fontSize: '20px', color: tokens.colorNeutralForeground1, margin: 0 }}>
+        <div className={styles.headerLeft}>
+          <Subtitle1 as="h1" className={styles.headerTitle}>
             {meta.title}
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
+          <Caption1 className={styles.headerSubtitle}>
             {meta.subtitle}
           </Caption1>
         </div>
 
         {/* Top Bar Quick Action Buttons */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className={styles.headerActions}>
           {!isStockOutPage && (
             <Button
               appearance="subtle"
-              icon={<ArrowCircleUp20Regular style={{ color: '#D13438' }} />}
+              icon={<ArrowCircleUp20Regular className={styles.arrowUpIcon} />}
               onClick={() => navigate('/inventory/stock-out')}
-              style={{
-                borderRadius: '8px',
-                fontWeight: 600,
-                fontSize: '13px',
-                border: `1px solid ${tokens.colorNeutralStroke1}`,
-              }}
+              className={styles.stockOutBtn}
             >
               Stock Out
             </Button>
@@ -119,15 +166,7 @@ export function InventoryLayout(): React.JSX.Element {
               appearance="primary"
               icon={<Add20Regular />}
               onClick={() => navigate('/inventory/stock-in')}
-              style={{
-                backgroundColor: '#E51937',
-                color: '#FFFFFF',
-                borderRadius: '8px',
-                fontWeight: 700,
-                fontSize: '13px',
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-              }}
+              className={styles.stockInBtn}
             >
               + Record Stock In
             </Button>

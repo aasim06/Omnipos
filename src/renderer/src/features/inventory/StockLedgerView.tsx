@@ -10,6 +10,7 @@ import {
   Button,
   TabList,
   Tab,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   DocumentTableSearch24Regular,
@@ -97,6 +98,136 @@ const useStyles = makeStyles({
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground3,
     },
+  },
+  kpiLabel: {
+    color: tokens.colorNeutralForeground2,
+    fontWeight: 600,
+  },
+  kpiValueDefault: {
+    fontSize: '26px',
+    fontWeight: 800,
+    marginTop: '6px',
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  kpiValueSuccess: {
+    fontSize: '26px',
+    fontWeight: 800,
+    marginTop: '6px',
+    color: '#107C41',
+    display: 'block',
+  },
+  kpiValueDanger: {
+    fontSize: '26px',
+    fontWeight: 800,
+    marginTop: '6px',
+    color: '#D13438',
+    display: 'block',
+  },
+  kpiValueBrand: {
+    fontSize: '26px',
+    fontWeight: 800,
+    marginTop: '6px',
+    color: '#0078D4',
+    display: 'block',
+  },
+  kpiSubtext: {
+    color: tokens.colorNeutralForeground3,
+    marginTop: '4px',
+    display: 'block',
+  },
+  filterLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  filterIcon: {
+    color: '#E51937',
+  },
+  filterTitle: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+  },
+  filterBadge: {
+    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    color: '#E51937',
+  },
+  filterRight: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  searchBox: {
+    minWidth: '240px',
+  },
+  timeSelectBox: {
+    minWidth: '140px',
+  },
+  printBtn: {
+    backgroundColor: '#E51937',
+    color: '#ffffff',
+    fontWeight: 600,
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+    borderRadius: '6px',
+  },
+  thRight: {
+    textAlign: 'right',
+  },
+  thCenter: {
+    textAlign: 'center',
+  },
+  emptyTd: {
+    padding: '40px',
+    textAlign: 'center',
+    color: tokens.colorNeutralForeground3,
+  },
+  dateBold: {
+    fontWeight: 600,
+  },
+  mutedCaption: {
+    color: tokens.colorNeutralForeground3,
+    display: 'block',
+  },
+  badgeBold: {
+    fontWeight: 700,
+  },
+  productName: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  reasonText: {
+    fontSize: '13px',
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  tdRight: {
+    textAlign: 'right',
+    fontWeight: 600,
+  },
+  tdCenter: {
+    textAlign: 'center',
+  },
+  qtyIn: {
+    fontWeight: 800,
+    color: '#107C41',
+    fontSize: '14px',
+  },
+  qtyOut: {
+    fontWeight: 800,
+    color: '#D13438',
+    fontSize: '14px',
+  },
+  impactValIn: {
+    textAlign: 'right',
+    fontWeight: 700,
+    color: '#107C41',
+  },
+  impactValOut: {
+    textAlign: 'right',
+    fontWeight: 700,
+    color: '#D13438',
   },
 });
 
@@ -472,35 +603,35 @@ export function StockLedgerView(): React.JSX.Element {
       {/* ── Summary KPI Cards ── */}
       <div className={styles.metricsGrid}>
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Total Ledger Records</Caption1>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, marginTop: '6px', color: tokens.colorNeutralForeground1, display: 'block' }}>
+          <Caption1 className={styles.kpiLabel}>Total Ledger Records</Caption1>
+          <Subtitle1 className={styles.kpiValueDefault}>
             {movements.length} logs
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '4px', display: 'block' }}>All time movements recorded</Caption1>
+          <Caption1 className={styles.kpiSubtext}>All time movements recorded</Caption1>
         </div>
 
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Total Inflow Units</Caption1>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, marginTop: '6px', color: '#107C41', display: 'block' }}>
+          <Caption1 className={styles.kpiLabel}>Total Inflow Units</Caption1>
+          <Subtitle1 className={styles.kpiValueSuccess}>
             +{totalInUnits.toLocaleString()} units
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '4px', display: 'block' }}>Procured &amp; received</Caption1>
+          <Caption1 className={styles.kpiSubtext}>Procured &amp; received</Caption1>
         </div>
 
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Total Outflow Units</Caption1>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, marginTop: '6px', color: '#D13438', display: 'block' }}>
+          <Caption1 className={styles.kpiLabel}>Total Outflow Units</Caption1>
+          <Subtitle1 className={styles.kpiValueDanger}>
             -{totalOutUnits.toLocaleString()} units
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '4px', display: 'block' }}>Consumed, waste &amp; damaged</Caption1>
+          <Caption1 className={styles.kpiSubtext}>Consumed, waste &amp; damaged</Caption1>
         </div>
 
         <div className={styles.metricCard}>
-          <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>Net Movement Balance</Caption1>
-          <Subtitle1 style={{ fontSize: '26px', fontWeight: 800, marginTop: '6px', color: '#0078D4', display: 'block' }}>
+          <Caption1 className={styles.kpiLabel}>Net Movement Balance</Caption1>
+          <Subtitle1 className={styles.kpiValueBrand}>
             {netUnits >= 0 ? `+${netUnits.toLocaleString()}` : netUnits.toLocaleString()} units
           </Subtitle1>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, marginTop: '4px', display: 'block' }}>Inflow vs Outflow variance</Caption1>
+          <Caption1 className={styles.kpiSubtext}>Inflow vs Outflow variance</Caption1>
         </div>
       </div>
 
@@ -602,18 +733,18 @@ export function StockLedgerView(): React.JSX.Element {
         </div>
 
         <div className={styles.filterBar}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <DocumentTableSearch24Regular style={{ color: '#E51937' }} />
-            <Subtitle2 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1 }}>
+          <div className={styles.filterLeft}>
+            <DocumentTableSearch24Regular className={styles.filterIcon} />
+            <Subtitle2 className={styles.filterTitle}>
               Complete Stock Movement Audit Ledger
             </Subtitle2>
-            <Badge appearance="tint" color="brand" style={{ backgroundColor: 'rgba(229, 25, 55, 0.12)', color: '#E51937' }}>
+            <Badge appearance="tint" color="brand" className={styles.filterBadge}>
               {filteredMovements.length} entries
             </Badge>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ minWidth: '240px' }}>
+          <div className={styles.filterRight}>
+            <div className={styles.searchBox}>
               <CustomInput
                 placeholder="Search product, reason, or notes..."
                 leftIcon={<Search20Regular />}
@@ -631,7 +762,7 @@ export function StockLedgerView(): React.JSX.Element {
               <Tab value="out">Stock Out</Tab>
             </TabList>
 
-            <div style={{ minWidth: '140px' }}>
+            <div className={styles.timeSelectBox}>
               <CustomSelect
                 value={timeFilter}
                 onChange={(val) => setTimeFilter(val as any)}
@@ -643,13 +774,7 @@ export function StockLedgerView(): React.JSX.Element {
               appearance="primary"
               icon={<Print20Regular />}
               onClick={handlePrint}
-              style={{
-                backgroundColor: '#E51937',
-                color: '#ffffff',
-                fontWeight: 600,
-                boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-                borderRadius: '6px',
-              }}
+              className={styles.printBtn}
             >
               Print Ledger Statement
             </Button>
@@ -665,15 +790,15 @@ export function StockLedgerView(): React.JSX.Element {
                 <th className={styles.th}>Movement Type</th>
                 <th className={styles.th}>Product / Food Item</th>
                 <th className={styles.th}>Reason / Source</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>Unit Cost</th>
-                <th className={styles.th} style={{ textAlign: 'center' }}>Quantity</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>Impact Value</th>
+                <th className={mergeClasses(styles.th, styles.thRight)}>Unit Cost</th>
+                <th className={mergeClasses(styles.th, styles.thCenter)}>Quantity</th>
+                <th className={mergeClasses(styles.th, styles.thRight)}>Impact Value</th>
               </tr>
             </thead>
             <tbody>
               {filteredMovements.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+                  <td colSpan={7} className={styles.emptyTd}>
                     No stock movements found matching current search criteria.
                   </td>
                 </tr>
@@ -686,8 +811,8 @@ export function StockLedgerView(): React.JSX.Element {
                   return (
                     <tr key={mov.id} className={styles.tableRow}>
                       <td className={styles.td}>
-                        <div style={{ fontWeight: 600 }}>{dt.toLocaleDateString()}</div>
-                        <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
+                        <div className={styles.dateBold}>{dt.toLocaleDateString()}</div>
+                        <Caption1 className={styles.mutedCaption}>
                           {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Caption1>
                       </td>
@@ -698,46 +823,40 @@ export function StockLedgerView(): React.JSX.Element {
                           color={isIn ? 'success' : 'danger'}
                           icon={isIn ? <ArrowCircleDown20Regular /> : <ArrowCircleUp20Regular />}
                           size="medium"
-                          style={{ fontWeight: 700 }}
+                          className={styles.badgeBold}
                         >
                           {isIn ? 'STOCK IN' : 'STOCK OUT'}
                         </Badge>
                       </td>
 
                       <td className={styles.td}>
-                        <Body1 style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>
+                        <Body1 className={styles.productName}>
                           {mov.productName}
                         </Body1>
                       </td>
 
                       <td className={styles.td}>
-                        <Body1 style={{ fontSize: '13px', color: tokens.colorNeutralForeground1, display: 'block' }}>
+                        <Body1 className={styles.reasonText}>
                           {mov.reason || (isIn ? 'Purchase / Supply' : 'General Deduction')}
                         </Body1>
                         {mov.note ? (
-                          <Caption1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                          <Caption1 className={styles.mutedCaption}>
                             {mov.note}
                           </Caption1>
                         ) : null}
                       </td>
 
-                      <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>
+                      <td className={mergeClasses(styles.td, styles.tdRight)}>
                         {mov.unitCost ? formatPKR(mov.unitCost) : '—'}
                       </td>
 
-                      <td className={styles.td} style={{ textAlign: 'center' }}>
-                        <span
-                          style={{
-                            fontWeight: 800,
-                            color: isIn ? '#107C41' : '#D13438',
-                            fontSize: '14px',
-                          }}
-                        >
+                      <td className={mergeClasses(styles.td, styles.tdCenter)}>
+                        <span className={isIn ? styles.qtyIn : styles.qtyOut}>
                           {isIn ? '+' : '-'}{mov.quantity} units
                         </span>
                       </td>
 
-                      <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700, color: isIn ? '#107C41' : '#D13438' }}>
+                      <td className={mergeClasses(styles.td, isIn ? styles.impactValIn : styles.impactValOut)}>
                         {lineCost > 0 ? `${isIn ? '+' : '-'}${formatPKR(lineCost)}` : '—'}
                       </td>
                     </tr>

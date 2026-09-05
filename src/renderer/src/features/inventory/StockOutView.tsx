@@ -20,6 +20,7 @@ import {
   DialogBody,
   DialogActions,
   DialogContent,
+  mergeClasses,
 } from '@fluentui/react-components';
 import {
   ArrowCircleUp20Regular,
@@ -267,6 +268,339 @@ const useStyles = makeStyles({
     justifyContent: 'flex-end',
     gap: '10px',
     backgroundColor: tokens.colorNeutralBackground3,
+  },
+  formColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+  },
+  wFull: {
+    width: '100%',
+  },
+  icon18: {
+    width: '18px',
+    height: '18px',
+  },
+  icon16: {
+    width: '16px',
+    height: '16px',
+  },
+  iconPrint: {
+    color: '#0078D4',
+    width: '16px',
+    height: '16px',
+  },
+  iconRed: {
+    color: '#D13438',
+    width: '16px',
+    height: '16px',
+  },
+  searchContainer: {
+    minWidth: '280px',
+    maxWidth: '420px',
+    width: '100%',
+  },
+  totalRecords: {
+    color: tokens.colorNeutralForeground3,
+    fontWeight: 600,
+  },
+  thCheck: {
+    width: '36px',
+    textAlign: 'center',
+  },
+  thCenter: {
+    textAlign: 'center',
+  },
+  thRight: {
+    textAlign: 'right',
+  },
+  thActions: {
+    textAlign: 'center',
+    minWidth: '100px',
+  },
+  tdEmpty: {
+    padding: '36px',
+    textAlign: 'center',
+    color: tokens.colorNeutralForeground3,
+  },
+  tdCenter: {
+    textAlign: 'center',
+  },
+  tdRight: {
+    textAlign: 'right',
+  },
+  tdRightBold: {
+    textAlign: 'right',
+    fontWeight: 600,
+  },
+  tdRightLoss: {
+    textAlign: 'right',
+    fontWeight: 700,
+    color: '#D13438',
+  },
+  productNameText: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  badgeBold: {
+    fontWeight: 700,
+  },
+  reasonText: {
+    color: tokens.colorNeutralForeground1,
+    fontWeight: 500,
+  },
+  dateText: {
+    color: tokens.colorNeutralForeground2,
+    fontSize: '12px',
+  },
+  actionGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+  },
+  actionBtnPrint: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(0, 120, 212, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(0, 120, 212, 0.25)', borderBottomColor: 'rgba(0, 120, 212, 0.25)',
+    borderLeftColor: 'rgba(0, 120, 212, 0.25)', borderRightColor: 'rgba(0, 120, 212, 0.25)',
+  },
+  actionBtnEdit: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(209, 52, 56, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(209, 52, 56, 0.25)', borderBottomColor: 'rgba(209, 52, 56, 0.25)',
+    borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
+  },
+  actionBtnDelete: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(209, 52, 56, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(209, 52, 56, 0.25)', borderBottomColor: 'rgba(209, 52, 56, 0.25)',
+    borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
+  },
+  drawerHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  drawerHeaderIconBadge: {
+    backgroundColor: 'rgba(209, 52, 56, 0.12)',
+    color: '#D13438',
+    padding: '8px',
+    borderRadius: '8px',
+    display: 'inline-flex',
+  },
+  drawerTitle: {
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
+    display: 'block',
+  },
+  drawerSubtitle: {
+    color: tokens.colorNeutralForeground3,
+  },
+  iconBtn28: {
+    minWidth: '28px',
+    width: '28px',
+    height: '28px',
+    padding: 0,
+  },
+  iconBtn32: {
+    minWidth: '32px',
+    width: '32px',
+    height: '32px',
+    padding: 0,
+  },
+  grid2Col: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+  },
+  btnRounded: {
+    borderRadius: '8px',
+  },
+  drawerSubmitBtn: {
+    backgroundColor: '#D13438',
+    color: '#FFFFFF',
+    borderRadius: '8px',
+    fontWeight: 700,
+    border: 'none',
+  },
+  dialogSurface: {
+    borderRadius: '12px',
+    width: '480px',
+    maxWidth: '94vw',
+    padding: '22px',
+    boxSizing: 'border-box',
+  },
+  dialogHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '14px',
+  },
+  dialogTitle: {
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
+    margin: 0,
+    fontSize: '17px',
+  },
+  voucherContainer: {
+    backgroundColor: '#FFFFFF',
+    color: '#000000',
+    padding: '18px 20px',
+    borderRadius: '8px',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'dashed', borderBottomStyle: 'dashed',
+    borderLeftStyle: 'dashed', borderRightStyle: 'dashed',
+    borderTopColor: '#777', borderBottomColor: '#777',
+    borderLeftColor: '#777', borderRightColor: '#777',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    fontFamily: 'monospace',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+  },
+  voucherHeader: {
+    textAlign: 'center',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'dashed',
+    borderBottomColor: '#999',
+    paddingBottom: '8px',
+  },
+  voucherHeaderTitle: {
+    fontWeight: 800,
+    fontSize: '15px',
+  },
+  voucherHeaderSubtitle: {
+    fontSize: '11px',
+    color: '#555',
+  },
+  voucherHeaderRef: {
+    fontSize: '10px',
+    color: '#777',
+    marginTop: '2px',
+  },
+  voucherSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    fontSize: '12px',
+  },
+  voucherRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+  },
+  voucherLabel: {
+    color: '#555',
+  },
+  voucherReasonVal: {
+    fontWeight: 700,
+    color: '#D13438',
+  },
+  voucherTableSection: {
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderTopStyle: 'dashed', borderBottomStyle: 'dashed',
+    borderTopColor: '#999', borderBottomColor: '#999',
+    padding: '8px 0',
+    fontSize: '12px',
+  },
+  voucherTableTitleRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontWeight: 800,
+  },
+  voucherTableRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginTop: '4px',
+  },
+  voucherDeductedVal: {
+    fontWeight: 800,
+    color: '#D13438',
+  },
+  voucherTotalRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '14px',
+    fontWeight: 800,
+    color: '#D13438',
+  },
+  voucherRemarks: {
+    fontSize: '10px',
+    color: '#555',
+    borderTopWidth: '1px',
+    borderTopStyle: 'dotted',
+    borderTopColor: '#ccc',
+    paddingTop: '6px',
+  },
+  voucherSignatures: {
+    marginTop: '14px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '10px',
+    color: '#777',
+  },
+  dialogFooter: {
+    marginTop: '20px',
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  dialogCloseBtn: {
+    height: '38px',
+    padding: '0 20px',
+    borderRadius: '8px',
+    fontWeight: 600,
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground1,
+    cursor: 'pointer',
+  },
+  dialogPrintBtn: {
+    height: '38px',
+    padding: '0 22px',
+    backgroundColor: '#0078D4',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    borderRadius: '8px',
+    border: 'none',
+    whiteSpace: 'nowrap',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px rgba(0, 120, 212, 0.35)',
   },
 });
 
@@ -549,7 +883,7 @@ export function StockOutView(): React.JSX.Element {
           </div>
         </div>
 
-        <form onSubmit={form.handleSubmit(onSave)} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={form.handleSubmit(onSave)} className={styles.formColumn}>
           {/* Row 1: Reason & Product Select */}
           <div className={styles.row1}>
             <div>
@@ -661,10 +995,9 @@ export function StockOutView(): React.JSX.Element {
                 appearance="primary"
                 type="submit"
                 disabled={saveMutation.isPending}
-                className={styles.saveBtn}
-                style={{ width: '100%' }}
+                className={mergeClasses(styles.saveBtn, styles.wFull)}
               >
-                <ArrowCircleUp20Regular style={{ width: 18, height: 18 }} />
+                <ArrowCircleUp20Regular className={styles.icon18} />
                 <span>{saveMutation.isPending ? 'Saving...' : 'Save Stock Out Entry'}</span>
               </Button>
             </div>
@@ -751,7 +1084,7 @@ export function StockOutView(): React.JSX.Element {
         </div>
 
         <div className={styles.filterBar}>
-          <div style={{ minWidth: '280px', maxWidth: '420px', width: '100%' }}>
+          <div className={styles.searchContainer}>
             <CustomInput
               label="Search Stock Out Logs"
               placeholder="Search by product, reason, note..."
@@ -762,7 +1095,7 @@ export function StockOutView(): React.JSX.Element {
             />
           </div>
 
-          <Caption1 style={{ color: tokens.colorNeutralForeground3, fontWeight: 600 }}>
+          <Caption1 className={styles.totalRecords}>
             Total {filteredMovements.length} Stock Out Records
           </Caption1>
         </div>
@@ -772,22 +1105,22 @@ export function StockOutView(): React.JSX.Element {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th} style={{ width: '36px', textAlign: 'center' }}>
+                <th className={mergeClasses(styles.th, styles.thCheck)}>
                   <Checkbox checked={isAllSelected} onChange={toggleSelectAll} />
                 </th>
                 <th className={styles.th}>ITEM SELECT</th>
-                <th className={styles.th} style={{ textAlign: 'center' }}>QTY</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>UNIT PRICE</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>LINE TOTAL</th>
+                <th className={mergeClasses(styles.th, styles.thCenter)}>QTY</th>
+                <th className={mergeClasses(styles.th, styles.thRight)}>UNIT PRICE</th>
+                <th className={mergeClasses(styles.th, styles.thRight)}>LINE TOTAL</th>
                 <th className={styles.th}>REASON / DEDUCTION</th>
                 <th className={styles.th}>DATE &amp; TIME</th>
-                <th className={styles.th} style={{ textAlign: 'center', minWidth: '100px' }}>ACTIONS</th>
+                <th className={mergeClasses(styles.th, styles.thActions)}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {filteredMovements.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+                  <td colSpan={8} className={styles.tdEmpty}>
                     No Stock Out deduction records found.
                   </td>
                 </tr>
@@ -799,53 +1132,45 @@ export function StockOutView(): React.JSX.Element {
 
                   return (
                     <tr key={mov.id} className={styles.tableRow}>
-                      <td className={styles.td} style={{ textAlign: 'center' }}>
+                      <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         <Checkbox checked={isChecked} onChange={() => toggleSelectRow(mov.id)} />
                       </td>
                       <td className={styles.td}>
-                        <span style={{ fontWeight: 700, color: tokens.colorNeutralForeground1, display: 'block' }}>
+                        <span className={styles.productNameText}>
                           {mov.productName}
                         </span>
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'center' }}>
-                        <Badge appearance="tint" color="danger" style={{ fontWeight: 700 }}>
+                      <td className={mergeClasses(styles.td, styles.tdCenter)}>
+                        <Badge appearance="tint" color="danger" className={styles.badgeBold}>
                           -{mov.quantity}
                         </Badge>
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>
+                      <td className={mergeClasses(styles.td, styles.tdRightBold)}>
                         {mov.unitCost !== null && mov.unitCost !== undefined ? formatPKR(mov.unitCost) : '—'}
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700, color: '#D13438' }}>
+                      <td className={mergeClasses(styles.td, styles.tdRightLoss)}>
                         {totalLine > 0 ? formatPKR(totalLine) : '—'}
                       </td>
                       <td className={styles.td}>
-                        <span style={{ color: tokens.colorNeutralForeground1, fontWeight: 500 }}>
+                        <span className={styles.reasonText}>
                           {mov.reason || 'Deduction'}
                         </span>
                       </td>
                       <td className={styles.td}>
-                        <span style={{ color: tokens.colorNeutralForeground2, fontSize: '12px' }}>
+                        <span className={styles.dateText}>
                           {dt.toLocaleDateString()} at {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'center' }}>
+                      <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         {/* ── ACTION ICONS: Print, Edit (Right Drawer), Delete ── */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <div className={styles.actionGroup}>
                           <Tooltip content="Print Deduction Slip" relationship="label" positioning="above">
                             <Button
                               appearance="subtle"
                               size="small"
-                              icon={<Print20Regular style={{ color: '#0078D4', width: 16, height: 16 }} />}
+                              icon={<Print20Regular className={styles.iconPrint} />}
                               onClick={() => handleOpenPrint(mov)}
-                              style={{
-                                width: '30px',
-                                height: '30px',
-                                minWidth: '30px',
-                                padding: 0,
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(0, 120, 212, 0.12)',
-                                border: '1px solid rgba(0, 120, 212, 0.25)',
-                              }}
+                              className={styles.actionBtnPrint}
                             />
                           </Tooltip>
 
@@ -853,17 +1178,9 @@ export function StockOutView(): React.JSX.Element {
                             <Button
                               appearance="subtle"
                               size="small"
-                              icon={<Edit20Regular style={{ color: '#D13438', width: 16, height: 16 }} />}
+                              icon={<Edit20Regular className={styles.iconRed} />}
                               onClick={() => handleOpenEdit(mov)}
-                              style={{
-                                width: '30px',
-                                height: '30px',
-                                minWidth: '30px',
-                                padding: 0,
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(209, 52, 56, 0.12)',
-                                border: '1px solid rgba(209, 52, 56, 0.25)',
-                              }}
+                              className={styles.actionBtnEdit}
                             />
                           </Tooltip>
 
@@ -871,17 +1188,9 @@ export function StockOutView(): React.JSX.Element {
                             <Button
                               appearance="subtle"
                               size="small"
-                              icon={<Delete20Regular style={{ color: '#D13438', width: 16, height: 16 }} />}
+                              icon={<Delete20Regular className={styles.iconRed} />}
                               onClick={() => handleDelete(mov.id)}
-                              style={{
-                                width: '30px',
-                                height: '30px',
-                                minWidth: '30px',
-                                padding: 0,
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(209, 52, 56, 0.12)',
-                                border: '1px solid rgba(209, 52, 56, 0.25)',
-                              }}
+                              className={styles.actionBtnDelete}
                             />
                           </Tooltip>
                         </div>
@@ -901,23 +1210,15 @@ export function StockOutView(): React.JSX.Element {
           <div className={styles.drawerPanel} onClick={(e) => e.stopPropagation()}>
             {/* Drawer Header */}
             <div className={styles.drawerHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span
-                  style={{
-                    backgroundColor: 'rgba(209, 52, 56, 0.12)',
-                    color: '#D13438',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    display: 'inline-flex',
-                  }}
-                >
+              <div className={styles.drawerHeaderLeft}>
+                <span className={styles.drawerHeaderIconBadge}>
                   <Edit20Regular />
                 </span>
                 <div>
-                  <Subtitle2 style={{ fontWeight: 800, color: tokens.colorNeutralForeground1, display: 'block' }}>
+                  <Subtitle2 className={styles.drawerTitle}>
                     Edit Stock Out Entry
                   </Subtitle2>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
+                  <Caption1 className={styles.drawerSubtitle}>
                     Record #{editingMovement?.id.slice(-6).toUpperCase()}
                   </Caption1>
                 </div>
@@ -927,7 +1228,7 @@ export function StockOutView(): React.JSX.Element {
                 appearance="subtle"
                 icon={<Dismiss20Regular />}
                 onClick={() => setIsDrawerOpen(false)}
-                style={{ minWidth: '28px', width: '28px', height: '28px', padding: 0 }}
+                className={styles.iconBtn28}
               />
             </div>
 
@@ -968,7 +1269,7 @@ export function StockOutView(): React.JSX.Element {
               </div>
 
               {/* Quantity & Unit Cost */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className={styles.grid2Col}>
                 <div>
                   <Controller
                     control={editForm.control}
@@ -1033,7 +1334,7 @@ export function StockOutView(): React.JSX.Element {
                 appearance="subtle"
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}
-                style={{ borderRadius: '8px' }}
+                className={styles.btnRounded}
               >
                 Cancel
               </Button>
@@ -1042,13 +1343,7 @@ export function StockOutView(): React.JSX.Element {
                 type="submit"
                 form="editOutDrawerForm"
                 disabled={updateMutation.isPending}
-                style={{
-                  backgroundColor: '#D13438',
-                  color: '#FFFFFF',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  border: 'none',
-                }}
+                className={styles.drawerSubmitBtn}
               >
                 {updateMutation.isPending ? 'Updating...' : 'Save Changes'}
               </Button>
@@ -1059,16 +1354,16 @@ export function StockOutView(): React.JSX.Element {
 
       {/* ── PRINT DEDUCTION VOUCHER MODAL ── */}
       <Dialog open={isPrintModalOpen} onOpenChange={(_, d) => setIsPrintModalOpen(d.open)}>
-        <DialogSurface style={{ borderRadius: '12px', width: '480px', maxWidth: '94vw', padding: '22px', boxSizing: 'border-box' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <Subtitle2 style={{ fontWeight: 800, color: tokens.colorNeutralForeground1, margin: 0, fontSize: '17px' }}>
+        <DialogSurface className={styles.dialogSurface}>
+          <div className={styles.dialogHeader}>
+            <Subtitle2 className={styles.dialogTitle}>
               Stock Deduction / Waste Voucher
             </Subtitle2>
             <Button
               appearance="subtle"
               icon={<Dismiss20Regular />}
               onClick={() => setIsPrintModalOpen(false)}
-              style={{ minWidth: '32px', width: '32px', height: '32px', padding: 0 }}
+              className={styles.iconBtn32}
             />
           </div>
 
@@ -1076,69 +1371,58 @@ export function StockOutView(): React.JSX.Element {
             {printingMovement && (
               <div
                 id="printableVoucher"
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  color: '#000000',
-                  padding: '18px 20px',
-                  borderRadius: '8px',
-                  border: '1px dashed #777',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  fontFamily: 'monospace',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-                }}
+                className={styles.voucherContainer}
               >
-                <div style={{ textAlign: 'center', borderBottom: '1px dashed #999', paddingBottom: '8px' }}>
-                  <div style={{ fontWeight: 800, fontSize: '15px' }}>OMNIPOS INVENTORY</div>
-                  <div style={{ fontSize: '11px', color: '#555' }}>Stock Deduction / Waste Slip</div>
-                  <div style={{ fontSize: '10px', color: '#777', marginTop: '2px' }}>
+                <div className={styles.voucherHeader}>
+                  <div className={styles.voucherHeaderTitle}>OMNIPOS INVENTORY</div>
+                  <div className={styles.voucherHeaderSubtitle}>Stock Deduction / Waste Slip</div>
+                  <div className={styles.voucherHeaderRef}>
                     Ref: #{printingMovement.id.slice(-8).toUpperCase()}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#555' }}>Date:</span>
+                <div className={styles.voucherSection}>
+                  <div className={styles.voucherRow}>
+                    <span className={styles.voucherLabel}>Date:</span>
                     <span>{new Date(printingMovement.date).toLocaleDateString()}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#555' }}>Time:</span>
+                  <div className={styles.voucherRow}>
+                    <span className={styles.voucherLabel}>Time:</span>
                     <span>{new Date(printingMovement.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#555' }}>Reason:</span>
-                    <span style={{ fontWeight: 700, color: '#D13438' }}>{printingMovement.reason || 'Deduction'}</span>
+                  <div className={styles.voucherRow}>
+                    <span className={styles.voucherLabel}>Reason:</span>
+                    <span className={styles.voucherReasonVal}>{printingMovement.reason || 'Deduction'}</span>
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px dashed #999', borderBottom: '1px dashed #999', padding: '8px 0', fontSize: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
+                <div className={styles.voucherTableSection}>
+                  <div className={styles.voucherTableTitleRow}>
                     <span>Item:</span>
                     <span>{printingMovement.productName}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                    <span style={{ color: '#555' }}>Units Deducted:</span>
-                    <span style={{ fontWeight: 800, color: '#D13438' }}>-{printingMovement.quantity} units</span>
+                  <div className={styles.voucherTableRow}>
+                    <span className={styles.voucherLabel}>Units Deducted:</span>
+                    <span className={styles.voucherDeductedVal}>-{printingMovement.quantity} units</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                    <span style={{ color: '#555' }}>Unit Cost:</span>
+                  <div className={styles.voucherTableRow}>
+                    <span className={styles.voucherLabel}>Unit Cost:</span>
                     <span>PKR {printingMovement.unitCost || 0}</span>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 800, color: '#D13438' }}>
+                <div className={styles.voucherTotalRow}>
                   <span>Estimated Loss:</span>
                   <span>PKR {((printingMovement.unitCost || 0) * printingMovement.quantity).toLocaleString()}</span>
                 </div>
 
                 {printingMovement.note && (
-                  <div style={{ fontSize: '10px', color: '#555', borderTop: '1px dotted #ccc', paddingTop: '6px' }}>
+                  <div className={styles.voucherRemarks}>
                     Remarks: {printingMovement.note}
                   </div>
                 )}
 
-                <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#777' }}>
+                <div className={styles.voucherSignatures}>
                   <div>Authorized By: ____________</div>
                   <div>Signature: ____________</div>
                 </div>
@@ -1146,42 +1430,19 @@ export function StockOutView(): React.JSX.Element {
             )}
           </div>
 
-          <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <div className={styles.dialogFooter}>
             <Button
               appearance="secondary"
               onClick={() => setIsPrintModalOpen(false)}
-              style={{
-                height: '38px',
-                padding: '0 20px',
-                borderRadius: '8px',
-                fontWeight: 600,
-                border: `1px solid ${tokens.colorNeutralStroke1}`,
-                backgroundColor: tokens.colorNeutralBackground3,
-                color: tokens.colorNeutralForeground1,
-                cursor: 'pointer',
-              }}
+              className={styles.dialogCloseBtn}
             >
               Close
             </Button>
             <Button
               appearance="primary"
-              icon={<Print20Regular style={{ width: 18, height: 18 }} />}
+              icon={<Print20Regular className={styles.icon18} />}
               onClick={handlePrint}
-              style={{
-                height: '38px',
-                padding: '0 22px',
-                backgroundColor: '#0078D4',
-                color: '#FFFFFF',
-                fontWeight: 700,
-                borderRadius: '8px',
-                border: 'none',
-                whiteSpace: 'nowrap',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0, 120, 212, 0.35)',
-              }}
+              className={styles.dialogPrintBtn}
             >
               Print Slip
             </Button>

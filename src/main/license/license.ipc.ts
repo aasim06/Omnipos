@@ -50,12 +50,13 @@ export type LicenseCache = {
   updatedAt: string;
   databaseMode?: DatabaseMode;
   schemaId?: string | null;
+  businessProfiles?: string[];
   lastGate?: 'ok' | 'blocked';
   lastReason?: string;
 };
 
 export type LicenseGate =
-  | { state: 'ok'; modules?: Record<string, boolean> }
+  | { state: 'ok'; modules?: Record<string, boolean>; businessProfiles?: string[] }
   | { state: 'none' }
   | { state: 'blocked'; reason: string };
 
@@ -184,7 +185,12 @@ export const DEFAULT_MODULE_FALLBACKS: Record<string, boolean> = {
   admin: true,
 };
 
-type ModulesCache = { key: string; modules: Record<string, boolean>; updatedAt: string };
+type ModulesCache = {
+  key: string;
+  modules: Record<string, boolean>;
+  businessProfiles?: string[];
+  updatedAt: string;
+};
 
 function getCachedModules(key: string): Record<string, boolean> | null {
   try {
@@ -198,11 +204,23 @@ function getCachedModules(key: string): Record<string, boolean> | null {
   }
 }
 
-function saveModulesCache(key: string, modules: Record<string, boolean>): void {
+function getCachedBusinessProfiles(key: string): string[] | null {
+  try {
+    const file = getModulesCacheFilePath();
+    if (!existsSync(file)) return null;
+    const cache = JSON.parse(readFileSync(file, 'utf-8')) as ModulesCache;
+    if (cache.key !== key || !Array.isArray(cache.businessProfiles)) return null;
+    return cache.businessProfiles;
+  } catch {
+    return null;
+  }
+}
+
+function saveModulesCache(key: string, modules: Record<string, boolean>, businessProfiles?: string[]): void {
   try {
     writeFileSync(
       getModulesCacheFilePath(),
-      JSON.stringify({ key, modules, updatedAt: new Date().toISOString() }, null, 2),
+      JSON.stringify({ key, modules, businessProfiles, updatedAt: new Date().toISOString() }, null, 2),
       'utf-8',
     );
   } catch {
@@ -235,7 +253,10 @@ export function isLicenseModuleEnabled(moduleKey: string): boolean {
   return modules[moduleKey] === true;
 }
 
-export async function getLicenseModules(): Promise<Record<string, boolean> | null> {
+export async function getLicenseModules(): Promise<{
+  modules: Record<string, boolean>;
+  businessProfiles?: string[];
+} | null> {
   const savedKey = getSavedKey();
   if (!savedKey) return null;
   if (isLocallyExpired(savedKey)) return null;
@@ -250,22 +271,29 @@ export async function getLicenseModules(): Promise<Record<string, boolean> | nul
     const data = (await response.json()) as {
       ok: boolean;
       modules?: Record<string, boolean>;
+      businessProfiles?: string[];
       expiresAt?: string | null;
       error?: string;
     };
 
     if (data.ok && data.modules) {
       const normalized = normalizeModulesPayload(data.modules);
-      saveModulesCache(savedKey, normalized);
-      return normalized;
+      saveModulesCache(savedKey, normalized, data.businessProfiles);
+      return { modules: normalized, businessProfiles: data.businessProfiles };
     }
 
     const cached = getCachedModules(savedKey);
-    return cached ? normalizeModulesPayload(cached) : normalizeModulesPayload(null);
+    const cachedProfiles = getCachedBusinessProfiles(savedKey) || undefined;
+    return cached
+      ? { modules: normalizeModulesPayload(cached), businessProfiles: cachedProfiles }
+      : { modules: normalizeModulesPayload(null), businessProfiles: cachedProfiles };
   } catch {
     if (isLocallyExpired(savedKey)) return null;
     const cached = getCachedModules(savedKey);
-    return cached ? normalizeModulesPayload(cached) : normalizeModulesPayload(null);
+    const cachedProfiles = getCachedBusinessProfiles(savedKey) || undefined;
+    return cached
+      ? { modules: normalizeModulesPayload(cached), businessProfiles: cachedProfiles }
+      : { modules: normalizeModulesPayload(null), businessProfiles: cachedProfiles };
   }
 }
 
@@ -289,6 +317,7 @@ export async function getLicenseGate(): Promise<LicenseGate> {
       error?: string;
       code?: string;
       modules?: Record<string, boolean>;
+      businessProfiles?: string[];
       expiresAt?: string | null;
       userName?: string;
     };
@@ -314,15 +343,16 @@ export async function getLicenseGate(): Promise<LicenseGate> {
       updatedAt: new Date().toISOString(),
       databaseMode: 'online',
       schemaId: schemaIdForLicenseKey(savedKey),
+      businessProfiles: data.businessProfiles || existing?.businessProfiles,
       lastGate: 'ok',
     };
     writeFileSync(getLicenseCacheFilePath(), JSON.stringify(updatedCache, null, 2), 'utf-8');
 
     if (data.modules) {
-      saveModulesCache(savedKey, normalizeModulesPayload(data.modules));
+      saveModulesCache(savedKey, normalizeModulesPayload(data.modules), data.businessProfiles);
     }
 
-    return { state: 'ok', modules: data.modules };
+    return { state: 'ok', modules: data.modules, businessProfiles: data.businessProfiles };
   } catch {
     // Offline resilience
     const cache = getLicenseCache(savedKey);
@@ -332,7 +362,11 @@ export async function getLicenseGate(): Promise<LicenseGate> {
     if (cache?.lastGate === 'blocked') {
       return { state: 'blocked', reason: cache.lastReason || DISABLED_FALLBACK };
     }
-    return { state: 'ok', modules: getCachedModules(savedKey) || undefined };
+    return {
+      state: 'ok',
+      modules: getCachedModules(savedKey) || undefined,
+      businessProfiles: getCachedBusinessProfiles(savedKey) || undefined,
+    };
   }
 }
 
@@ -408,7 +442,9 @@ export function registerLicenseIpc(): void {
         userName?: string;
         expiresAt?: string | null;
         modules?: Record<string, boolean>;
+        businessProfiles?: string[];
         schemaId?: string;
+        adminUser?: { username: string; password?: string; name?: string };
       };
 
       if (data.ok) {
@@ -422,15 +458,22 @@ export function registerLicenseIpc(): void {
           updatedAt: new Date().toISOString(),
           databaseMode: 'online',
           schemaId: data.schemaId || schemaIdForLicenseKey(formattedKey),
+          businessProfiles: data.businessProfiles,
           lastGate: 'ok',
         };
         writeFileSync(getLicenseCacheFilePath(), JSON.stringify(cache, null, 2), 'utf-8');
 
         if (data.modules) {
-          saveModulesCache(formattedKey, normalizeModulesPayload(data.modules));
+          saveModulesCache(formattedKey, normalizeModulesPayload(data.modules), data.businessProfiles);
         }
 
-        return { ok: true, schemaId: cache.schemaId };
+        return {
+          ok: true,
+          schemaId: cache.schemaId,
+          adminUser: data.adminUser,
+          userName: data.userName,
+          businessProfiles: data.businessProfiles,
+        };
       }
 
       return { ok: false, error: data.error || 'Activation failed.' };

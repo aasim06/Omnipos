@@ -17,22 +17,7 @@ interface CategoryManagerProps {
   module?: ModuleKey;
 }
 
-const DEFAULT_CATEGORIES: CategoryItem[] = [
-  { id: "cat_1", name: "Starter", emoji: "🍧" },
-  { id: "cat_2", name: "Burger", emoji: "🍔" },
-  { id: "cat_3", name: "BBQ", emoji: "🔥" },
-  { id: "cat_4", name: "Pizza", emoji: "🍕" },
-  { id: "cat_5", name: "Handi", emoji: "🍲" },
-  { id: "cat_6", name: "Chicken Karahi", emoji: "🥘" },
-  { id: "cat_7", name: "Mutton Karahi", emoji: "🐐" },
-  { id: "cat_8", name: "Beef Karahi", emoji: "🥩" },
-  { id: "cat_9", name: "Rice", emoji: "🍚" },
-  { id: "cat_10", name: "Raita", emoji: "🥛" },
-  { id: "cat_11", name: "Salad", emoji: "🥗" },
-  { id: "cat_12", name: "Tandoor", emoji: "🫓" },
-  { id: "cat_13", name: "Drinks", emoji: "🥤" },
-  { id: "cat_14", name: "General", emoji: "📦" },
-];
+const DEFAULT_CATEGORIES: CategoryItem[] = [];
 
 export function CategoryManager({ module = "minimart" }: CategoryManagerProps) {
   const { products } = useProducts(module);
@@ -53,11 +38,10 @@ export function CategoryManager({ module = "minimart" }: CategoryManagerProps) {
       try {
         setCategories(JSON.parse(saved));
       } catch (e) {
-        setCategories(DEFAULT_CATEGORIES);
+        setCategories([]);
       }
     } else {
-      setCategories(DEFAULT_CATEGORIES);
-      localStorage.setItem(storageKey, JSON.stringify(DEFAULT_CATEGORIES));
+      setCategories([]);
     }
   }, [module, storageKey]);
 

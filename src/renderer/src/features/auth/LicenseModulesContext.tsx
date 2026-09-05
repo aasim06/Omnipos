@@ -62,14 +62,38 @@ export const NO_MODULES_ENABLED: LicenseModules = {
   admin: false,
 };
 
+import { CategoryProfile } from '@shared/types';
+
+export const ALL_VALID_PROFILES: CategoryProfile[] = ['standard', 'apparel', 'footwear', 'hardware', 'food'];
+
+export function normalizeBusinessProfiles(
+  profiles?: any,
+  modules?: LicenseModules
+): CategoryProfile[] {
+  if (Array.isArray(profiles) && profiles.length > 0) {
+    const valid = profiles.filter((p): p is CategoryProfile => ALL_VALID_PROFILES.includes(p as CategoryProfile));
+    if (valid.length > 0) return valid;
+  }
+  if (modules) {
+    if (modules.fastfood && !modules.omnimart) return ['food'];
+    if (!modules.fastfood && modules.omnimart) return ['standard'];
+    if (modules.fastfood && modules.omnimart) return ['food', 'standard'];
+  }
+  return ['standard', 'food'];
+}
+
 export function normalizeLicenseModules(
-  data?: Record<string, boolean> | null,
+  data?: any,
 ): LicenseModules {
   const next = { ...DEFAULT_FALLBACK_MODULES };
   if (!data || typeof data !== 'object') return next;
+  const raw: Record<string, any> =
+    'modules' in data && data.modules && typeof data.modules === 'object'
+      ? (data.modules as Record<string, any>)
+      : (data as Record<string, any>);
   for (const key of MODULE_KEYS) {
-    if (typeof data[key] === 'boolean') {
-      next[key] = data[key] === true;
+    if (typeof raw[key] === 'boolean') {
+      next[key] = raw[key] === true;
     }
   }
   return next;
@@ -77,16 +101,20 @@ export function normalizeLicenseModules(
 
 interface LicenseModulesContextValue {
   modules: LicenseModules;
+  businessProfiles: CategoryProfile[];
   loaded: boolean;
   refreshModules: () => Promise<void>;
   can: (key: keyof LicenseModules) => boolean;
+  hasProfile: (profile: CategoryProfile) => boolean;
 }
 
 const LicenseModulesContext = createContext<LicenseModulesContextValue>({
   modules: DEFAULT_FALLBACK_MODULES,
+  businessProfiles: ['standard', 'food'],
   loaded: false,
   refreshModules: async () => undefined,
   can: () => true,
+  hasProfile: () => true,
 });
 
 function modulesEqual(a: LicenseModules, b: LicenseModules): boolean {
@@ -103,13 +131,34 @@ export function LicenseModulesProvider({ children }: PropsWithChildren): React.J
     }
     return DEFAULT_FALLBACK_MODULES;
   });
+
+  const [businessProfiles, setBusinessProfiles] = useState<CategoryProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem('omnipos_business_profiles');
+      if (saved) return normalizeBusinessProfiles(JSON.parse(saved));
+    } catch {
+      /* ignore */
+    }
+    return ['standard', 'food'];
+  });
+
   const [loaded, setLoaded] = useState(false);
 
   const refreshModules = useCallback(async () => {
     try {
-      let data: Record<string, boolean> | null = null;
+      let rawModules: Record<string, boolean> | null = null;
+      let rawProfiles: string[] | null = null;
+
       if (window.posApi?.license?.modules) {
-        data = await window.posApi.license.modules();
+        const resp: any = await window.posApi.license.modules();
+        if (resp && typeof resp === 'object') {
+          if ('modules' in resp && resp.modules) {
+            rawModules = resp.modules;
+            rawProfiles = resp.businessProfiles || null;
+          } else {
+            rawModules = resp;
+          }
+        }
       } else {
         const savedKey = localStorage.getItem('omnipos_active_key');
         if (savedKey) {
@@ -121,17 +170,22 @@ export function LicenseModulesProvider({ children }: PropsWithChildren): React.J
           });
           if (res.ok) {
             const j = await res.json();
-            if (j.ok && j.modules) {
-              data = j.modules;
+            if (j.ok) {
+              rawModules = j.modules || null;
+              rawProfiles = j.businessProfiles || null;
             }
           }
         }
       }
 
-      if (data) {
-        const next = normalizeLicenseModules(data);
-        setModules((prev) => (modulesEqual(prev, next) ? prev : next));
-        localStorage.setItem('omnipos_cached_modules', JSON.stringify(next));
+      if (rawModules) {
+        const nextModules = normalizeLicenseModules(rawModules);
+        setModules((prev) => (modulesEqual(prev, nextModules) ? prev : nextModules));
+        localStorage.setItem('omnipos_cached_modules', JSON.stringify(nextModules));
+
+        const nextProfiles = normalizeBusinessProfiles(rawProfiles, nextModules);
+        setBusinessProfiles(nextProfiles);
+        localStorage.setItem('omnipos_business_profiles', JSON.stringify(nextProfiles));
       }
     } catch (err) {
       console.warn('[LicenseModules] Failed to fetch latest modules:', err);
@@ -162,9 +216,14 @@ export function LicenseModulesProvider({ children }: PropsWithChildren): React.J
     [modules],
   );
 
+  const hasProfile = useCallback(
+    (profile: CategoryProfile) => businessProfiles.includes(profile),
+    [businessProfiles],
+  );
+
   const value = useMemo(
-    () => ({ modules, loaded, refreshModules, can }),
-    [loaded, modules, refreshModules, can],
+    () => ({ modules, businessProfiles, loaded, refreshModules, can, hasProfile }),
+    [loaded, modules, businessProfiles, refreshModules, can, hasProfile],
   );
 
   return (
@@ -176,6 +235,10 @@ export function LicenseModulesProvider({ children }: PropsWithChildren): React.J
 
 export function useLicenseModules(): LicenseModules {
   return useContext(LicenseModulesContext).modules;
+}
+
+export function useBusinessProfiles(): CategoryProfile[] {
+  return useContext(LicenseModulesContext).businessProfiles;
 }
 
 export function useLicenseModulesLoaded(): boolean {

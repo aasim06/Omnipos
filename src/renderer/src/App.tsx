@@ -24,6 +24,7 @@ import { LicensePage } from '@/features/auth/LicensePage';
 import { LicenseDisabledOverlay } from '@/features/auth/LicenseDisabledOverlay';
 import { RouteAccessGate } from '@/components/RouteAccessGate';
 import { FastFoodDashboardView } from '@/features/dashboard/FastFoodDashboardView';
+import { makeStyles } from '@fluentui/react-components';
 
 import { getOrCreateBrowserHwid, getWebLicenseApiBase } from '@/lib/webLicense';
 
@@ -33,7 +34,64 @@ export interface PosLicenseGate {
   modules?: Record<string, boolean>;
 }
 
+const useStyles = makeStyles({
+  shellLayout: {
+    display: 'flex',
+    width: '100vw',
+    height: '100vh',
+    overflow: 'hidden',
+  },
+  mainContent: {
+    flex: 1,
+    minWidth: 0,
+    height: '100%',
+    overflow: 'hidden',
+  },
+  splashContainer: {
+    width: '100vw',
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'radial-gradient(circle at 50% 30%, #171b26 0%, #0c0d12 100%)',
+    color: '#FFFFFF',
+    fontFamily: 'Segoe UI, system-ui, sans-serif',
+    userSelect: 'none',
+  },
+  splashLogo: {
+    width: '56px',
+    height: '56px',
+    borderRadius: '14px',
+    background: 'linear-gradient(135deg, #FF1E3C 0%, #B30018 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 900,
+    fontSize: '20px',
+    color: '#FFFFFF',
+    boxShadow: '0 0 28px rgba(229, 25, 55, 0.6)',
+    marginBottom: '20px',
+  },
+  splashTitle: {
+    fontSize: '20px',
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+  },
+  splashRedText: {
+    color: '#FF4D63',
+  },
+  splashSubtitle: {
+    fontSize: '12px',
+    color: '#64748B',
+    marginTop: '4px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+  },
+});
+
 function ProtectedShellLayout(): React.JSX.Element {
+  const styles = useStyles();
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
@@ -41,9 +99,9 @@ function ProtectedShellLayout(): React.JSX.Element {
   }
 
   return (
-    <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div className={styles.shellLayout}>
       <FluentSidebar />
-      <main style={{ flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
+      <main className={styles.mainContent}>
         <Outlet />
       </main>
     </div>
@@ -51,6 +109,7 @@ function ProtectedShellLayout(): React.JSX.Element {
 }
 
 export default function App(): React.JSX.Element {
+  const styles = useStyles();
   const [gate, setGate] = useState<PosLicenseGate | null>(null);
   const [checking, setChecking] = useState(false);
 
@@ -60,13 +119,18 @@ export default function App(): React.JSX.Element {
       if (window.posApi?.license?.gate) {
         const next = await window.posApi.license.gate();
         setGate(next);
-        if (next.state === 'ok' && window.posApi?.getLicenseMeta) {
-          try {
-            const meta = await window.posApi.getLicenseMeta();
-            if (meta?.key) localStorage.setItem('omnipos_active_key', meta.key);
-            if (meta?.schemaId) localStorage.setItem('omnipos_active_schema', meta.schemaId);
-          } catch {
-            /* ignore */
+        if (next.state === 'ok') {
+          if ((next as any).businessProfiles) {
+            localStorage.setItem('omnipos_business_profiles', JSON.stringify((next as any).businessProfiles));
+          }
+          if (window.posApi?.getLicenseMeta) {
+            try {
+              const meta = await window.posApi.getLicenseMeta();
+              if (meta?.key) localStorage.setItem('omnipos_active_key', meta.key);
+              if (meta?.schemaId) localStorage.setItem('omnipos_active_schema', meta.schemaId);
+            } catch {
+              /* ignore */
+            }
           }
         }
       } else {
@@ -109,6 +173,9 @@ export default function App(): React.JSX.Element {
               if (data.modules) {
                 localStorage.setItem('omnipos_cached_modules', JSON.stringify(data.modules));
               }
+              if (data.businessProfiles) {
+                localStorage.setItem('omnipos_business_profiles', JSON.stringify(data.businessProfiles));
+              }
               setGate({ state: 'ok', modules: data.modules });
             }
           } else {
@@ -145,42 +212,14 @@ export default function App(): React.JSX.Element {
   // Splash Loader while checking terminal license status
   if (gate === null) {
     return (
-      <div
-        style={{
-          width: '100vw',
-          height: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'radial-gradient(circle at 50% 30%, #171b26 0%, #0c0d12 100%)',
-          color: '#FFFFFF',
-          fontFamily: 'Segoe UI, system-ui, sans-serif',
-          userSelect: 'none',
-        }}
-      >
-        <div
-          style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '14px',
-            background: 'linear-gradient(135deg, #FF1E3C 0%, #B30018 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 900,
-            fontSize: '20px',
-            color: '#FFFFFF',
-            boxShadow: '0 0 28px rgba(229, 25, 55, 0.6)',
-            marginBottom: '20px',
-          }}
-        >
+      <div className={styles.splashContainer}>
+        <div className={styles.splashLogo}>
           OP
         </div>
-        <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em' }}>
-          Omni<span style={{ color: '#FF4D63' }}>Pos</span> Terminal
+        <div className={styles.splashTitle}>
+          Omni<span className={styles.splashRedText}>Pos</span> Terminal
         </div>
-        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        <div className={styles.splashSubtitle}>
           Verifying License Security...
         </div>
       </div>

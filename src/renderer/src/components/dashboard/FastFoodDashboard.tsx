@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { DynamicBar } from "@/components/ui/DynamicBar";
 import { Order, OrderStage } from "@/lib/types";
 import { formatPKR } from "@/lib/utils";
 import {
@@ -266,9 +267,9 @@ export function FastFoodDashboard() {
                         <span className="font-mono font-semibold">{formatPKR(item.revenue)}</span>
                       </div>
                       <div className="h-2 w-full bg-surface-2 rounded-full overflow-hidden">
-                        <div
+                        <DynamicBar
                           className="h-full bg-gradient-to-r from-fastfood to-amber-400 rounded-full transition-all duration-500"
-                          style={{ width: `${percentage}%` }}
+                          width={percentage}
                         />
                       </div>
                     </div>

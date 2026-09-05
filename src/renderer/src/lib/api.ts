@@ -432,7 +432,6 @@ export const posApi = {
 
     return [
       { id: 'khata_guest', name: 'Guest', currentDebt: 0, creditLimit: 50000, synced: 1 },
-      { id: 'khata_vip', name: 'Regular VIP Customer', phone: '0300-1234567', currentDebt: 0, creditLimit: 100000, synced: 1 },
     ];
   },
 

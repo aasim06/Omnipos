@@ -1,6 +1,4 @@
-import { KEYS, storage } from "./storage";
-import { Order, Product, Category } from "./types";
-import { offlineDb } from "./offlineDb";
+import { Product, Category } from "./types";
 
 export const INITIAL_CATEGORIES: Category[] = [
   // Fast Food Categories
@@ -1434,7 +1432,6 @@ export function isDemoLicense(): boolean {
     localStorage.getItem("omnipos_license_key") ||
     ""
   ).toUpperCase().trim();
-  // If no license key is entered yet (local dev) or key contains DEMO
   if (!activeKey) return true;
   return activeKey.includes("DEMO") || activeKey === "OMNI-DEMO-2026-LIVE";
 }
