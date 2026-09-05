@@ -18,6 +18,8 @@ import {
   ArrowCircleUp20Regular,
   Print20Regular,
   ArrowDownload20Regular,
+  Food24Regular,
+  ShoppingBag24Regular,
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { resolveApiUrl } from '@/lib/api';
@@ -102,6 +104,7 @@ export function StockLedgerView(): React.JSX.Element {
   const styles = useStyles();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeTab, setTypeTab] = useState<'all' | 'in' | 'out'>('all');
+  const [departmentTab, setDepartmentTab] = useState<'all' | 'fastfood' | 'minimart'>('all');
   const [timeFilter, setTimeFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   // Fetch Stock Movements
@@ -124,6 +127,10 @@ export function StockLedgerView(): React.JSX.Element {
     // Type Filter
     if (typeTab === 'in' && m.type !== 'in') return false;
     if (typeTab === 'out' && m.type !== 'out') return false;
+
+    // Department Filter (Kitchen vs Mini Mart)
+    if (departmentTab === 'fastfood' && m.module !== 'fastfood') return false;
+    if (departmentTab === 'minimart' && m.module === 'fastfood') return false;
 
     // Time Filter
     const mTime = new Date(m.date).getTime();
@@ -499,6 +506,101 @@ export function StockLedgerView(): React.JSX.Element {
 
       {/* ── Table Card ── */}
       <div className={styles.card}>
+        {/* Department / Scope Tabs */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px',
+            paddingBottom: '12px',
+            marginBottom: '14px',
+            borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Ledger Scope:
+            </span>
+            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+              <button
+                type="button"
+                onClick={() => setDepartmentTab('all')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: departmentTab === 'all' ? '#E51937' : 'transparent',
+                  color: departmentTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: departmentTab === 'all' ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                <span>All Movements</span>
+                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {movements.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDepartmentTab('fastfood')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: departmentTab === 'fastfood' ? '#E51937' : 'transparent',
+                  color: departmentTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: departmentTab === 'fastfood' ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                <Food24Regular style={{ width: 14, height: 14 }} />
+                <span>Kitchen & Fast Food</span>
+                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {movements.filter((m) => m.module === 'fastfood').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDepartmentTab('minimart')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: departmentTab === 'minimart' ? '#E51937' : 'transparent',
+                  color: departmentTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: departmentTab === 'minimart' ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                <span>Retail Mini Mart</span>
+                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {movements.filter((m) => m.module !== 'fastfood').length}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className={styles.filterBar}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <DocumentTableSearch24Regular style={{ color: '#E51937' }} />

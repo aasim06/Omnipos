@@ -1,6 +1,7 @@
 import { offlineDb, SyncQueueItem, LocalOrder } from './offlineDb';
 import { resolveApiUrl, getTenantHeaders } from './api';
 import { Product, Category, Order } from '@shared/types';
+import { decodeProductVariants } from './variants';
 
 export interface SyncState {
   isOnline: boolean;
@@ -256,9 +257,10 @@ class SyncEngine {
     try {
       const res = await fetch(`${baseUrl}/api/products`, { headers: tenantHeaders });
       if (res.ok) {
-        const products: Product[] = await res.json();
-        if (Array.isArray(products) && products.length > 0) {
-          await offlineDb.products.bulkPut(products);
+        const rawProducts: Product[] = await res.json();
+        if (Array.isArray(rawProducts) && rawProducts.length > 0) {
+          const decodedProducts = rawProducts.map(decodeProductVariants);
+          await offlineDb.products.bulkPut(decodedProducts);
         }
       }
     } catch {

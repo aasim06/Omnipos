@@ -79,3 +79,36 @@ export function playSuccessChime(): void {
     // Graceful fallback
   }
 }
+
+/**
+ * Two-tone restaurant kitchen order bell ("Ding-Ding!")
+ */
+export function playKitchenBell(): void {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const chimeBell = (time: number, freq: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, time);
+
+      gain.gain.setValueAtTime(0.18, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.35);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(time);
+      osc.stop(time + 0.36);
+    };
+
+    chimeBell(ctx.currentTime, 1046.5); // High C6
+    chimeBell(ctx.currentTime + 0.14, 1318.5); // High E6
+  } catch {
+    // Graceful fallback
+  }
+}
+

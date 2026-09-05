@@ -206,7 +206,19 @@ export function FluentSidebar(): React.JSX.Element {
 
   const allSections = [
     {
-      title: 'POS TERMINALS',
+      title: 'HOME',
+      items: [
+        {
+          to: '/dashboard',
+          label: 'Dashboard',
+          badge: 'LIVE',
+          icon: <DataTrending24Regular style={{ width: 19, height: 19 }} />,
+          activeIcon: <DataTrending24Filled style={{ width: 19, height: 19 }} />,
+        },
+      ],
+    },
+    {
+      title: 'BILLING & SALES',
       items: [
         {
           to: '/pos/fastfood',
@@ -217,15 +229,15 @@ export function FluentSidebar(): React.JSX.Element {
         },
         {
           to: '/pos/omnimart',
-          label: 'Omnimart POS',
+          label: 'Mart Counter',
           moduleKey: 'omnimart' as const,
           icon: <BuildingRetail24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <BuildingRetail24Filled style={{ width: 19, height: 19 }} />,
         },
         {
           to: '/kitchen',
-          label: 'Kitchen Display',
-          badge: 'KDS',
+          label: 'Kitchen Screen',
+          badge: 'KOT',
           moduleKey: 'kitchen' as const,
           icon: <BowlSalad24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <BowlSalad24Filled style={{ width: 19, height: 19 }} />,
@@ -233,13 +245,13 @@ export function FluentSidebar(): React.JSX.Element {
       ],
     },
     {
-      title: 'INVENTORY & CATALOG',
+      title: 'ITEMS & STOCK',
       items: [
         {
           isAccordion: true,
-          label: 'Products & Catalog',
+          label: 'Products & Menu',
           moduleKey: 'catalog' as const,
-          subtitle: 'Store inventory & menus',
+          subtitle: 'All items & prices',
           isOpen: isCatalogOpen,
           setIsOpen: setIsCatalogOpen,
           isActive: isCatalogActive,
@@ -247,18 +259,18 @@ export function FluentSidebar(): React.JSX.Element {
           icon: <Tag24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <Tag24Filled style={{ width: 19, height: 19 }} />,
           subItems: [
-            { to: '/catalog', label: 'All Store Items', icon: <Tag20Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/catalog', label: 'All Products', icon: <Tag20Regular style={{ width: 15, height: 15 }} /> },
             { to: '/catalog/fastfood', label: 'Fast Food Menu', moduleKey: 'fastfood' as const, icon: <Food24Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/catalog/omnimart', label: 'Omnimart Goods', moduleKey: 'omnimart' as const, icon: <BuildingRetail24Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/catalog/categories', label: 'Categories Manager', icon: <Grid20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/catalog/new', label: '+ Add Product', icon: <Add20Regular style={{ width: 15, height: 15, color: '#FF4D63' }} />, isSpecial: true },
+            { to: '/catalog/omnimart', label: 'Mart Items', moduleKey: 'omnimart' as const, icon: <BuildingRetail24Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/catalog/categories', label: 'Categories', icon: <Grid20Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/catalog/new', label: '+ Add New Item', icon: <Add20Regular style={{ width: 15, height: 15, color: '#FF4D63' }} />, isSpecial: true },
           ],
         },
         {
           isAccordion: true,
-          label: 'Inventory & Stock',
+          label: 'Stock Manager',
           moduleKey: 'inventory' as const,
-          subtitle: 'Stock levels & movements',
+          subtitle: 'Stock in, out & records',
           isOpen: isInventoryOpen,
           setIsOpen: setIsInventoryOpen,
           isActive: isInventoryActive,
@@ -266,16 +278,16 @@ export function FluentSidebar(): React.JSX.Element {
           icon: <Box24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <Box24Filled style={{ width: 19, height: 19 }} />,
           subItems: [
-            { to: '/inventory/dashboard', label: 'Inventory Dashboard', icon: <Box20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/inventory/stock-in', label: 'Stock In', icon: <ArrowCircleDown20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/inventory/stock-out', label: 'Stock Out', icon: <ArrowCircleUp20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/inventory/vendors', label: 'Vendors & Suppliers', icon: <PeopleCommunity20Regular style={{ width: 15, height: 15 }} /> },
-            { to: '/inventory/ledger', label: 'Stock Movement Ledger', icon: <DocumentTableSearch20Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/inventory/dashboard', label: 'Stock Overview', icon: <Box20Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/inventory/stock-in', label: 'Stock In (Purchases)', icon: <ArrowCircleDown20Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/inventory/stock-out', label: 'Stock Out (Waste/Damage)', icon: <ArrowCircleUp20Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/inventory/vendors', label: 'Suppliers', icon: <PeopleCommunity20Regular style={{ width: 15, height: 15 }} /> },
+            { to: '/inventory/ledger', label: 'Stock History', icon: <DocumentTableSearch20Regular style={{ width: 15, height: 15 }} /> },
           ],
         },
         {
           to: '/khata',
-          label: 'Khata Ledger Book',
+          label: 'Customer Khata (Credit)',
           moduleKey: 'khata' as const,
           icon: <BookContacts24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <BookContacts24Filled style={{ width: 19, height: 19 }} />,
@@ -283,18 +295,18 @@ export function FluentSidebar(): React.JSX.Element {
       ],
     },
     {
-      title: 'FINANCE & AUDIT',
+      title: 'ACCOUNTS & REPORTS',
       items: [
         {
           to: '/expenses',
-          label: 'Expenses & Cash',
+          label: 'Daily Expenses',
           moduleKey: 'expenses' as const,
           icon: <Money24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <Money24Filled style={{ width: 19, height: 19 }} />,
         },
         {
           to: '/reports',
-          label: 'Profit & Loss Analytics',
+          label: 'Sales & Reports',
           moduleKey: 'reports' as const,
           icon: <DataTrending24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <DataTrending24Filled style={{ width: 19, height: 19 }} />,
@@ -302,11 +314,11 @@ export function FluentSidebar(): React.JSX.Element {
       ],
     },
     {
-      title: 'ADMIN & CONTROL',
+      title: 'SETTINGS & USERS',
       items: [
         {
           to: '/admin',
-          label: 'Staff & Cashier Roles',
+          label: 'Staff & Cashiers',
           moduleKey: 'admin' as const,
           icon: <PeopleCommunity24Regular style={{ width: 19, height: 19 }} />,
           activeIcon: <PeopleCommunity24Filled style={{ width: 19, height: 19 }} />,
@@ -321,11 +333,21 @@ export function FluentSidebar(): React.JSX.Element {
       ...sec,
       items: sec.items.filter((it: any) => {
         // 1. Check license module capability
-        if (it.moduleKey && !can(it.moduleKey)) return false;
+        if (it.moduleKey) {
+          if (it.moduleKey === 'kitchen') {
+            if (!can('kitchen') && !can('fastfood')) return false;
+          } else if (!can(it.moduleKey)) {
+            return false;
+          }
+        }
         // 2. Check user granular permission (cashier restrictions)
         if (it.moduleKey) {
-          const perm = MODULE_TO_PERMISSION[it.moduleKey as keyof LicenseModules];
-          if (perm && !hasPermission(perm)) return false;
+          if (it.moduleKey === 'kitchen') {
+            if (!hasPermission('kitchen') && !hasPermission('pos_fastfood')) return false;
+          } else {
+            const perm = MODULE_TO_PERMISSION[it.moduleKey as keyof LicenseModules];
+            if (perm && !hasPermission(perm)) return false;
+          }
         }
         return true;
       }),

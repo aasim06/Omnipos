@@ -13,7 +13,18 @@ export function registerRoutes(app: Express): void {
         where,
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
       });
-      res.json(products);
+      const parsed = products.map((p: any) => {
+        let v = p.variants;
+        if (typeof v === 'string') {
+          try {
+            v = JSON.parse(v);
+          } catch {
+            /* ignore */
+          }
+        }
+        return { ...p, variants: v };
+      });
+      res.json(parsed);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -21,13 +32,16 @@ export function registerRoutes(app: Express): void {
 
   app.post('/api/products', async (req: Request, res: Response) => {
     try {
+      const { hasVariants, itemRole, isKitchenRouted, pricingType, variants, ...safeData } = req.body;
+      const variantsStr = Array.isArray(variants) ? JSON.stringify(variants) : typeof variants === 'string' ? variants : null;
       const product = await db.product.create({
         data: {
-          ...req.body,
+          ...safeData,
+          ...(variantsStr ? { variants: variantsStr } : {}),
           updatedAt: new Date(),
         },
       });
-      res.json(product);
+      res.json({ ...product, variants: Array.isArray(variants) ? variants : product.variants });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -36,14 +50,17 @@ export function registerRoutes(app: Express): void {
   app.put('/api/products/:id', async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id);
+      const { hasVariants, itemRole, isKitchenRouted, pricingType, variants, ...safeData } = req.body;
+      const variantsStr = Array.isArray(variants) ? JSON.stringify(variants) : typeof variants === 'string' ? variants : null;
       const product = await db.product.update({
         where: { id },
         data: {
-          ...req.body,
+          ...safeData,
+          ...(variantsStr ? { variants: variantsStr } : {}),
           updatedAt: new Date(),
         },
       });
-      res.json(product);
+      res.json({ ...product, variants: Array.isArray(variants) ? variants : product.variants });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -138,6 +155,24 @@ export function registerRoutes(app: Express): void {
         },
         include: { lines: true },
       });
+
+      // Auto-create Kitchen Ticket for Fast Food orders so kitchen staff sees prep card immediately
+      if (order.module === 'fastfood') {
+        try {
+          const typeLabel = order.orderType ? String(order.orderType).toUpperCase() : 'DINE-IN';
+          const custNote = order.customerName ? ` (${order.customerName})` : '';
+          await db.kitchenTicket.create({
+            data: {
+              orderId: order.id,
+              orderType: `${typeLabel}${custNote}`,
+              status: 'pending',
+              notes: order.customerName || null,
+            },
+          });
+        } catch (ktErr) {
+          console.warn('[KitchenTicket] Auto-create error:', ktErr);
+        }
+      }
 
       // Deduct inventory stock for each sold product line
       if (Array.isArray(lines)) {
@@ -365,6 +400,60 @@ export function registerRoutes(app: Express): void {
         orderBy: { createdAt: 'asc' },
       });
       res.json(tickets);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/kitchen/tickets', async (req: Request, res: Response) => {
+    try {
+      const { customerName, orderType, lines } = req.body;
+      const order = await db.order.create({
+        data: {
+          module: 'fastfood',
+          orderType: (orderType || 'dine-in').toLowerCase(),
+          customerName: customerName || 'Rush / Manual Kitchen Ticket',
+          totalAmount: 0,
+          stage: 'kot',
+          isSynced: true,
+          updatedAt: new Date(),
+          lines: {
+            create: (lines || []).map((l: any) => ({
+              productId: l.id || null,
+              name: l.name,
+              unitPrice: 0,
+              quantity: Number(l.quantity) || 1,
+              variantLabel: l.variantLabel || null,
+              notes: l.notes || null,
+            })),
+          },
+        },
+        include: { lines: true },
+      });
+
+      const ticket = await db.kitchenTicket.create({
+        data: {
+          orderId: order.id,
+          orderType: orderType ? String(orderType).toUpperCase() : 'DINE-IN',
+          status: 'pending',
+          notes: customerName || null,
+        },
+        include: { order: { include: { lines: true } } },
+      });
+
+      res.status(201).json(ticket);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/kitchen/tickets/:id', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      await db.kitchenTicket.delete({
+        where: { id },
+      });
+      res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

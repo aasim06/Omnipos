@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CustomSelect } from '@/components/ui';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -52,6 +53,7 @@ import {
   ChevronDown20Regular,
   ChevronUp20Regular,
   Person20Regular,
+  PaintBrush20Regular,
 } from '@fluentui/react-icons';
 import { posApi, resolveApiUrl } from '@/lib/api';
 import { printKitchenKot } from '@/lib/kotPrinter';
@@ -60,6 +62,7 @@ import { uid, nowISO } from '@/lib/utils';
 import { useAppTheme } from '@/theme/AppProviders';
 import { PosCounterSkeleton } from '@/components/skeletons/PageSkeletons';
 import { playBeep, playSuccessChime } from '@/lib/soundFx';
+import { decodeProductVariants } from '@/lib/variants';
 
 /* ─── Fluent UI 2 Desktop Design Tokens (Dynamic Light / Dark) ───── */
 function getTokens(isDark: boolean) {
@@ -115,12 +118,647 @@ function ProductIcon({ name, category, size = 24, color }: { name: string; categ
 function CategoryIcon({ cat, size = 16 }: { cat: string; size?: number }) {
   const c = cat.toLowerCase();
   const s = { width: size, height: size };
+  if (c.includes('paint') || c.includes('primer') || c.includes('wall') || c.includes('color')) return <PaintBrush20Regular style={s} />;
+  if (c.includes('sanitary') || c.includes('tap') || c.includes('tooti') || c.includes('mixer')) return <DrinkToGo24Regular style={{ width: size, height: size }} />;
+  if (c.includes('hardware') || c.includes('iron') || c.includes('kill') || c.includes('nail') || c.includes('bolt')) return <Box20Regular style={s} />;
+  if (c.includes('cosmetic') || c.includes('skin') || c.includes('cream') || c.includes('beauty')) return <Star20Regular style={s} />;
+  if (c.includes('garment') || c.includes('cloth') || c.includes('shirt') || c.includes('men')) return <Tag20Regular style={s} />;
+  if (c.includes('shoe') || c.includes('footwear')) return <Box20Regular style={s} />;
+  if (c.includes('toy') || c.includes('kid')) return <Star20Regular style={s} />;
+  if (c.includes('general')) return <Box20Regular style={s} />;
   if (c.includes('vegan') || c.includes('vegetarian')) return <LeafOne20Regular style={s} />;
   if (c.includes('street') || c.includes('snack') || c.includes('fast')) return <Fire20Regular style={s} />;
   if (c.includes('dessert') || c.includes('cake') || c.includes('sweet')) return <Star20Regular style={s} />;
   if (c.includes('drink') || c.includes('beverage')) return <DrinkToGo24Regular style={{ width: size, height: size }} />;
   return <Food24Regular style={{ width: size, height: size }} />;
 }
+
+function formatSizeBadge(label: string): string {
+  const l = label.trim().toLowerCase();
+  if (l === 'small' || l === 's' || l === 'size s') return 'S';
+  if (l === 'medium' || l === 'm' || l === 'size m') return 'M';
+  if (l === 'large' || l === 'l' || l === 'size l') return 'L';
+  if (l === 'extra large' || l === 'x-large' || l === 'xl' || l === 'size xl') return 'XL';
+  // Shoe sizes e.g. "40", "41", "42", "43", "44", "Size 42"
+  const shoeMatch = l.match(/\b(3[89]|4[0-6])\b/);
+  if (shoeMatch) return shoeMatch[1];
+  // Cosmetic shades e.g. "#01 Red" -> "#01", "#08 Nude" -> "#08"
+  const shadeMatch = l.match(/(#\d+)/);
+  if (shadeMatch) return shadeMatch[1];
+  if (l.includes('can') || l.includes('tin')) return 'Can';
+  if (l.includes('500') || l.includes('half')) return '500ml';
+  if (l.includes('1.5') || l.includes('jumbo')) return '1.5L';
+  if (l.includes('1.0') || l === '1 liter' || l === '1l' || l.includes('1 liter')) return '1.0L';
+  if (l.includes('small (500ml)') || l.includes('small bottle')) return 'Small';
+  if (l.includes('large (1.5l)') || l.includes('large bottle')) return 'Large';
+  if (l.includes('balti') || l.includes('drum')) return 'Balti';
+  if (l.includes('gallon') || l.includes('gal')) return 'Gallon';
+  if (l.includes('quarter') || l.includes('qtr')) return 'Quarter';
+  if (l.includes('0.5 kg') || l.includes('500g') || l.includes('aadha')) return '0.5 KG';
+  if (l.includes('1.0 kg') || l.includes('1kg') || l.includes('ek kilo')) return '1 KG';
+  if (l.includes('5.0 kg') || l.includes('5kg')) return '5 KG';
+  if (l.includes('125ml')) return '125ml';
+  if (l.includes('250ml')) return '250ml';
+  if (l.includes('400ml')) return '400ml';
+  if (l.includes('100g')) return '100g';
+  if (l.includes('200g')) return '200g';
+  return label.length > 6 ? label.slice(0, 5) : label;
+}
+
+interface FastFoodVisualCardProps {
+  product: Product;
+  isSelected: boolean;
+  isDark: boolean;
+  F: ReturnType<typeof getTokens>;
+  inCartMap: Record<string, number>;
+  addToCart: (product: Product, qty?: number, variantLabel?: string, customUnitPrice?: number) => void;
+  setSelectedProduct: (p: Product) => void;
+  setSelectedQty: (qty: number) => void;
+  playBeep: () => void;
+  isWeightItem: boolean;
+  setWeighingProduct: (p: Product) => void;
+  setWeightAmount: (n: number) => void;
+  setVariantPickerProduct: (p: Product) => void;
+}
+
+const FastFoodVisualCard = React.memo(
+  function FastFoodVisualCard({
+    product: rawProduct,
+    isSelected,
+    isDark,
+    F,
+    inCartMap,
+    addToCart,
+    setSelectedProduct,
+    setSelectedQty,
+    playBeep,
+    isWeightItem,
+    setWeighingProduct,
+    setWeightAmount,
+  }: FastFoodVisualCardProps) {
+    const product = React.useMemo(() => decodeProductVariants(rawProduct), [rawProduct]);
+    const variants = React.useMemo(() => product.variants || [], [product.variants]);
+    const hasVariants = variants.length > 0;
+    const [selectedVariantId, setSelectedVariantId] = React.useState<string>(variants[0]?.id || '');
+
+    React.useEffect(() => {
+      if (variants.length > 0 && !variants.some((v) => v.id === selectedVariantId)) {
+        setSelectedVariantId(variants[0].id);
+      }
+    }, [variants, selectedVariantId]);
+
+    const activeVariant = variants.find((v) => v.id === selectedVariantId) || variants[0];
+    const activePrice = activeVariant
+      ? (activeVariant.price !== undefined && activeVariant.price > 0
+          ? activeVariant.price
+          : product.price + (activeVariant.priceDelta || 0))
+      : product.price;
+
+    const isOut = product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
+    const isLowStock = !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= (product.minThreshold ?? 10);
+    const inCartQty = (activeVariant ? inCartMap[`${product.id}__${activeVariant.label}`] : undefined) ?? inCartMap[product.id] ?? 0;
+
+  const isWeighedOrAmount = isWeightItem || product.pricingType === 'perkg' || product.pricingType === 'amountse';
+  const [quickAmountRs, setQuickAmountRs] = React.useState<string>('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleAddByRupees = (rs: number) => {
+    if (rs <= 0) return;
+    const finalQty = Number((rs / (product.price || 1)).toFixed(3));
+    const unitName = product.unit || 'kg';
+    const weightDisplay = finalQty >= 1 ? `${finalQty} ${unitName}` : `${Math.round(finalQty * 1000)}g`;
+    const variantLabel = `${weightDisplay} (${rs} PKR @ PKR ${product.price}/${unitName})`;
+    const calculatedUnitPrice = Number((rs / (finalQty || 1)).toFixed(4));
+    addToCart(product, finalQty, variantLabel, calculatedUnitPrice);
+    setQuickAmountRs('');
+    playBeep();
+  };
+
+  return (
+    <div
+      onClick={() => {
+        if (!isOut) {
+          if (isWeighedOrAmount) {
+            inputRef.current?.focus();
+            setSelectedProduct(product);
+            return;
+          }
+          if (isWeightItem) {
+            setWeighingProduct(product);
+            setWeightAmount(1.0);
+            playBeep();
+            return;
+          }
+          setSelectedProduct(product);
+          setSelectedQty(1);
+        }
+      }}
+      style={{
+        backgroundColor: F.bgCard,
+        borderRadius: '12px',
+        border: `1px solid ${isSelected ? F.accentRed : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '320px',
+        height: 'auto',
+        cursor: isOut ? 'default' : 'pointer',
+        opacity: isOut ? 0.6 : 1,
+        boxShadow: isSelected
+          ? '0 0 0 2px #E51937, 0 8px 24px rgba(229, 25, 55, 0.25)'
+          : isDark
+          ? '0 4px 16px rgba(0, 0, 0, 0.3)'
+          : '0 2px 10px rgba(0, 0, 0, 0.04)',
+        transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+        position: 'relative',
+      }}
+      onMouseEnter={(e) => {
+        if (!isOut) {
+          e.currentTarget.style.transform = 'translateY(-4px)';
+          if (!isSelected) {
+            e.currentTarget.style.boxShadow = isDark
+              ? '0 12px 30px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.15)'
+              : '0 12px 28px rgba(0,0,0,0.09), 0 0 0 1px rgba(229,25,55,0.2)';
+            e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(229,25,55,0.3)';
+          }
+          const img = e.currentTarget.querySelector('img');
+          if (img) img.style.transform = 'scale(1.08)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isOut) {
+          e.currentTarget.style.transform = 'translateY(0)';
+          if (!isSelected) {
+            e.currentTarget.style.boxShadow = isDark
+              ? '0 4px 16px rgba(0, 0, 0, 0.3)'
+              : '0 2px 10px rgba(0, 0, 0, 0.04)';
+            e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+          }
+          const img = e.currentTarget.querySelector('img');
+          if (img) img.style.transform = 'scale(1)';
+        }
+      }}
+    >
+      {/* ── Top Media Showcase: 160px ── */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '160px',
+          overflow: 'hidden',
+          backgroundColor: isDark ? '#18181B' : '#F3F4F6',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {product.imageBase64 || product.imageUrl ? (
+          <img
+            src={product.imageBase64 || product.imageUrl}
+            alt={product.name}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transition: 'transform 0.35s ease',
+            }}
+            onError={(e) => {
+              (e.currentTarget as HTMLElement).style.display = 'none';
+              const fallback = (e.currentTarget as HTMLElement).nextElementSibling;
+              if (fallback) (fallback as HTMLElement).style.display = 'flex';
+            }}
+          />
+        ) : null}
+
+        {/* Fallback Graphic Pattern */}
+        <div
+          style={{
+            display: product.imageBase64 || product.imageUrl ? 'none' : 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            height: '100%',
+            background: isDark
+              ? 'linear-gradient(135deg, #1f1f24 0%, #161619 100%)'
+              : 'linear-gradient(135deg, #F8FAFC 0%, #EDF2F7 100%)',
+          }}
+        >
+          <ProductIcon name={product.name} category={product.category} size={48} color={isSelected ? F.accentRed : F.textPrimary} />
+        </div>
+
+        {/* Subtle Ambient Dark Gradient on bottom edge of image */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 60%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Floating Stock Badge (Glassmorphic Top-Right) */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '3px 8px',
+            borderRadius: '20px',
+            background: isDark ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(8px)',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(0, 0, 0, 0.08)',
+            fontSize: '11px',
+            fontWeight: 600,
+            color: isOut ? '#EF4444' : isLowStock ? '#F59E0B' : isDark ? '#FFFFFF' : '#111827',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+          }}
+        >
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: isOut ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981',
+              boxShadow: `0 0 6px ${isOut ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981'}`,
+            }}
+          />
+          <span>{isOut ? 'OUT' : `${product.openingStock ?? '—'} left`}</span>
+        </div>
+
+        {/* In-Cart Glowing Indicator Pill */}
+        {inCartQty > 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '8px',
+              left: '8px',
+              padding: '3px 8px',
+              borderRadius: '12px',
+              backgroundColor: '#107C41',
+              color: '#FFFFFF',
+              fontSize: '10.5px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              boxShadow: '0 2px 8px rgba(16, 124, 65, 0.45)',
+            }}
+          >
+            <Checkmark20Filled style={{ width: 12, height: 12 }} />
+            <span>{inCartQty} in cart</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Card Content Body (Matching Reference Screenshot) ── */}
+      <div style={{ flex: 1, padding: '10px 12px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', justifyContent: 'space-between' }}>
+        <div>
+          <div
+            style={{
+              fontSize: '14px',
+              fontWeight: 800,
+              color: F.textPrimary,
+              lineHeight: 1.25,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            title={product.name}
+          >
+            {product.name}
+          </div>
+          <div
+            style={{
+              fontSize: '11.5px',
+              color: isDark ? '#A1A1AA' : '#6B7280',
+              lineHeight: 1.3,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              marginTop: '2px',
+            }}
+            title={product.description || product.category || ''}
+          >
+            {product.description || (product.category ? `${product.category} special` : 'Fresh menu item')}
+          </div>
+
+          {/* ── Segmented Size Strip (S / M / L / XL or Footwear 40-44) ── */}
+          {hasVariants && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${Math.min(variants.length, 5)}, 1fr)`,
+                borderRadius: '6px',
+                border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.12)',
+                overflow: 'hidden',
+                marginTop: '8px',
+                backgroundColor: isDark ? '#1C1C1E' : '#F4F4F5',
+              }}
+            >
+              {variants.slice(0, 5).map((v) => {
+                const isVarActive = v.id === (activeVariant?.id || variants[0].id);
+                const vPrice = v.price !== undefined && v.price > 0 ? v.price : product.price + (v.priceDelta || 0);
+                const shortLabel = formatSizeBadge(v.label);
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedVariantId(v.id);
+                    }}
+                    style={{
+                      border: 'none',
+                      borderRight: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
+                      backgroundColor: isVarActive ? '#E51937' : 'transparent',
+                      color: isVarActive ? '#FFFFFF' : isDark ? '#A1A1AA' : '#52525B',
+                      padding: '4px 2px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: isVarActive ? '0 0 12px rgba(229, 25, 55, 0.45)' : 'none',
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', fontWeight: 800, lineHeight: 1.1 }}>{shortLabel}</span>
+                    <span style={{ fontSize: '9.5px', fontWeight: 600, opacity: isVarActive ? 1 : 0.75, lineHeight: 1.1 }}>
+                      {vPrice.toLocaleString()}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Quick Rupees Budget Input & Presets for Per KG / Meethai Items ("50 ki ya 70 ki de do") ── */}
+          {!hasVariants && isWeighedOrAmount && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                marginTop: '6px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC',
+                padding: '5px 7px',
+                borderRadius: '7px',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.09)' : '1px solid rgba(0, 0, 0, 0.08)',
+              }}
+            >
+              {/* Quick Preset Buttons (50, 100, 250) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
+                {[50, 100, 250].map((presetRs) => {
+                  const calcWeight = Number((presetRs / (product.price || 1)).toFixed(3));
+                  const weightDisplay = calcWeight >= 1 ? `${calcWeight}kg` : `${Math.round(calcWeight * 1000)}g`;
+                  return (
+                    <button
+                      key={presetRs}
+                      type="button"
+                      title={`Click to add Rs. ${presetRs} (${weightDisplay})`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddByRupees(presetRs);
+                      }}
+                      style={{
+                        padding: '3px 0',
+                        borderRadius: '4px',
+                        border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.1)',
+                        backgroundColor: isDark ? '#27272A' : '#FFFFFF',
+                        color: F.accentRed,
+                        fontWeight: 800,
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        transition: 'all 0.12s ease',
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        lineHeight: 1.1,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = F.accentRed;
+                        e.currentTarget.style.color = '#FFFFFF';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = isDark ? '#27272A' : '#FFFFFF';
+                        e.currentTarget.style.color = F.accentRed;
+                      }}
+                    >
+                      <span>Rs.{presetRs}</span>
+                      <span style={{ fontSize: '8.5px', fontWeight: 600, opacity: 0.75 }}>
+                        {weightDisplay}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Direct Input (e.g. 70) with live calculated grams/kg */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: '6px',
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      color: F.accentRed,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    Rs
+                  </span>
+                  <input
+                    ref={inputRef}
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 70"
+                    value={quickAmountRs}
+                    onChange={(e) => setQuickAmountRs(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const val = parseFloat(quickAmountRs);
+                        if (val > 0) handleAddByRupees(val);
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    onFocus={(e) => e.stopPropagation()}
+                    style={{
+                      width: '100%',
+                      height: '26px',
+                      paddingLeft: '24px',
+                      paddingRight: '6px',
+                      borderRadius: '5px',
+                      border: `1.5px solid ${quickAmountRs ? F.accentRed : isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.18)'}`,
+                      backgroundColor: isDark ? '#27272A' : '#FFFFFF',
+                      color: isDark ? '#FFFFFF' : '#111827',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  title="Add amount to cart"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const val = parseFloat(quickAmountRs);
+                    if (val > 0) handleAddByRupees(val);
+                  }}
+                  style={{
+                    height: '26px',
+                    padding: '0 8px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    backgroundColor: quickAmountRs ? F.accentRed : isDark ? '#3F3F46' : '#E2E8F0',
+                    color: quickAmountRs ? '#FFFFFF' : isDark ? '#A1A1AA' : '#64748B',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: quickAmountRs ? 'pointer' : 'default',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.12s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {quickAmountRs && parseFloat(quickAmountRs) > 0 ? (
+                    (() => {
+                      const w = Number((parseFloat(quickAmountRs) / (product.price || 1)).toFixed(3));
+                      const wStr = w >= 1 ? `${w}kg` : `${Math.round(w * 1000)}g`;
+                      return `+ ${wStr}`;
+                    })()
+                  ) : (
+                    '+ Add'
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Bottom Row: Dynamic Green Price & Red Add Button ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '6px' }}>
+          <div
+            style={{
+              fontSize: '14.5px',
+              fontWeight: 800,
+              color: '#10B981',
+              letterSpacing: '-0.01em',
+              display: 'flex',
+              alignItems: 'baseline',
+            }}
+          >
+            <span>{activePrice.toLocaleString()} PKR</span>
+            {isWeighedOrAmount && (
+              <span style={{ fontSize: '10.5px', fontWeight: 600, color: isDark ? '#9CA3AF' : '#6B7280', marginLeft: '3px' }}>
+                / {product.unit || 'kg'}
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            disabled={isOut}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isWeighedOrAmount) {
+                const val = parseFloat(quickAmountRs);
+                if (val > 0) {
+                  handleAddByRupees(val);
+                } else {
+                  inputRef.current?.focus();
+                }
+                return;
+              }
+              if (isWeightItem) {
+                setWeighingProduct(product);
+                setWeightAmount(1.0);
+                playBeep();
+              } else if (hasVariants && activeVariant) {
+                addToCart(product, 1, activeVariant.label, activePrice);
+                playBeep();
+              } else {
+                addToCart(product, 1);
+                playBeep();
+              }
+            }}
+            style={{
+              height: '32px',
+              padding: '0 12px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: '#E51937',
+              color: '#FFFFFF',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              cursor: isOut ? 'not-allowed' : 'pointer',
+              fontWeight: 700,
+              fontSize: '12px',
+              boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              if (!isOut) {
+                e.currentTarget.style.backgroundColor = '#be123c';
+                e.currentTarget.style.transform = 'scale(1.03)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isOut) {
+                e.currentTarget.style.backgroundColor = '#E51937';
+                e.currentTarget.style.transform = 'scale(1)';
+              }
+            }}
+          >
+            <span>
+              {isWeighedOrAmount && quickAmountRs && parseFloat(quickAmountRs) > 0
+                ? `🛒 Add Rs.${quickAmountRs}`
+                : isWeighedOrAmount
+                ? '🛒 Enter Rs'
+                : '🛒 Add'}
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+},
+(prev, next) => {
+  if (prev.product.id !== next.product.id) return false;
+  if (prev.isSelected !== next.isSelected) return false;
+  if (prev.isDark !== next.isDark) return false;
+  if (prev.isWeightItem !== next.isWeightItem) return false;
+  if (prev.product !== next.product) return false;
+
+  // Compare inCart counts specifically for this product
+  const prevCount = prev.inCartMap[prev.product.id] || 0;
+  const nextCount = next.inCartMap[next.product.id] || 0;
+  if (prevCount !== nextCount) return false;
+
+  if (prev.product.variants && prev.product.variants.length > 0) {
+    for (const v of prev.product.variants) {
+      const key = `${prev.product.id}__${v.label}`;
+      if ((prev.inCartMap[key] || 0) !== (next.inCartMap[key] || 0)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+});
 
 /* ─── Addon Ingredients (Build Your Meal) ──────────────────────────── */
 const ADDONS = [
@@ -145,9 +783,11 @@ interface ParkedOrder {
 
 interface PosCounterProps {
   module: 'fastfood' | 'minimart';
+  modeType?: 'fastfood' | 'minimart' | 'paint';
 }
 
-export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
+export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX.Element {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { mode } = useAppTheme();
   const isDark = mode === 'dark';
@@ -357,12 +997,37 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
     queryFn: () => posApi.fetchCategories(module),
   });
 
-  // Fluent Pivot Category Tabs (Dynamic from Database & Catalog)
+  // Fluent Pivot Category Tabs (Dynamic from Database & Catalog filtered by Module)
   const allCategoryTabs = React.useMemo(() => {
-    const fromDb = dbCategories.map((c) => c.name);
-    const fromProducts = products.map((p) => p.category).filter(Boolean);
-    return Array.from(new Set(['All', ...fromDb, ...fromProducts]));
-  }, [dbCategories, products]);
+    const fromDb = dbCategories.filter((c) => !c.module || c.module === module).map((c) => c.name);
+    const fromProducts = products.filter((p) => !p.module || p.module === module).map((p) => p.category).filter(Boolean);
+
+    // Explicit retail category tabs for minimart counter
+    const minimartDefaults = module === 'minimart' ? [
+      'Cosmetics & Skincare',
+      "Men's Garments",
+      'Footwear & Shoes',
+      'Toys & Kids',
+      'Paints & Wall Primer',
+      'Sanitary & Taps',
+      'Hardware & Iron',
+      'General Store',
+    ] : [];
+
+    return Array.from(new Set(['All', ...minimartDefaults, ...fromDb, ...fromProducts]));
+  }, [dbCategories, products, module]);
+
+  // Count items per category for visual badge in Fast Food sidebar
+  const categoryCounts = React.useMemo(() => {
+    const moduleProducts = products.filter((p) => !p.module || p.module === module);
+    const counts: Record<string, number> = { All: moduleProducts.length };
+    moduleProducts.forEach((p) => {
+      if (p.category) {
+        counts[p.category] = (counts[p.category] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [products, module]);
 
   // Scrollable Category Tabs controller (MUI / Fluent UI Pivot style with Chevrons)
   const tabScrollRef = React.useRef<HTMLDivElement>(null);
@@ -402,22 +1067,31 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
     checkScrollButtons();
   }, [activeCategory, checkScrollButtons]);
 
-  const filteredProducts = products.filter((p) => {
-    const q = searchTerm.toLowerCase().trim();
-    const matchesSearch =
-      !q ||
-      p.name.toLowerCase().includes(q) ||
-      (p.skuCode && p.skuCode.toLowerCase().includes(q)) ||
-      (p.category && p.category.toLowerCase().includes(q)) ||
-      (p.variants &&
-        p.variants.some(
-          (v) =>
-            (v.skuCode && v.skuCode.toLowerCase().includes(q)) ||
-            (v.label && v.label.toLowerCase().includes(q))
-        ));
-    const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts = React.useMemo(() => {
+    return products.filter((p) => {
+      // Role separation: Fast Food counter sells food menus, Mini Mart sells retail goods. Raw ingredients are hidden from POS selling.
+      if (module === 'fastfood') {
+        if (p.itemRole === 'retail_product' || p.itemRole === 'raw_ingredient') return false;
+      } else if (module === 'minimart') {
+        if (p.itemRole === 'food_menu' || p.itemRole === 'raw_ingredient') return false;
+      }
+
+      const q = searchTerm.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        (p.skuCode && p.skuCode.toLowerCase().includes(q)) ||
+        (p.category && p.category.toLowerCase().includes(q)) ||
+        (p.variants &&
+          p.variants.some(
+            (v) =>
+              (v.skuCode && v.skuCode.toLowerCase().includes(q)) ||
+              (v.label && v.label.toLowerCase().includes(q))
+          ));
+      const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, module, searchTerm, activeCategory]);
 
   // Reset state when switching between Fast Food and Mini Mart
   React.useEffect(() => {
@@ -559,8 +1233,19 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
     playBeep();
   };
 
+  // Fast O(1) in-cart lookup map to avoid scanning cart repeatedly
+  const inCartMap = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const item of cart) {
+      const key = `${item.productId}__${item.variantLabel || ''}`;
+      map[key] = (map[key] || 0) + item.quantity;
+      map[item.productId] = (map[item.productId] || 0) + item.quantity;
+    }
+    return map;
+  }, [cart]);
+
   /* Cart Operations */
-  const addToCart = (
+  const addToCart = React.useCallback((
     product: Product,
     qty = 1,
     variantLabel?: string,
@@ -591,16 +1276,16 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
       ];
     });
     playBeep();
-  };
+  }, []);
 
-  const removeFromCart = (productId: string, variantLabel?: string) => {
+  const removeFromCart = React.useCallback((productId: string, variantLabel?: string) => {
     setCart((prev) =>
       prev.filter((item) => !(item.productId === productId && item.variantLabel === variantLabel))
     );
     playBeep();
-  };
+  }, []);
 
-  const updateCartQty = (productId: string, delta: number, variantLabel?: string) => {
+  const updateCartQty = React.useCallback((productId: string, delta: number, variantLabel?: string) => {
     setCart((prev) =>
       prev.map((item) =>
         item.productId === productId && item.variantLabel === variantLabel
@@ -609,7 +1294,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
       )
     );
     playBeep();
-  };
+  }, []);
 
   /* Hold / Park Order (Queue Management) */
   const handleParkOrder = () => {
@@ -648,6 +1333,48 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
         return next;
       });
     }
+
+    // In fast food mode, automatically route KOT to Kitchen display & print thermal receipt
+    if (module === 'fastfood') {
+      try {
+        resolveApiUrl().then((base) => {
+          fetch(`${base}/api/kitchen/tickets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customerName: label,
+              orderType: orderType.toUpperCase(),
+              lines: cart.map((l) => ({
+                id: l.productId,
+                name: l.name,
+                quantity: l.quantity,
+                variantLabel: l.variantLabel || '',
+                notes: l.notes || '',
+              })),
+            }),
+          }).then(() => {
+            queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
+          }).catch(() => {});
+        }).catch(() => {});
+
+        void printKitchenKot(
+          {
+            id: newParked.id,
+            module: 'fastfood',
+            lines: newParked.lines,
+            discountPercent: 0,
+            stage: 'kot',
+            createdAt: nowISO(),
+            updatedAt: nowISO(),
+            orderType: newParked.orderType,
+          },
+          {
+            tableOrToken: newParked.tableOrToken,
+          }
+        );
+      } catch {}
+    }
+
     playBeep();
   };
 
@@ -852,7 +1579,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cart, isPending, paymentMode, selectedKhataId, orderType, tableNo, tokenNo, deliveryDetails, module, customerPhone, matchedCustomer]);
 
-  const featured = selectedProduct ?? filteredProducts[0] ?? null;
+  const featured = selectedProduct ?? null;
   const sizes = ['Small', 'Regular', 'Large'];
 
   if (isLoadingProducts && products.length === 0) {
@@ -866,6 +1593,171 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
           LEFT CATALOG SECTION (Mica Surface & Fluent Pivot Tabs)
       ════════════════════════════════════════════════════════════════════ */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+        {/* ── POS Terminal Mode Switcher Bar (Tabs) ── */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '7px 24px',
+            backgroundColor: isDark ? '#1C1D21' : '#F5F6F8',
+            borderBottom: `1px solid ${F.border}`,
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: F.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Terminal Mode:
+            </span>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                backgroundColor: isDark ? '#242424' : '#FFFFFF',
+                padding: '3px',
+                borderRadius: '8px',
+                gap: '4px',
+                border: `1px solid ${F.border}`,
+                boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.05)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => navigate('/pos/fastfood')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  padding: '5px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: module === 'fastfood' ? F.accentRed : 'transparent',
+                  color: module === 'fastfood' ? '#FFFFFF' : F.textSecondary,
+                  fontWeight: module === 'fastfood' ? 700 : 500,
+                  fontSize: '12.5px',
+                  fontFamily: F.font,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: module === 'fastfood' ? '0 2px 8px rgba(229, 25, 55, 0.35)' : 'none',
+                }}
+              >
+                <Food24Regular style={{ width: 16, height: 16 }} />
+                <span>Fast Food Restaurant</span>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    backgroundColor: module === 'fastfood' ? 'rgba(255,255,255,0.22)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+                    color: module === 'fastfood' ? '#FFFFFF' : F.textMuted,
+                    fontWeight: 700,
+                  }}
+                >
+                  KOT &middot; Tables
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/pos/omnimart')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  padding: '5px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: module === 'minimart' ? F.accentRed : 'transparent',
+                  color: module === 'minimart' ? '#FFFFFF' : F.textSecondary,
+                  fontWeight: module === 'minimart' ? 700 : 500,
+                  fontSize: '12.5px',
+                  fontFamily: F.font,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: module === 'minimart' ? '0 2px 8px rgba(229, 25, 55, 0.35)' : 'none',
+                }}
+              >
+                <ShoppingBag24Regular style={{ width: 16, height: 16 }} />
+                <span>Retail Mini Mart</span>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    backgroundColor: module === 'minimart' ? 'rgba(255,255,255,0.22)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+                    color: module === 'minimart' ? '#FFFFFF' : F.textMuted,
+                    fontWeight: 700,
+                  }}
+                >
+                  Barcode Scanner
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Right Status Badge & Direct KDS Link */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {module === 'fastfood' ? (
+              <button
+                type="button"
+                onClick={() => navigate('/kitchen')}
+                title="Click to open live Kitchen Display System (KDS) screen"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+                  color: isDark ? '#34D399' : '#047857',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  fontFamily: F.font,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 4px rgba(16, 185, 129, 0.15)',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isDark ? 'rgba(16, 185, 129, 0.25)' : '#D1FAE5')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5')}
+              >
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#10B981',
+                    boxShadow: '0 0 10px #10B981',
+                  }}
+                />
+                <span>Open Kitchen Screen (KDS) &rarr;</span>
+              </button>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '11.5px',
+                  color: F.textSecondary,
+                  fontWeight: 600,
+                }}
+              >
+                <span
+                  style={{
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    backgroundColor: '#10B981',
+                    boxShadow: '0 0 8px #10B981',
+                  }}
+                />
+                <span>Barcode Scanner Ready (F2)</span>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Desktop Header Bar with Fluent Pivot Tabs */}
         <div
@@ -938,6 +1830,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
             >
               {allCategoryTabs.map((cat) => {
                 const isActive = activeCategory === cat;
+                const count = cat === 'All' ? filteredProducts.length : (categoryCounts[cat] || 0);
                 return (
                   <button
                     key={cat}
@@ -946,7 +1839,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
+                      gap: '7px',
                       height: '100%',
                       padding: '0 16px',
                       background: 'transparent',
@@ -971,6 +1864,20 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                   >
                     <CategoryIcon cat={cat} size={15} />
                     <span>{cat}</span>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        padding: '1px 6px',
+                        borderRadius: '10px',
+                        backgroundColor: isActive
+                          ? (isDark ? 'rgba(229,25,55,0.2)' : '#FFEBEF')
+                          : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+                        color: isActive ? F.accentRed : F.textMuted,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {count}
+                    </span>
                   </button>
                 );
               })}
@@ -1462,7 +2369,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                       filteredProducts.map((product) => {
                         const isOut = product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
                         const isLowStock = !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= (product.minThreshold ?? 10);
-                        const inCart = cart.find((i) => i.productId === product.id);
+                        const inCartCount = inCartMap[product.id] || 0;
                         const isWeightItem = isWeighableOrLiquid(product.unit);
 
                         return (
@@ -1470,7 +2377,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                             key={product.id}
                             style={{
                               borderBottom: `1px solid ${F.borderSubtle}`,
-                              backgroundColor: inCart ? (isDark ? 'rgba(229, 25, 55, 0.08)' : '#FFF5F5') : 'transparent',
+                              backgroundColor: inCartCount > 0 ? (isDark ? 'rgba(229, 25, 55, 0.08)' : '#FFF5F5') : 'transparent',
                               transition: 'background-color 0.12s ease',
                             }}
                           >
@@ -1555,9 +2462,9 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                                     style={{
                                       padding: '5px 12px',
                                       borderRadius: F.radiusSm,
-                                      border: `1px solid ${inCart ? F.accentRed : F.border}`,
-                                      backgroundColor: inCart ? F.accentRed : F.bgSubtle,
-                                      color: inCart ? '#FFFFFF' : F.textPrimary,
+                                      border: `1px solid ${inCartCount > 0 ? F.accentRed : F.border}`,
+                                      backgroundColor: inCartCount > 0 ? F.accentRed : F.bgSubtle,
+                                      color: inCartCount > 0 ? '#FFFFFF' : F.textPrimary,
                                       fontWeight: 700,
                                       fontSize: '12px',
                                       cursor: isOut ? 'not-allowed' : 'pointer',
@@ -1567,7 +2474,7 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                                     }}
                                   >
                                     <Add16Filled style={{ width: 14, height: 14 }} />
-                                    <span>{inCart ? `Add (${inCart.quantity})` : 'Add'}</span>
+                                    <span>{inCartCount > 0 ? `Add (${inCartCount})` : 'Add'}</span>
                                   </button>
                                   {isWeightItem && (
                                     <button
@@ -1605,335 +2512,29 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
                 </table>
               </div>
             ) : (
-              /* ── Visual Grid View ── */
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(205px, 1fr))', gap: '16px' }}>
+              /* ── Visual Grid View: Exactly 4 Cards Per Row ── */
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
                 {filteredProducts.map((product) => {
-                  const isOut = product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
                   const isSelected = selectedProduct?.id === product.id;
-                  const cartItem = cart.find((item) => item.productId === product.id);
-                  const inCartQty = cartItem ? cartItem.quantity : 0;
-                  const isLowStock = !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= (product.minThreshold ?? 10);
-                  const isWeightItem = isWeighableOrLiquid(product.unit);
+                  const isWeightItem = isWeighableOrLiquid(product.unit) || product.pricingType === 'perkg' || product.pricingType === 'amountse';
 
                   return (
-                    <div
+                    <FastFoodVisualCard
                       key={product.id}
-                      onClick={() => {
-                        if (!isOut) {
-                          if (product.hasVariants && product.variants && product.variants.length > 0) {
-                            setVariantPickerProduct(product);
-                            playBeep();
-                            return;
-                          }
-                          if (module === 'minimart' && isWeightItem) {
-                            setWeighingProduct(product);
-                            setWeightAmount(1.0);
-                            playBeep();
-                            return;
-                          }
-                          setSelectedProduct(product);
-                          setSelectedQty(1);
-                        }
-                      }}
-                      style={{
-                        backgroundColor: F.bgCard,
-                        borderRadius: '12px',
-                        border: `1px solid ${isSelected ? F.accentRed : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '300px',
-                        cursor: isOut ? 'default' : 'pointer',
-                        opacity: isOut ? 0.6 : 1,
-                        boxShadow: isSelected
-                          ? '0 0 0 2px #E51937, 0 8px 24px rgba(229, 25, 55, 0.25)'
-                          : isDark
-                          ? '0 4px 16px rgba(0, 0, 0, 0.3)'
-                          : '0 2px 10px rgba(0, 0, 0, 0.04)',
-                        transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-                        position: 'relative',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isOut) {
-                          e.currentTarget.style.transform = 'translateY(-4px)';
-                          if (!isSelected) {
-                            e.currentTarget.style.boxShadow = isDark
-                              ? '0 12px 30px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.15)'
-                              : '0 12px 28px rgba(0,0,0,0.09), 0 0 0 1px rgba(229,25,55,0.2)';
-                            e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(229,25,55,0.3)';
-                          }
-                          const img = e.currentTarget.querySelector('img');
-                          if (img) img.style.transform = 'scale(1.08)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isOut) {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          if (!isSelected) {
-                            e.currentTarget.style.boxShadow = isDark
-                              ? '0 4px 16px rgba(0, 0, 0, 0.3)'
-                              : '0 2px 10px rgba(0, 0, 0, 0.04)';
-                            e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-                          }
-                          const img = e.currentTarget.querySelector('img');
-                          if (img) img.style.transform = 'scale(1)';
-                        }
-                      }}
-                    >
-                      {/* ── Top Media Showcase: 60% of card (6 hissay: 180px) ── */}
-                      <div
-                        style={{
-                          position: 'relative',
-                          width: '100%',
-                          height: '180px',
-                          overflow: 'hidden',
-                          backgroundColor: isDark ? '#18181B' : '#F3F4F6',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {product.imageBase64 || product.imageUrl ? (
-                          <img
-                            src={product.imageBase64 || product.imageUrl}
-                            alt={product.name}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              transition: 'transform 0.35s ease',
-                            }}
-                            onError={(e) => {
-                              (e.currentTarget as HTMLElement).style.display = 'none';
-                              const fallback = (e.currentTarget as HTMLElement).nextElementSibling;
-                              if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                            }}
-                          />
-                        ) : null}
-
-                        {/* Fallback Graphic Pattern */}
-                        <div
-                          style={{
-                            display: (product.imageBase64 || product.imageUrl) ? 'none' : 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '100%',
-                            height: '100%',
-                            background: isDark
-                              ? 'linear-gradient(135deg, #1f1f24 0%, #161619 100%)'
-                              : 'linear-gradient(135deg, #F8FAFC 0%, #EDF2F7 100%)',
-                          }}
-                        >
-                          <ProductIcon name={product.name} category={product.category} size={48} color={isSelected ? F.accentRed : F.textPrimary} />
-                        </div>
-
-                        {/* Subtle Ambient Dark Gradient on bottom edge of image */}
-                        <div
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 60%)',
-                            pointerEvents: 'none',
-                          }}
-                        />
-
-                        {/* Floating Stock Badge (Glassmorphic Top-Right) */}
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            padding: '3px 8px',
-                            borderRadius: '20px',
-                            background: isDark ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 255, 255, 0.85)',
-                            backdropFilter: 'blur(8px)',
-                            border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(0, 0, 0, 0.08)',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            color: isOut ? '#EF4444' : isLowStock ? '#F59E0B' : isDark ? '#FFFFFF' : '#111827',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: '6px',
-                              height: '6px',
-                              borderRadius: '50%',
-                              backgroundColor: isOut ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981',
-                              boxShadow: `0 0 6px ${isOut ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981'}`,
-                            }}
-                          />
-                          <span>{isOut ? 'OUT' : `${product.openingStock ?? '—'} left`}</span>
-                        </div>
-
-                        {/* Floating Category Capsule (Bottom-Left on image) */}
-                        <div
-                          style={{
-                            position: 'absolute',
-                            bottom: '8px',
-                            left: '8px',
-                            padding: '2px 7px',
-                            borderRadius: '5px',
-                            backgroundColor: 'rgba(229, 25, 55, 0.9)',
-                            backdropFilter: 'blur(6px)',
-                            color: '#FFFFFF',
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            letterSpacing: '0.04em',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {product.category || 'Retail'}
-                        </div>
-
-                        {/* In-Cart Glowing Indicator Pill */}
-                        {inCartQty > 0 && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: '8px',
-                              left: '8px',
-                              padding: '3px 8px',
-                              borderRadius: '12px',
-                              backgroundColor: '#107C41',
-                              color: '#FFFFFF',
-                              fontSize: '10.5px',
-                              fontWeight: 700,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              boxShadow: '0 2px 8px rgba(16, 124, 65, 0.45)',
-                            }}
-                          >
-                            <Checkmark20Filled style={{ width: 12, height: 12 }} />
-                            <span>{inCartQty} in cart</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* ── Card Content Body: 40% of card (4 hissay: 120px) ── */}
-                      <div style={{ height: '120px', padding: '10px 12px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', justifyContent: 'space-between' }}>
-                        <div>
-                          <div
-                            style={{
-                              fontSize: '13.5px',
-                              fontWeight: 700,
-                              color: F.textPrimary,
-                              lineHeight: 1.25,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                              minHeight: '34px',
-                            }}
-                            title={product.name}
-                          >
-                            {product.name}
-                          </div>
-                          {product.hasVariants && product.variants && product.variants.length > 0 ? (
-                            <div style={{ display: 'flex', gap: '3px', marginTop: '3px', overflow: 'hidden' }}>
-                              {product.variants.slice(0, 3).map((v) => (
-                                <span
-                                  key={v.id}
-                                  style={{
-                                    fontSize: '9px',
-                                    fontWeight: 700,
-                                    padding: '1px 4px',
-                                    borderRadius: '3px',
-                                    backgroundColor: isDark ? 'rgba(229,25,55,0.18)' : '#FFEBEF',
-                                    color: '#E51937',
-                                    border: '1px solid rgba(229,25,55,0.25)',
-                                  }}
-                                >
-                                  {v.label}
-                                </span>
-                              ))}
-                              {product.variants.length > 3 && (
-                                <span style={{ fontSize: '9px', color: F.textMuted, alignSelf: 'center' }}>
-                                  +{product.variants.length - 3}
-                                </span>
-                              )}
-                            </div>
-                          ) : product.skuCode ? (
-                            <div style={{ fontSize: '10px', fontFamily: 'monospace', color: F.textMuted, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {product.skuCode}
-                            </div>
-                          ) : null}
-                        </div>
-
-                        {/* ── Price and Quick-Add Bar ── */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', paddingTop: '4px' }}>
-                          <div>
-                            <div style={{ fontSize: '10px', fontWeight: 800, color: F.textMuted, letterSpacing: '0.04em' }}>
-                              PRICE
-                            </div>
-                            <div style={{ fontSize: '16px', fontWeight: 800, color: isDark ? '#FF4D64' : F.accentRed, letterSpacing: '-0.01em' }}>
-                              PKR {product.price.toLocaleString()}
-                            </div>
-                          </div>
-
-                          {!isOut && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (product.hasVariants && product.variants && product.variants.length > 0) {
-                                  setVariantPickerProduct(product);
-                                  playBeep();
-                                } else if (isWeightItem) {
-                                  setWeighingProduct(product);
-                                  setWeightAmount(1.0);
-                                  playBeep();
-                                } else {
-                                  addToCart(product, 1);
-                                }
-                              }}
-                              title={isWeightItem ? (isLiquidUnit(product.unit) ? 'Measure volume in liters' : 'Weigh loose item on scale') : 'Quick Add to Order'}
-                              style={{
-                                height: '32px',
-                                padding: '0 12px',
-                                borderRadius: '8px',
-                                border: `1px solid ${inCartQty > 0 ? F.accentRed : F.border}`,
-                                backgroundColor: inCartQty > 0 ? F.accentRed : F.bgSubtle,
-                                color: inCartQty > 0 ? '#FFFFFF' : F.textPrimary,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                cursor: 'pointer',
-                                fontWeight: 700,
-                                fontSize: '12px',
-                                boxShadow: inCartQty > 0 ? '0 2px 8px rgba(229, 25, 55, 0.3)' : 'none',
-                                transition: 'all 0.15s ease',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = F.accentRed;
-                                e.currentTarget.style.color = '#FFFFFF';
-                                e.currentTarget.style.borderColor = F.accentRed;
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = inCartQty > 0 ? F.accentRed : F.bgSubtle;
-                                e.currentTarget.style.color = inCartQty > 0 ? '#FFFFFF' : F.textPrimary;
-                                e.currentTarget.style.borderColor = inCartQty > 0 ? F.accentRed : F.border;
-                              }}
-                            >
-                              {isWeightItem ? (
-                                <>
-                                  <Scales20Regular style={{ width: 14, height: 14 }} />
-                                  <span>{isLiquidUnit(product.unit) ? 'Measure' : 'Weigh'}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Add16Filled style={{ width: 14, height: 14 }} />
-                                  <span>Add</span>
-                                </>
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      product={product}
+                      isSelected={isSelected}
+                      isDark={isDark}
+                      F={F}
+                      inCartMap={inCartMap}
+                      addToCart={addToCart}
+                      setSelectedProduct={setSelectedProduct}
+                      setSelectedQty={setSelectedQty}
+                      playBeep={playBeep}
+                      isWeightItem={isWeightItem}
+                      setWeighingProduct={setWeighingProduct}
+                      setWeightAmount={setWeightAmount}
+                      setVariantPickerProduct={setVariantPickerProduct}
+                    />
                   );
                 })}
               </div>
@@ -2014,28 +2615,29 @@ export function PosCounterView({ module }: PosCounterProps): React.JSX.Element {
               </button>
             )}
 
-            {/* Hold Current Order Button */}
+            {/* Hold / KOT Button */}
             {cart.length > 0 && (
               <button
                 type="button"
                 onClick={handleParkOrder}
-                title="Hold order without charging to serve next customer"
+                title={module === 'fastfood' ? 'Hold table and send live KOT to Kitchen screen' : 'Hold order without charging to serve next customer'}
                 style={{
                   padding: '4px 8px',
                   borderRadius: F.radiusSm,
-                  backgroundColor: F.bgSubtle,
-                  border: `1px solid ${F.border}`,
-                  color: F.textSecondary,
-                  fontWeight: 600,
+                  backgroundColor: module === 'fastfood' ? F.accentRedSubtle : F.bgSubtle,
+                  border: `1px solid ${module === 'fastfood' ? F.accentRed : F.border}`,
+                  color: module === 'fastfood' ? F.accentRed : F.textSecondary,
+                  fontWeight: 700,
                   fontSize: '11px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
+                  transition: 'all 0.12s ease',
                 }}
               >
                 <Pause20Regular style={{ width: 13, height: 13 }} />
-                <span>Hold</span>
+                <span>{module === 'fastfood' ? 'Hold & Send KOT' : 'Hold'}</span>
               </button>
             )}
 

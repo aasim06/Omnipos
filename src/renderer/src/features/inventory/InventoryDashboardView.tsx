@@ -21,6 +21,8 @@ import {
   ArrowRight16Regular,
   Add20Regular,
   Money20Regular,
+  Food24Regular,
+  ShoppingBag24Regular,
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { resolveApiUrl } from '@/lib/api';
@@ -150,21 +152,45 @@ export function InventoryDashboardView(): React.JSX.Element {
   const vendors = vendorStorage.getVendors();
   const totalVendorPayables = vendors.reduce((acc, v) => acc + (v.openingBalance || 0), 0);
 
-  // Valuations
-  const totalStockItems = products.length;
-  const totalUnitsInStock = products.reduce((acc, p) => acc + (p.openingStock || 0), 0);
-  const totalPurchaseValue = products.reduce((acc, p) => acc + (p.costPrice || 0) * (p.openingStock || 1), 0);
-  const totalRetailValue = products.reduce((acc, p) => acc + (p.price || 0) * (p.openingStock || 1), 0);
+  // Filter tab: Store-Wide vs Fast Food Kitchen vs Retail Mini Mart
+  const [inventoryTab, setInventoryTab] = React.useState<'all' | 'fastfood' | 'minimart'>('all');
+
+  // Filter products based on selected tab
+  const displayedProducts = React.useMemo(() => {
+    if (inventoryTab === 'fastfood') {
+      return products.filter(
+        (p) =>
+          p.module === 'fastfood' ||
+          p.itemRole === 'raw_ingredient' ||
+          p.itemRole === 'food_menu' ||
+          ['Burger', 'Pizza', 'Sides', 'Beverages', 'Fast Food', 'Snacks', 'Food', 'Kitchen', 'Raw Materials'].includes(p.category)
+      );
+    }
+    if (inventoryTab === 'minimart') {
+      return products.filter(
+        (p) =>
+          (p.module === 'minimart' || p.itemRole === 'retail_product') &&
+          p.itemRole !== 'raw_ingredient'
+      );
+    }
+    return products;
+  }, [products, inventoryTab]);
+
+  // Valuations based on displayed products
+  const totalStockItems = displayedProducts.length;
+  const totalUnitsInStock = displayedProducts.reduce((acc, p) => acc + (p.openingStock || 0), 0);
+  const totalPurchaseValue = displayedProducts.reduce((acc, p) => acc + (p.costPrice || 0) * (p.openingStock || 1), 0);
+  const totalRetailValue = displayedProducts.reduce((acc, p) => acc + (p.price || 0) * (p.openingStock || 1), 0);
   const estimatedProfit = Math.max(0, totalRetailValue - totalPurchaseValue);
   const profitMarginPercent = totalRetailValue > 0 ? Math.round((estimatedProfit / totalRetailValue) * 100) : 0;
 
   // Low Stock Items (threshold <= 10 or minThreshold)
-  const lowStockProducts = products
+  const lowStockProducts = displayedProducts
     .filter((p) => (p.openingStock || 0) <= (p.minThreshold ?? 10))
     .sort((a, b) => (a.openingStock || 0) - (b.openingStock || 0));
 
   // Category Breakdown
-  const categoryMap = products.reduce<Record<string, { count: number; units: number }>>((acc, p) => {
+  const categoryMap = displayedProducts.reduce<Record<string, { count: number; units: number }>>((acc, p) => {
     const cat = p.category || 'Uncategorized';
     if (!acc[cat]) acc[cat] = { count: 0, units: 0 };
     acc[cat].count += 1;
@@ -178,6 +204,107 @@ export function InventoryDashboardView(): React.JSX.Element {
 
   return (
     <div className={styles.container}>
+      {/* ── Inventory Department Overview Tabs ── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          padding: '12px 16px',
+          borderRadius: tokens.borderRadiusMedium,
+          backgroundColor: tokens.colorNeutralBackground1,
+          border: `1px solid ${tokens.colorNeutralStroke1}`,
+          boxShadow: tokens.shadow2,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Inventory Scope:
+          </span>
+          <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '4px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+            <button
+              type="button"
+              onClick={() => setInventoryTab('all')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: inventoryTab === 'all' ? '#E51937' : 'transparent',
+                color: inventoryTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                fontWeight: inventoryTab === 'all' ? 700 : 500,
+                fontSize: '12.5px',
+                cursor: 'pointer',
+                transition: 'all 0.12s ease',
+              }}
+            >
+              <span>Store-Wide Overview</span>
+              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                {products.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setInventoryTab('fastfood')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: inventoryTab === 'fastfood' ? '#E51937' : 'transparent',
+                color: inventoryTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                fontWeight: inventoryTab === 'fastfood' ? 700 : 500,
+                fontSize: '12.5px',
+                cursor: 'pointer',
+                transition: 'all 0.12s ease',
+              }}
+            >
+              <Food24Regular style={{ width: 15, height: 15 }} />
+              <span>Kitchen & Fast Food Raw Stock</span>
+              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                {products.filter((p) => p.module === 'fastfood' || p.itemRole === 'raw_ingredient').length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setInventoryTab('minimart')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: inventoryTab === 'minimart' ? '#E51937' : 'transparent',
+                color: inventoryTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                fontWeight: inventoryTab === 'minimart' ? 700 : 500,
+                fontSize: '12.5px',
+                cursor: 'pointer',
+                transition: 'all 0.12s ease',
+              }}
+            >
+              <ShoppingBag24Regular style={{ width: 15, height: 15 }} />
+              <span>Retail Mini Mart Goods</span>
+              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                {products.filter((p) => (p.module === 'minimart' || p.itemRole === 'retail_product') && p.itemRole !== 'raw_ingredient').length}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+          <span>Showing <strong>{displayedProducts.length}</strong> items in scope</span>
+        </div>
+      </div>
+
       {/* ── KPI Metrics Row (5 Connected Cards) ── */}
       <div className={styles.metricsGrid}>
         <div className={styles.metricCard}>

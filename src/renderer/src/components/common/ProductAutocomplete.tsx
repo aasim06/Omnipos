@@ -51,11 +51,13 @@ export function ProductAutocomplete({
     if (filterModule === 'fastfood') {
       return (
         p.module === 'fastfood' ||
-        ['Burger', 'Pizza', 'Sides', 'Beverages', 'Fast Food', 'Snacks', 'Food', 'Kitchen'].includes(p.category)
+        p.itemRole === 'raw_ingredient' ||
+        p.itemRole === 'food_menu' ||
+        ['Burger', 'Pizza', 'Sides', 'Beverages', 'Fast Food', 'Snacks', 'Food', 'Kitchen', 'Raw Materials'].includes(p.category)
       );
     }
     if (filterModule === 'minimart') {
-      return p.module === 'minimart';
+      return p.module === 'minimart' || p.itemRole === 'retail_product';
     }
     return true;
   });

@@ -23,6 +23,7 @@ import { LicenseModulesProvider } from '@/features/auth/LicenseModulesContext';
 import { LicensePage } from '@/features/auth/LicensePage';
 import { LicenseDisabledOverlay } from '@/features/auth/LicenseDisabledOverlay';
 import { RouteAccessGate } from '@/components/RouteAccessGate';
+import { FastFoodDashboardView } from '@/features/dashboard/FastFoodDashboardView';
 
 import { getOrCreateBrowserHwid, getWebLicenseApiBase } from '@/lib/webLicense';
 
@@ -211,6 +212,32 @@ export default function App(): React.JSX.Element {
           <Route element={<ProtectedShellLayout />}>
             <Route path="/" element={<Navigate to="/pos/fastfood" replace />} />
 
+            {/* Executive Analytics Dashboard */}
+            <Route
+              path="/dashboard"
+              element={
+                <RouteAccessGate>
+                  <FastFoodDashboardView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/dashboard/fastfood"
+              element={
+                <RouteAccessGate>
+                  <FastFoodDashboardView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/dashboard/omnimart"
+              element={
+                <RouteAccessGate>
+                  <FastFoodDashboardView />
+                </RouteAccessGate>
+              }
+            />
+
             {/* Fast Food POS */}
             <Route
               path="/pos/fastfood"
@@ -231,6 +258,8 @@ export default function App(): React.JSX.Element {
               }
             />
             <Route path="/pos/minimart" element={<Navigate to="/pos/omnimart" replace />} />
+
+            <Route path="/pos/paint" element={<Navigate to="/pos/omnimart" replace />} />
 
             {/* Kitchen Display KDS */}
             <Route

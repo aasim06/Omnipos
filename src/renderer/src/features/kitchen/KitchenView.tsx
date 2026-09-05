@@ -40,6 +40,7 @@ import { printKitchenKot } from '@/lib/kotPrinter';
 import { KitchenPageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { playKitchenBell } from '@/lib/soundFx';
 
 /* ── Zod Validation Schema for Manual KDS Ticket with Multiple Items ── */
 const rushTicketLineSchema = z.object({
@@ -337,6 +338,15 @@ export function KitchenView(): React.JSX.Element {
     refetchIntervalInBackground: false,
     retry: 1,
   });
+
+  // Sound Chime when new orders arrive in the kitchen queue
+  const prevTicketCountRef = React.useRef(tickets.length);
+  React.useEffect(() => {
+    if (tickets.length > prevTicketCountRef.current && prevTicketCountRef.current > 0) {
+      playKitchenBell();
+    }
+    prevTicketCountRef.current = tickets.length;
+  }, [tickets.length]);
 
   // Mutation: Update status (Pending -> Cooking -> Ready -> Served)
   const updateStatusMutation = useMutation({

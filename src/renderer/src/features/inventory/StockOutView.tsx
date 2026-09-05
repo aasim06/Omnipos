@@ -28,6 +28,8 @@ import {
   Edit20Regular,
   Print20Regular,
   Dismiss20Regular,
+  Food24Regular,
+  ShoppingBag24Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -51,6 +53,7 @@ const STOCK_OUT_REASONS = [
 ];
 
 const stockOutSchema = z.object({
+  module: z.enum(['fastfood', 'minimart']).default('fastfood'),
   selectedProductId: z.string().optional(),
   productName: z.string().min(1, 'Please select or enter an item name'),
   reason: z.string().min(1, 'Please select a reason'),
@@ -292,9 +295,13 @@ export function StockOutView(): React.JSX.Element {
     },
   });
 
+  // Filter tab for stock deductions (All, Kitchen Consumption, Retail Damage/Expiry)
+  const [outflowTab, setOutflowTab] = useState<'all' | 'fastfood' | 'minimart'>('all');
+
   const form = useForm<StockOutFormData>({
     resolver: zodResolver(stockOutSchema) as any,
     defaultValues: {
+      module: 'fastfood',
       selectedProductId: '',
       productName: '',
       reason: 'Kitchen Usage',
@@ -332,7 +339,7 @@ export function StockOutView(): React.JSX.Element {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          module: 'minimart',
+          module: data.module || 'fastfood',
           type: 'out',
           productId: data.selectedProductId || uid('prod_'),
           productName: data.productName,
@@ -347,9 +354,10 @@ export function StockOutView(): React.JSX.Element {
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       form.reset({
+        module: form.getValues('module') || 'fastfood',
         selectedProductId: '',
         productName: '',
-        reason: 'Kitchen Usage',
+        reason: form.getValues('module') === 'fastfood' ? 'Kitchen Usage' : 'Damage / Broken',
         quantity: 1,
         unitCost: 0,
         note: '',
@@ -435,8 +443,11 @@ export function StockOutView(): React.JSX.Element {
   // Only Outflow Movements
   const stockOutMovements = movements.filter((m) => m.type === 'out');
 
-  // Filtered List
+  // Filtered List by Tab and Search Query
   const filteredMovements = stockOutMovements.filter((m) => {
+    if (outflowTab === 'fastfood' && m.module !== 'fastfood') return false;
+    if (outflowTab === 'minimart' && m.module === 'fastfood') return false;
+
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       !searchQuery ||
@@ -477,7 +488,66 @@ export function StockOutView(): React.JSX.Element {
     <div className={styles.container}>
       {/* ── CARD 1: Record Stock Out (Damage / Waste / Usage) ── */}
       <div className={styles.card}>
-        <span className={styles.cardTitle}>Record Stock Out (Damage / Waste / Usage)</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <span className={styles.cardTitle}>Record Stock Out (Damage / Waste / Usage)</span>
+
+          {/* Department / Branch Switcher for Stock Out */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Department:
+            </span>
+            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+              <button
+                type="button"
+                onClick={() => {
+                  form.setValue('module', 'fastfood');
+                  form.setValue('reason', 'Kitchen Usage');
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: form.watch('module') === 'fastfood' ? '#E51937' : 'transparent',
+                  color: form.watch('module') === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: form.watch('module') === 'fastfood' ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                <Food24Regular style={{ width: 14, height: 14 }} />
+                <span>Kitchen Consumption & Waste</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  form.setValue('module', 'minimart');
+                  form.setValue('reason', 'Damage / Broken');
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: form.watch('module') !== 'fastfood' ? '#E51937' : 'transparent',
+                  color: form.watch('module') !== 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: form.watch('module') !== 'fastfood' ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                <span>Retail Mini Mart Goods</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         <form onSubmit={form.handleSubmit(onSave)} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Row 1: Reason & Product Select */}
@@ -507,6 +577,7 @@ export function StockOutView(): React.JSX.Element {
                     id="stockOutItemSelect"
                     label="ITEM SELECT"
                     required
+                    filterModule={form.watch('module')}
                     placeholder="Search and select product..."
                     value={field.value || ''}
                     onChange={(name, prod) => {
@@ -603,7 +674,81 @@ export function StockOutView(): React.JSX.Element {
 
       {/* ── CARD 2: Stock Out (Deduction Logs) ── */}
       <div className={styles.card}>
-        <span className={styles.cardTitle}>Stock Out (Deduction Logs)</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderBottom: `1px solid ${tokens.colorNeutralStroke2}`, paddingBottom: '10px' }}>
+          <span className={styles.cardTitle}>Stock Out (Deduction Logs)</span>
+
+          {/* Module Filter Tabs */}
+          <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+            <button
+              type="button"
+              onClick={() => setOutflowTab('all')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: outflowTab === 'all' ? '#E51937' : 'transparent',
+                color: outflowTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                fontWeight: outflowTab === 'all' ? 700 : 500,
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              <span>All Outflows</span>
+              <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                {stockOutMovements.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setOutflowTab('fastfood')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: outflowTab === 'fastfood' ? '#E51937' : 'transparent',
+                color: outflowTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                fontWeight: outflowTab === 'fastfood' ? 700 : 500,
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              <Food24Regular style={{ width: 14, height: 14 }} />
+              <span>Kitchen Usage & Waste</span>
+              <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                {stockOutMovements.filter((m) => m.module === 'fastfood').length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setOutflowTab('minimart')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: outflowTab === 'minimart' ? '#E51937' : 'transparent',
+                color: outflowTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                fontWeight: outflowTab === 'minimart' ? 700 : 500,
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+              <span>Mini Mart Damaged/Expired</span>
+              <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                {stockOutMovements.filter((m) => m.module !== 'fastfood').length}
+              </span>
+            </button>
+          </div>
+        </div>
 
         <div className={styles.filterBar}>
           <div style={{ minWidth: '280px', maxWidth: '420px', width: '100%' }}>
