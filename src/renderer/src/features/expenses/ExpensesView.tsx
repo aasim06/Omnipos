@@ -30,7 +30,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { resolveApiUrl } from '@/lib/api';
+import { posApi } from '@/lib/api';
 import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
@@ -445,37 +445,26 @@ export function ExpensesView(): React.JSX.Element {
     },
   });
 
-  // Fetch Expenses
+  // Fetch Expenses: Offline-First Cache (<5ms)
   const { data: expenses = [], isLoading: isLoadingExpenses } = useQuery<ExpenseRecord[]>({
     queryKey: ['expenses'],
     queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/expenses`);
-      if (!res.ok) return [];
-      return res.json();
+      return (await posApi.fetchExpenses()) as ExpenseRecord[];
     },
   });
 
-  // Fetch Cash Drawer Audit
+  // Fetch Cash Drawer Audit: Offline-First Local Cache
   const { data: drawer } = useQuery<CashDrawer>({
     queryKey: ['cash-drawer'],
     queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/cash-drawer`);
-      if (!res.ok) return null;
-      return res.json();
+      return posApi.fetchCashDrawer();
     },
   });
 
-  // Add Expense Mutation
+  // Add Expense Mutation: Instant Offline Dexie Write + Cloud Sync
   const addExpenseMutation = useMutation({
     mutationFn: async (data: ExpenseFormData) => {
-      const base = await resolveApiUrl();
-      await fetch(`${base}/api/expenses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+      await posApi.saveExpense(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
@@ -485,19 +474,13 @@ export function ExpensesView(): React.JSX.Element {
     },
   });
 
-  // Drawer Action Mutation
+  // Drawer Action Mutation: Instant Offline Update + Cloud Sync
   const drawerMutation = useMutation({
     mutationFn: async (data: DrawerActionFormData) => {
-      const base = await resolveApiUrl();
-      await fetch(`${base}/api/cash-drawer/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: drawer?.id,
-          type: drawerActionType,
-          amount: data.amount,
-          notes: data.notes,
-        }),
+      await posApi.saveCashDrawerAction({
+        type: drawerActionType,
+        amount: data.amount,
+        notes: data.notes,
       });
     },
     onSuccess: () => {

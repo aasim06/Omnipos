@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { ModuleKey, Product, StockMovementType } from "@/lib/types";
 import { useProducts } from "@/lib/useProducts";
 import { formatPKR } from "@/lib/utils";
-import { Package, ArrowRight, Sparkles, CheckCircle2, Search } from "lucide-react";
+import { Package, ArrowRight, Sparkles, CheckCircle2, Search, List, PenLine } from "lucide-react";
 
 interface StockFormProps {
   type: StockMovementType;
@@ -117,9 +117,19 @@ export function StockForm({ type, onSubmit }: StockFormProps) {
         <button
           type="button"
           onClick={() => handleProductSelect(isManualName ? "" : "__new__")}
-          className="px-3 py-1.5 rounded bg-[#1f2432] hover:bg-[#282f42] text-xs font-semibold text-[#00c9a7] border border-[#232734] transition shrink-0"
+          className="px-3 py-1.5 rounded bg-[#1f2432] hover:bg-[#282f42] text-xs font-semibold text-[#00c9a7] border border-[#232734] transition shrink-0 inline-flex items-center gap-1.5"
         >
-          {isManualName ? "📋 Select Existing Item" : "✍️ Type Custom Item"}
+          {isManualName ? (
+            <>
+              <List size={14} />
+              <span>Select Existing Item</span>
+            </>
+          ) : (
+            <>
+              <PenLine size={14} />
+              <span>Type Custom Item</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -143,7 +153,7 @@ export function StockForm({ type, onSubmit }: StockFormProps) {
                     {p.name} ({p.category}) — Stock: {p.openingStock || 0} units @ Rs. {p.price}
                   </option>
                 ))}
-                <option value="__new__">➕ Type New Product Name...</option>
+                <option value="__new__">+ Type New Product Name...</option>
               </select>
             ) : (
               <input

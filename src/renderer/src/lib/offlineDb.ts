@@ -23,10 +23,27 @@ export interface LocalCustomerKhata {
   name: string;
   phone?: string;
   address?: string;
+  cnic?: string;
+  customerType?: string;
   currentDebt: number;
   creditLimit?: number;
+  dueDays?: number;
+  note?: string;
   synced: 0 | 1;
+  createdAt?: string;
   updatedAt: string;
+}
+
+export interface LocalKhataTx {
+  id: string;
+  khataId: string;
+  type: 'DEBIT' | 'CREDIT';
+  amount: number;
+  balanceAfter?: number;
+  description?: string;
+  paymentMethod?: string;
+  createdAt: string;
+  synced?: 0 | 1;
 }
 
 export interface LocalExpense {
@@ -46,6 +63,7 @@ export class OmniposDexieDatabase extends Dexie {
   orders!: Table<LocalOrder, string>;
   stockMovements!: Table<StockMovement, string>;
   khatas!: Table<LocalCustomerKhata, string>;
+  khataTransactions!: Table<LocalKhataTx, string>;
   expenses!: Table<LocalExpense, string>;
   syncQueue!: Table<SyncQueueItem, number>;
 
@@ -59,6 +77,9 @@ export class OmniposDexieDatabase extends Dexie {
       khatas: 'id, name, phone, synced, updatedAt',
       expenses: 'id, category, date, synced',
       syncQueue: '++id, entity, entityId, status, createdAt',
+    });
+    this.version(2).stores({
+      khataTransactions: 'id, khataId, createdAt',
     });
   }
 }

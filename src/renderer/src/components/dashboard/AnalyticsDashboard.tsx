@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   Layers,
   RotateCcw,
+  Folder,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -75,7 +76,7 @@ export function AnalyticsDashboard({ moduleFilter = "minimart" }: AnalyticsDashb
 
   // Category Breakdown Calculation
   const allProducts = [...ffProducts, ...mmProducts];
-  const categoryMap: Record<string, { name: string; count: number; revenue: number; icon: string }> = {};
+  const categoryMap: Record<string, { name: string; count: number; revenue: number }> = {};
 
   filteredOrders.forEach((o) => {
     o.lines.forEach((l) => {
@@ -83,14 +84,7 @@ export function AnalyticsDashboard({ moduleFilter = "minimart" }: AnalyticsDashb
       const cat = prod?.category || "General";
 
       if (!categoryMap[cat]) {
-        let icon = "📦";
-        if (cat.toLowerCase().includes("burger")) icon = "🍔";
-        else if (cat.toLowerCase().includes("pizza") || cat.toLowerCase().includes("starter")) icon = "🏳";
-        else if (cat.toLowerCase().includes("beverage") || cat.toLowerCase().includes("drink")) icon = "🥤";
-        else if (cat.toLowerCase().includes("snack") || cat.toLowerCase().includes("fries")) icon = "🍟";
-        else if (cat.toLowerCase().includes("grocery") || cat.toLowerCase().includes("dairy")) icon = "🥛";
-
-        categoryMap[cat] = { name: cat, count: 0, revenue: 0, icon };
+        categoryMap[cat] = { name: cat, count: 0, revenue: 0 };
       }
 
       categoryMap[cat].count += l.quantity;
@@ -344,7 +338,7 @@ export function AnalyticsDashboard({ moduleFilter = "minimart" }: AnalyticsDashb
                     <div key={cat.name} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-2 font-medium">
-                          <span>{cat.icon}</span>
+                          <Folder size={14} className="text-amber-400 shrink-0" />
                           <span>{cat.name}</span>
                         </span>
                         <span className="font-mono text-[#8b92a0]">
@@ -372,7 +366,8 @@ export function AnalyticsDashboard({ moduleFilter = "minimart" }: AnalyticsDashb
         <div className="rounded-2xl border border-[#262b37] bg-[#161821] p-6 shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display text-lg font-bold text-white flex items-center gap-2">
-              <span>🔥</span> Top Selling Items
+              <Flame size={18} className="text-red-500 shrink-0" />
+              <span>Top Selling Items</span>
             </h3>
           </div>
 

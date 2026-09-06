@@ -17,7 +17,23 @@ import {
   BuildingRetail24Regular,
   Dismiss16Regular,
   Tag20Regular,
+  LockClosed16Regular,
+  Flash20Regular,
+  Sparkle20Regular,
 } from '@fluentui/react-icons';
+import {
+  Footprints,
+  Shirt,
+  ShoppingBag,
+  Palette,
+  HeartPulse,
+  Smartphone,
+  Cake,
+  Utensils,
+  Wrench,
+  Zap,
+  Package,
+} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,7 +49,19 @@ import { useLicense } from '@/features/auth/LicenseModulesContext';
 const categorySchema = z.object({
   name: z.string().min(2, 'Category name must be at least 2 characters'),
   module: z.enum(['fastfood', 'minimart']),
-  profile: z.enum(['standard', 'apparel', 'footwear', 'hardware', 'food']).default('standard'),
+  profile: z.enum([
+    'footwear',
+    'apparel',
+    'grocery',
+    'cosmetics',
+    'pharmacy',
+    'electronics',
+    'bakery',
+    'food',
+    'hardware',
+    'electric',
+    'standard',
+  ]).default('standard'),
 });
 type CategoryFormData = z.infer<typeof categorySchema>;
 
@@ -278,76 +306,178 @@ const useStyles = makeStyles({
     },
   },
 
-  /* ── Industry Profile Classes ── */
-  tagIconBoxStandard: {
-    backgroundColor: 'rgba(100, 116, 139, 0.1)',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(100, 116, 139, 0.25)', borderBottomColor: 'rgba(100, 116, 139, 0.25)', borderLeftColor: 'rgba(100, 116, 139, 0.25)', borderRightColor: 'rgba(100, 116, 139, 0.25)',
-    color: '#64748b',
+  /* ── 1-Click Industry Templates Modal Styles ── */
+  templateDialogSurface: {
+    maxWidth: '1040px',
+    width: '95vw',
+    maxHeight: '90vh',
+    borderRadius: '16px',
+    padding: '24px',
+    boxSizing: 'border-box',
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    boxShadow: '0 24px 64px rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    flexDirection: 'column',
+    overflowY: 'auto',
   },
-  tagIconBoxFood: {
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.25)', borderBottomColor: 'rgba(229, 25, 55, 0.25)', borderLeftColor: 'rgba(229, 25, 55, 0.25)', borderRightColor: 'rgba(229, 25, 55, 0.25)',
+  templateDialogHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingBottom: '16px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    marginBottom: '16px',
+  },
+  templateHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  templateIconBox: {
+    width: '42px',
+    height: '42px',
+    borderRadius: '12px',
+    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     color: '#E51937',
+    flexShrink: 0,
   },
-  tagIconBoxApparel: {
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(139, 92, 246, 0.25)', borderBottomColor: 'rgba(139, 92, 246, 0.25)', borderLeftColor: 'rgba(139, 92, 246, 0.25)', borderRightColor: 'rgba(139, 92, 246, 0.25)',
-    color: '#8b5cf6',
+  templateDialogTitle: {
+    fontSize: '18px',
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground1,
   },
-  tagIconBoxFootwear: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(59, 130, 246, 0.25)', borderBottomColor: 'rgba(59, 130, 246, 0.25)', borderLeftColor: 'rgba(59, 130, 246, 0.25)', borderRightColor: 'rgba(59, 130, 246, 0.25)',
-    color: '#3b82f6',
+  templateDialogSubtitle: {
+    fontSize: '12.5px',
+    color: tokens.colorNeutralForeground3,
+    marginTop: '2px',
   },
-  tagIconBoxHardware: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(245, 158, 11, 0.25)', borderBottomColor: 'rgba(245, 158, 11, 0.25)', borderLeftColor: 'rgba(245, 158, 11, 0.25)', borderRightColor: 'rgba(245, 158, 11, 0.25)',
-    color: '#f59e0b',
+  successBanner: {
+    padding: '10px 16px',
+    borderRadius: '8px',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    border: '1px solid rgba(16, 185, 129, 0.3)',
+    color: '#059669',
+    fontWeight: 700,
+    fontSize: '13px',
+    marginBottom: '16px',
   },
-  profileBadgeStandard: {
-    backgroundColor: 'rgba(100, 116, 139, 0.1)',
-    color: '#64748b',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(100, 116, 139, 0.25)', borderBottomColor: 'rgba(100, 116, 139, 0.25)', borderLeftColor: 'rgba(100, 116, 139, 0.25)', borderRightColor: 'rgba(100, 116, 139, 0.25)',
+  templateGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
+    gap: '16px',
+    paddingBottom: '10px',
   },
-  profileBadgeFood: {
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
-    color: '#E51937',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.25)', borderBottomColor: 'rgba(229, 25, 55, 0.25)', borderLeftColor: 'rgba(229, 25, 55, 0.25)', borderRightColor: 'rgba(229, 25, 55, 0.25)',
+  templateCard: {
+    borderRadius: '12px',
+    backgroundColor: tokens.colorNeutralBackground2,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    transition: 'all 0.15s ease-in-out',
+    ':hover': {
+      boxShadow: '0 6px 18px rgba(0, 0, 0, 0.18)',
+      transform: 'translateY(-2px)',
+    },
   },
-  profileBadgeApparel: {
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    color: '#8b5cf6',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(139, 92, 246, 0.25)', borderBottomColor: 'rgba(139, 92, 246, 0.25)', borderLeftColor: 'rgba(139, 92, 246, 0.25)', borderRightColor: 'rgba(139, 92, 246, 0.25)',
+  templateCardTop: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
   },
-  profileBadgeFootwear: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    color: '#3b82f6',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(59, 130, 246, 0.25)', borderBottomColor: 'rgba(59, 130, 246, 0.25)', borderLeftColor: 'rgba(59, 130, 246, 0.25)', borderRightColor: 'rgba(59, 130, 246, 0.25)',
+  templateCardIcon: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
-  profileBadgeHardware: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    color: '#f59e0b',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(245, 158, 11, 0.25)', borderBottomColor: 'rgba(245, 158, 11, 0.25)', borderLeftColor: 'rgba(245, 158, 11, 0.25)', borderRightColor: 'rgba(245, 158, 11, 0.25)',
+  templateCardMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minWidth: 0,
+  },
+  templateCardTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  templateCardTitle: {
+    fontWeight: 800,
+    fontSize: '13.5px',
+    color: tokens.colorNeutralForeground1,
+    lineHeight: '1.3',
+  },
+  templateCardUrdu: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground3,
+    marginTop: '2px',
+  },
+  templateCardDesc: {
+    fontSize: '11.5px',
+    color: tokens.colorNeutralForeground2,
+    margin: 0,
+    lineHeight: '1.4',
+  },
+  templateSpecsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground1,
+    padding: '6px 10px',
+    borderRadius: '6px',
+  },
+  specLabel: {
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground2,
+  },
+  specValue: {
+    fontWeight: 600,
+  },
+  specDivider: {
+    opacity: 0.5,
+  },
+  chipsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '5px',
+    flex: 1,
+  },
+  chipsTitle: {
+    fontSize: '10.5px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  chipsWrapper: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+  },
+  previewChip: {
+    fontSize: '10.5px',
+    padding: '2px 7px',
+    borderRadius: '4px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    color: tokens.colorNeutralForeground2,
+    fontWeight: 500,
+  },
+  templateCardFooter: {
+    marginTop: 'auto',
+    paddingTop: '6px',
   },
   hintCaptionRow: {
     marginTop: '4px',
@@ -368,17 +498,43 @@ interface ProfileOption {
 }
 
 const ALL_PROFILE_OPTIONS: ProfileOption[] = [
-  { value: 'standard', label: 'Standard Retail (Grocery & General Goods)', module: 'minimart' },
-  { value: 'apparel', label: 'Apparel & Clothing (Sizes: XS, S, M, L, XL, XXL, 3XL)', module: 'minimart' },
-  { value: 'footwear', label: 'Footwear & Shoes (Sizes: 38 to 45)', module: 'minimart' },
-  { value: 'hardware', label: 'Hardware, Iron & Paint (KG, Feet, Meters, Litres, Bags)', module: 'minimart' },
-  { value: 'food', label: 'Restaurant & Fast Food (Portions: Regular, S, M, L, Family)', module: 'fastfood' },
+  { value: 'footwear', label: 'Footwear & Shoes Store (Sizes 38-45, PAIR)', module: 'minimart' },
+  { value: 'apparel', label: 'Garments, Clothing & Boutique (XS-3XL, SUIT, METER, GAZ)', module: 'minimart' },
+  { value: 'grocery', label: 'Grocery, Supermarket & Mini Mart (Barcode, KG, Gram, Liter)', module: 'minimart' },
+  { value: 'cosmetics', label: 'Cosmetics & Beauty Store (Shades, Volumes 50-500ml)', module: 'minimart' },
+  { value: 'pharmacy', label: 'Pharmacy & Medical Store (Strip, Box, Tablets, Syrups)', module: 'minimart' },
+  { value: 'electronics', label: 'Mobile, Electronics & Accessories (IMEI, Serial, Warranty)', module: 'minimart' },
+  { value: 'bakery', label: 'Bakery & Sweets / Confectionery (KG, Gram, Box, Fresh)', module: 'minimart' },
+  { value: 'food', label: 'Fast Food, Cafe & Restaurant (Portions: S, M, L, Family, KDS)', module: 'fastfood' },
+  { value: 'hardware', label: 'Hardware, Sanitary & Paint Store (Meters, Feet, KG, Gallon, Tools)', module: 'minimart' },
+  { value: 'electric', label: 'Electrical Store & Lighting (Cables, Switches, LED, Breakers)', module: 'minimart' },
+  { value: 'standard', label: 'Standard Retail (General Packaged Goods)', module: 'minimart' },
 ];
+
+function renderProfileIcon(iconName: string, size = 18, color?: string) {
+  const props = { size, color, strokeWidth: 2 };
+  switch (iconName) {
+    case 'Footprints': return <Footprints {...props} />;
+    case 'Shirt': return <Shirt {...props} />;
+    case 'ShoppingBag': return <ShoppingBag {...props} />;
+    case 'Palette': return <Palette {...props} />;
+    case 'HeartPulse': return <HeartPulse {...props} />;
+    case 'Smartphone': return <Smartphone {...props} />;
+    case 'Cake': return <Cake {...props} />;
+    case 'Utensils': return <Utensils {...props} />;
+    case 'Wrench': return <Wrench {...props} />;
+    case 'Zap': return <Zap {...props} />;
+    default: return <Package {...props} />;
+  }
+}
 
 export function CategoriesView(): React.JSX.Element {
   const styles = useStyles();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [seedingProfile, setSeedingProfile] = useState<string | null>(null);
+  const [seedSuccessMessage, setSeedSuccessMessage] = useState<string | null>(null);
   const [targetModule, setTargetModule] = useState<ModuleKey>('fastfood');
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
@@ -423,6 +579,23 @@ export function CategoriesView(): React.JSX.Element {
     },
   });
 
+  const handleSeedProfile = async (profileKey: CategoryProfile, targetMod: ModuleKey) => {
+    setSeedingProfile(profileKey);
+    try {
+      const seeded = await posApi.seedBusinessProfile(profileKey, targetMod);
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      setSeedSuccessMessage(`Added ${seeded.length} starter categories for ${CATEGORY_PROFILES[profileKey]?.label || profileKey}!`);
+      setTimeout(() => {
+        setSeedSuccessMessage(null);
+        setIsTemplateDialogOpen(false);
+      }, 1200);
+    } catch (err) {
+      console.error('Failed to seed categories:', err);
+    } finally {
+      setSeedingProfile(null);
+    }
+  };
+
   const { can, businessProfiles = ['standard', 'food'] } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
@@ -441,8 +614,38 @@ export function CategoriesView(): React.JSX.Element {
     return forModule.length > 0 ? forModule : allowedProfiles;
   }, [allowedProfiles, watchedModule]);
 
+  const activeRetailProfile = useMemo(() => {
+    const specific = businessProfiles.find((p) => p !== 'standard' && p !== 'food');
+    return specific && CATEGORY_PROFILES[specific] ? CATEGORY_PROFILES[specific] : null;
+  }, [businessProfiles]);
+
+  const activeRetailLabel = activeRetailProfile?.label || 'Retail Store';
+  const activeRetailShort = activeRetailProfile?.shortTag || 'Retail';
+
+  const moduleOptions = useMemo(() => [
+    ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
+    ...(hasOmnimart ? [{ value: 'minimart', label: activeRetailLabel }] : []),
+  ], [hasFastFood, hasOmnimart, activeRetailLabel]);
+
   const isSingleBusinessProfile = businessProfiles.length === 1;
   const isProfileLocked = isSingleBusinessProfile || filteredProfileOptions.length === 1;
+
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
+
+  // Starter templates strictly filtered to active licensed business profile(s)
+  const licensedTemplates = useMemo(() => {
+    const all = (Object.entries(CATEGORY_PROFILES) as [CategoryProfile, typeof CATEGORY_PROFILES[CategoryProfile]][])
+      .filter(([key]) => key !== 'standard');
+
+    if (showAllTemplates) return all;
+
+    const hasSpecificProfiles = businessProfiles && businessProfiles.length > 0 && !businessProfiles.includes('standard');
+    if (hasSpecificProfiles) {
+      const filtered = all.filter(([key]) => businessProfiles.includes(key));
+      if (filtered.length > 0) return filtered;
+    }
+    return all;
+  }, [businessProfiles, showAllTemplates]);
 
   const handleOpenDialog = (module?: ModuleKey) => {
     let selectedModule: ModuleKey = module || (hasFastFood ? 'fastfood' : 'minimart');
@@ -494,14 +697,26 @@ export function CategoriesView(): React.JSX.Element {
           </Caption1>
         </div>
 
-        <Button
-          appearance="primary"
-          icon={<Add20Regular />}
-          className={styles.primaryBtn}
-          onClick={() => handleOpenDialog()}
-        >
-          + New Category
-        </Button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <Button
+            appearance="secondary"
+            icon={<Sparkle20Regular style={{ color: '#E51937' }} />}
+            onClick={() => setIsTemplateDialogOpen(true)}
+            style={{ fontWeight: 600, border: `1px solid ${tokens.colorNeutralStroke1}` }}
+          >
+            {isSingleBusinessProfile && licensedTemplates.length === 1
+              ? `1-Click ${licensedTemplates[0][1].shortTag} Template`
+              : '1-Click Industry Templates'}
+          </Button>
+          <Button
+            appearance="primary"
+            icon={<Add20Regular />}
+            className={styles.primaryBtn}
+            onClick={() => handleOpenDialog()}
+          >
+            + New Category
+          </Button>
+        </div>
       </div>
 
       {/* ── Fast Food Categories Section ──────────────────────── */}
@@ -523,27 +738,32 @@ export function CategoriesView(): React.JSX.Element {
             {fastFoodCategories.map((cat) => {
               const count = products.filter((p) => p.category === cat.name).length;
               const activeProfile = detectCategoryProfile(cat.name, cat.profile);
-              const profileConfig = CATEGORY_PROFILES[activeProfile];
-              const pStyles = activeProfile === 'food'
-                ? { tagBox: styles.tagIconBoxFood, badge: styles.profileBadgeFood }
-                : activeProfile === 'apparel'
-                ? { tagBox: styles.tagIconBoxApparel, badge: styles.profileBadgeApparel }
-                : activeProfile === 'footwear'
-                ? { tagBox: styles.tagIconBoxFootwear, badge: styles.profileBadgeFootwear }
-                : activeProfile === 'hardware'
-                ? { tagBox: styles.tagIconBoxHardware, badge: styles.profileBadgeHardware }
-                : { tagBox: styles.tagIconBoxStandard, badge: styles.profileBadgeStandard };
+              const profileConfig = CATEGORY_PROFILES[activeProfile] || CATEGORY_PROFILES.standard;
 
               return (
                 <div key={cat.id} className={styles.categoryCard}>
                   <div className={styles.categoryCardLeft}>
-                    <div className={mergeClasses(styles.tagIconBox, pStyles.tagBox)}>
-                      <Tag20Regular className={styles.tagIcon} />
+                    <div
+                      className={styles.tagIconBox}
+                      style={{
+                        backgroundColor: `${profileConfig.accentColor}16`,
+                        border: `1px solid ${profileConfig.accentColor}35`,
+                        color: profileConfig.accentColor,
+                      }}
+                    >
+                      {renderProfileIcon(profileConfig.icon, 18, profileConfig.accentColor)}
                     </div>
                     <div className={styles.categoryInfo}>
                       <Body1 className={styles.categoryTitle}>{cat.name}</Body1>
                       <div className={styles.categoryMetaRow}>
-                        <span className={mergeClasses(styles.profileBadge, pStyles.badge)}>
+                        <span
+                          className={styles.profileBadge}
+                          style={{
+                            backgroundColor: `${profileConfig.accentColor}18`,
+                            border: `1px solid ${profileConfig.accentColor}40`,
+                            color: profileConfig.accentColor,
+                          }}
+                        >
                           {profileConfig.shortTag}
                         </span>
                         <Caption1 className={styles.productCountText}>
@@ -576,41 +796,46 @@ export function CategoriesView(): React.JSX.Element {
         <div className={`${styles.sectionBox} ${styles.sectionBoxSpaced}`}>
           <div className={styles.sectionTitle}>
             <BuildingRetail24Regular className={styles.sectionIconRed} />
-            <span>Omnimart Categories ({omnimartCategories.length})</span>
+            <span>{activeRetailShort} Categories ({omnimartCategories.length})</span>
             <Button
               size="small"
               appearance="subtle"
               className={styles.sectionAddBtn}
               onClick={() => handleOpenDialog('minimart')}
             >
-              + Add Omnimart Category
+              + Add {activeRetailShort} Category
             </Button>
           </div>
           <div className={styles.categoryGrid}>
             {omnimartCategories.map((cat) => {
               const count = products.filter((p) => p.category === cat.name).length;
               const activeProfile = detectCategoryProfile(cat.name, cat.profile);
-              const profileConfig = CATEGORY_PROFILES[activeProfile];
-              const pStyles = activeProfile === 'food'
-                ? { tagBox: styles.tagIconBoxFood, badge: styles.profileBadgeFood }
-                : activeProfile === 'apparel'
-                ? { tagBox: styles.tagIconBoxApparel, badge: styles.profileBadgeApparel }
-                : activeProfile === 'footwear'
-                ? { tagBox: styles.tagIconBoxFootwear, badge: styles.profileBadgeFootwear }
-                : activeProfile === 'hardware'
-                ? { tagBox: styles.tagIconBoxHardware, badge: styles.profileBadgeHardware }
-                : { tagBox: styles.tagIconBoxStandard, badge: styles.profileBadgeStandard };
+              const profileConfig = CATEGORY_PROFILES[activeProfile] || CATEGORY_PROFILES.standard;
 
               return (
                 <div key={cat.id} className={styles.categoryCard}>
                   <div className={styles.categoryCardLeft}>
-                    <div className={mergeClasses(styles.tagIconBox, pStyles.tagBox)}>
-                      <Tag20Regular className={styles.tagIcon} />
+                    <div
+                      className={styles.tagIconBox}
+                      style={{
+                        backgroundColor: `${profileConfig.accentColor}16`,
+                        border: `1px solid ${profileConfig.accentColor}35`,
+                        color: profileConfig.accentColor,
+                      }}
+                    >
+                      {renderProfileIcon(profileConfig.icon, 18, profileConfig.accentColor)}
                     </div>
                     <div className={styles.categoryInfo}>
                       <Body1 className={styles.categoryTitle}>{cat.name}</Body1>
                       <div className={styles.categoryMetaRow}>
-                        <span className={mergeClasses(styles.profileBadge, pStyles.badge)}>
+                        <span
+                          className={styles.profileBadge}
+                          style={{
+                            backgroundColor: `${profileConfig.accentColor}18`,
+                            border: `1px solid ${profileConfig.accentColor}40`,
+                            color: profileConfig.accentColor,
+                          }}
+                        >
                           {profileConfig.shortTag}
                         </span>
                         <Caption1 className={styles.productCountText}>
@@ -638,6 +863,153 @@ export function CategoriesView(): React.JSX.Element {
         </div>
       )}
 
+      {/* ── 1-Click Industry Starter Templates Dialog ────────── */}
+      <Dialog open={isTemplateDialogOpen} onOpenChange={(_, data) => setIsTemplateDialogOpen(data.open)}>
+        <DialogSurface className={styles.templateDialogSurface}>
+          <div className={styles.templateDialogHeader}>
+            <div className={styles.templateHeaderLeft}>
+              <div className={styles.templateIconBox}>
+                <Sparkle20Regular style={{ width: 22, height: 22 }} />
+              </div>
+              <div>
+                <div className={styles.templateDialogTitle}>
+                  {licensedTemplates.length === 1 && !showAllTemplates
+                    ? `1-Click ${licensedTemplates[0][1].shortTag} Starter Template`
+                    : '1-Click Industry Starter Templates'}
+                </div>
+                <div className={styles.templateDialogSubtitle}>
+                  {licensedTemplates.length === 1 && !showAllTemplates
+                    ? `Instantly populate recommended default categories, size matrices, and standard units for your licensed vertical (${licensedTemplates[0][1].label}) in 1 click.`
+                    : 'Choose your business vertical to instantly populate recommended default categories, size matrices, and standard units in 1 click.'}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {businessProfiles && businessProfiles.length > 0 && !businessProfiles.includes('standard') && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTemplates((prev) => !prev)}
+                  style={{
+                    background: 'none',
+                    border: `1px solid ${tokens.colorNeutralStroke1}`,
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    color: tokens.colorNeutralForeground2,
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {showAllTemplates ? 'Show My License Only' : 'Show All Industries'}
+                </button>
+              )}
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<Dismiss16Regular />}
+                onClick={() => setIsTemplateDialogOpen(false)}
+                type="button"
+              />
+            </div>
+          </div>
+
+          {seedSuccessMessage && (
+            <div className={styles.successBanner}>
+              {seedSuccessMessage}
+            </div>
+          )}
+
+          <div
+            className={styles.templateGrid}
+            style={licensedTemplates.length === 1 ? { maxWidth: '460px', margin: '0 auto', display: 'flex', flexDirection: 'column' } : undefined}
+          >
+            {licensedTemplates.map(([key, profile]) => {
+                const targetMod: ModuleKey = key === 'food' ? 'fastfood' : 'minimart';
+                const isModuleEnabled = (targetMod === 'fastfood' && hasFastFood) || (targetMod === 'minimart' && hasOmnimart);
+                const isCurrentSeeding = seedingProfile === key;
+
+                return (
+                  <div
+                    key={key}
+                    className={styles.templateCard}
+                    style={{
+                      borderTop: `3px solid ${profile.accentColor}`,
+                      opacity: isModuleEnabled ? 1 : 0.6,
+                    }}
+                  >
+                    <div className={styles.templateCardTop}>
+                      <div
+                        className={styles.templateCardIcon}
+                        style={{
+                          backgroundColor: `${profile.accentColor}18`,
+                          border: `1px solid ${profile.accentColor}35`,
+                          color: profile.accentColor,
+                        }}
+                      >
+                        {renderProfileIcon(profile.icon, 20, profile.accentColor)}
+                      </div>
+                      <div className={styles.templateCardMeta}>
+                        <div className={styles.templateCardTitleRow}>
+                          <span className={styles.templateCardTitle}>{profile.label}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className={styles.templateCardDesc}>{profile.description}</p>
+
+                    <div className={styles.templateSpecsRow}>
+                      <span className={styles.specLabel}>Units:</span>
+                      <span className={styles.specValue}>{profile.suggestedUnits.slice(0, 3).join(', ')}</span>
+                      {profile.suggestedSizes.length > 0 && (
+                        <>
+                          <span className={styles.specDivider}>•</span>
+                          <span className={styles.specLabel}>Sizes:</span>
+                          <span className={styles.specValue}>
+                            {profile.suggestedSizes.slice(0, 3).join(', ')}...
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    <div className={styles.chipsContainer}>
+                      <div className={styles.chipsTitle}>Categories Preview:</div>
+                      <div className={styles.chipsWrapper}>
+                        {profile.defaultCategories.map((cName) => (
+                          <span key={cName} className={styles.previewChip}>
+                            {cName}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className={styles.templateCardFooter}>
+                      <Button
+                        size="small"
+                        appearance="primary"
+                        disabled={!isModuleEnabled || seedingProfile !== null}
+                        onClick={() => handleSeedProfile(key, targetMod)}
+                        style={{
+                          backgroundColor: isModuleEnabled ? profile.accentColor : tokens.colorNeutralBackgroundDisabled,
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          borderRadius: '8px',
+                          width: '100%',
+                        }}
+                      >
+                        {isCurrentSeeding
+                          ? 'Adding Categories...'
+                          : !isModuleEnabled
+                          ? `Disabled (${targetMod === 'fastfood' ? 'Food' : 'Mart'} module off)`
+                          : `Populate ${profile.shortTag} Template`}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </DialogSurface>
+      </Dialog>
+
       {/* ── Create Category Dialog ─────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
         <DialogSurface className={styles.dialogSurface}>
@@ -651,7 +1023,7 @@ export function CategoriesView(): React.JSX.Element {
                 <div>
                   <div className={styles.dialogTitleText}>Create New Category</div>
                   <div className={styles.dialogSubtitleText}>
-                    Configure classification &amp; presets for {targetModule === 'fastfood' ? 'Fast Food' : 'Omnimart'}
+                    Configure classification &amp; presets for {targetModule === 'fastfood' ? 'Fast Food Menu' : activeRetailLabel}
                   </div>
                 </div>
               </div>
@@ -675,26 +1047,21 @@ export function CategoriesView(): React.JSX.Element {
                     {...field}
                     label="Category Name"
                     required
-                    placeholder="e.g. Burgers, Dairy, Snacks, Clothing, Hardware..."
+                    placeholder="e.g. Boots, Joggers, Slippers, Casual, Formal..."
                     error={categoryForm.formState.errors.name?.message}
                   />
                 )}
               />
 
-              <Controller
-                control={categoryForm.control}
-                name="module"
-                render={({ field }) => {
-                  const moduleOptions = [
-                    ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
-                    ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Goods' }] : []),
-                  ];
-                  return (
+              {!isSingleBusinessProfile && moduleOptions.length > 1 && (
+                <Controller
+                  control={categoryForm.control}
+                  name="module"
+                  render={({ field }) => (
                     <CustomSelect
                       label="Target Store Module"
                       required
                       value={field.value}
-                      disabled={isSingleBusinessProfile || moduleOptions.length <= 1}
                       onChange={(val) => {
                         const newMod = val as ModuleKey;
                         field.onChange(newMod);
@@ -706,9 +1073,9 @@ export function CategoriesView(): React.JSX.Element {
                       }}
                       options={moduleOptions}
                     />
-                  );
-                }}
-              />
+                  )}
+                />
+              )}
 
               <div>
                 <Controller
@@ -736,7 +1103,7 @@ export function CategoriesView(): React.JSX.Element {
                 >
                   {isProfileLocked ? (
                     <>
-                      <span>🔒</span> Auto-selected & locked to your license business profile ({CATEGORY_PROFILES[categoryForm.watch('profile') || filteredProfileOptions[0]?.value || 'standard']?.shortTag})
+                      <LockClosed16Regular style={{ width: 14, height: 14, display: 'inline-block', verticalAlign: 'middle' }} /> Auto-selected & locked to your license business profile ({CATEGORY_PROFILES[categoryForm.watch('profile') || filteredProfileOptions[0]?.value || 'standard']?.shortTag})
                     </>
                   ) : (
                     'Industry presets filtered according to your active business license key.'

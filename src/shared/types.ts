@@ -80,7 +80,18 @@ export interface StockMovement {
   date: string;
 }
 
-export type CategoryProfile = 'standard' | 'apparel' | 'footwear' | 'hardware' | 'food';
+export type CategoryProfile =
+  | 'footwear'
+  | 'apparel'
+  | 'grocery'
+  | 'cosmetics'
+  | 'pharmacy'
+  | 'electronics'
+  | 'bakery'
+  | 'food'
+  | 'hardware'
+  | 'electric'
+  | 'standard';
 
 export interface Category {
   id: string;

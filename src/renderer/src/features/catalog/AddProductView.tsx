@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   makeStyles,
@@ -23,6 +23,11 @@ import {
   Food24Regular,
   ShoppingBag24Regular,
   CheckmarkCircle20Filled,
+  DrinkToGo20Regular,
+  Drop20Regular,
+  Scales20Regular,
+  Flash20Regular,
+  Checkmark16Filled,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -50,12 +55,18 @@ import {
   Sparkles,
   Palette,
   Package,
-  PaintBucket,
-  Wrench,
-  Hammer,
+  Scale,
   Coins,
+  Wrench,
+  Zap,
+  HeartPulse,
+  Smartphone,
+  Cake,
+  Ruler,
+  Boxes,
 } from 'lucide-react';
 import { setLocalVariantRegistry } from '@/lib/variants';
+import { CategoryProfile } from '@/lib/types';
 
 export const PRICING_TYPES_FASTFOOD = [
   {
@@ -116,149 +127,259 @@ export const PRICING_TYPES_FASTFOOD = [
   },
 ];
 
-export const PRICING_TYPES_MINIMART = [
-  {
-    id: 'fixed',
-    label: 'Fixed Price',
-    icon: Tag,
-    desc: 'Single flat price (Creams, Lotions, Toys, Powders, Bags)',
-    suggestedUnit: 'PCS',
-    defaultSizes: [] as string[],
-  },
-  {
-    id: 'retail_garments',
-    label: 'Kapray / Sizes (S, M, L, XL)',
-    icon: Shirt,
-    desc: 'Kurtas, Shalwar Kameez, Shirts, Pants (S, M, L, XL)',
-    suggestedUnit: 'PCS',
-    defaultSizes: ['S', 'M', 'L', 'XL'],
-  },
-  {
-    id: 'retail_shoes',
-    label: 'Shoes / Footwear (40 - 44)',
-    icon: Footprints,
-    desc: 'Shoes, Joggers, Peshawari Chappal, Loafers (40, 41, 42, 43, 44)',
-    suggestedUnit: 'PAIR',
-    defaultSizes: ['40', '41', '42', '43', '44'],
-  },
-  {
-    id: 'retail_shades',
-    label: 'Shades & Colors',
-    icon: Palette,
-    desc: 'Nail polish & lipstick shades (#01, #08, #14, #22)',
-    suggestedUnit: 'PCS',
-    defaultSizes: ['#01 Red', '#08 Nude', '#14 Maroon', '#22 Gold'],
-  },
-  {
-    id: 'retail_volumes',
-    label: 'Packs / Volumes',
-    icon: Package,
-    desc: 'Lotions, powders, bottle sizes (125ml, 250ml, 400ml)',
-    suggestedUnit: 'PCS',
-    defaultSizes: ['125ml', '250ml', '400ml'],
-  },
-  {
-    id: 'paint_packs',
-    label: 'Paint (Quarter / Gallon / Balti)',
-    icon: PaintBucket,
-    desc: 'Quarter (1L), Gallon (4L), Balti / Drum (14-16L)',
-    suggestedUnit: 'GALLON',
-    defaultSizes: ['Quarter (1L)', 'Gallon (4L)', 'Balti (16L)'],
-  },
-  {
-    id: 'sanitary_fittings',
-    label: 'Sanitary Taps (Tootian / Nalke)',
-    icon: Wrench,
-    desc: 'Bib Cock, Pillar Cock, Wall Mixer, Muslim Shower',
-    suggestedUnit: 'PCS',
-    defaultSizes: ['Bib Cock', 'Pillar Cock', 'Wall Mixer', 'Muslim Shower'],
-  },
-  {
-    id: 'hardware_fasteners',
-    label: 'Kill / Kable / Screws',
-    icon: Hammer,
-    desc: 'Nails (Kill), Bolts (Kable), Screws (Kg, Pkt, Box)',
-    suggestedUnit: 'KG',
-    defaultSizes: ['0.5 KG', '1.0 KG', 'Packet', 'Box'],
-  },
-  {
-    id: 'custom',
-    label: 'Custom Sizes',
-    icon: SlidersHorizontal,
-    desc: 'Add custom sizes or variations',
-    suggestedUnit: 'PCS',
-    defaultSizes: [] as string[],
-  },
+export interface PricingTypeItem {
+  id: string;
+  label: string;
+  icon: any;
+  desc: string;
+  suggestedUnit: string;
+  defaultSizes: string[];
+}
+
+export const PRICING_TYPE_FIXED: PricingTypeItem = {
+  id: 'fixed',
+  label: 'Fixed Price',
+  icon: Tag,
+  desc: 'Single flat price (General items, packaged goods, accessories)',
+  suggestedUnit: 'PCS',
+  defaultSizes: [],
+};
+
+export const PRICING_TYPE_SHOES: PricingTypeItem = {
+  id: 'retail_shoes',
+  label: 'Shoes / Footwear (Sizes 38 - 45)',
+  icon: Footprints,
+  desc: 'Footwear & shoes with standard size matrix (38, 39, 40, 41, 42, 43, 44, 45)',
+  suggestedUnit: 'PAIR',
+  defaultSizes: ['38', '39', '40', '41', '42', '43', '44', '45'],
+};
+
+export const PRICING_TYPE_GARMENTS: PricingTypeItem = {
+  id: 'retail_garments',
+  label: 'Clothing / Garments (XS - 3XL)',
+  icon: Shirt,
+  desc: 'Kurtas, shirts, trousers, apparel (XS, S, M, L, XL, XXL, 3XL)',
+  suggestedUnit: 'PCS',
+  defaultSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
+};
+
+export const PRICING_TYPE_FABRIC: PricingTypeItem = {
+  id: 'retail_fabric',
+  label: 'Fabric & Unstitched (Meters / Suits)',
+  icon: Ruler,
+  desc: 'Unstitched fabric and cloth sold per meter, gaz or suit length',
+  suggestedUnit: 'METER',
+  defaultSizes: ['1 Meter', '2.5 Meter', '4 Meter (Suit)'],
+};
+
+export const PRICING_TYPE_PAINT: PricingTypeItem = {
+  id: 'retail_paint',
+  label: 'Paint Containers (Quarter, Gallon, Balti)',
+  icon: Wrench,
+  desc: 'Paint tins and coatings (Quarter 1L, Gallon 4L, Balti 16L)',
+  suggestedUnit: 'GALLON',
+  defaultSizes: ['Quarter (1L)', 'Gallon (4L)', 'Balti (16L)'],
+};
+
+export const PRICING_TYPE_WIRE: PricingTypeItem = {
+  id: 'retail_wire',
+  label: 'Wire Gauge & Lengths (1.5mm - 7/36)',
+  icon: Zap,
+  desc: 'Electrical wires and cables (1.5mm, 2.5mm, 7/29, 7/36, Coil 90m)',
+  suggestedUnit: 'METER',
+  defaultSizes: ['1.5mm', '2.5mm', '7/29', '7/36', 'Coil (90m)'],
+};
+
+export const PRICING_TYPE_WATTAGE: PricingTypeItem = {
+  id: 'retail_wattage',
+  label: 'LED Wattage Variants (5W - 24W)',
+  icon: Zap,
+  desc: 'LED bulbs, spot lights and panel wattages (5W, 12W, 18W, 24W)',
+  suggestedUnit: 'PCS',
+  defaultSizes: ['5W', '12W', '18W', '24W'],
+};
+
+export const PRICING_TYPE_SHADES: PricingTypeItem = {
+  id: 'retail_shades',
+  label: 'Colors & Shades',
+  icon: Palette,
+  desc: 'Cosmetics, lipsticks, nail colors, shades (#01, #08, #14, #22)',
+  suggestedUnit: 'PCS',
+  defaultSizes: ['#01 Red', '#08 Nude', '#14 Maroon', '#22 Gold'],
+};
+
+export const PRICING_TYPE_VOLUMES: PricingTypeItem = {
+  id: 'retail_volumes',
+  label: 'Packs / Volumes',
+  icon: Package,
+  desc: 'Lotions, shampoos, bottle sizes (125ml, 250ml, 400ml)',
+  suggestedUnit: 'PCS',
+  defaultSizes: ['125ml', '250ml', '400ml'],
+};
+
+export const PRICING_TYPE_PHARMA_STRIP: PricingTypeItem = {
+  id: 'retail_pharma_strip',
+  label: 'Strip & Box (Strip / Box)',
+  icon: HeartPulse,
+  desc: 'Medicine dispensing by strip (10 tablets) and box (100 tablets)',
+  suggestedUnit: 'STRIP',
+  defaultSizes: ['Strip (10 Tablets)', 'Box (100 Tablets)'],
+};
+
+export const PRICING_TYPE_PHARMA_SYRUP: PricingTypeItem = {
+  id: 'retail_pharma_syrup',
+  label: 'Syrup Volumes (60ml / 120ml)',
+  icon: Package,
+  desc: 'Liquid suspensions and syrups (60ml, 120ml)',
+  suggestedUnit: 'BOTTLE',
+  defaultSizes: ['60ml', '120ml'],
+};
+
+export const PRICING_TYPE_STORAGE: PricingTypeItem = {
+  id: 'retail_storage',
+  label: 'Storage Variants (64GB - 512GB)',
+  icon: Smartphone,
+  desc: 'Mobile and tablet storage variations (64GB, 128GB, 256GB, 512GB)',
+  suggestedUnit: 'PCS',
+  defaultSizes: ['64GB', '128GB', '256GB', '512GB'],
+};
+
+export const PRICING_TYPE_BAKERY_BOX: PricingTypeItem = {
+  id: 'retail_bakery',
+  label: 'Traditional Sweets Box (250g - 2 KG)',
+  icon: Cake,
+  desc: 'Mithai and fresh confectionery packing boxes (250g, 500g, 1 KG, 2 KG)',
+  suggestedUnit: 'KG',
+  defaultSizes: ['250g', '500g', '1 KG', '2 KG'],
+};
+
+export const PRICING_TYPE_PACKS: PricingTypeItem = {
+  id: 'retail_packs',
+  label: 'Packs & Cartons (Single vs Box)',
+  icon: Boxes,
+  desc: 'FMCG goods sold individually or wholesale carton',
+  suggestedUnit: 'PACK',
+  defaultSizes: ['Single Piece', 'Carton / Box'],
+};
+
+export const PRICING_TYPE_PERKG: PricingTypeItem = {
+  id: 'perkg',
+  label: 'Loose / Weighed (Per KG)',
+  icon: Scale,
+  desc: 'Loose grocery, items sold by weight (Per KG / Grams)',
+  suggestedUnit: 'KG',
+  defaultSizes: ['250g', '500g', '1 KG'],
+};
+
+export const PRICING_TYPE_CUSTOM: PricingTypeItem = {
+  id: 'custom',
+  label: 'Custom Sizes',
+  icon: SlidersHorizontal,
+  desc: 'Add custom sizes or custom product variations',
+  suggestedUnit: 'PCS',
+  defaultSizes: [],
+};
+
+export const ALL_RETAIL_PRICING_TYPES: PricingTypeItem[] = [
+  PRICING_TYPE_FIXED,
+  PRICING_TYPE_SHOES,
+  PRICING_TYPE_GARMENTS,
+  PRICING_TYPE_PAINT,
+  PRICING_TYPE_WIRE,
+  PRICING_TYPE_WATTAGE,
+  PRICING_TYPE_SHADES,
+  PRICING_TYPE_VOLUMES,
+  PRICING_TYPE_PHARMA_STRIP,
+  PRICING_TYPE_PHARMA_SYRUP,
+  PRICING_TYPE_STORAGE,
+  PRICING_TYPE_BAKERY_BOX,
+  PRICING_TYPE_PACKS,
+  PRICING_TYPE_PERKG,
+  PRICING_TYPE_CUSTOM,
 ];
 
-export const PRICING_TYPES_PAINT_HARDWARE = [
-  {
-    id: 'paint_packs',
-    label: 'Paint (Quarter / Gallon / Balti)',
-    icon: PaintBucket,
-    desc: 'Quarter (1L), Gallon (4L), Balti / Drum (14-16L)',
-    suggestedUnit: 'GALLON',
-    defaultSizes: ['Quarter (1L)', 'Gallon (4L)', 'Balti (16L)'],
-  },
-  {
-    id: 'sanitary_fittings',
-    label: 'Sanitary Taps (Tootian / Nalke)',
-    icon: Wrench,
-    desc: 'Bib Cock, Pillar Cock, Wall Mixer, Muslim Shower',
-    suggestedUnit: 'PCS',
-    defaultSizes: ['Bib Cock', 'Pillar Cock', 'Wall Mixer', 'Muslim Shower'],
-  },
-  {
-    id: 'hardware_fasteners',
-    label: 'Kill / Kable / Screws',
-    icon: Hammer,
-    desc: 'Nails (Kill), Bolts (Kable), Screws (Kg, Pkt, Box)',
-    suggestedUnit: 'KG',
-    defaultSizes: ['0.5 KG', '1.0 KG', 'Packet', 'Box'],
-  },
-  {
-    id: 'fixed',
-    label: 'Fixed Price',
-    icon: Tag,
-    desc: 'Single flat price (Paint Brush, Roller, Thinner, Tape, Wire)',
-    suggestedUnit: 'PCS',
-    defaultSizes: [] as string[],
-  },
-  {
-    id: 'perkg',
-    label: 'Per KG (Loose Item)',
-    icon: BarChart2,
-    desc: 'Weighed item (Sariya, Wire, Keel, Cement, Sand)',
-    suggestedUnit: 'KG',
-    defaultSizes: ['250g', '500g', '1 KG'],
-  },
-  {
-    id: 'custom',
-    label: 'Custom Sizes',
-    icon: SlidersHorizontal,
-    desc: 'Add custom sizes or variations',
-    suggestedUnit: 'PCS',
-    defaultSizes: [] as string[],
-  },
-];
+export function getPricingTypesForProfile(profile: CategoryProfile, showAll: boolean = false): PricingTypeItem[] {
+  if (showAll) return ALL_RETAIL_PRICING_TYPES;
+
+  switch (profile) {
+    case 'footwear':
+      return [PRICING_TYPE_FIXED, PRICING_TYPE_SHOES, PRICING_TYPE_CUSTOM];
+    case 'apparel':
+      return [PRICING_TYPE_FIXED, PRICING_TYPE_GARMENTS, PRICING_TYPE_FABRIC, PRICING_TYPE_CUSTOM];
+    case 'hardware':
+      return [PRICING_TYPE_FIXED, PRICING_TYPE_PAINT, PRICING_TYPE_PERKG, PRICING_TYPE_CUSTOM];
+    case 'electric':
+      return [PRICING_TYPE_FIXED, PRICING_TYPE_WIRE, PRICING_TYPE_WATTAGE, PRICING_TYPE_CUSTOM];
+    case 'grocery':
+      return [PRICING_TYPE_FIXED, PRICING_TYPE_PERKG, PRICING_TYPE_PACKS, PRICING_TYPE_CUSTOM];
+    case 'cosmetics':
+      return [PRICING_TYPE_FIXED, PRICING_TYPE_SHADES, PRICING_TYPE_VOLUMES, PRICING_TYPE_CUSTOM];
+    case 'pharmacy':
+      return [PRICING_TYPE_FIXED, PRICING_TYPE_PHARMA_STRIP, PRICING_TYPE_PHARMA_SYRUP, PRICING_TYPE_CUSTOM];
+    case 'electronics':
+      return [PRICING_TYPE_FIXED, PRICING_TYPE_STORAGE, PRICING_TYPE_CUSTOM];
+    case 'bakery':
+      return [PRICING_TYPE_FIXED, PRICING_TYPE_BAKERY_BOX, PRICING_TYPE_PERKG, PRICING_TYPE_CUSTOM];
+    case 'food':
+      return PRICING_TYPES_FASTFOOD as any;
+    default:
+      return [PRICING_TYPE_FIXED, PRICING_TYPE_PERKG, PRICING_TYPE_CUSTOM];
+  }
+}
+
+export const isVariantPricingType = (pt: string): boolean =>
+  [
+    'smlxl',
+    'halffull',
+    'drinks',
+    'water',
+    'retail_garments',
+    'retail_shoes',
+    'retail_shades',
+    'retail_volumes',
+    'retail_paint',
+    'retail_wire',
+    'retail_wattage',
+    'retail_pharma_strip',
+    'retail_pharma_syrup',
+    'retail_storage',
+    'retail_bakery',
+    'retail_packs',
+    'retail_fabric',
+  ].includes(pt);
+
+export const PRICING_TYPES_MINIMART = ALL_RETAIL_PRICING_TYPES;
 
 export const PRICING_TYPES = PRICING_TYPES_FASTFOOD;
 
 const UNIT_OPTIONS = [
   { value: 'PCS', label: 'Piece (PCS)' },
+  { value: 'PAIR', label: 'Pair (PAIR)' },
+  { value: 'SUIT', label: 'Suit (SUIT)' },
+  { value: 'METER', label: 'Meter (m)' },
+  { value: 'GAZ', label: 'Gaz / Yard' },
   { value: 'KG', label: 'Kilogram (KG)' },
   { value: 'Gram', label: 'Gram (g)' },
   { value: 'Liter', label: 'Liter (L)' },
   { value: 'ML', label: 'Milliliter (ml)' },
   { value: 'PACK', label: 'Pack' },
   { value: 'BOX', label: 'Box' },
+  { value: 'DABBA', label: 'Box / Pack (Dabba)' },
+  { value: 'STRIP', label: 'Strip (Tablets)' },
+  { value: 'TABLET', label: 'Tablet' },
+  { value: 'SYRUP', label: 'Syrup Bottle' },
+  { value: 'BOTTLE', label: 'Bottle' },
+  { value: 'SET', label: 'Set' },
   { value: 'DOZEN', label: 'Dozen' },
   { value: 'FEET', label: 'Feet (ft)' },
-  { value: 'METER', label: 'Meter (m)' },
   { value: 'GALLON', label: 'Gallon' },
+  { value: 'QUARTER', label: 'Quarter (1L)' },
+  { value: 'BALTI', label: 'Bucket / Balti (16L)' },
+  { value: 'COIL', label: 'Coil / Roll' },
   { value: 'BAG', label: 'Bag' },
   { value: 'BUNDLE', label: 'Bundle' },
-  { value: 'PAIR', label: 'Pair' },
+  { value: 'SERVING', label: 'Serving' },
+  { value: 'DEAL', label: 'Deal / Combo' },
 ];
 
 const productSchema = z.object({
@@ -1130,11 +1251,14 @@ export function AddProductView(): React.JSX.Element {
   });
 
   const [shoeSizes, setShoeSizes] = useState({
+    s38: '',
+    s39: '',
     s40: '',
     s41: '',
     s42: '',
     s43: '',
     s44: '',
+    s45: '',
   });
 
   const [shadeSizes, setShadeSizes] = useState({
@@ -1150,41 +1274,71 @@ export function AddProductView(): React.JSX.Element {
     v3: '',
   });
 
-  const [bulkGarmentPrice, setBulkGarmentPrice] = useState('');
-  const [bulkShoePrice, setBulkShoePrice] = useState('');
-
-  // Dedicated Paint Pricing States (Quarter, Gallon, Balti + Shade + Token)
+  // Dedicated Hardware Paint Containers (Quarter 1L, Gallon 4L, Balti 16L)
   const [paintSizes, setPaintSizes] = useState({
     quarter: '',
     gallon: '',
     balti: '',
   });
-  const [paintCostPrices, setPaintCostPrices] = useState({
-    quarter: '',
-    gallon: '',
-    balti: '',
-  });
-  const [paintShadeCode, setPaintShadeCode] = useState('');
-  const [painterTokenAmount, setPainterTokenAmount] = useState('');
 
-  // Dedicated Sanitary Taps Pricing States
-  const [sanitarySizes, setSanitarySizes] = useState({
-    bibCock: '',
-    pillarCock: '',
-    wallMixer: '',
-    muslimShower: '',
+  // Dedicated Electric Wire Gauge & Lengths
+  const [wireSizes, setWireSizes] = useState({
+    w1_5: '',
+    w2_5: '',
+    w7_29: '',
+    w7_36: '',
+    wcoil: '',
   });
 
-  // Dedicated Hardware Fasteners Pricing States
-  const [hardwareSizes, setHardwareSizes] = useState({
-    halfKg: '',
-    oneKg: '',
-    packet: '',
+  // Dedicated LED Wattage Variants
+  const [wattageSizes, setWattageSizes] = useState({
+    w5: '',
+    w12: '',
+    w18: '',
+    w24: '',
+  });
+
+  // Dedicated Pharmacy Formulations
+  const [pharmaStripSizes, setPharmaStripSizes] = useState({
+    strip: '',
     box: '',
   });
+  const [pharmaSyrupSizes, setPharmaSyrupSizes] = useState({
+    ml60: '',
+    ml120: '',
+  });
 
-  const [activeDepartmentTab, setActiveDepartmentTab] = useState<'fastfood' | 'minimart' | 'paint_hardware'>(
-    defaultModule === 'fastfood' ? 'fastfood' : 'minimart'
+  // Dedicated Electronics Storage
+  const [storageSizes, setStorageSizes] = useState({
+    gb64: '',
+    gb128: '',
+    gb256: '',
+    gb512: '',
+  });
+
+  // Dedicated Bakery / Sweets Box
+  const [bakerySizes, setBakerySizes] = useState({
+    g250: '',
+    g500: '',
+    kg1: '',
+    kg2: '',
+  });
+
+  // Dedicated Pack & Carton
+  const [packSizes, setPackSizes] = useState({
+    single: '',
+    carton: '',
+  });
+
+  const [bulkGarmentPrice, setBulkGarmentPrice] = useState('');
+  const [bulkShoePrice, setBulkShoePrice] = useState('');
+  const [bulkPaintPrice, setBulkPaintPrice] = useState('');
+  const [bulkWirePrice, setBulkWirePrice] = useState('');
+  const [bulkWattagePrice, setBulkWattagePrice] = useState('');
+  const [bulkStoragePrice, setBulkStoragePrice] = useState('');
+  const [bulkBakeryPrice, setBulkBakeryPrice] = useState('');
+  const [activeDepartmentTab, setActiveDepartmentTab] = useState<'fastfood' | 'minimart'>(
+    defaultModule === 'fastfood' && hasFastFood ? 'fastfood' : (hasOmnimart ? 'minimart' : 'fastfood')
   );
 
   const watchedModule = productForm.watch('module');
@@ -1197,6 +1351,32 @@ export function AddProductView(): React.JSX.Element {
   const activeCategoryObj = categories.find((c) => c.name === watchedCategory);
   const detectedProfile = detectCategoryProfile(watchedCategory || '', activeCategoryObj?.profile);
   const profileConfig = CATEGORY_PROFILES[detectedProfile];
+
+  // Strictly filter unit options to ONLY the units that belong to the active category profile
+  const categoryUnitOptions = useMemo(() => {
+    const suggested = profileConfig?.suggestedUnits || ['PCS'];
+    const matched: { value: string; label: string }[] = [];
+    suggested.forEach((su) => {
+      const found = UNIT_OPTIONS.find((opt) => opt.value.toUpperCase() === su.toUpperCase());
+      if (found && !matched.some((m) => m.value.toUpperCase() === found.value.toUpperCase())) {
+        matched.push(found);
+      }
+    });
+    return matched.length > 0 ? matched : [{ value: 'PCS', label: 'Piece (PCS)' }];
+  }, [profileConfig]);
+
+  // When category changes, auto-align the unit to the category's primary unit if current unit is invalid
+  useEffect(() => {
+    if (categoryUnitOptions.length > 0) {
+      const currentUnit = productForm.getValues('unit');
+      const isCurrentValid = categoryUnitOptions.some(
+        (opt) => opt.value.toUpperCase() === currentUnit?.toUpperCase()
+      );
+      if (!isCurrentValid) {
+        productForm.setValue('unit', categoryUnitOptions[0].value);
+      }
+    }
+  }, [categoryUnitOptions, productForm]);
 
   const rebuildVariantsFromPizzaSizes = (sizesObj: typeof pizzaSizes) => {
     const mapping: { key: keyof typeof pizzaSizes; label: string }[] = [
@@ -1270,11 +1450,14 @@ export function AddProductView(): React.JSX.Element {
 
   const rebuildVariantsFromShoeSizes = (sizesObj: typeof shoeSizes) => {
     const mapping: { key: keyof typeof shoeSizes; label: string }[] = [
+      { key: 's38', label: '38' },
+      { key: 's39', label: '39' },
       { key: 's40', label: '40' },
       { key: 's41', label: '41' },
       { key: 's42', label: '42' },
       { key: 's43', label: '43' },
       { key: 's44', label: '44' },
+      { key: 's45', label: '45' },
     ];
     const built: ProductVariant[] = [];
     let firstPrice: number | undefined = undefined;
@@ -1397,38 +1580,28 @@ export function AddProductView(): React.JSX.Element {
     rebuildVariantsFromVolumeSizes(updated);
   };
 
-  const rebuildVariantsFromPaintSizes = (
-    sizesObj: typeof paintSizes,
-    costObj: typeof paintCostPrices = paintCostPrices,
-    shadeCode: string = paintShadeCode,
-  ) => {
-    const mapping: { key: keyof typeof paintSizes; label: string; tag: string }[] = [
-      { key: 'quarter', label: 'Quarter (1L)', tag: 'QTR' },
-      { key: 'gallon', label: 'Gallon (4L)', tag: 'GAL' },
-      { key: 'balti', label: 'Balti / Drum (16L)', tag: 'BAL' },
+  const rebuildVariantsFromPaintSizes = (sizesObj: typeof paintSizes) => {
+    const mapping: { key: keyof typeof paintSizes; label: string }[] = [
+      { key: 'quarter', label: 'Quarter (1L)' },
+      { key: 'gallon', label: 'Gallon (4L)' },
+      { key: 'balti', label: 'Balti (16L)' },
     ];
     const built: ProductVariant[] = [];
     let firstPrice: number | undefined = undefined;
 
-    mapping.forEach(({ key, label, tag }) => {
+    mapping.forEach(({ key, label }) => {
       const valStr = (sizesObj[key] || '').trim();
       if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
         const pNum = Number(valStr);
-        const costStr = (costObj[key] || '').trim();
-        const costNum = costStr && !isNaN(Number(costStr)) ? Number(costStr) : 0;
         if (firstPrice === undefined) firstPrice = pNum;
-
-        const shadeSuffix = shadeCode ? ` - Shade ${shadeCode}` : '';
         built.push({
-          id: uid(`var_paint_${tag.toLowerCase()}_`),
-          label: `${label}${shadeSuffix}`,
+          id: uid(`var_paint_${key}_`),
+          label,
           price: pNum,
           priceDelta: 0,
-          costDelta: costNum,
-          stock: 25,
-          skuCode: watchedName
-            ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}${shadeCode ? `-${shadeCode}` : ''}-${tag}`
-            : undefined,
+          costDelta: 0,
+          stock: 20,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
         });
       }
     });
@@ -1444,45 +1617,33 @@ export function AddProductView(): React.JSX.Element {
   const handlePaintSizeChange = (key: keyof typeof paintSizes, val: string) => {
     const updated = { ...paintSizes, [key]: val };
     setPaintSizes(updated);
-    rebuildVariantsFromPaintSizes(updated, paintCostPrices, paintShadeCode);
+    rebuildVariantsFromPaintSizes(updated);
   };
 
-  const handlePaintCostChange = (key: keyof typeof paintCostPrices, val: string) => {
-    const updated = { ...paintCostPrices, [key]: val };
-    setPaintCostPrices(updated);
-    rebuildVariantsFromPaintSizes(paintSizes, updated, paintShadeCode);
-  };
-
-  const handlePaintShadeCodeChange = (val: string) => {
-    setPaintShadeCode(val);
-    rebuildVariantsFromPaintSizes(paintSizes, paintCostPrices, val);
-  };
-
-  const rebuildVariantsFromSanitarySizes = (sizesObj: typeof sanitarySizes) => {
-    const mapping: { key: keyof typeof sanitarySizes; label: string; tag: string }[] = [
-      { key: 'bibCock', label: 'Bib Cock (Tooti)', tag: 'BC' },
-      { key: 'pillarCock', label: 'Pillar Cock (Basin)', tag: 'PC' },
-      { key: 'wallMixer', label: 'Wall Mixer', tag: 'WM' },
-      { key: 'muslimShower', label: 'Muslim Shower Set', tag: 'MS' },
+  const rebuildVariantsFromWireSizes = (sizesObj: typeof wireSizes) => {
+    const mapping: { key: keyof typeof wireSizes; label: string }[] = [
+      { key: 'w1_5', label: '1.5mm' },
+      { key: 'w2_5', label: '2.5mm' },
+      { key: 'w7_29', label: '7/29' },
+      { key: 'w7_36', label: '7/36' },
+      { key: 'wcoil', label: 'Coil (90m)' },
     ];
     const built: ProductVariant[] = [];
     let firstPrice: number | undefined = undefined;
 
-    mapping.forEach(({ key, label, tag }) => {
+    mapping.forEach(({ key, label }) => {
       const valStr = (sizesObj[key] || '').trim();
       if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
         const pNum = Number(valStr);
         if (firstPrice === undefined) firstPrice = pNum;
         built.push({
-          id: uid(`var_san_${tag.toLowerCase()}_`),
+          id: uid(`var_wire_${key}_`),
           label,
           price: pNum,
           priceDelta: 0,
           costDelta: 0,
           stock: 30,
-          skuCode: watchedName
-            ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${tag}`
-            : undefined,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
         });
       }
     });
@@ -1495,37 +1656,35 @@ export function AddProductView(): React.JSX.Element {
     }
   };
 
-  const handleSanitarySizeChange = (key: keyof typeof sanitarySizes, val: string) => {
-    const updated = { ...sanitarySizes, [key]: val };
-    setSanitarySizes(updated);
-    rebuildVariantsFromSanitarySizes(updated);
+  const handleWireSizeChange = (key: keyof typeof wireSizes, val: string) => {
+    const updated = { ...wireSizes, [key]: val };
+    setWireSizes(updated);
+    rebuildVariantsFromWireSizes(updated);
   };
 
-  const rebuildVariantsFromHardwareSizes = (sizesObj: typeof hardwareSizes) => {
-    const mapping: { key: keyof typeof hardwareSizes; label: string; tag: string }[] = [
-      { key: 'halfKg', label: '0.5 KG (Aadha Kilo)', tag: '500G' },
-      { key: 'oneKg', label: '1.0 KG (Ek Kilo)', tag: '1KG' },
-      { key: 'packet', label: 'Packet (Small Pack)', tag: 'PKT' },
-      { key: 'box', label: 'Box (Wholesale Dabba)', tag: 'BOX' },
+  const rebuildVariantsFromWattageSizes = (sizesObj: typeof wattageSizes) => {
+    const mapping: { key: keyof typeof wattageSizes; label: string }[] = [
+      { key: 'w5', label: '5W' },
+      { key: 'w12', label: '12W' },
+      { key: 'w18', label: '18W' },
+      { key: 'w24', label: '24W' },
     ];
     const built: ProductVariant[] = [];
     let firstPrice: number | undefined = undefined;
 
-    mapping.forEach(({ key, label, tag }) => {
+    mapping.forEach(({ key, label }) => {
       const valStr = (sizesObj[key] || '').trim();
       if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
         const pNum = Number(valStr);
         if (firstPrice === undefined) firstPrice = pNum;
         built.push({
-          id: uid(`var_hw_${tag.toLowerCase()}_`),
+          id: uid(`var_wat_${key}_`),
           label,
           price: pNum,
           priceDelta: 0,
           costDelta: 0,
           stock: 50,
-          skuCode: watchedName
-            ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${tag}`
-            : undefined,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
         });
       }
     });
@@ -1538,13 +1697,210 @@ export function AddProductView(): React.JSX.Element {
     }
   };
 
-  const handleHardwareSizeChange = (key: keyof typeof hardwareSizes, val: string) => {
-    const updated = { ...hardwareSizes, [key]: val };
-    setHardwareSizes(updated);
-    rebuildVariantsFromHardwareSizes(updated);
+  const handleWattageSizeChange = (key: keyof typeof wattageSizes, val: string) => {
+    const updated = { ...wattageSizes, [key]: val };
+    setWattageSizes(updated);
+    rebuildVariantsFromWattageSizes(updated);
   };
 
+  const rebuildVariantsFromPharmaStripSizes = (sizesObj: typeof pharmaStripSizes) => {
+    const mapping: { key: keyof typeof pharmaStripSizes; label: string }[] = [
+      { key: 'strip', label: 'Strip (10 Tablets)' },
+      { key: 'box', label: 'Box (100 Tablets)' },
+    ];
+    const built: ProductVariant[] = [];
+    let firstPrice: number | undefined = undefined;
 
+    mapping.forEach(({ key, label }) => {
+      const valStr = (sizesObj[key] || '').trim();
+      if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
+        const pNum = Number(valStr);
+        if (firstPrice === undefined) firstPrice = pNum;
+        built.push({
+          id: uid(`var_ph_${key}_`),
+          label,
+          price: pNum,
+          priceDelta: 0,
+          costDelta: 0,
+          stock: 50,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
+        });
+      }
+    });
+
+    setVariants(built);
+    setHasVariants(built.length > 0);
+    if (firstPrice !== undefined) {
+      productForm.setValue('price', firstPrice);
+      productForm.clearErrors('price');
+    }
+  };
+
+  const handlePharmaStripSizeChange = (key: keyof typeof pharmaStripSizes, val: string) => {
+    const updated = { ...pharmaStripSizes, [key]: val };
+    setPharmaStripSizes(updated);
+    rebuildVariantsFromPharmaStripSizes(updated);
+  };
+
+  const rebuildVariantsFromPharmaSyrupSizes = (sizesObj: typeof pharmaSyrupSizes) => {
+    const mapping: { key: keyof typeof pharmaSyrupSizes; label: string }[] = [
+      { key: 'ml60', label: '60ml' },
+      { key: 'ml120', label: '120ml' },
+    ];
+    const built: ProductVariant[] = [];
+    let firstPrice: number | undefined = undefined;
+
+    mapping.forEach(({ key, label }) => {
+      const valStr = (sizesObj[key] || '').trim();
+      if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
+        const pNum = Number(valStr);
+        if (firstPrice === undefined) firstPrice = pNum;
+        built.push({
+          id: uid(`var_syr_${key}_`),
+          label,
+          price: pNum,
+          priceDelta: 0,
+          costDelta: 0,
+          stock: 30,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
+        });
+      }
+    });
+
+    setVariants(built);
+    setHasVariants(built.length > 0);
+    if (firstPrice !== undefined) {
+      productForm.setValue('price', firstPrice);
+      productForm.clearErrors('price');
+    }
+  };
+
+  const handlePharmaSyrupSizeChange = (key: keyof typeof pharmaSyrupSizes, val: string) => {
+    const updated = { ...pharmaSyrupSizes, [key]: val };
+    setPharmaSyrupSizes(updated);
+    rebuildVariantsFromPharmaSyrupSizes(updated);
+  };
+
+  const rebuildVariantsFromStorageSizes = (sizesObj: typeof storageSizes) => {
+    const mapping: { key: keyof typeof storageSizes; label: string }[] = [
+      { key: 'gb64', label: '64GB' },
+      { key: 'gb128', label: '128GB' },
+      { key: 'gb256', label: '256GB' },
+      { key: 'gb512', label: '512GB' },
+    ];
+    const built: ProductVariant[] = [];
+    let firstPrice: number | undefined = undefined;
+
+    mapping.forEach(({ key, label }) => {
+      const valStr = (sizesObj[key] || '').trim();
+      if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
+        const pNum = Number(valStr);
+        if (firstPrice === undefined) firstPrice = pNum;
+        built.push({
+          id: uid(`var_strg_${key}_`),
+          label,
+          price: pNum,
+          priceDelta: 0,
+          costDelta: 0,
+          stock: 10,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
+        });
+      }
+    });
+
+    setVariants(built);
+    setHasVariants(built.length > 0);
+    if (firstPrice !== undefined) {
+      productForm.setValue('price', firstPrice);
+      productForm.clearErrors('price');
+    }
+  };
+
+  const handleStorageSizeChange = (key: keyof typeof storageSizes, val: string) => {
+    const updated = { ...storageSizes, [key]: val };
+    setStorageSizes(updated);
+    rebuildVariantsFromStorageSizes(updated);
+  };
+
+  const rebuildVariantsFromBakerySizes = (sizesObj: typeof bakerySizes) => {
+    const mapping: { key: keyof typeof bakerySizes; label: string }[] = [
+      { key: 'g250', label: '250g' },
+      { key: 'g500', label: '500g' },
+      { key: 'kg1', label: '1 KG' },
+      { key: 'kg2', label: '2 KG' },
+    ];
+    const built: ProductVariant[] = [];
+    let firstPrice: number | undefined = undefined;
+
+    mapping.forEach(({ key, label }) => {
+      const valStr = (sizesObj[key] || '').trim();
+      if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
+        const pNum = Number(valStr);
+        if (firstPrice === undefined) firstPrice = pNum;
+        built.push({
+          id: uid(`var_bak_${key}_`),
+          label,
+          price: pNum,
+          priceDelta: 0,
+          costDelta: 0,
+          stock: 40,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
+        });
+      }
+    });
+
+    setVariants(built);
+    setHasVariants(built.length > 0);
+    if (firstPrice !== undefined) {
+      productForm.setValue('price', firstPrice);
+      productForm.clearErrors('price');
+    }
+  };
+
+  const handleBakerySizeChange = (key: keyof typeof bakerySizes, val: string) => {
+    const updated = { ...bakerySizes, [key]: val };
+    setBakerySizes(updated);
+    rebuildVariantsFromBakerySizes(updated);
+  };
+
+  const rebuildVariantsFromPackSizes = (sizesObj: typeof packSizes) => {
+    const mapping: { key: keyof typeof packSizes; label: string }[] = [
+      { key: 'single', label: 'Single Piece' },
+      { key: 'carton', label: 'Carton / Box' },
+    ];
+    const built: ProductVariant[] = [];
+    let firstPrice: number | undefined = undefined;
+
+    mapping.forEach(({ key, label }) => {
+      const valStr = (sizesObj[key] || '').trim();
+      if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
+        const pNum = Number(valStr);
+        if (firstPrice === undefined) firstPrice = pNum;
+        built.push({
+          id: uid(`var_pk_${key}_`),
+          label,
+          price: pNum,
+          priceDelta: 0,
+          costDelta: 0,
+          stock: 50,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
+        });
+      }
+    });
+
+    setVariants(built);
+    setHasVariants(built.length > 0);
+    if (firstPrice !== undefined) {
+      productForm.setValue('price', firstPrice);
+      productForm.clearErrors('price');
+    }
+  };
+
+  const handlePackSizeChange = (key: keyof typeof packSizes, val: string) => {
+    const updated = { ...packSizes, [key]: val };
+    setPackSizes(updated);
+    rebuildVariantsFromPackSizes(updated);
+  };
 
   const rebuildVariantsFromPortionSizes = (sizesObj: typeof portionSizes) => {
     const mapping: { key: keyof typeof portionSizes; label: string }[] = [
@@ -1718,12 +2074,10 @@ export function AddProductView(): React.JSX.Element {
     productForm.setValue('pricingType', typeId);
 
     const activeList =
-      activeDepartmentTab === 'paint_hardware'
-        ? PRICING_TYPES_PAINT_HARDWARE
-        : watchedModule === 'fastfood'
+      watchedModule === 'fastfood'
         ? PRICING_TYPES_FASTFOOD
-        : PRICING_TYPES_MINIMART;
-    const typeConfig = activeList.find((p) => p.id === typeId);
+        : getPricingTypesForProfile(detectedProfile, false);
+    const typeConfig = activeList.find((p) => p.id === typeId) || ALL_RETAIL_PRICING_TYPES.find((p) => p.id === typeId);
     if (!typeConfig) return;
 
     // 1. Auto-select suggested measurement unit
@@ -1738,22 +2092,36 @@ export function AddProductView(): React.JSX.Element {
       rebuildVariantsFromGarmentSizes(garmentSizes);
     } else if (typeId === 'retail_shoes') {
       rebuildVariantsFromShoeSizes(shoeSizes);
+    } else if (typeId === 'retail_paint') {
+      rebuildVariantsFromPaintSizes(paintSizes);
+    } else if (typeId === 'retail_wire') {
+      rebuildVariantsFromWireSizes(wireSizes);
+    } else if (typeId === 'retail_wattage') {
+      rebuildVariantsFromWattageSizes(wattageSizes);
+    } else if (typeId === 'retail_pharma_strip') {
+      rebuildVariantsFromPharmaStripSizes(pharmaStripSizes);
+    } else if (typeId === 'retail_pharma_syrup') {
+      rebuildVariantsFromPharmaSyrupSizes(pharmaSyrupSizes);
+    } else if (typeId === 'retail_storage') {
+      rebuildVariantsFromStorageSizes(storageSizes);
+    } else if (typeId === 'retail_bakery') {
+      rebuildVariantsFromBakerySizes(bakerySizes);
+    } else if (typeId === 'retail_packs') {
+      rebuildVariantsFromPackSizes(packSizes);
     } else if (typeId === 'retail_shades') {
       rebuildVariantsFromShadeSizes(shadeSizes);
     } else if (typeId === 'retail_volumes') {
       rebuildVariantsFromVolumeSizes(volumeSizes);
-    } else if (typeId === 'paint_packs') {
-      rebuildVariantsFromPaintSizes(paintSizes, paintCostPrices, paintShadeCode);
-    } else if (typeId === 'sanitary_fittings') {
-      rebuildVariantsFromSanitarySizes(sanitarySizes);
-    } else if (typeId === 'hardware_fasteners') {
-      rebuildVariantsFromHardwareSizes(hardwareSizes);
     } else if (typeId === 'halffull') {
       rebuildVariantsFromPortionSizes(portionSizes);
     } else if (typeId === 'drinks') {
       rebuildVariantsFromDrinkSizes(drinkSizes);
     } else if (typeId === 'water') {
       rebuildVariantsFromWaterSizes(waterSizes);
+    } else if (typeId === 'perkg') {
+      productForm.setValue('unit', 'KG');
+      setVariants([]);
+      setHasVariants(false);
     } else if (typeId === 'fixed' || typeId === 'perpiece') {
       // Single price mode
       setVariants([]);
@@ -1777,12 +2145,44 @@ export function AddProductView(): React.JSX.Element {
         throw new Error('No pizza size price entered');
       }
       if (pricingType === 'retail_garments' && variants.length === 0) {
-        alert('Please enter a price for at least one garment size (S, M, L, XL).');
+        alert('Please enter a price for at least one garment size (XS, S, M, L, XL, etc.).');
         throw new Error('No garment size price entered');
       }
       if (pricingType === 'retail_shoes' && variants.length === 0) {
-        alert('Please enter a price for at least one shoe size (40, 41, 42, 43, 44).');
+        alert('Please enter a price for at least one shoe size (38 - 45).');
         throw new Error('No shoe size price entered');
+      }
+      if (pricingType === 'retail_paint' && variants.length === 0) {
+        alert('Please enter a price for at least one paint container size (Quarter, Gallon, Balti).');
+        throw new Error('No paint container price entered');
+      }
+      if (pricingType === 'retail_wire' && variants.length === 0) {
+        alert('Please enter a price for at least one wire gauge or coil.');
+        throw new Error('No wire gauge price entered');
+      }
+      if (pricingType === 'retail_wattage' && variants.length === 0) {
+        alert('Please enter a price for at least one wattage variant.');
+        throw new Error('No wattage price entered');
+      }
+      if (pricingType === 'retail_pharma_strip' && variants.length === 0) {
+        alert('Please enter a price for Strip or Box.');
+        throw new Error('No pharma strip price entered');
+      }
+      if (pricingType === 'retail_pharma_syrup' && variants.length === 0) {
+        alert('Please enter a price for syrup bottle volume.');
+        throw new Error('No syrup price entered');
+      }
+      if (pricingType === 'retail_storage' && variants.length === 0) {
+        alert('Please enter a price for at least one storage variant (64GB - 512GB).');
+        throw new Error('No storage price entered');
+      }
+      if (pricingType === 'retail_bakery' && variants.length === 0) {
+        alert('Please enter a price for at least one sweet box size (250g - 2 KG).');
+        throw new Error('No bakery box price entered');
+      }
+      if (pricingType === 'retail_packs' && variants.length === 0) {
+        alert('Please enter a price for Single piece or Carton.');
+        throw new Error('No pack price entered');
       }
       if (pricingType === 'retail_shades' && variants.length === 0) {
         alert('Please enter a price for at least one shade or color.');
@@ -1791,18 +2191,6 @@ export function AddProductView(): React.JSX.Element {
       if (pricingType === 'retail_volumes' && variants.length === 0) {
         alert('Please enter a price for at least one pack or bottle volume.');
         throw new Error('No volume price entered');
-      }
-      if (pricingType === 'paint_packs' && variants.length === 0) {
-        alert('Please enter a price for at least one paint packing (Quarter, Gallon, or Balti).');
-        throw new Error('No paint pack price entered');
-      }
-      if (pricingType === 'sanitary_fittings' && variants.length === 0) {
-        alert('Please enter a price for at least one sanitary tap / fitting.');
-        throw new Error('No sanitary price entered');
-      }
-      if (pricingType === 'hardware_fasteners' && variants.length === 0) {
-        alert('Please enter a price for at least one hardware size / weight / pack.');
-        throw new Error('No hardware price entered');
       }
       if (pricingType === 'halffull' && variants.length === 0) {
         alert('Please enter a price for Half or Full portion.');
@@ -1821,10 +2209,7 @@ export function AddProductView(): React.JSX.Element {
         variants.length > 0 && variants[0].price !== undefined && variants[0].price > 0
           ? variants[0].price
           : data.price;
-
-      const shadeNote = paintShadeCode ? `Shade Code: ${paintShadeCode}` : '';
-      const tokenNote = painterTokenAmount ? `Painter Token: Rs. ${painterTokenAmount}` : '';
-      const combinedNotes = [data.description, shadeNote, tokenNote].filter(Boolean).join(' | ');
+      const combinedNotes = data.description?.trim() || undefined;
 
       const newProduct: Product = {
         id: uid(data.module === 'fastfood' ? 'prod_ff_' : 'prod_mm_'),
@@ -1980,36 +2365,29 @@ export function AddProductView(): React.JSX.Element {
                   backgroundColor:
                     activeDepartmentTab === 'fastfood'
                       ? 'rgba(229, 25, 55, 0.12)'
-                      : activeDepartmentTab === 'paint_hardware'
-                      ? 'rgba(245, 158, 11, 0.12)'
                       : 'rgba(2, 132, 199, 0.12)',
                   color:
                     activeDepartmentTab === 'fastfood'
                       ? '#E51937'
-                      : activeDepartmentTab === 'paint_hardware'
-                      ? '#D97706'
                       : '#0284C7',
                   border: `1px solid ${
                     activeDepartmentTab === 'fastfood'
                       ? 'rgba(229, 25, 55, 0.25)'
-                      : activeDepartmentTab === 'paint_hardware'
-                      ? 'rgba(245, 158, 11, 0.25)'
                       : 'rgba(2, 132, 199, 0.25)'
                   }`,
                 }}
               >
                 {activeDepartmentTab === 'fastfood'
                   ? '● Active: Fast Food & Kitchen Menu'
-                  : activeDepartmentTab === 'paint_hardware'
-                  ? '● Active: Paint, Hardware & Sanitary'
-                  : '● Active: Retail Mini Mart'}
+                  : `● Active: ${profileConfig.label} Catalog`}
               </span>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-            {/* 🍔 Fast Food Card */}
-            {hasFastFood && (
+          {/* Department Selection Cards (Shown only when multiple modules exist) */}
+          {hasFastFood && hasOmnimart ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+              {/* Fast Food Card */}
               <button
                 type="button"
                 onClick={() => {
@@ -2064,19 +2442,17 @@ export function AddProductView(): React.JSX.Element {
                   </span>
                 </div>
               </button>
-            )}
 
-            {/* Retail Mini Mart Card */}
-            {hasOmnimart && (
+              {/* Retail / Profile Card */}
               <button
                 type="button"
                 onClick={() => {
                   setActiveDepartmentTab('minimart');
                   productForm.setValue('module', 'minimart');
-                  const mmCat = categories.find((c) => c.module === 'minimart' && !c.name.toLowerCase().includes('paint') && !c.name.toLowerCase().includes('hardware'));
+                  const mmCat = categories.find((c) => c.module === 'minimart');
                   if (mmCat) productForm.setValue('category', mmCat.name);
                   if (!productForm.getValues('skuCode')) productForm.setValue('skuCode', generateRandomSku());
-                  productForm.setValue('unit', 'PCS');
+                  productForm.setValue('unit', profileConfig.suggestedUnits[0] || 'PCS');
                   handlePricingTypeSelect('fixed');
                 }}
                 style={{
@@ -2085,12 +2461,12 @@ export function AddProductView(): React.JSX.Element {
                   gap: '14px',
                   padding: '14px 18px',
                   borderRadius: '10px',
-                  border: activeDepartmentTab === 'minimart' ? '2px solid #0284C7' : `1px solid ${tokens.colorNeutralStroke2}`,
-                  backgroundColor: activeDepartmentTab === 'minimart' ? 'rgba(2, 132, 199, 0.09)' : tokens.colorNeutralBackground2,
+                  border: activeDepartmentTab === 'minimart' ? `2px solid ${profileConfig.accentColor || '#0284C7'}` : `1px solid ${tokens.colorNeutralStroke2}`,
+                  backgroundColor: activeDepartmentTab === 'minimart' ? `${profileConfig.accentColor || '#0284C7'}15` : tokens.colorNeutralBackground2,
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 0.15s ease',
-                  boxShadow: activeDepartmentTab === 'minimart' ? '0 4px 14px rgba(2, 132, 199, 0.18)' : 'none',
+                  boxShadow: activeDepartmentTab === 'minimart' ? `0 4px 14px ${profileConfig.accentColor || '#0284C7'}30` : 'none',
                 }}
               >
                 <div
@@ -2098,92 +2474,99 @@ export function AddProductView(): React.JSX.Element {
                     width: '44px',
                     height: '44px',
                     borderRadius: '10px',
-                    backgroundColor: activeDepartmentTab === 'minimart' ? '#0284C7' : tokens.colorNeutralBackground3,
+                    backgroundColor: activeDepartmentTab === 'minimart' ? (profileConfig.accentColor || '#0284C7') : tokens.colorNeutralBackground3,
                     color: activeDepartmentTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
-                    boxShadow: activeDepartmentTab === 'minimart' ? '0 2px 8px rgba(2, 132, 199, 0.35)' : 'none',
+                    boxShadow: activeDepartmentTab === 'minimart' ? `0 2px 8px ${profileConfig.accentColor || '#0284C7'}40` : 'none',
                   }}
                 >
                   <ShoppingBag24Regular style={{ width: 24, height: 24 }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 800, fontSize: '14px', color: activeDepartmentTab === 'minimart' ? '#0284C7' : tokens.colorNeutralForeground1 }}>
-                      Retail Mini Mart
+                    <span style={{ fontWeight: 800, fontSize: '14px', color: activeDepartmentTab === 'minimart' ? (profileConfig.accentColor || '#0284C7') : tokens.colorNeutralForeground1 }}>
+                      {profileConfig.label}
                     </span>
                     {activeDepartmentTab === 'minimart' && (
-                      <CheckmarkCircle20Filled style={{ color: '#0284C7', width: 18, height: 18 }} />
+                      <CheckmarkCircle20Filled style={{ color: profileConfig.accentColor || '#0284C7', width: 18, height: 18 }} />
                     )}
                   </div>
                   <span style={{ display: 'block', fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
-                    Cosmetics, Stitched Clothes, Shoes, Toys, Grocery &bull; Barcode scanner ready
+                    {profileConfig.description}
                   </span>
                 </div>
               </button>
-            )}
-
-            {/* 🎨 Paint, Hardware & Sanitary Card */}
-            {hasOmnimart && (
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveDepartmentTab('paint_hardware');
-                  productForm.setValue('module', 'minimart');
-                  const paintCat = categories.find((c) => c.name.toLowerCase().includes('paint')) || categories.find((c) => c.module === 'minimart');
-                  if (paintCat) productForm.setValue('category', paintCat.name);
-                  if (!productForm.getValues('skuCode')) productForm.setValue('skuCode', generateRandomSku());
-                  productForm.setValue('unit', 'GALLON');
-                  handlePricingTypeSelect('paint_packs');
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  padding: '14px 18px',
-                  borderRadius: '10px',
-                  border: activeDepartmentTab === 'paint_hardware' ? '2px solid #E51937' : `1px solid ${tokens.colorNeutralStroke2}`,
-                  backgroundColor: activeDepartmentTab === 'paint_hardware' ? 'rgba(229, 25, 55, 0.09)' : tokens.colorNeutralBackground2,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.15s ease',
-                  boxShadow: activeDepartmentTab === 'paint_hardware' ? '0 4px 14px rgba(229, 25, 55, 0.18)' : 'none',
-                }}
-              >
-                <div
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '10px',
-                    backgroundColor: activeDepartmentTab === 'paint_hardware' ? '#E51937' : tokens.colorNeutralBackground3,
-                    color: activeDepartmentTab === 'paint_hardware' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: activeDepartmentTab === 'paint_hardware' ? '0 2px 8px rgba(229, 25, 55, 0.35)' : 'none',
-                  }}
-                >
-                  <PaintBucket size={22} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 800, fontSize: '14px', color: activeDepartmentTab === 'paint_hardware' ? '#E51937' : tokens.colorNeutralForeground1 }}>
-                      Paint, Hardware & Sanitary
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                backgroundColor: tokens.colorNeutralBackground2,
+                border: `1px solid ${tokens.colorNeutralStroke2}`,
+              }}
+            >
+              {hasFastFood ? (
+                <>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      backgroundColor: '#E51937',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Food24Regular style={{ width: 20, height: 20 }} />
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 700, fontSize: '13.5px', color: tokens.colorNeutralForeground1 }}>
+                      Fast Food & Kitchen Catalog
                     </span>
-                    {activeDepartmentTab === 'paint_hardware' && (
-                      <CheckmarkCircle20Filled style={{ color: '#E51937', width: 18, height: 18 }} />
-                    )}
+                    <span style={{ display: 'block', fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
+                      Products created here are routed to kitchen KDS screens and POS food counter
+                    </span>
                   </div>
-                  <span style={{ display: 'block', fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
-                    Brighto Paints, Baltian, Gallons, Tootian, Nalke, Kill Kable
-                  </span>
-                </div>
-              </button>
-            )}
-          </div>
+                </>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      backgroundColor: profileConfig.accentColor || '#0284C7',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <ShoppingBag24Regular style={{ width: 20, height: 20 }} />
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 700, fontSize: '13.5px', color: tokens.colorNeutralForeground1 }}>
+                      {profileConfig.label} Catalog
+                    </span>
+                    <span style={{ display: 'block', fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
+                      {profileConfig.description}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
 
@@ -2254,16 +2637,31 @@ export function AddProductView(): React.JSX.Element {
                         options={displayList.map((c) => ({ value: c.name, label: c.name }))}
                         onChange={(val) => {
                           field.onChange(val);
-                          // Auto-suggest retail pricing type based on chosen category
-                          const catLower = val.toLowerCase();
-                          if (catLower.includes('garment') || catLower.includes('cloth') || catLower.includes('kurta')) {
-                            setPricingType('retail_garments');
-                            productForm.setValue('pricingType', 'retail_garments');
-                            rebuildVariantsFromGarmentSizes(garmentSizes);
-                          } else if (catLower.includes('shoe') || catLower.includes('footwear')) {
+                          const matchedCat = categories.find((c) => c.name === val);
+                          const detected = detectCategoryProfile(val, matchedCat?.profile);
+                          const pCfg = CATEGORY_PROFILES[detected];
+                          if (pCfg && pCfg.suggestedUnits.length > 0) {
+                            productForm.setValue('unit', pCfg.suggestedUnits[0]);
+                          }
+                          if (detected === 'footwear') {
                             setPricingType('retail_shoes');
                             productForm.setValue('pricingType', 'retail_shoes');
                             rebuildVariantsFromShoeSizes(shoeSizes);
+                          } else if (detected === 'apparel') {
+                            setPricingType('retail_garments');
+                            productForm.setValue('pricingType', 'retail_garments');
+                            rebuildVariantsFromGarmentSizes(garmentSizes);
+                          } else if (detected === 'cosmetics') {
+                            setPricingType('retail_shades');
+                            productForm.setValue('pricingType', 'retail_shades');
+                            rebuildVariantsFromShadeSizes(shadeSizes);
+                          } else if (detected === 'grocery' || detected === 'bakery') {
+                            setPricingType('perkg');
+                            productForm.setValue('pricingType', 'perkg');
+                          } else if (detected === 'food') {
+                            setPricingType('smlxl');
+                            productForm.setValue('pricingType', 'smlxl');
+                            rebuildVariantsFromPizzaSizes(pizzaSizes);
                           }
                         }}
                         error={productForm.formState.errors.category?.message}
@@ -2310,16 +2708,21 @@ export function AddProductView(): React.JSX.Element {
 
             {/* ── Pricing Type Selector (Matching Reference Design) ── */}
             <div className={styles.pricingTypeSection}>
-              <label className={styles.pricingTypeLabel}>
-                Pricing Type <span className={styles.requiredStar}>*</span>
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label className={styles.pricingTypeLabel} style={{ marginBottom: 0 }}>
+                  Pricing Type <span className={styles.requiredStar}>*</span>
+                  {watchedModule !== 'fastfood' && (
+                    <span style={{ marginLeft: '8px', fontSize: '11px', color: profileConfig.accentColor, fontWeight: 700 }}>
+                      ({profileConfig.shortTag} Recommended)
+                    </span>
+                  )}
+                </label>
+              </div>
 
               <div className={styles.pricingTypeRow}>
-                {(activeDepartmentTab === 'paint_hardware'
-                  ? PRICING_TYPES_PAINT_HARDWARE
-                  : watchedModule === 'fastfood'
+                {(watchedModule === 'fastfood'
                   ? PRICING_TYPES_FASTFOOD
-                  : PRICING_TYPES_MINIMART
+                  : getPricingTypesForProfile(detectedProfile, false)
                 ).map((pt) => {
                   const Icon = pt.icon;
                   const isSelected = pricingType === pt.id;
@@ -2338,11 +2741,9 @@ export function AddProductView(): React.JSX.Element {
               </div>
 
               <div className={styles.pricingTypeDesc}>
-                {(activeDepartmentTab === 'paint_hardware'
-                  ? PRICING_TYPES_PAINT_HARDWARE
-                  : watchedModule === 'fastfood'
+                {(watchedModule === 'fastfood'
                   ? PRICING_TYPES_FASTFOOD
-                  : PRICING_TYPES_MINIMART
+                  : ALL_RETAIL_PRICING_TYPES
                 ).find((p) => p.id === pricingType)?.desc}
               </div>
 
@@ -2529,7 +2930,16 @@ export function AddProductView(): React.JSX.Element {
                         type="button"
                         onClick={() => {
                           if (bulkShoePrice) {
-                            const updated = { s40: bulkShoePrice, s41: bulkShoePrice, s42: bulkShoePrice, s43: bulkShoePrice, s44: bulkShoePrice };
+                            const updated = {
+                              s38: bulkShoePrice,
+                              s39: bulkShoePrice,
+                              s40: bulkShoePrice,
+                              s41: bulkShoePrice,
+                              s42: bulkShoePrice,
+                              s43: bulkShoePrice,
+                              s44: bulkShoePrice,
+                              s45: bulkShoePrice,
+                            };
                             setShoeSizes(updated);
                             rebuildVariantsFromShoeSizes(updated);
                           }
@@ -2541,7 +2951,29 @@ export function AddProductView(): React.JSX.Element {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Size 38
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="4800"
+                        value={shoeSizes.s38}
+                        onChange={(e) => handleShoeSizeChange('s38', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Size 39
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="4800"
+                        value={shoeSizes.s39}
+                        onChange={(e) => handleShoeSizeChange('s39', e.target.value)}
+                      />
+                    </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
                         Size 40
@@ -2592,9 +3024,20 @@ export function AddProductView(): React.JSX.Element {
                       </label>
                       <CustomInput
                         type="number"
-                        placeholder="4950"
+                        placeholder="4800"
                         value={shoeSizes.s44}
                         onChange={(e) => handleShoeSizeChange('s44', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Size 45
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="4950"
+                        value={shoeSizes.s45}
+                        onChange={(e) => handleShoeSizeChange('s45', e.target.value)}
                       />
                     </div>
                   </div>
@@ -2716,291 +3159,520 @@ export function AddProductView(): React.JSX.Element {
                 </div>
               )}
 
-              {/* ── 6. Dedicated Paint Packing & Shade Setup ── */}
-              {pricingType === 'paint_packs' && (
-                <div style={{ marginTop: '16px', padding: '16px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+              {/* ── 6. Dedicated Hardware Paint Containers (Quarter, Gallon, Balti) ── */}
+              {pricingType === 'retail_paint' && (
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <PaintBucket size={20} color="#E51937" />
+                      <Wrench size={18} color="#D97706" />
                       <div>
-                        <span style={{ fontSize: '13.5px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
-                          Paint Packing Sizes & Shade Setup
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                          Paint Container Volumes (Quarter 1L, Gallon 4L, Balti 16L)
                         </span>
                         <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
-                          Quarter (1L), Gallon (4L), Balti / Drum (14-16L) with color code & painter coupon
+                          Enter pricing for paint tins, emulsions, distempers or coatings
                         </p>
                       </div>
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937' }}>
-                      Brighto / Paint Model
-                    </span>
-                  </div>
 
-                  {/* Shade Code & Painter Token Inputs */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '16px', padding: '12px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground1 }}>
-                        Color / Shade Code (e.g. 4550, 3025)
-                      </label>
-                      <CustomInput
-                        type="text"
-                        placeholder="e.g. 4550 or 3025"
-                        value={paintShadeCode}
-                        onChange={(e) => handlePaintShadeCodeChange(e.target.value)}
-                      />
-                      <span style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, marginTop: '2px', display: 'block' }}>
-                        Counter cashier can search directly by this code
+                    {/* Quick Same Price tool */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>
+                        Quarter Base Price:
                       </span>
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground1 }}>
-                        Painter Token / Coupon Value (PKR)
-                      </label>
-                      <CustomInput
+                      <input
                         type="number"
-                        placeholder="e.g. 500 (inside bucket/gallon)"
-                        value={painterTokenAmount}
-                        onChange={(e) => setPainterTokenAmount(e.target.value)}
+                        placeholder="e.g. 950"
+                        value={bulkPaintPrice}
+                        onChange={(e) => setBulkPaintPrice(e.target.value)}
+                        style={{ width: '90px', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${tokens.colorNeutralStroke1}`, fontSize: '12px' }}
                       />
-                      <span style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, marginTop: '2px', display: 'block' }}>
-                        Optional coupon inside balti for painter loyalty cashback
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (bulkPaintPrice) {
+                            const pNum = Number(bulkPaintPrice);
+                            const updated = {
+                              quarter: String(pNum),
+                              gallon: String(pNum * 3.6),
+                              balti: String(pNum * 13.5),
+                            };
+                            setPaintSizes(updated);
+                            rebuildVariantsFromPaintSizes(updated);
+                          }
+                        }}
+                        style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#D97706', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Auto Fill Matrix
+                      </button>
                     </div>
                   </div>
 
-                  {/* 3 Packing Size Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-                    {/* Quarter Card */}
-                    <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '12.5px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
-                          Quarter (approx 1 Litre)
-                        </span>
-                        <span style={{ fontSize: '10.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>0.91L - 1.0L</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '3px', color: tokens.colorNeutralForeground2 }}>
-                            Sale Price (PKR)
-                          </label>
-                          <CustomInput
-                            type="number"
-                            placeholder="e.g. 950"
-                            value={paintSizes.quarter}
-                            onChange={(e) => handlePaintSizeChange('quarter', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '3px', color: tokens.colorNeutralForeground3 }}>
-                            Cost / Khareed Rate (PKR)
-                          </label>
-                          <CustomInput
-                            type="number"
-                            placeholder="e.g. 800"
-                            value={paintCostPrices.quarter}
-                            onChange={(e) => handlePaintCostChange('quarter', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Gallon Card */}
-                    <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '12.5px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
-                          Gallon (approx 4 Litres)
-                        </span>
-                        <span style={{ fontSize: '10.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>3.64L - 4.0L</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '3px', color: tokens.colorNeutralForeground2 }}>
-                            Sale Price (PKR)
-                          </label>
-                          <CustomInput
-                            type="number"
-                            placeholder="e.g. 3300"
-                            value={paintSizes.gallon}
-                            onChange={(e) => handlePaintSizeChange('gallon', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '3px', color: tokens.colorNeutralForeground3 }}>
-                            Cost / Khareed Rate (PKR)
-                          </label>
-                          <CustomInput
-                            type="number"
-                            placeholder="e.g. 2800"
-                            value={paintCostPrices.gallon}
-                            onChange={(e) => handlePaintCostChange('gallon', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Balti / Drum Card */}
-                    <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, border: `1px solid ${tokens.colorNeutralStroke2}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#E51937' }}>
-                          Balti / Drum (14 - 16 Litres)
-                        </span>
-                        <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#E51937' }}>Bucket / Balti</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '3px', color: tokens.colorNeutralForeground2 }}>
-                            Sale Price (PKR)
-                          </label>
-                          <CustomInput
-                            type="number"
-                            placeholder="e.g. 11200"
-                            value={paintSizes.balti}
-                            onChange={(e) => handlePaintSizeChange('balti', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '3px', color: tokens.colorNeutralForeground3 }}>
-                            Cost / Khareed Rate (PKR)
-                          </label>
-                          <CustomInput
-                            type="number"
-                            placeholder="e.g. 9500"
-                            value={paintCostPrices.balti}
-                            onChange={(e) => handlePaintCostChange('balti', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── 7. Dedicated Sanitary Taps Pricing ── */}
-              {pricingType === 'sanitary_fittings' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <Wrench size={18} color="#E51937" />
-                    <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
-                        Sanitary & Taps Pricing (Tootian / Nalke)
-                      </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
-                        Bib Cock, Pillar Cock, Wall Mixer, Muslim Shower
-                      </p>
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Bib Cock (Tooti)
+                        Quarter (1 Liter Tin)
                       </label>
                       <CustomInput
                         type="number"
-                        placeholder="1450"
-                        value={sanitarySizes.bibCock}
-                        onChange={(e) => handleSanitarySizeChange('bibCock', e.target.value)}
+                        placeholder="950"
+                        value={paintSizes.quarter}
+                        onChange={(e) => handlePaintSizeChange('quarter', e.target.value)}
                       />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Pillar Cock (Basin)
+                        Gallon (4 Liters Tin)
                       </label>
                       <CustomInput
                         type="number"
-                        placeholder="1850"
-                        value={sanitarySizes.pillarCock}
-                        onChange={(e) => handleSanitarySizeChange('pillarCock', e.target.value)}
+                        placeholder="3400"
+                        value={paintSizes.gallon}
+                        onChange={(e) => handlePaintSizeChange('gallon', e.target.value)}
                       />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Wall Mixer
+                        Balti / Bucket (16 Liters Drum)
                       </label>
                       <CustomInput
                         type="number"
-                        placeholder="4800"
-                        value={sanitarySizes.wallMixer}
-                        onChange={(e) => handleSanitarySizeChange('wallMixer', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Muslim Shower Set
-                      </label>
-                      <CustomInput
-                        type="number"
-                        placeholder="1250"
-                        value={sanitarySizes.muslimShower}
-                        onChange={(e) => handleSanitarySizeChange('muslimShower', e.target.value)}
+                        placeholder="12800"
+                        value={paintSizes.balti}
+                        onChange={(e) => handlePaintSizeChange('balti', e.target.value)}
                       />
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* ── 8. Dedicated Hardware Fasteners Pricing ── */}
-              {pricingType === 'hardware_fasteners' && (
+              {/* ── 7. Dedicated Electrical Wire Gauges & Coils ── */}
+              {pricingType === 'retail_wire' && (
                 <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <Hammer size={18} color="#E51937" />
-                    <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
-                        Hardware Fasteners (Kill / Kable / Screws)
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Zap size={18} color="#EAB308" />
+                      <div>
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                          Wire Gauge & Coil Sizes (1.5mm, 2.5mm, 7/29, 7/36, Coil 90m)
+                        </span>
+                        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                          Enter pricing for copper cables and coil bundles
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>
+                        Same Rate:
                       </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
-                        Sell by weight (0.5 KG, 1 KG) or by packaging (Packet, Box)
-                      </p>
+                      <input
+                        type="number"
+                        placeholder="e.g. 450"
+                        value={bulkWirePrice}
+                        onChange={(e) => setBulkWirePrice(e.target.value)}
+                        style={{ width: '90px', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${tokens.colorNeutralStroke1}`, fontSize: '12px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (bulkWirePrice) {
+                            const updated = {
+                              w1_5: bulkWirePrice,
+                              w2_5: String(Number(bulkWirePrice) * 1.6),
+                              w7_29: String(Number(bulkWirePrice) * 1.8),
+                              w7_36: String(Number(bulkWirePrice) * 2.2),
+                              wcoil: String(Number(bulkWirePrice) * 90),
+                            };
+                            setWireSizes(updated);
+                            rebuildVariantsFromWireSizes(updated);
+                          }
+                        }}
+                        style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#EAB308', color: '#000', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Auto Fill
+                      </button>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        0.5 KG (Aadha Kilo)
+                        1.5mm Cable
                       </label>
                       <CustomInput
                         type="number"
                         placeholder="180"
-                        value={hardwareSizes.halfKg}
-                        onChange={(e) => handleHardwareSizeChange('halfKg', e.target.value)}
+                        value={wireSizes.w1_5}
+                        onChange={(e) => handleWireSizeChange('w1_5', e.target.value)}
                       />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        1.0 KG (Ek Kilo)
+                        2.5mm Cable
                       </label>
                       <CustomInput
                         type="number"
-                        placeholder="350"
-                        value={hardwareSizes.oneKg}
-                        onChange={(e) => handleHardwareSizeChange('oneKg', e.target.value)}
+                        placeholder="280"
+                        value={wireSizes.w2_5}
+                        onChange={(e) => handleWireSizeChange('w2_5', e.target.value)}
                       />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Packet (Small Pack)
+                        7/29 Wire
                       </label>
                       <CustomInput
                         type="number"
-                        placeholder="120"
-                        value={hardwareSizes.packet}
-                        onChange={(e) => handleHardwareSizeChange('packet', e.target.value)}
+                        placeholder="320"
+                        value={wireSizes.w7_29}
+                        onChange={(e) => handleWireSizeChange('w7_29', e.target.value)}
                       />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Box (Wholesale Dabba)
+                        7/36 Wire
                       </label>
                       <CustomInput
                         type="number"
-                        placeholder="1100"
-                        value={hardwareSizes.box}
-                        onChange={(e) => handleHardwareSizeChange('box', e.target.value)}
+                        placeholder="420"
+                        value={wireSizes.w7_36}
+                        onChange={(e) => handleWireSizeChange('w7_36', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Coil (90m Roll)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="8500"
+                        value={wireSizes.wcoil}
+                        onChange={(e) => handleWireSizeChange('wcoil', e.target.value)}
                       />
                     </div>
                   </div>
                 </div>
               )}
+
+              {/* ── 8. Dedicated LED Wattage Variants ── */}
+              {pricingType === 'retail_wattage' && (
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <Zap size={18} color="#EAB308" />
+                    <div>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        LED Bulb / Panel Wattages (5W, 12W, 18W, 24W)
+                      </span>
+                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        Enter pricing for bulbs and ceiling lights by wattage
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        5 Watt
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="220"
+                        value={wattageSizes.w5}
+                        onChange={(e) => handleWattageSizeChange('w5', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        12 Watt
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="350"
+                        value={wattageSizes.w12}
+                        onChange={(e) => handleWattageSizeChange('w12', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        18 Watt
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="520"
+                        value={wattageSizes.w18}
+                        onChange={(e) => handleWattageSizeChange('w18', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        24 Watt
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="750"
+                        value={wattageSizes.w24}
+                        onChange={(e) => handleWattageSizeChange('w24', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── 9. Dedicated Pharmacy Strip & Box ── */}
+              {pricingType === 'retail_pharma_strip' && (
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <HeartPulse size={18} color="#0284C7" />
+                    <div>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        Medicine Strip & Full Box
+                      </span>
+                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        Enter pricing for single blister strip and complete box pack
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Strip (10 Tablets)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="80"
+                        value={pharmaStripSizes.strip}
+                        onChange={(e) => handlePharmaStripSizeChange('strip', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Full Box (100 Tablets)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="750"
+                        value={pharmaStripSizes.box}
+                        onChange={(e) => handlePharmaStripSizeChange('box', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── 10. Dedicated Pharmacy Syrup Volumes ── */}
+              {pricingType === 'retail_pharma_syrup' && (
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <Package size={18} color="#0284C7" />
+                    <div>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        Syrup & Suspension Bottles (60ml, 120ml)
+                      </span>
+                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        Enter pricing for pediatric and standard syrup bottles
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        60ml Bottle
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="110"
+                        value={pharmaSyrupSizes.ml60}
+                        onChange={(e) => handlePharmaSyrupSizeChange('ml60', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        120ml Bottle
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="195"
+                        value={pharmaSyrupSizes.ml120}
+                        onChange={(e) => handlePharmaSyrupSizeChange('ml120', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── 11. Dedicated Electronics Storage Variants ── */}
+              {pricingType === 'retail_storage' && (
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <Smartphone size={18} color="#3B82F6" />
+                    <div>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        Internal Storage (64GB, 128GB, 256GB, 512GB)
+                      </span>
+                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        Enter pricing for smartphones, tablets or memory devices
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        64GB
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="38000"
+                        value={storageSizes.gb64}
+                        onChange={(e) => handleStorageSizeChange('gb64', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        128GB
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="45000"
+                        value={storageSizes.gb128}
+                        onChange={(e) => handleStorageSizeChange('gb128', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        256GB
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="54000"
+                        value={storageSizes.gb256}
+                        onChange={(e) => handleStorageSizeChange('gb256', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        512GB
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="68000"
+                        value={storageSizes.gb512}
+                        onChange={(e) => handleStorageSizeChange('gb512', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── 12. Dedicated Bakery Sweets Box ── */}
+              {pricingType === 'retail_bakery' && (
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <Cake size={18} color="#F59E0B" />
+                    <div>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        Sweets / Mithai Packing Box (250g, 500g, 1 KG, 2 KG)
+                      </span>
+                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        Enter packing rates for traditional sweets and confectionery
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        250g Box
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="350"
+                        value={bakerySizes.g250}
+                        onChange={(e) => handleBakerySizeChange('g250', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        500g Box (Half KG)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="680"
+                        value={bakerySizes.g500}
+                        onChange={(e) => handleBakerySizeChange('g500', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        1 KG Box
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="1300"
+                        value={bakerySizes.kg1}
+                        onChange={(e) => handleBakerySizeChange('kg1', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        2 KG Family Box
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="2500"
+                        value={bakerySizes.kg2}
+                        onChange={(e) => handleBakerySizeChange('kg2', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── 13. Dedicated Single vs Carton Packs ── */}
+              {pricingType === 'retail_packs' && (
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <Boxes size={18} color="#059669" />
+                    <div>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        Single Piece vs Wholesale Carton / Box
+                      </span>
+                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        Enter individual retail price and whole carton wholesale price
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Single Piece (Retail)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="150"
+                        value={packSizes.single}
+                        onChange={(e) => handlePackSizeChange('single', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Full Carton / Box (Wholesale)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="3200"
+                        value={packSizes.carton}
+                        onChange={(e) => handlePackSizeChange('carton', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
 
               {/* Dedicated Half / Full Portion Size Pricing */}
               {pricingType === 'halffull' && (
@@ -3039,7 +3711,8 @@ export function AddProductView(): React.JSX.Element {
               {pricingType === 'drinks' && (
                 <div style={{ marginTop: '16px' }}>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: tokens.colorNeutralForeground1, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>🥤 Cold Drink Size Pricing (PKR)</span>
+                    <DrinkToGo20Regular style={{ width: 16, height: 16, color: '#E51937' }} />
+                    <span>Cold Drink Size Pricing (PKR)</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
                     <div>
@@ -3094,7 +3767,8 @@ export function AddProductView(): React.JSX.Element {
               {pricingType === 'water' && (
                 <div style={{ marginTop: '16px' }}>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: tokens.colorNeutralForeground1, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>💧 Mineral Water Size Pricing (PKR)</span>
+                    <Drop20Regular style={{ width: 16, height: 16, color: '#0284C7' }} />
+                    <span>Mineral Water Size Pricing (PKR)</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
                     <div>
@@ -3125,7 +3799,7 @@ export function AddProductView(): React.JSX.Element {
             </div>
 
             {/* Single Price Mode (Fixed, Per Piece, Weighed) */}
-            {pricingType !== 'smlxl' && pricingType !== 'halffull' && pricingType !== 'drinks' && pricingType !== 'water' && pricingType !== 'retail_garments' && pricingType !== 'retail_shoes' && pricingType !== 'retail_shades' && pricingType !== 'retail_volumes' && pricingType !== 'custom' && (
+            {!isVariantPricingType(pricingType) && pricingType !== 'custom' && (
               <>
                 <div className={styles.threeColGrid}>
                   <div>
@@ -3197,7 +3871,7 @@ export function AddProductView(): React.JSX.Element {
                       color: tokens.colorNeutralForeground1,
                     }}
                   >
-                    <span style={{ fontSize: '18px' }}>⚖️</span>
+                    <Scales20Regular style={{ width: 22, height: 22, color: '#E51937', flexShrink: 0 }} />
                     <div>
                       <b style={{ color: '#E51937' }}>Rupees Sale (Budget Mode Active):</b> Cashier can enter exact Rupee amount (e.g. Rs 50 or Rs 100) on the POS Counter card, and the system will automatically calculate the weight.
                     </div>
@@ -3207,7 +3881,7 @@ export function AddProductView(): React.JSX.Element {
             )}
 
             {/* Optional Cost Price & Opening Stock for Multi-Size/Portion Products */}
-            {(pricingType === 'smlxl' || pricingType === 'halffull' || pricingType === 'drinks' || pricingType === 'water' || pricingType === 'retail_garments' || pricingType === 'retail_shoes' || pricingType === 'retail_shades' || pricingType === 'retail_volumes') && (
+            {isVariantPricingType(pricingType) && (
               <div className={styles.twoColGrid}>
                 <div>
                   <Controller
@@ -3254,8 +3928,8 @@ export function AddProductView(): React.JSX.Element {
                   render={({ field }) => (
                     <CustomSelect
                       label="Measurement Unit"
-                      value={field.value || 'PCS'}
-                      options={UNIT_OPTIONS}
+                      value={field.value || categoryUnitOptions[0]?.value || 'PCS'}
+                      options={categoryUnitOptions}
                       onChange={(val) => field.onChange(val)}
                     />
                   )}
@@ -3293,9 +3967,10 @@ export function AddProductView(): React.JSX.Element {
                             onClick={() => productForm.setValue('skuCode', generateRandomSku())}
                             title="Generate automatic random barcode"
                             className={styles.linkBtn}
-                            style={{ fontWeight: 800, color: '#E51937' }}
+                            style={{ fontWeight: 800, color: '#E51937', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                           >
-                            ⚡ Auto Barcode
+                            <Flash20Regular style={{ width: 14, height: 14 }} />
+                            <span>Auto Barcode</span>
                           </button>
                         }
                       />
@@ -3435,7 +4110,7 @@ export function AddProductView(): React.JSX.Element {
                             }}
                           >
                             <span>{size}</span>
-                            {isSelected && <span>✓</span>}
+                            {isSelected && <Checkmark16Filled style={{ width: 12, height: 12 }} />}
                           </button>
                         );
                       })}
@@ -3672,17 +4347,21 @@ export function AddProductView(): React.JSX.Element {
                     <button
                       type="button"
                       style={{
-                        backgroundColor: '#E51937',
-                        color: '#FFFFFF',
-                        border: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        padding: '4px 8px',
                         borderRadius: '4px',
-                        padding: '3px 8px',
+                        border: 'none',
+                        backgroundColor: '#E51937',
+                        color: '#ffffff',
                         fontSize: '10px',
                         fontWeight: 700,
                         cursor: 'default',
                       }}
                     >
-                      🛒 Add
+                      <Add20Regular style={{ width: 12, height: 12 }} />
+                      <span>Add</span>
                     </button>
                   </div>
                 </div>
@@ -3747,22 +4426,24 @@ export function AddProductView(): React.JSX.Element {
                 )}
               />
 
-              <Controller
-                control={categoryForm.control}
-                name="module"
-                render={({ field }) => (
-                  <CustomSelect
-                    label="Target Store Module"
-                    required
-                    value={field.value}
-                    options={[
-                      ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
-                      ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Supermarket' }] : []),
-                    ]}
-                    onChange={(val) => field.onChange(val as ModuleKey)}
-                  />
-                )}
-              />
+              {hasFastFood && hasOmnimart && (
+                <Controller
+                  control={categoryForm.control}
+                  name="module"
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="Target Store Module"
+                      required
+                      value={field.value}
+                      options={[
+                        { value: 'fastfood', label: 'Fast Food Menu' },
+                        { value: 'minimart', label: profileConfig?.label || 'Retail Store' },
+                      ]}
+                      onChange={(val) => field.onChange(val as ModuleKey)}
+                    />
+                  )}
+                />
+              )}
             </div>
 
             {/* Modal Actions */}

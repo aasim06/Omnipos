@@ -145,7 +145,7 @@ export function Cart({
       <div className="flex-1 overflow-y-auto space-y-2.5 my-2 divide-y divide-[#232734]/60 no-scrollbar">
         {lines.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-[#8b92a0] py-10">
-            <span className="text-3xl mb-2 opacity-40">🛒</span>
+            <ShoppingBag size={32} className="mb-2 opacity-40 text-[#8b92a0]" />
             <p className="text-xs font-bold text-white">Cart is empty</p>
             <p className="text-[10px] mt-0.5 text-[#585f70]">
               Click products on the left to add items

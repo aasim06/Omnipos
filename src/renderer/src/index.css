@@ -16,6 +16,11 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Enforce Plus Jakarta Sans across all buttons, inputs, tabs, and Fluent elements */
+button, input, select, textarea, [role="tab"], .fui-Tab, .fui-Button {
+  font-family: var(--fluent-font) !important;
+}
+
 /* Enable text selection and copying */
 html, body, #root, main, table, tr, td, th, p, span, h1, h2, h3, h4, h5, h6, input, textarea {
   user-select: text;

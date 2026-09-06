@@ -290,8 +290,9 @@ export function AnalyticsView({ module = "minimart" }: AnalyticsViewProps) {
                   return (
                     <div key={cat.category} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-white flex items-center gap-1">
-                          <span className="text-amber-400">🍧</span> {cat.category}
+                        <span className="font-bold text-white flex items-center gap-1.5">
+                          <Folder size={14} className="text-amber-400 shrink-0" />
+                          <span>{cat.category}</span>
                         </span>
                         <span className="font-mono text-white font-bold">
                           {formatPKR(cat.revenue).replace("Rs.", "")} PKR

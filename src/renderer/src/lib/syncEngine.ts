@@ -221,6 +221,7 @@ class SyncEngine {
   private async pushItem(baseUrl: string, item: SyncQueueItem): Promise<void> {
     let endpoint = '';
     let method = 'POST';
+    let bodyPayload = item.payload;
 
     if (item.entity === 'order') {
       endpoint = `${baseUrl}/api/orders`;
@@ -231,12 +232,21 @@ class SyncEngine {
     } else if (item.entity === 'expense') {
       endpoint = `${baseUrl}/api/expenses`;
     } else if (item.entity === 'khata') {
-      endpoint = `${baseUrl}/api/khata`;
+      if (item.payload?.transaction) {
+        endpoint = `${baseUrl}/api/khata/${item.entityId}/transaction`;
+        bodyPayload = item.payload.transaction;
+      } else {
+        endpoint = `${baseUrl}/api/khata`;
+        method = item.action === 'UPDATE' ? 'PUT' : item.action === 'DELETE' ? 'DELETE' : 'POST';
+      }
+    } else if (item.entity === 'stockMovement') {
+      endpoint = `${baseUrl}/api/stock-movements`;
+      method = item.action === 'UPDATE' ? 'PUT' : item.action === 'DELETE' ? 'DELETE' : 'POST';
     }
 
     if (!endpoint) return;
 
-    const url = item.action === 'UPDATE' || item.action === 'DELETE' 
+    const url = (item.action === 'UPDATE' || item.action === 'DELETE') && !item.payload?.transaction
       ? `${endpoint}/${item.entityId}` 
       : endpoint;
 
@@ -244,7 +254,7 @@ class SyncEngine {
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-      body: method !== 'DELETE' ? JSON.stringify(item.payload) : undefined,
+      body: method !== 'DELETE' ? JSON.stringify(bodyPayload) : undefined,
     });
 
     if (!res.ok) {

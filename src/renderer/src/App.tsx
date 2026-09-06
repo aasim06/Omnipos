@@ -19,10 +19,10 @@ import { CategoriesView } from '@/features/catalog/CategoriesView';
 import { AddProductView } from '@/features/catalog/AddProductView';
 import { LoginView } from '@/features/auth/LoginView';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
-import { LicenseModulesProvider } from '@/features/auth/LicenseModulesContext';
+import { LicenseModulesProvider, useLicense } from '@/features/auth/LicenseModulesContext';
 import { LicensePage } from '@/features/auth/LicensePage';
 import { LicenseDisabledOverlay } from '@/features/auth/LicenseDisabledOverlay';
-import { RouteAccessGate } from '@/components/RouteAccessGate';
+import { RouteAccessGate, getDefaultAccessibleRoute } from '@/components/RouteAccessGate';
 import { FastFoodDashboardView } from '@/features/dashboard/FastFoodDashboardView';
 import { makeStyles } from '@fluentui/react-components';
 
@@ -106,6 +106,12 @@ function ProtectedShellLayout(): React.JSX.Element {
       </main>
     </div>
   );
+}
+
+function RootRedirect(): React.JSX.Element {
+  const { modules } = useLicense();
+  const { hasPermission } = useAuth();
+  return <Navigate to={getDefaultAccessibleRoute(modules, hasPermission)} replace />;
 }
 
 export default function App(): React.JSX.Element {
@@ -249,7 +255,7 @@ export default function App(): React.JSX.Element {
         <Routes>
           <Route path="/login" element={<LoginView />} />
           <Route element={<ProtectedShellLayout />}>
-            <Route path="/" element={<Navigate to="/pos/fastfood" replace />} />
+            <Route path="/" element={<RootRedirect />} />
 
             {/* Executive Analytics Dashboard */}
             <Route

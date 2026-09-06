@@ -4,12 +4,17 @@ import { BrowserRouter, HashRouter } from 'react-router-dom';
 import { AppProviders } from '@/theme/AppProviders';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { setupTenantInterceptor } from '@/lib/setupTenantInterceptor';
-import { ensureInitialData } from '@/lib/seedData';
+import { posApi } from '@/lib/api';
 import App from './App';
 import './index.css';
 
 setupTenantInterceptor();
-void ensureInitialData();
+
+// One-time complete database wipe as requested: removes all data, keeping ONLY admin user
+if (typeof window !== 'undefined' && localStorage.getItem('omnipos_full_wipe_done_2026') !== 'true') {
+  localStorage.setItem('omnipos_full_wipe_done_2026', 'true');
+  void posApi.wipeAllDataExceptAdmin();
+}
 
 // Detect whether running in Electron desktop app or standard web browser
 const isElectron =

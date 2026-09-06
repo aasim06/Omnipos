@@ -32,6 +32,11 @@ import {
   Checkmark20Regular,
   Food24Regular,
   ShoppingBag24Regular,
+  Box20Regular,
+  Folder20Regular,
+  Tag20Regular,
+  Location20Regular,
+  Ruler20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -44,6 +49,7 @@ import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { vendorStorage } from './vendorStorage';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 const stockInSchema = z.object({
   module: z.enum(['fastfood', 'minimart']).default('minimart'),
@@ -1085,15 +1091,10 @@ export function StockInView(): React.JSX.Element {
   const vendors = vendorStorage.getVendors();
   const location = useLocation();
 
-  // Fetch Stock Movements
+  // Fetch Stock Movements: Offline-First Cache (<5ms)
   const { data: movements = [], isLoading } = useQuery<StockMovement[]>({
     queryKey: ['stock-movements'],
-    queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/stock-movements`);
-      if (!res.ok) return [];
-      return res.json();
-    },
+    queryFn: () => posApi.fetchStockMovements(),
   });
 
   // Fetch Products for Live Stock Inspection
@@ -1103,14 +1104,22 @@ export function StockInView(): React.JSX.Element {
     staleTime: 60000,
   });
 
+  const { can } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
   // Filter tab for stock inflows (All, Fast Food Raw Materials, Mini Mart Products)
-  const [inventoryTab, setInventoryTab] = useState<'all' | 'fastfood' | 'minimart'>('all');
+  const [inventoryTab, setInventoryTab] = useState<'all' | 'fastfood' | 'minimart'>(() => {
+    if (hasFastFood && !hasOmnimart) return 'fastfood';
+    if (!hasFastFood && hasOmnimart) return 'minimart';
+    return 'all';
+  });
 
   // Top Card Create Form
   const form = useForm<StockInFormData>({
     resolver: zodResolver(stockInSchema) as any,
     defaultValues: {
-      module: 'minimart',
+      module: hasFastFood && !hasOmnimart ? 'fastfood' : 'minimart',
       selectedProductId: '',
       productName: '',
       vendorId: '',
@@ -1202,20 +1211,15 @@ export function StockInView(): React.JSX.Element {
         .filter(Boolean)
         .join(' • ');
 
-      await fetch(`${base}/api/stock-movements`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          module: data.module || 'minimart',
-          type: 'in',
-          productId: data.selectedProductId || uid('prod_'),
-          productName: data.productName,
-          quantity: data.quantity,
-          unitCost: unitCost,
-          unitPrice: null,
-          reason: data.vendorName || 'Supplier Purchase',
-          note: noteDetails,
-        }),
+      await posApi.saveStockMovement({
+        module: data.module || 'minimart',
+        type: 'in',
+        productId: data.selectedProductId || uid('prod_'),
+        productName: data.productName,
+        quantity: data.quantity,
+        unitCost: unitCost,
+        reason: data.vendorName || 'Supplier Purchase',
+        referenceInvoice: noteDetails,
       });
 
       // Update Vendor Payable Balance in real-time
@@ -1657,7 +1661,7 @@ export function StockInView(): React.JSX.Element {
             <div class="party-detail"><strong>Received By:</strong> Store Manager (Admin)</div>
             <div class="party-detail"><strong>Account Type:</strong> Commercial Inventory (Trade Credit)</div>
             <div style="margin-top: 8px; font-size: 10.5px; color: #15803d; font-weight: 700;">
-              ✓ Goods Verified &amp; Added to System Stock
+              &#10003; Goods Verified &amp; Added to System Stock
             </div>
           </div>
         </div>
@@ -1789,8 +1793,13 @@ export function StockInView(): React.JSX.Element {
     }
   };
 
-  // Only Inflow Movements
-  const stockInMovements = movements.filter((m) => m.type === 'in');
+  // Only Inflow Movements (filtered by licensed modules)
+  const stockInMovements = movements.filter((m) => {
+    if (m.type !== 'in') return false;
+    if (!hasFastFood && m.module === 'fastfood') return false;
+    if (!hasOmnimart && m.module !== 'fastfood') return false;
+    return true;
+  });
 
   // Filtered List by Tab and Search Query
   const filteredMovements = stockInMovements.filter((m) => {
@@ -1832,55 +1841,69 @@ export function StockInView(): React.JSX.Element {
           <span className={styles.cardTitle}>Record Stock In (Receiving Invoice)</span>
 
           {/* Department / Branch Switcher for Stock In */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Destination:
-            </span>
-            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-              <button
-                type="button"
-                onClick={() => form.setValue('module', 'fastfood')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: form.watch('module') === 'fastfood' ? '#E51937' : 'transparent',
-                  color: form.watch('module') === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: form.watch('module') === 'fastfood' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
-              >
-                <Food24Regular style={{ width: 14, height: 14 }} />
-                <span>Kitchen & Fast Food</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => form.setValue('module', 'minimart')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: form.watch('module') !== 'fastfood' ? '#E51937' : 'transparent',
-                  color: form.watch('module') !== 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: form.watch('module') !== 'fastfood' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
-              >
-                <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
-                <span>Retail Mini Mart</span>
-              </button>
+          {hasFastFood && hasOmnimart ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Destination:
+              </span>
+              <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                <button
+                  type="button"
+                  onClick={() => form.setValue('module', 'fastfood')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: form.watch('module') === 'fastfood' ? '#E51937' : 'transparent',
+                    color: form.watch('module') === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                    fontWeight: form.watch('module') === 'fastfood' ? 700 : 500,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.12s ease',
+                  }}
+                >
+                  <Food24Regular style={{ width: 14, height: 14 }} />
+                  <span>Kitchen & Fast Food</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => form.setValue('module', 'minimart')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: form.watch('module') !== 'fastfood' ? '#E51937' : 'transparent',
+                    color: form.watch('module') !== 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                    fontWeight: form.watch('module') !== 'fastfood' ? 700 : 500,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.12s ease',
+                  }}
+                >
+                  <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                  <span>Retail Mini Mart</span>
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Destination:
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground1, padding: '4px 10px', borderRadius: '6px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                {hasFastFood ? <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />}
+                <span>{hasFastFood ? 'Kitchen & Fast Food' : 'Retail Mini Mart'}</span>
+              </span>
+            </div>
+          )}
         </div>
 
         <form onSubmit={form.handleSubmit(onSave)} className={styles.form}>
@@ -1954,7 +1977,7 @@ export function StockInView(): React.JSX.Element {
                         className={styles.productImg}
                       />
                     ) : (
-                      <span className={styles.productEmoji}>📦</span>
+                      <Box20Regular style={{ width: 24, height: 24, color: '#94A3B8' }} />
                     )}
                   </div>
                   <div>
@@ -1981,14 +2004,26 @@ export function StockInView(): React.JSX.Element {
                       </Badge>
                     </div>
                     <div className={styles.productMetaRow}>
-                      <span>📁 {selectedProduct.category || 'General'}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <Folder20Regular style={{ width: 14, height: 14 }} />
+                        <span>{selectedProduct.category || 'General'}</span>
+                      </span>
                       {selectedProduct.skuCode && (
-                        <span>🏷️ SKU: <code className={styles.skuCode}>{selectedProduct.skuCode}</code></span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <Tag20Regular style={{ width: 14, height: 14 }} />
+                          <span>SKU: <code className={styles.skuCode}>{selectedProduct.skuCode}</code></span>
+                        </span>
                       )}
                       {selectedProduct.rackLocation && (
-                        <span>📍 Rack: {selectedProduct.rackLocation}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <Location20Regular style={{ width: 14, height: 14 }} />
+                          <span>Rack: {selectedProduct.rackLocation}</span>
+                        </span>
                       )}
-                      <span>📏 Unit: {selectedProduct.unit || 'PCS'}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <Ruler20Regular style={{ width: 14, height: 14 }} />
+                        <span>Unit: {selectedProduct.unit || 'PCS'}</span>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2175,76 +2210,89 @@ export function StockInView(): React.JSX.Element {
           <span className={styles.cardTitle}>Stock In (Receiving Logs)</span>
 
           {/* Module Filter Tabs */}
-          <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-            <button
-              type="button"
-              onClick={() => setInventoryTab('all')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: inventoryTab === 'all' ? '#E51937' : 'transparent',
-                color: inventoryTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                fontWeight: inventoryTab === 'all' ? 700 : 500,
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
-              <span>All Inflows</span>
-              <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: inventoryTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+          {hasFastFood && hasOmnimart ? (
+            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+              <button
+                type="button"
+                onClick={() => setInventoryTab('all')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: inventoryTab === 'all' ? '#E51937' : 'transparent',
+                  color: inventoryTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: inventoryTab === 'all' ? 700 : 500,
+                  fontSize: '12px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>All Inflows</span>
+                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: inventoryTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {stockInMovements.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInventoryTab('fastfood')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: inventoryTab === 'fastfood' ? '#E51937' : 'transparent',
+                  color: inventoryTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: inventoryTab === 'fastfood' ? 700 : 500,
+                  fontSize: '12px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                <Food24Regular style={{ width: 14, height: 14 }} />
+                <span>Kitchen / Fast Food</span>
+                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: inventoryTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {stockInMovements.filter((m) => m.module === 'fastfood').length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInventoryTab('minimart')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: inventoryTab === 'minimart' ? '#E51937' : 'transparent',
+                  color: inventoryTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: inventoryTab === 'minimart' ? 700 : 500,
+                  fontSize: '12px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                <span>Mini Mart Retail</span>
+                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: inventoryTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {stockInMovements.filter((m) => m.module !== 'fastfood').length}
+                </span>
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}`, fontSize: '12px', fontWeight: 600 }}>
+              {hasFastFood ? <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />}
+              <span>{hasFastFood ? 'Kitchen / Fast Food Logs' : 'Mini Mart Retail Logs'}</span>
+              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
                 {stockInMovements.length}
               </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setInventoryTab('fastfood')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: inventoryTab === 'fastfood' ? '#E51937' : 'transparent',
-                color: inventoryTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                fontWeight: inventoryTab === 'fastfood' ? 700 : 500,
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
-              <Food24Regular style={{ width: 14, height: 14 }} />
-              <span>Kitchen / Fast Food</span>
-              <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: inventoryTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                {stockInMovements.filter((m) => m.module === 'fastfood').length}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setInventoryTab('minimart')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: inventoryTab === 'minimart' ? '#E51937' : 'transparent',
-                color: inventoryTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                fontWeight: inventoryTab === 'minimart' ? 700 : 500,
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
-              <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
-              <span>Mini Mart Retail</span>
-              <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: inventoryTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                {stockInMovements.filter((m) => m.module !== 'fastfood').length}
-              </span>
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
         <div className={styles.filterBar}>
@@ -2622,8 +2670,9 @@ export function StockInView(): React.JSX.Element {
                       <div><strong>Received By:</strong> Store Manager (Admin)</div>
                       <div><strong>Account:</strong> Inventory Trade Payable</div>
                     </div>
-                    <div className={styles.verifiedTag}>
-                      ✓ Stock Count Verified &amp; Added
+                    <div className={styles.verifiedTag} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Checkmark20Regular style={{ width: 14, height: 14 }} />
+                      <span>Stock Count Verified &amp; Added</span>
                     </div>
                   </div>
                 </div>

@@ -13,6 +13,7 @@ import {
   Printer,
   ChevronRight,
   Flame,
+  X,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -398,9 +399,10 @@ export function FastFoodDashboard() {
               </div>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="text-text-muted hover:text-text text-sm font-mono"
+                className="text-text-muted hover:text-text p-1 transition"
+                title="Close"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 

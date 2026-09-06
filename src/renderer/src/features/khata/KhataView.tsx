@@ -41,7 +41,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { resolveApiUrl } from '@/lib/api';
+import { posApi } from '@/lib/api';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect, DynamicBar } from '@/components/ui';
 
@@ -1046,41 +1046,28 @@ export function KhataView(): React.JSX.Element {
     },
   });
 
-  // Fetch Khatas
+  // Fetch Khatas: Offline-First Cache (<5ms)
   const { data: khatas = [], isLoading } = useQuery<CustomerKhata[]>({
     queryKey: ['khatas'],
     queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/khata`);
-      if (!res.ok) return [];
-      return res.json();
+      return (await posApi.fetchKhatas()) as CustomerKhata[];
     },
   });
 
-  // Fetch Passbook Transactions for selected customer
+  // Fetch Passbook Transactions for selected customer: Offline-First
   const { data: passbookTransactions = [], isLoading: isLoadingPassbook } = useQuery<KhataTx[]>({
     queryKey: ['khata-transactions', selectedKhata?.id],
     queryFn: async () => {
       if (!selectedKhata) return [];
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/khata/${selectedKhata.id}/transactions`);
-      if (!res.ok) return [];
-      return res.json();
+      return (await posApi.fetchKhataTransactions(selectedKhata.id)) as KhataTx[];
     },
     enabled: !!selectedKhata && isPassbookOpen,
   });
 
-  // Create Khata Mutation
+  // Create Khata Mutation: Instant Offline Write + Cloud Sync
   const createMutation = useMutation({
     mutationFn: async (data: NewKhataFormData) => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/khata`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Failed to create khata');
-      return res.json();
+      return await posApi.saveKhata(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['khatas'] });
@@ -1089,37 +1076,32 @@ export function KhataView(): React.JSX.Element {
     },
   });
 
-  // Add Transaction Mutation
+  // Add Transaction Mutation: Instant Offline Debt Update + Cloud Sync
   const transactionMutation = useMutation({
     mutationFn: async (data: TransactionFormData) => {
       if (!selectedKhata) return;
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/khata/${selectedKhata.id}/transaction`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: transType,
-          amount: data.amount,
-          paymentMethod: data.paymentMethod,
-          description: data.description,
-        }),
+      return await posApi.addKhataTransaction({
+        khataId: selectedKhata.id,
+        type: transType,
+        amount: data.amount,
+        paymentMethod: data.paymentMethod,
+        description: data.description,
       });
-      if (!res.ok) throw new Error('Transaction failed');
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['khatas'] });
-      queryClient.invalidateQueries({ queryKey: ['khata-transactions', selectedKhata?.id] });
+      if (selectedKhata) {
+        queryClient.invalidateQueries({ queryKey: ['khata-transactions', selectedKhata.id] });
+      }
       setIsPaymentOpen(false);
       transForm.reset();
     },
   });
 
-  // Delete Khata Mutation
+  // Delete Khata Mutation: Instant Offline Delete + Cloud Sync
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const base = await resolveApiUrl();
-      await fetch(`${base}/api/khata/${id}`, { method: 'DELETE' });
+      await posApi.deleteKhata(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['khatas'] });

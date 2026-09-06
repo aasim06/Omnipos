@@ -36,12 +36,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { resolveApiUrl } from '@/lib/api';
+import { resolveApiUrl, posApi } from '@/lib/api';
 import { StockMovement, Product } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 const STOCK_OUT_REASONS = [
   { value: 'Kitchen Usage', label: 'Kitchen Usage / Consumption' },
@@ -618,27 +619,30 @@ export function StockOutView(): React.JSX.Element {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printingMovement, setPrintingMovement] = useState<StockMovement | null>(null);
 
-  // Fetch Stock Movements
+  // Fetch Stock Movements: Offline-First Cache (<5ms)
   const { data: movements = [], isLoading } = useQuery<StockMovement[]>({
     queryKey: ['stock-movements'],
-    queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/stock-movements`);
-      if (!res.ok) return [];
-      return res.json();
-    },
+    queryFn: () => posApi.fetchStockMovements(),
   });
 
+  const { can } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
   // Filter tab for stock deductions (All, Kitchen Consumption, Retail Damage/Expiry)
-  const [outflowTab, setOutflowTab] = useState<'all' | 'fastfood' | 'minimart'>('all');
+  const [outflowTab, setOutflowTab] = useState<'all' | 'fastfood' | 'minimart'>(() => {
+    if (hasFastFood && !hasOmnimart) return 'fastfood';
+    if (!hasFastFood && hasOmnimart) return 'minimart';
+    return 'all';
+  });
 
   const form = useForm<StockOutFormData>({
     resolver: zodResolver(stockOutSchema) as any,
     defaultValues: {
-      module: 'fastfood',
+      module: hasFastFood ? 'fastfood' : 'minimart',
       selectedProductId: '',
       productName: '',
-      reason: 'Kitchen Usage',
+      reason: hasFastFood ? 'Kitchen Usage' : 'Damage / Broken',
       quantity: 1,
       unitCost: 0,
       note: '',
@@ -665,23 +669,18 @@ export function StockOutView(): React.JSX.Element {
   const editWatchedCost = editForm.watch('unitCost') || 0;
   const editTotalLossValue = editWatchedQty * editWatchedCost;
 
-  // Mutation to Save Stock Out Entry
+  // Mutation to Save Stock Out Entry: Offline-First
   const saveMutation = useMutation({
     mutationFn: async (data: StockOutFormData) => {
-      const base = await resolveApiUrl();
-      await fetch(`${base}/api/stock-movements`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          module: data.module || 'fastfood',
-          type: 'out',
-          productId: data.selectedProductId || uid('prod_'),
-          productName: data.productName,
-          quantity: data.quantity,
-          unitCost: data.unitCost ?? null,
-          reason: data.reason,
-          note: data.note || '',
-        }),
+      await posApi.saveStockMovement({
+        module: data.module || 'fastfood',
+        type: 'out',
+        productId: data.selectedProductId || uid('prod_'),
+        productName: data.productName,
+        quantity: data.quantity,
+        unitCost: data.unitCost ?? null,
+        reason: data.reason,
+        referenceInvoice: data.note || '',
       });
     },
     onSuccess: () => {
@@ -774,8 +773,13 @@ export function StockOutView(): React.JSX.Element {
     }
   };
 
-  // Only Outflow Movements
-  const stockOutMovements = movements.filter((m) => m.type === 'out');
+  // Only Outflow Movements (filtered by licensed modules)
+  const stockOutMovements = movements.filter((m) => {
+    if (m.type !== 'out') return false;
+    if (!hasFastFood && m.module === 'fastfood') return false;
+    if (!hasOmnimart && m.module !== 'fastfood') return false;
+    return true;
+  });
 
   // Filtered List by Tab and Search Query
   const filteredMovements = stockOutMovements.filter((m) => {
@@ -826,61 +830,75 @@ export function StockOutView(): React.JSX.Element {
           <span className={styles.cardTitle}>Record Stock Out (Damage / Waste / Usage)</span>
 
           {/* Department / Branch Switcher for Stock Out */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Department:
-            </span>
-            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-              <button
-                type="button"
-                onClick={() => {
-                  form.setValue('module', 'fastfood');
-                  form.setValue('reason', 'Kitchen Usage');
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: form.watch('module') === 'fastfood' ? '#E51937' : 'transparent',
-                  color: form.watch('module') === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: form.watch('module') === 'fastfood' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
-              >
-                <Food24Regular style={{ width: 14, height: 14 }} />
-                <span>Kitchen Consumption & Waste</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  form.setValue('module', 'minimart');
-                  form.setValue('reason', 'Damage / Broken');
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: form.watch('module') !== 'fastfood' ? '#E51937' : 'transparent',
-                  color: form.watch('module') !== 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: form.watch('module') !== 'fastfood' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
-              >
-                <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
-                <span>Retail Mini Mart Goods</span>
-              </button>
+          {hasFastFood && hasOmnimart ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Department:
+              </span>
+              <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    form.setValue('module', 'fastfood');
+                    form.setValue('reason', 'Kitchen Usage');
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: form.watch('module') === 'fastfood' ? '#E51937' : 'transparent',
+                    color: form.watch('module') === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                    fontWeight: form.watch('module') === 'fastfood' ? 700 : 500,
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    transition: 'all 0.12s ease',
+                  }}
+                >
+                  <Food24Regular style={{ width: 14, height: 14 }} />
+                  <span>Kitchen Consumption & Waste</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    form.setValue('module', 'minimart');
+                    form.setValue('reason', 'Damage / Broken');
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: form.watch('module') !== 'fastfood' ? '#E51937' : 'transparent',
+                    color: form.watch('module') !== 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                    fontWeight: form.watch('module') !== 'fastfood' ? 700 : 500,
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    transition: 'all 0.12s ease',
+                  }}
+                >
+                  <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                  <span>Retail Mini Mart Goods</span>
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Department:
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground1, padding: '4px 10px', borderRadius: '6px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                {hasFastFood ? <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />}
+                <span>{hasFastFood ? 'Kitchen Consumption & Waste' : 'Retail Mini Mart Goods'}</span>
+              </span>
+            </div>
+          )}
         </div>
 
         <form onSubmit={form.handleSubmit(onSave)} className={styles.formColumn}>
@@ -1011,76 +1029,89 @@ export function StockOutView(): React.JSX.Element {
           <span className={styles.cardTitle}>Stock Out (Deduction Logs)</span>
 
           {/* Module Filter Tabs */}
-          <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-            <button
-              type="button"
-              onClick={() => setOutflowTab('all')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: outflowTab === 'all' ? '#E51937' : 'transparent',
-                color: outflowTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                fontWeight: outflowTab === 'all' ? 700 : 500,
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
-              <span>All Outflows</span>
-              <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+          {hasFastFood && hasOmnimart ? (
+            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+              <button
+                type="button"
+                onClick={() => setOutflowTab('all')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: outflowTab === 'all' ? '#E51937' : 'transparent',
+                  color: outflowTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: outflowTab === 'all' ? 700 : 500,
+                  fontSize: '12px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>All Outflows</span>
+                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {stockOutMovements.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOutflowTab('fastfood')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: outflowTab === 'fastfood' ? '#E51937' : 'transparent',
+                  color: outflowTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: outflowTab === 'fastfood' ? 700 : 500,
+                  fontSize: '12px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                <Food24Regular style={{ width: 14, height: 14 }} />
+                <span>Kitchen Usage & Waste</span>
+                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {stockOutMovements.filter((m) => m.module === 'fastfood').length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOutflowTab('minimart')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: outflowTab === 'minimart' ? '#E51937' : 'transparent',
+                  color: outflowTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: outflowTab === 'minimart' ? 700 : 500,
+                  fontSize: '12px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                <span>Mini Mart Damaged/Expired</span>
+                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {stockOutMovements.filter((m) => m.module !== 'fastfood').length}
+                </span>
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}`, fontSize: '12px', fontWeight: 600 }}>
+              {hasFastFood ? <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />}
+              <span>{hasFastFood ? 'Kitchen Usage & Waste Logs' : 'Mini Mart Damaged/Expired Logs'}</span>
+              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
                 {stockOutMovements.length}
               </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setOutflowTab('fastfood')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: outflowTab === 'fastfood' ? '#E51937' : 'transparent',
-                color: outflowTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                fontWeight: outflowTab === 'fastfood' ? 700 : 500,
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
-              <Food24Regular style={{ width: 14, height: 14 }} />
-              <span>Kitchen Usage & Waste</span>
-              <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                {stockOutMovements.filter((m) => m.module === 'fastfood').length}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setOutflowTab('minimart')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: outflowTab === 'minimart' ? '#E51937' : 'transparent',
-                color: outflowTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                fontWeight: outflowTab === 'minimart' ? 700 : 500,
-                fontSize: '12px',
-                cursor: 'pointer',
-              }}
-            >
-              <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
-              <span>Mini Mart Damaged/Expired</span>
-              <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                {stockOutMovements.filter((m) => m.module !== 'fastfood').length}
-              </span>
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
         <div className={styles.filterBar}>

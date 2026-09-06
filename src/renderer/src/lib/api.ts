@@ -1,9 +1,10 @@
-import { Product, Category, Order, StockMovement } from './types';
-import { offlineDb, LocalOrder } from './offlineDb';
+import { Product, Category, Order, StockMovement, CategoryProfile, ModuleKey } from './types';
+import { offlineDb, LocalOrder, LocalCustomerKhata, LocalKhataTx, LocalExpense } from './offlineDb';
 import { syncEngine } from './syncEngine';
 import { KEYS, storage } from './storage';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, isDemoLicense } from './seedData';
 import { decodeProductVariants, encodeProductVariants, setLocalVariantRegistry } from './variants';
+import { CATEGORY_PROFILES } from './categoryProfiles';
 
 let cachedApiUrl: string | null = null;
 let cachedTenantMeta: { key?: string; schemaId?: string } | null = null;
@@ -79,16 +80,6 @@ export const posApi = {
     let localProducts: Product[] = [];
     try {
       const allDexie = await offlineDb.products.toArray();
-      const existingIds = new Set((allDexie || []).map((p) => p.id));
-      const missingProducts = INITIAL_PRODUCTS.filter((p) => !existingIds.has(p.id));
-      if (missingProducts.length > 0) {
-        try {
-          await offlineDb.products.bulkPut(missingProducts);
-          allDexie.push(...missingProducts);
-        } catch (e) {
-          console.warn('[OfflineDB] bulkPut missing products error:', e);
-        }
-      }
       if (allDexie && allDexie.length > 0) {
         localProducts = allDexie.map(decodeProductVariants);
       }
@@ -106,11 +97,6 @@ export const posApi = {
       } catch (storageErr) {
         console.warn('[Storage] localStorage product query error:', storageErr);
       }
-    }
-
-    // 3. Fallback to bundled seed catalog (if Demo license)
-    if (localProducts.length === 0 && isDemoLicense()) {
-      localProducts = INITIAL_PRODUCTS.map(decodeProductVariants);
     }
 
     // Background sync helper: update cache without stalling the UI
@@ -271,16 +257,6 @@ export const posApi = {
     let localCats: Category[] = [];
     try {
       const allCats = await offlineDb.categories.toArray();
-      const existingCatIds = new Set((allCats || []).map((c) => c.id));
-      const missingCats = INITIAL_CATEGORIES.filter((c) => !existingCatIds.has(c.id));
-      if (missingCats.length > 0) {
-        try {
-          await offlineDb.categories.bulkPut(missingCats);
-          allCats.push(...missingCats);
-        } catch (e) {
-          console.warn('[OfflineDB] bulkPut missing categories error:', e);
-        }
-      }
       if (allCats && allCats.length > 0) {
         localCats = allCats;
       }
@@ -293,10 +269,6 @@ export const posApi = {
           localCats = stored;
         }
       } catch {}
-    }
-
-    if (localCats.length === 0 && isDemoLicense()) {
-      localCats = INITIAL_CATEGORIES;
     }
 
     const syncRemoteCategories = async () => {
@@ -389,11 +361,46 @@ export const posApi = {
     }
   },
 
+  async seedBusinessProfile(profileKey: string, module?: ModuleKey): Promise<Category[]> {
+    const config = CATEGORY_PROFILES[profileKey as CategoryProfile];
+    if (!config) return [];
+    const targetModule: ModuleKey = module || (profileKey === 'food' ? 'fastfood' : 'minimart');
+    const createdCats: Category[] = [];
+
+    for (const catName of config.defaultCategories) {
+      const newCat: Category = {
+        id: `cat_${profileKey}_${catName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        module: targetModule,
+        name: catName,
+        profile: profileKey as CategoryProfile,
+        suggestedSizes: config.suggestedSizes,
+        suggestedUnits: config.suggestedUnits,
+        createdAt: new Date().toISOString(),
+      };
+      await posApi.saveCategory(newCat);
+      createdCats.push(newCat);
+    }
+
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        fetch(`${base}/api/categories/seed-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify({ profileKey, module: targetModule }),
+        }).catch(() => {});
+      } catch {}
+    }
+
+    return createdCats;
+  },
+
   /**
    * Fetch Khatas: Cache-First for instant load (<5ms)
    */
-  async fetchKhatas(): Promise<any[]> {
-    let localKhatas: any[] = [];
+  async fetchKhatas(): Promise<LocalCustomerKhata[]> {
+    let localKhatas: LocalCustomerKhata[] = [];
     try {
       const all = await offlineDb.khatas.toArray();
       if (all && all.length > 0) {
@@ -405,15 +412,31 @@ export const posApi = {
       if (typeof navigator !== 'undefined' && !navigator.onLine) return;
       try {
         const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-        const res = await fetch(`${base}/api/khata`, { signal: controller.signal });
+        const res = await fetch(`${base}/api/khata`, {
+          headers: tenantHeaders,
+          signal: controller.signal,
+        });
         clearTimeout(timeoutId);
         if (res.ok) {
           const remoteKhatas = await res.json();
           if (Array.isArray(remoteKhatas) && remoteKhatas.length > 0) {
-            try { await offlineDb.khatas.bulkPut(remoteKhatas); } catch {}
+            const currentLocal = await offlineDb.khatas.toArray();
+            const localMap = new Map(currentLocal.map((k) => [k.id, k]));
+            const merged: LocalCustomerKhata[] = remoteKhatas.map((rk: any) => {
+              const local = localMap.get(rk.id);
+              if (local && local.synced === 0) {
+                return local;
+              }
+              return { ...rk, synced: 1 as const };
+            });
+            await offlineDb.khatas.bulkPut(merged);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('pos_khata_updated'));
+            }
           }
         }
       } catch {}
@@ -431,12 +454,234 @@ export const posApi = {
     } catch {}
 
     return [
-      { id: 'khata_guest', name: 'Guest', currentDebt: 0, creditLimit: 50000, synced: 1 },
+      {
+        id: 'khata_guest',
+        name: 'Guest / Walk-in Customer',
+        phone: '0300-0000000',
+        currentDebt: 0,
+        creditLimit: 50000,
+        synced: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
     ];
   },
 
   /**
-   * Fetch Orders: Offline-First strategy with tenant scoping
+   * Fetch Khata passbook transactions: Cache-First (<5ms)
+   */
+  async fetchKhataTransactions(khataId: string): Promise<LocalKhataTx[]> {
+    let localTxs: LocalKhataTx[] = [];
+    try {
+      localTxs = await offlineDb.khataTransactions
+        .where('khataId')
+        .equals(khataId)
+        .reverse()
+        .sortBy('createdAt');
+    } catch {}
+
+    const syncRemote = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const res = await fetch(`${base}/api/khata/${khataId}/transactions`, {
+          headers: tenantHeaders,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const remote = await res.json();
+          if (Array.isArray(remote) && remote.length > 0) {
+            const prepared: LocalKhataTx[] = remote.map((t: any) => ({
+              ...t,
+              synced: 1 as const,
+            }));
+            await offlineDb.khataTransactions.bulkPut(prepared);
+          }
+        }
+      } catch {}
+    };
+
+    if (localTxs.length > 0) {
+      syncRemote().catch(() => {});
+      return localTxs;
+    }
+
+    await syncRemote();
+    try {
+      return await offlineDb.khataTransactions
+        .where('khataId')
+        .equals(khataId)
+        .reverse()
+        .sortBy('createdAt');
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Save / Create Khata account offline-first
+   */
+  async saveKhata(khata: Partial<LocalCustomerKhata>): Promise<LocalCustomerKhata> {
+    const isNew = !khata.id;
+    const record: LocalCustomerKhata = {
+      id: khata.id || `khata_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      name: khata.name || 'Unnamed Customer',
+      phone: khata.phone || '',
+      address: khata.address || '',
+      cnic: khata.cnic || '',
+      customerType: khata.customerType || 'retail',
+      currentDebt: Number(khata.currentDebt || 0),
+      creditLimit: Number(khata.creditLimit || 50000),
+      dueDays: Number(khata.dueDays || 30),
+      note: khata.note || '',
+      synced: 0,
+      createdAt: khata.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 1. Instant Dexie Write
+    await offlineDb.khatas.put(record);
+
+    // 2. Queue for background cloud sync
+    await syncEngine.enqueue('khata', record.id, isNew ? 'CREATE' : 'UPDATE', record);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('pos_khata_updated', { detail: record }));
+    }
+
+    // 3. Opportunistic cloud push if online
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        const res = await fetch(`${base}/api/khata${isNew ? '' : `/${record.id}`}`, {
+          method: isNew ? 'POST' : 'PUT',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify(record),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          await offlineDb.khatas.update(record.id, { synced: 1 });
+        }
+      } catch {}
+    }
+
+    return record;
+  },
+
+  /**
+   * Record payment or debit credit transaction on customer khata offline-first
+   */
+  async addKhataTransaction(params: {
+    khataId: string;
+    type: 'DEBIT' | 'CREDIT';
+    amount: number;
+    paymentMethod?: string;
+    description?: string;
+  }): Promise<LocalKhataTx> {
+    const amt = Number(params.amount || 0);
+    const existing = await offlineDb.khatas.get(params.khataId);
+    const prevDebt = Number(existing?.currentDebt || 0);
+    const newDebt = params.type === 'DEBIT' ? prevDebt + amt : Math.max(0, prevDebt - amt);
+
+    // 1. Update customer debt immediately in Dexie
+    if (existing) {
+      await offlineDb.khatas.update(params.khataId, {
+        currentDebt: newDebt,
+        updatedAt: new Date().toISOString(),
+        synced: 0,
+      });
+    }
+
+    // 2. Add transaction entry to Dexie
+    const txRecord: LocalKhataTx = {
+      id: `tx_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      khataId: params.khataId,
+      type: params.type,
+      amount: amt,
+      balanceAfter: newDebt,
+      description: params.description || (params.type === 'DEBIT' ? 'POS Sale (Credit)' : 'Khata Payment'),
+      paymentMethod: params.paymentMethod || 'cash',
+      createdAt: new Date().toISOString(),
+      synced: 0,
+    };
+    await offlineDb.khataTransactions.put(txRecord);
+
+    // 3. Queue into syncEngine
+    await syncEngine.enqueue('khata', params.khataId, 'UPDATE', {
+      transaction: txRecord,
+      currentDebt: newDebt,
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('pos_khata_updated', { detail: { khataId: params.khataId, newDebt } }));
+    }
+
+    // 4. Background push if online
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        const res = await fetch(`${base}/api/khata/${params.khataId}/transaction`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify({
+            type: params.type,
+            amount: amt,
+            paymentMethod: params.paymentMethod || 'cash',
+            description: params.description,
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          await offlineDb.khataTransactions.update(txRecord.id, { synced: 1 });
+          await offlineDb.khatas.update(params.khataId, { synced: 1 });
+        }
+      } catch {}
+    }
+
+    return txRecord;
+  },
+
+  /**
+   * Delete Khata account offline-first
+   */
+  async deleteKhata(id: string): Promise<void> {
+    try {
+      await offlineDb.khatas.delete(id);
+      await offlineDb.khataTransactions.where('khataId').equals(id).delete();
+      await syncEngine.enqueue('khata', id, 'DELETE', { id });
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pos_khata_updated', { detail: { id, deleted: true } }));
+      }
+
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        await fetch(`${base}/api/khata/${id}`, {
+          method: 'DELETE',
+          headers: tenantHeaders,
+        });
+      }
+    } catch {}
+  },
+
+  /**
+   * Fetch Orders: Cache-First for instant load (<5ms)
    */
   async fetchOrders(module?: string): Promise<Order[]> {
     let localOrders: LocalOrder[] = [];
@@ -448,12 +693,13 @@ export const posApi = {
       }
     } catch {}
 
-    if (typeof navigator === 'undefined' || navigator.onLine) {
+    const syncRemoteOrders = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
       try {
         const base = await resolveApiUrl();
         const tenantHeaders = await getTenantHeaders();
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
 
         const res = await fetch(`${base}/api/orders${module ? `?module=${module}` : ''}`, {
           headers: tenantHeaders,
@@ -464,25 +710,300 @@ export const posApi = {
         if (res.ok) {
           const remoteOrders = await res.json();
           if (Array.isArray(remoteOrders)) {
-            const prepared: LocalOrder[] = remoteOrders.map((o: any) => ({
-              ...o,
-              synced: 1 as const,
-            }));
+            // Keep local pending orders (synced: 0) intact!
+            const currentLocal = await offlineDb.orders.toArray();
+            const pendingMap = new Map(currentLocal.filter((o) => o.synced === 0).map((o) => [o.id, o]));
+            const prepared: LocalOrder[] = remoteOrders.map((o: any) => {
+              const pending = pendingMap.get(o.id);
+              if (pending) return pending;
+              return { ...o, synced: 1 as const };
+            });
             await offlineDb.orders.bulkPut(prepared);
-            return remoteOrders;
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('pos_orders_updated'));
+            }
           }
         }
-      } catch {
-        /* Offline: return local orders */
-      }
-    }
+      } catch {}
+    };
 
+    // Return instant local orders (<5ms) and sync in background!
     if (localOrders.length > 0) {
+      syncRemoteOrders().catch(() => {});
       return localOrders;
     }
 
+    await syncRemoteOrders();
+    try {
+      if (module) {
+        return await offlineDb.orders.where('module').equals(module).reverse().sortBy('createdAt');
+      }
+      return await offlineDb.orders.reverse().sortBy('createdAt');
+    } catch {}
+
     const legacy = storage.getList<Order>(KEYS.orders);
     return module ? legacy.filter((o) => o.module === module) : legacy;
+  },
+
+  /**
+   * Fetch Expenses: Cache-First for instant load (<5ms)
+   */
+  async fetchExpenses(): Promise<LocalExpense[]> {
+    let localExpenses: LocalExpense[] = [];
+    try {
+      localExpenses = await offlineDb.expenses.reverse().sortBy('date');
+    } catch {}
+
+    const syncRemoteExpenses = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const res = await fetch(`${base}/api/expenses`, {
+          headers: tenantHeaders,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const remote = await res.json();
+          if (Array.isArray(remote) && remote.length > 0) {
+            const current = await offlineDb.expenses.toArray();
+            const pendingMap = new Map(current.filter((e) => e.synced === 0).map((e) => [e.id, e]));
+            const merged: LocalExpense[] = remote.map((e: any) => {
+              const pending = pendingMap.get(e.id);
+              if (pending) return pending;
+              return { ...e, synced: 1 as const };
+            });
+            await offlineDb.expenses.bulkPut(merged);
+          }
+        }
+      } catch {}
+    };
+
+    if (localExpenses.length > 0) {
+      syncRemoteExpenses().catch(() => {});
+      return localExpenses;
+    }
+
+    await syncRemoteExpenses();
+    try {
+      return await offlineDb.expenses.reverse().sortBy('date');
+    } catch {
+      return [];
+    }
+  },
+
+  async saveExpense(expense: Partial<LocalExpense>): Promise<LocalExpense> {
+    const record: LocalExpense = {
+      id: expense.id || `exp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      category: expense.category || 'General Expense',
+      amount: Number(expense.amount || 0),
+      paymentMode: expense.paymentMode || 'cash',
+      vendorName: expense.vendorName || '',
+      description: expense.description || '',
+      date: expense.date || new Date().toISOString(),
+      synced: 0,
+    };
+
+    await offlineDb.expenses.put(record);
+    await syncEngine.enqueue('expense', record.id, 'CREATE', record);
+
+    if (record.paymentMode === 'cash') {
+      try {
+        const rawDrawer = localStorage.getItem('omnipos_cash_drawer');
+        const drawer = rawDrawer ? JSON.parse(rawDrawer) : null;
+        if (drawer) {
+          drawer.cashOut = Number(drawer.cashOut || 0) + record.amount;
+          localStorage.setItem('omnipos_cash_drawer', JSON.stringify(drawer));
+        }
+      } catch {}
+    }
+
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        const res = await fetch(`${base}/api/expenses`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify(record),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          await offlineDb.expenses.update(record.id, { synced: 1 });
+        }
+      } catch {}
+    }
+
+    return record;
+  },
+
+  fetchCashDrawer(): any {
+    try {
+      const raw = localStorage.getItem('omnipos_cash_drawer');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    const initial = {
+      id: 'drawer_local_1',
+      openingFloat: 5000,
+      cashSales: 0,
+      cashIn: 0,
+      cashOut: 0,
+      status: 'open' as const,
+    };
+    try {
+      localStorage.setItem('omnipos_cash_drawer', JSON.stringify(initial));
+    } catch {}
+    return initial;
+  },
+
+  async saveCashDrawerAction(action: { type: 'CASH_IN' | 'CASH_OUT' | 'CLOSE'; amount?: number; notes?: string }): Promise<any> {
+    const drawer = this.fetchCashDrawer();
+    const amt = Number(action.amount || 0);
+
+    if (action.type === 'CASH_IN') {
+      drawer.cashIn = Number(drawer.cashIn || 0) + amt;
+    } else if (action.type === 'CASH_OUT') {
+      drawer.cashOut = Number(drawer.cashOut || 0) + amt;
+    } else if (action.type === 'CLOSE') {
+      drawer.status = 'closed';
+      drawer.closingCash = drawer.openingFloat + drawer.cashSales + drawer.cashIn - drawer.cashOut;
+    }
+
+    localStorage.setItem('omnipos_cash_drawer', JSON.stringify(drawer));
+
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        await fetch(`${base}/api/cash-drawer/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify({ id: drawer.id, ...action }),
+        });
+      } catch {}
+    }
+
+    return drawer;
+  },
+
+  /**
+   * Fetch Stock Movements: Cache-First for instant load (<5ms)
+   */
+  async fetchStockMovements(module?: string): Promise<StockMovement[]> {
+    let localMovements: StockMovement[] = [];
+    try {
+      if (module && module !== 'all') {
+        localMovements = await offlineDb.stockMovements.where('module').equals(module).reverse().sortBy('date');
+      } else {
+        localMovements = await offlineDb.stockMovements.reverse().sortBy('date');
+      }
+    } catch {}
+
+    const syncRemote = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const res = await fetch(`${base}/api/stock-movements`, {
+          headers: tenantHeaders,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const remote = await res.json();
+          if (Array.isArray(remote) && remote.length > 0) {
+            await offlineDb.stockMovements.bulkPut(remote);
+          }
+        }
+      } catch {}
+    };
+
+    if (localMovements.length > 0) {
+      syncRemote().catch(() => {});
+      return localMovements;
+    }
+
+    await syncRemote();
+    try {
+      if (module && module !== 'all') {
+        return await offlineDb.stockMovements.where('module').equals(module).reverse().sortBy('date');
+      }
+      return await offlineDb.stockMovements.reverse().sortBy('date');
+    } catch {
+      return [];
+    }
+  },
+
+  async saveStockMovement(data: Partial<StockMovement>): Promise<StockMovement> {
+    const record: StockMovement = {
+      id: data.id || `mov_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      module: data.module || 'minimart',
+      productId: data.productId || '',
+      productName: data.productName || 'Unknown Product',
+      type: data.type || 'in',
+      quantity: Number(data.quantity || 0),
+      reason: data.reason || 'Inventory Adjustment',
+      referenceInvoice: data.referenceInvoice || '',
+      vendorName: data.vendorName || '',
+      unitCost: data.unitCost,
+      date: data.date || new Date().toISOString(),
+    };
+
+    // 1. Instant local write to Dexie
+    await offlineDb.stockMovements.put(record);
+
+    // 2. Instant stock adjustment in local products table
+    if (record.productId) {
+      try {
+        const prod = await offlineDb.products.get(record.productId);
+        if (prod) {
+          const currentStock = Number(prod.openingStock || 0);
+          const updatedStock = record.type === 'in' 
+            ? currentStock + record.quantity 
+            : Math.max(0, currentStock - record.quantity);
+          await offlineDb.products.update(record.productId, {
+            openingStock: updatedStock,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        console.warn('[OfflineDB] Stock movement product update error:', err);
+      }
+    }
+
+    // 3. Queue in outbox
+    await syncEngine.enqueue('stockMovement', record.id, 'CREATE', record);
+
+    // 4. Background push if online
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        await fetch(`${base}/api/stock-movements`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify(record),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch {}
+    }
+
+    return record;
   },
 
   /**
@@ -607,5 +1128,110 @@ export const posApi = {
       window.print();
     }
     return true;
+  },
+
+  /**
+   * Complete database wipe: removes all products, categories, orders, khata,
+   * expenses, and cash drawer data across Dexie IndexedDB, LocalStorage, and SQLite backend.
+   * Keeps strictly the Admin user account.
+   */
+  async wipeAllDataExceptAdmin(): Promise<void> {
+    // 1. Wipe Dexie IndexedDB
+    try {
+      await offlineDb.products.clear();
+      await offlineDb.categories.clear();
+      await offlineDb.orders.clear();
+      await offlineDb.stockMovements.clear();
+      await offlineDb.khatas.clear();
+      await offlineDb.khataTransactions.clear();
+      await offlineDb.expenses.clear();
+      await offlineDb.syncQueue.clear();
+    } catch (e) {
+      console.warn('[wipeAllDataExceptAdmin] Dexie clear error:', e);
+    }
+
+    // 2. Wipe LocalStorage data caches
+    try {
+      storage.setList(KEYS.products, []);
+      storage.setList(KEYS.categories, []);
+      storage.setList(KEYS.orders, []);
+      storage.setList(KEYS.stockMovements, []);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('omnipos_variant_registry');
+        localStorage.removeItem('omnipos_demo_orders_cleared');
+        localStorage.setItem('omnipos_data_wiped', 'true');
+      }
+    } catch (e) {
+      console.warn('[wipeAllDataExceptAdmin] localStorage data clear error:', e);
+    }
+
+    // 3. Keep ONLY Admin user account (remove all cashiers/staff)
+    try {
+      if (typeof window !== 'undefined') {
+        const prefix = 'omnipos.users';
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(prefix)) {
+            try {
+              const raw = localStorage.getItem(k);
+              if (raw) {
+                const users = JSON.parse(raw);
+                if (Array.isArray(users)) {
+                  const adminsOnly = users.filter(
+                    (u: any) => u.role === 'admin' || u.username?.toLowerCase() === 'admin'
+                  );
+                  if (adminsOnly.length > 0) {
+                    localStorage.setItem(k, JSON.stringify(adminsOnly));
+                  } else {
+                    localStorage.setItem(
+                      k,
+                      JSON.stringify([
+                        {
+                          id: 'user_admin_default',
+                          username: 'admin',
+                          name: 'Store Administrator',
+                          role: 'admin',
+                          password: 'admin',
+                          permissions: [
+                            'pos_fastfood',
+                            'pos_omnimart',
+                            'kitchen',
+                            'catalog',
+                            'inventory',
+                            'khata',
+                            'expenses',
+                            'reports',
+                            'admin',
+                          ],
+                          isActive: true,
+                          createdAt: new Date().toISOString(),
+                          updatedAt: new Date().toISOString(),
+                        },
+                      ])
+                    );
+                  }
+                }
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[wipeAllDataExceptAdmin] user filter error:', e);
+    }
+
+    // 4. Wipe SQLite Backend if server is reachable
+    try {
+      const base = await resolveApiUrl();
+      const tenantHeaders = await getTenantHeaders();
+      await fetch(`${base}/api/database/wipe`, {
+        method: 'POST',
+        headers: tenantHeaders,
+      });
+    } catch {
+      /* offline */
+    }
   },
 };

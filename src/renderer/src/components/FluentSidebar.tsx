@@ -1305,7 +1305,7 @@ export function FluentSidebar(): React.JSX.Element {
         // 1. Check license module capability
         if (it.moduleKey) {
           if (it.moduleKey === 'kitchen') {
-            if (!can('kitchen') && !can('fastfood')) return false;
+            if (!can('kitchen')) return false;
           } else if (!can(it.moduleKey)) {
             return false;
           }

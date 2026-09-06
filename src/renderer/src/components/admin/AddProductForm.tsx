@@ -17,6 +17,8 @@ import {
   Sparkles,
   Utensils,
   CheckCircle2,
+  Folder,
+  Link,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -56,18 +58,18 @@ const PRICING_TYPES = [
 ];
 
 const AVAILABLE_TAGS = [
-  { id: "Bestseller", label: "⭐ Bestseller" },
-  { id: "New", label: "🆕 New" },
-  { id: "Spicy", label: "🌶 Spicy" },
-  { id: "Chef Special", label: "👨‍🍳 Chef Special" },
-  { id: "Must Try", label: "🔥 Must Try" },
+  { id: "Bestseller", label: "Bestseller" },
+  { id: "New", label: "New" },
+  { id: "Spicy", label: "Spicy" },
+  { id: "Chef Special", label: "Chef Special" },
+  { id: "Must Try", label: "Must Try" },
 ];
 
 const ALLERGENS = [
-  { id: "Nuts", label: "🥜 Nuts" },
-  { id: "Dairy", label: "🥛 Dairy" },
-  { id: "Gluten", label: "🌾 Gluten" },
-  { id: "Egg", label: "🥚 Egg" },
+  { id: "Nuts", label: "Nuts" },
+  { id: "Dairy", label: "Dairy" },
+  { id: "Gluten", label: "Gluten" },
+  { id: "Egg", label: "Egg" },
 ];
 
 export function AddProductForm({ initialModule = "minimart", onSaved, onCancel }: AddProductFormProps) {
@@ -337,8 +339,9 @@ export function AddProductForm({ initialModule = "minimart", onSaved, onCancel }
                 </>
               )}
 
-              <label className="inline-block cursor-pointer px-4 py-2 rounded-md bg-[#1a1d28] hover:bg-[#252a3a] border border-[#232734] text-xs font-semibold text-white transition">
-                📁 Choose Picture
+              <label className="inline-flex items-center gap-1.5 cursor-pointer px-4 py-2 rounded-md bg-[#1a1d28] hover:bg-[#252a3a] border border-[#232734] text-xs font-semibold text-white transition">
+                <Folder size={14} />
+                <span>Choose Picture</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -353,8 +356,9 @@ export function AddProductForm({ initialModule = "minimart", onSaved, onCancel }
             </div>
 
             <div className="space-y-1 pt-2">
-              <label className="text-xs font-bold text-[#8b92a0] block">
-                🔗 Or paste image URL instead
+              <label className="text-xs font-bold text-[#8b92a0] flex items-center gap-1">
+                <Link size={12} />
+                <span>Or paste image URL instead</span>
               </label>
               <input
                 value={imageUrl}

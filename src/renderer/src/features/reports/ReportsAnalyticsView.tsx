@@ -20,6 +20,7 @@ import {
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { resolveApiUrl } from '@/lib/api';
+import { offlineDb } from '@/lib/offlineDb';
 import { formatPKR } from '@/lib/utils';
 import { ReportsPageSkeleton } from '@/components/skeletons/PageSkeletons';
 
@@ -267,10 +268,53 @@ export function ReportsAnalyticsView(): React.JSX.Element {
   const { data: report, isLoading } = useQuery({
     queryKey: ['analytics-report'],
     queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/reports/analytics`);
-      if (!res.ok) return null;
-      return res.json();
+      // 1. Try remote analytics if online
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        try {
+          const base = await resolveApiUrl();
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 2500);
+          const res = await fetch(`${base}/api/reports/analytics`, { signal: controller.signal });
+          clearTimeout(timer);
+          if (res.ok) return await res.json();
+        } catch {}
+      }
+
+      // 2. Offline fallback: calculate directly from local Dexie IndexedDB orders & expenses
+      try {
+        const localOrders = await offlineDb.orders.toArray();
+        const localExpenses = await offlineDb.expenses.toArray();
+        const paidOrders = localOrders.filter((o) => o.stage === 'paid');
+        const grossSales = paidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+        const totalExpenses = localExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+        const estimatedCOGS = Math.round(grossSales * 0.45);
+        const netProfit = grossSales - estimatedCOGS - totalExpenses;
+
+        const itemMap = new Map<string, { name: string; quantity: number; revenue: number }>();
+        paidOrders.forEach((o) => {
+          (o.lines || []).forEach((l) => {
+            const key = l.productId || l.name;
+            const cur = itemMap.get(key) || { name: l.name, quantity: 0, revenue: 0 };
+            cur.quantity += Number(l.quantity || 1);
+            cur.revenue += Number(l.unitPrice || 0) * Number(l.quantity || 1);
+            itemMap.set(key, cur);
+          });
+        });
+        const topSellingItems = Array.from(itemMap.values())
+          .sort((a, b) => b.quantity - a.quantity)
+          .slice(0, 5);
+
+        return {
+          totalGrossSales: grossSales,
+          estimatedCOGS,
+          totalExpenses,
+          netProfit,
+          totalOrdersCount: paidOrders.length,
+          topSellingItems,
+        };
+      } catch {
+        return null;
+      }
     },
   });
 

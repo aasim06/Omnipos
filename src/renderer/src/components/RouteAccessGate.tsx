@@ -50,13 +50,8 @@ export function RouteAccessGate({
 
   // 1. License Gate Check
   if (moduleKey && !can(moduleKey)) {
-    // Kitchen is automatically accessible if fastfood module is active
-    if (moduleKey === 'kitchen' && can('fastfood')) {
-      // allow
-    } else {
-      const fallbackRoute = getDefaultAccessibleRoute(modules, hasPermission);
-      return <Navigate to={fallbackRoute} replace />;
-    }
+    const fallbackRoute = getDefaultAccessibleRoute(modules, hasPermission);
+    return <Navigate to={fallbackRoute} replace />;
   }
 
   // 2. User Permission Gate Check (Cashiers only get allowed modules)

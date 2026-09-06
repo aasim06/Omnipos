@@ -34,7 +34,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { resolveApiUrl } from '@/lib/api';
+import { posApi } from '@/lib/api';
 import { StockMovement } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
@@ -573,15 +573,10 @@ export function VendorsView(): React.JSX.Element {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printingVendor, setPrintingVendor] = useState<Vendor | null>(null);
 
-  // Fetch Stock Movements to link with Vendor Purchases
+  // Fetch Stock Movements: Offline-First Cache (<5ms)
   const { data: movements = [] } = useQuery<StockMovement[]>({
     queryKey: ['stock-movements'],
-    queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/stock-movements`);
-      if (!res.ok) return [];
-      return res.json();
-    },
+    queryFn: () => posApi.fetchStockMovements(),
   });
 
   // Form for Adding new Vendor

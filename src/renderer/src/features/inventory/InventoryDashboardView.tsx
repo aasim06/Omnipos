@@ -26,11 +26,12 @@ import {
   ShoppingBag24Regular,
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
-import { resolveApiUrl } from '@/lib/api';
+import { posApi } from '@/lib/api';
 import { Product, StockMovement } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { vendorStorage } from './vendorStorage';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 const useStyles = makeStyles({
   container: {
@@ -335,38 +336,45 @@ export function InventoryDashboardView(): React.JSX.Element {
   const styles = useStyles();
   const navigate = useNavigate();
 
-  // Fetch Products
+  // Fetch Products: Offline-First Cache (<5ms)
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
     queryKey: ['products'],
-    queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/products`);
-      if (!res.ok) return [];
-      return res.json();
-    },
+    queryFn: () => posApi.fetchProducts(),
   });
 
-  // Fetch Stock Movements
+  // Fetch Stock Movements: Offline-First Cache (<5ms)
   const { data: movements = [] } = useQuery<StockMovement[]>({
     queryKey: ['stock-movements'],
-    queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/stock-movements`);
-      if (!res.ok) return [];
-      return res.json();
-    },
+    queryFn: () => posApi.fetchStockMovements(),
   });
 
   const vendors = vendorStorage.getVendors();
   const totalVendorPayables = vendors.reduce((acc, v) => acc + (v.openingBalance || 0), 0);
 
+  const { can } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
   // Filter tab: Store-Wide vs Fast Food Kitchen vs Retail Mini Mart
-  const [inventoryTab, setInventoryTab] = React.useState<'all' | 'fastfood' | 'minimart'>('all');
+  const [inventoryTab, setInventoryTab] = React.useState<'all' | 'fastfood' | 'minimart'>(() => {
+    if (hasFastFood && !hasOmnimart) return 'fastfood';
+    if (!hasFastFood && hasOmnimart) return 'minimart';
+    return 'all';
+  });
+
+  // Base products filtered by license
+  const licensedProducts = React.useMemo(() => {
+    return products.filter((p) => {
+      if (!hasFastFood && (p.module === 'fastfood' || p.itemRole === 'raw_ingredient')) return false;
+      if (!hasOmnimart && (p.module === 'minimart' || p.itemRole === 'retail_product')) return false;
+      return true;
+    });
+  }, [products, hasFastFood, hasOmnimart]);
 
   // Filter products based on selected tab
   const displayedProducts = React.useMemo(() => {
     if (inventoryTab === 'fastfood') {
-      return products.filter(
+      return licensedProducts.filter(
         (p) =>
           p.module === 'fastfood' ||
           p.itemRole === 'raw_ingredient' ||
@@ -375,14 +383,14 @@ export function InventoryDashboardView(): React.JSX.Element {
       );
     }
     if (inventoryTab === 'minimart') {
-      return products.filter(
+      return licensedProducts.filter(
         (p) =>
           (p.module === 'minimart' || p.itemRole === 'retail_product') &&
           p.itemRole !== 'raw_ingredient'
       );
     }
-    return products;
-  }, [products, inventoryTab]);
+    return licensedProducts;
+  }, [licensedProducts, inventoryTab]);
 
   // Valuations based on displayed products
   const totalStockItems = displayedProducts.length;
@@ -431,81 +439,94 @@ export function InventoryDashboardView(): React.JSX.Element {
           <span style={{ fontSize: '11px', fontWeight: 800, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             Inventory Scope:
           </span>
-          <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '4px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-            <button
-              type="button"
-              onClick={() => setInventoryTab('all')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 14px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: inventoryTab === 'all' ? '#E51937' : 'transparent',
-                color: inventoryTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                fontWeight: inventoryTab === 'all' ? 700 : 500,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-                transition: 'all 0.12s ease',
-              }}
-            >
-              <span>Store-Wide Overview</span>
-              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                {products.length}
-              </span>
-            </button>
+          {hasFastFood && hasOmnimart ? (
+            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '4px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+              <button
+                type="button"
+                onClick={() => setInventoryTab('all')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: inventoryTab === 'all' ? '#E51937' : 'transparent',
+                  color: inventoryTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: inventoryTab === 'all' ? 700 : 500,
+                  fontSize: '12.5px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                <span>Store-Wide Overview</span>
+                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {licensedProducts.length}
+                </span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setInventoryTab('fastfood')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 14px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: inventoryTab === 'fastfood' ? '#E51937' : 'transparent',
-                color: inventoryTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                fontWeight: inventoryTab === 'fastfood' ? 700 : 500,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-                transition: 'all 0.12s ease',
-              }}
-            >
-              <Food24Regular style={{ width: 15, height: 15 }} />
-              <span>Kitchen & Fast Food Raw Stock</span>
-              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                {products.filter((p) => p.module === 'fastfood' || p.itemRole === 'raw_ingredient').length}
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setInventoryTab('fastfood')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: inventoryTab === 'fastfood' ? '#E51937' : 'transparent',
+                  color: inventoryTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: inventoryTab === 'fastfood' ? 700 : 500,
+                  fontSize: '12.5px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                <Food24Regular style={{ width: 15, height: 15 }} />
+                <span>Kitchen & Fast Food Raw Stock</span>
+                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {licensedProducts.filter((p) => p.module === 'fastfood' || p.itemRole === 'raw_ingredient').length}
+                </span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setInventoryTab('minimart')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 14px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: inventoryTab === 'minimart' ? '#E51937' : 'transparent',
-                color: inventoryTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                fontWeight: inventoryTab === 'minimart' ? 700 : 500,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-                transition: 'all 0.12s ease',
-              }}
-            >
-              <ShoppingBag24Regular style={{ width: 15, height: 15 }} />
-              <span>Retail Mini Mart Goods</span>
-              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                {products.filter((p) => (p.module === 'minimart' || p.itemRole === 'retail_product') && p.itemRole !== 'raw_ingredient').length}
+              <button
+                type="button"
+                onClick={() => setInventoryTab('minimart')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: inventoryTab === 'minimart' ? '#E51937' : 'transparent',
+                  color: inventoryTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                  fontWeight: inventoryTab === 'minimart' ? 700 : 500,
+                  fontSize: '12.5px',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                <ShoppingBag24Regular style={{ width: 15, height: 15 }} />
+                <span>Retail Mini Mart Goods</span>
+                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {licensedProducts.filter((p) => (p.module === 'minimart' || p.itemRole === 'retail_product') && p.itemRole !== 'raw_ingredient').length}
+                </span>
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}`, fontSize: '12.5px', fontWeight: 600 }}>
+              {hasFastFood ? <Food24Regular style={{ width: 15, height: 15, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 15, height: 15, color: '#2563EB' }} />}
+              <span>{hasFastFood ? 'Kitchen & Fast Food Raw Stock' : 'Retail Mini Mart Goods'}</span>
+              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                {licensedProducts.length} items
               </span>
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: tokens.colorNeutralForeground3 }}>

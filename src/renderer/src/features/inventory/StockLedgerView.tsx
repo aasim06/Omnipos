@@ -23,11 +23,12 @@ import {
   ShoppingBag24Regular,
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
-import { resolveApiUrl } from '@/lib/api';
+import { posApi } from '@/lib/api';
 import { StockMovement } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 const TIME_FILTER_OPTIONS = [
   { value: 'all', label: 'All Dates' },
@@ -234,19 +235,21 @@ const useStyles = makeStyles({
 export function StockLedgerView(): React.JSX.Element {
   const styles = useStyles();
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeTab, setTypeTab] = useState<'all' | 'in' | 'out'>('all');
-  const [departmentTab, setDepartmentTab] = useState<'all' | 'fastfood' | 'minimart'>('all');
+  const { can } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
+  const [departmentTab, setDepartmentTab] = useState<'all' | 'fastfood' | 'minimart'>(() => {
+    if (hasFastFood && !hasOmnimart) return 'fastfood';
+    if (!hasFastFood && hasOmnimart) return 'minimart';
+    return 'all';
+  });
   const [timeFilter, setTimeFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
-  // Fetch Stock Movements
+  // Fetch Stock Movements: Offline-First Cache (<5ms)
   const { data: movements = [], isLoading } = useQuery<StockMovement[]>({
     queryKey: ['stock-movements'],
-    queryFn: async () => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/stock-movements`);
-      if (!res.ok) return [];
-      return res.json();
-    },
+    queryFn: () => posApi.fetchStockMovements(),
   });
 
   const now = new Date();
@@ -255,6 +258,10 @@ export function StockLedgerView(): React.JSX.Element {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
   const filteredMovements = movements.filter((m) => {
+    // License Filter
+    if (!hasFastFood && m.module === 'fastfood') return false;
+    if (!hasOmnimart && m.module !== 'fastfood') return false;
+
     // Type Filter
     if (typeTab === 'in' && m.type !== 'in') return false;
     if (typeTab === 'out' && m.type !== 'out') return false;
@@ -654,81 +661,94 @@ export function StockLedgerView(): React.JSX.Element {
             <span style={{ fontSize: '11px', fontWeight: 800, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Ledger Scope:
             </span>
-            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-              <button
-                type="button"
-                onClick={() => setDepartmentTab('all')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: departmentTab === 'all' ? '#E51937' : 'transparent',
-                  color: departmentTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: departmentTab === 'all' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
-              >
-                <span>All Movements</span>
-                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                  {movements.length}
-                </span>
-              </button>
+            {hasFastFood && hasOmnimart ? (
+              <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                <button
+                  type="button"
+                  onClick={() => setDepartmentTab('all')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: departmentTab === 'all' ? '#E51937' : 'transparent',
+                    color: departmentTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                    fontWeight: departmentTab === 'all' ? 700 : 500,
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    transition: 'all 0.12s ease',
+                  }}
+                >
+                  <span>All Movements</span>
+                  <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                    {movements.length}
+                  </span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setDepartmentTab('fastfood')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: departmentTab === 'fastfood' ? '#E51937' : 'transparent',
-                  color: departmentTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: departmentTab === 'fastfood' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
-              >
-                <Food24Regular style={{ width: 14, height: 14 }} />
-                <span>Kitchen & Fast Food</span>
-                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                  {movements.filter((m) => m.module === 'fastfood').length}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setDepartmentTab('fastfood')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: departmentTab === 'fastfood' ? '#E51937' : 'transparent',
+                    color: departmentTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                    fontWeight: departmentTab === 'fastfood' ? 700 : 500,
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    transition: 'all 0.12s ease',
+                  }}
+                >
+                  <Food24Regular style={{ width: 14, height: 14 }} />
+                  <span>Kitchen & Fast Food</span>
+                  <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                    {movements.filter((m) => m.module === 'fastfood').length}
+                  </span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setDepartmentTab('minimart')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: departmentTab === 'minimart' ? '#E51937' : 'transparent',
-                  color: departmentTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: departmentTab === 'minimart' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
-              >
-                <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
-                <span>Retail Mini Mart</span>
-                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                  {movements.filter((m) => m.module !== 'fastfood').length}
+                <button
+                  type="button"
+                  onClick={() => setDepartmentTab('minimart')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: departmentTab === 'minimart' ? '#E51937' : 'transparent',
+                    color: departmentTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
+                    fontWeight: departmentTab === 'minimart' ? 700 : 500,
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    transition: 'all 0.12s ease',
+                  }}
+                >
+                  <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                  <span>Retail Mini Mart</span>
+                  <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                    {movements.filter((m) => m.module !== 'fastfood').length}
+                  </span>
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}`, fontSize: '12px', fontWeight: 600 }}>
+                {hasFastFood ? <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />}
+                <span>{hasFastFood ? 'Kitchen & Fast Food Ledger' : 'Retail Mini Mart Ledger'}</span>
+                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  {filteredMovements.length}
                 </span>
-              </button>
-            </div>
+              </div>
+            )}
           </div>
         </div>
 

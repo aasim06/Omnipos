@@ -667,13 +667,26 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  // ── Sync Status ──
-  app.get('/api/sync/status', async (_req: Request, res: Response) => {
+  // ── Database Wipe (Clear all records, keep schema) ──
+  app.post('/api/database/wipe', async (_req: Request, res: Response) => {
     try {
-      const pendingCount = await db.syncOutbox.count({ where: { status: 'pending' } });
-      res.json({ pendingCount, isOnline: true });
+      await db.$transaction([
+        db.kitchenTicket.deleteMany(),
+        db.orderItem.deleteMany(),
+        db.order.deleteMany(),
+        db.product.deleteMany(),
+        db.category.deleteMany(),
+        db.khataTransaction.deleteMany(),
+        db.customerKhata.deleteMany(),
+        db.stockMovement.deleteMany(),
+        db.expense.deleteMany(),
+        db.cashDrawer.deleteMany(),
+        db.syncOutbox.deleteMany(),
+      ]);
+      res.json({ ok: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 }
+

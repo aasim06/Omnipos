@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check, X } from 'lucide-react';
 import { makeStyles, tokens, mergeClasses } from '@fluentui/react-components';
 
 export interface CustomSelectOption {
@@ -355,8 +355,9 @@ export function CustomSelect({
                 onClear();
               }}
               className={styles.clearBtn}
+              title="Clear"
             >
-              ✕
+              <X size={13} />
             </button>
           )}
           <ChevronDown

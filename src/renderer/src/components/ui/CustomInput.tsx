@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { makeStyles, tokens, mergeClasses } from '@fluentui/react-components';
+import { Dismiss16Regular } from '@fluentui/react-icons';
 
 export interface CustomInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -222,8 +223,9 @@ export const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
               type="button"
               onClick={onClear}
               className={styles.clearBtn}
+              title="Clear"
             >
-              ✕
+              <Dismiss16Regular style={{ width: 12, height: 12 }} />
             </button>
           )}
         </div>

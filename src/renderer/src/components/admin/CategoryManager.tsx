@@ -24,7 +24,6 @@ export function CategoryManager({ module = "minimart" }: CategoryManagerProps) {
 
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [newCatName, setNewCatName] = useState("");
-  const [newCatEmoji, setNewCatEmoji] = useState("🏷");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [toast, setToast] = useState<string | null>(null);
@@ -60,13 +59,12 @@ export function CategoryManager({ module = "minimart" }: CategoryManagerProps) {
     const newItem: CategoryItem = {
       id: `cat_${Date.now()}`,
       name: newCatName.trim(),
-      emoji: newCatEmoji || "🏷",
+      emoji: "",
     };
 
     const updated = [...categories, newItem];
     saveCategoriesToStorage(updated);
     setNewCatName("");
-    setNewCatEmoji("🏷");
     showToast(`Category "${newItem.name}" added to ${module}!`);
   }
 
@@ -141,12 +139,9 @@ export function CategoryManager({ module = "minimart" }: CategoryManagerProps) {
 
           {/* Add Category Form */}
           <form onSubmit={handleAddCategory} className="flex gap-2 items-center bg-[#090a0e] p-3 rounded-md border border-[#232734]">
-            <input
-              value={newCatEmoji}
-              onChange={(e) => setNewCatEmoji(e.target.value)}
-              placeholder="🍔"
-              className="w-10 text-center bg-[#161822] border border-[#232734] rounded-md py-1.5 text-xs text-white"
-            />
+            <div className="flex items-center pl-2 text-[#8b92a0]">
+              <Tag size={16} />
+            </div>
             <input
               required
               value={newCatName}
@@ -174,7 +169,7 @@ export function CategoryManager({ module = "minimart" }: CategoryManagerProps) {
                   className="flex items-center justify-between p-3.5 rounded-md bg-[#0e1015] border border-[#232734] hover:border-[#ff6b00]/40 transition group"
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    <span className="text-base">{cat.emoji}</span>
+                    <Tag size={16} className="text-amber-400 shrink-0" />
 
                     {isEditing ? (
                       <input

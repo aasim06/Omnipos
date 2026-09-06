@@ -64,7 +64,19 @@ export const NO_MODULES_ENABLED: LicenseModules = {
 
 import { CategoryProfile } from '@shared/types';
 
-export const ALL_VALID_PROFILES: CategoryProfile[] = ['standard', 'apparel', 'footwear', 'hardware', 'food'];
+export const ALL_VALID_PROFILES: CategoryProfile[] = [
+  'standard',
+  'footwear',
+  'apparel',
+  'grocery',
+  'cosmetics',
+  'pharmacy',
+  'electronics',
+  'bakery',
+  'food',
+  'hardware',
+  'electric',
+];
 
 export function normalizeBusinessProfiles(
   profiles?: any,

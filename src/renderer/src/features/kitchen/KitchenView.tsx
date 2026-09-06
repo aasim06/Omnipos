@@ -30,6 +30,7 @@ import {
   Add20Regular,
   Delete16Regular,
   Print16Regular,
+  Timer16Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -911,8 +912,12 @@ export function KitchenView(): React.JSX.Element {
                       <Body1 className={styles.ticketTitle}>
                         Ticket #{String(idx + 1).padStart(3, '0')}
                       </Body1>
-                      <span className={elapsedMins > 15 ? styles.timeUrgent : elapsedMins > 8 ? styles.timeWarning : styles.timeGood}>
-                        ⏱ {elapsedMins}m ago
+                      <span
+                        className={elapsedMins > 15 ? styles.timeUrgent : elapsedMins > 8 ? styles.timeWarning : styles.timeGood}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                      >
+                        <Timer16Regular style={{ width: 13, height: 13 }} />
+                        <span>{elapsedMins}m ago</span>
                       </span>
                     </div>
                     <Caption1 className={styles.ticketTimeSub}>

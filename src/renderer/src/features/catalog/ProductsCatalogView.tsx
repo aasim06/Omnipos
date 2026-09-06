@@ -52,6 +52,7 @@ import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
 
 const UNIT_OPTIONS = [
   { value: 'PCS', label: 'Piece (PCS)' },
@@ -1644,9 +1645,17 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     };
     saveCategoryMutation.mutate(cat);
   };
-  const { can } = useLicense();
+  const { can, businessProfiles = ['standard'] } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
+
+  const activeRetailProfile = useMemo(() => {
+    const specific = businessProfiles.find((p) => p !== 'standard' && p !== 'food');
+    return specific && CATEGORY_PROFILES[specific] ? CATEGORY_PROFILES[specific] : null;
+  }, [businessProfiles]);
+
+  const activeRetailLabel = activeRetailProfile?.label || 'Retail Store';
+  const activeRetailShort = activeRetailProfile?.shortTag || 'Retail';
 
   // Filtered products
   const filteredProducts = products.filter((p) => {
@@ -2344,7 +2353,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                             value={field.value}
                             options={[
                               ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
-                              ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Goods' }] : []),
+                              ...(hasOmnimart ? [{ value: 'minimart', label: activeRetailLabel }] : []),
                             ]}
                             onChange={(val) => {
                               field.onChange(val as ModuleKey);
@@ -2459,15 +2468,30 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                       <Controller
                         control={productForm.control}
                         name="unit"
-                        render={({ field }) => (
-                          <CustomSelect
-                            label="Unit of Measure"
-                            required
-                            value={field.value || 'PCS'}
-                            options={UNIT_OPTIONS}
-                            onChange={(val) => field.onChange(val)}
-                          />
-                        )}
+                        render={({ field }) => {
+                          const currentCat = productForm.watch('category');
+                          const activeCatObj = categories.find((c) => c.name === currentCat);
+                          const detected = detectCategoryProfile(currentCat || '', activeCatObj?.profile);
+                          const pCfg = CATEGORY_PROFILES[detected];
+                          const suggested = pCfg?.suggestedUnits || ['PCS'];
+                          const matched: { value: string; label: string }[] = [];
+                          suggested.forEach((su) => {
+                            const found = UNIT_OPTIONS.find((opt) => opt.value.toUpperCase() === su.toUpperCase());
+                            if (found && !matched.some((m) => m.value.toUpperCase() === found.value.toUpperCase())) {
+                              matched.push(found);
+                            }
+                          });
+                          const finalOptions = matched.length > 0 ? matched : UNIT_OPTIONS;
+                          return (
+                            <CustomSelect
+                              label="Unit of Measure"
+                              required
+                              value={field.value || finalOptions[0]?.value || 'PCS'}
+                              options={finalOptions}
+                              onChange={(val) => field.onChange(val)}
+                            />
+                          );
+                        }}
                       />
                     </div>
 
@@ -2773,7 +2797,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                     value={field.value}
                     options={[
                       ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
-                      ...(hasOmnimart ? [{ value: 'minimart', label: 'Omnimart Goods' }] : []),
+                      ...(hasOmnimart ? [{ value: 'minimart', label: activeRetailLabel }] : []),
                     ]}
                     onChange={(val) => field.onChange(val as ModuleKey)}
                   />

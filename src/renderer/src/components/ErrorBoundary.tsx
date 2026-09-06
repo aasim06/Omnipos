@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { makeStyles } from '@fluentui/react-components';
+import { Warning28Regular } from '@fluentui/react-icons';
 
 interface Props {
   children: ReactNode;
@@ -47,7 +48,8 @@ const useStyles = makeStyles({
     boxSizing: 'border-box',
   },
   icon: {
-    fontSize: '32px',
+    display: 'flex',
+    justifyContent: 'center',
     marginBottom: '12px',
   },
   title: {
@@ -104,7 +106,9 @@ function ErrorFallbackView({
   return (
     <div className={styles.fullPage}>
       <div className={styles.card}>
-        <div className={styles.icon}>⚠️</div>
+        <div className={styles.icon}>
+          <Warning28Regular style={{ width: 40, height: 40, color: '#f59e0b' }} />
+        </div>
         <h2 className={styles.title}>
           Omnipos Interface Recovery
         </h2>

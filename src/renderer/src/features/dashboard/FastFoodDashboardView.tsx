@@ -14,8 +14,15 @@ import {
   Delete20Regular,
   Add20Regular,
   Dismiss20Regular,
+  Fire20Filled,
+  WeatherSunny20Regular,
+  WeatherMoon20Regular,
+  DataHistogram24Regular,
+  Ribbon20Filled,
+  Trophy20Filled,
 } from '@fluentui/react-icons';
 import { useAppTheme } from '@/theme/AppProviders';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { offlineDb, LocalOrder } from '@/lib/offlineDb';
 import { Product } from '@/lib/types';
 import { ensureDashboardSeedOrders, clearDashboardSeedOrders, createLiveTestOrder } from '@/lib/seedData';
@@ -28,7 +35,22 @@ export function FastFoodDashboardView(): React.JSX.Element {
   const isDark = mode === 'dark';
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<DashboardTab>('fastfood');
+  const { can } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+  const hasKitchen = can('kitchen');
+
+  const defaultTab: DashboardTab = hasFastFood ? 'fastfood' : 'minimart';
+  const [activeTab, setActiveTab] = useState<DashboardTab>(defaultTab);
+
+  useEffect(() => {
+    if (activeTab === 'fastfood' && !hasFastFood && hasOmnimart) {
+      setActiveTab('minimart');
+    } else if (activeTab === 'minimart' && !hasOmnimart && hasFastFood) {
+      setActiveTab('fastfood');
+    }
+  }, [hasFastFood, hasOmnimart, activeTab]);
+
   const [dateRange, setDateRange] = useState<DateRange>('today');
   const [orders, setOrders] = useState<LocalOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -322,6 +344,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
         minHeight: '100%',
         boxSizing: 'border-box',
         color: T.textPrimary,
+        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         display: 'flex',
         flexDirection: 'column',
         gap: '24px',
@@ -370,75 +393,101 @@ export function FastFoodDashboardView(): React.JSX.Element {
           </p>
         </div>
 
-        {/* ── Top Dual Tabs: Fast Food vs Mini Mart ── */}
+        {/* ── Top Dual Tabs: Fast Food vs Mini Mart (License-Filtered) ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
-            style={{
-              display: 'flex',
-              backgroundColor: isDark ? '#1C1F26' : '#E2E8F0',
-              padding: '4px',
-              borderRadius: '10px',
-              border: `1px solid ${T.cardBorder}`,
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setActiveTab('fastfood')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 18px',
-                borderRadius: '7px',
-                border: 'none',
-                backgroundColor: activeTab === 'fastfood' ? T.red : 'transparent',
-                color: activeTab === 'fastfood' ? '#FFFFFF' : T.textSecondary,
-                fontWeight: 800,
-                fontSize: '13px',
-                cursor: 'pointer',
-                boxShadow: activeTab === 'fastfood' ? `0 4px 14px ${T.redGlow}` : 'none',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <Food24Regular style={{ width: 16, height: 16 }} />
-              <span>Fast Food Restaurant</span>
-              <span
+          {(hasFastFood || hasOmnimart) && (
+            hasFastFood && hasOmnimart ? (
+              <div
                 style={{
-                  fontSize: '10px',
-                  padding: '1px 6px',
+                  display: 'flex',
+                  backgroundColor: isDark ? '#1C1F26' : '#E2E8F0',
+                  padding: '4px',
                   borderRadius: '10px',
-                  backgroundColor: activeTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : isDark ? '#2D3139' : '#CBD5E1',
-                  color: activeTab === 'fastfood' ? '#FFFFFF' : T.textPrimary,
-                  fontWeight: 800,
+                  border: `1px solid ${T.cardBorder}`,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
                 }}
               >
-                {activeTab === 'fastfood' ? metrics.totalOrders : 'POS'}
-              </span>
-            </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('fastfood')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 18px',
+                    borderRadius: '7px',
+                    border: 'none',
+                    backgroundColor: activeTab === 'fastfood' ? T.red : 'transparent',
+                    color: activeTab === 'fastfood' ? '#FFFFFF' : T.textSecondary,
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    cursor: 'pointer',
+                    boxShadow: activeTab === 'fastfood' ? `0 4px 14px ${T.redGlow}` : 'none',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Food24Regular style={{ width: 16, height: 16 }} />
+                  <span>Fast Food Restaurant</span>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      padding: '1px 6px',
+                      borderRadius: '10px',
+                      backgroundColor: activeTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : isDark ? '#2D3139' : '#CBD5E1',
+                      color: activeTab === 'fastfood' ? '#FFFFFF' : T.textPrimary,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {activeTab === 'fastfood' ? metrics.totalOrders : 'POS'}
+                  </span>
+                </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('minimart')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 18px',
-                borderRadius: '7px',
-                border: 'none',
-                backgroundColor: activeTab === 'minimart' ? '#2563EB' : 'transparent',
-                color: activeTab === 'minimart' ? '#FFFFFF' : T.textSecondary,
-                fontWeight: 800,
-                fontSize: '13px',
-                cursor: 'pointer',
-                boxShadow: activeTab === 'minimart' ? '0 4px 14px rgba(37, 99, 235, 0.4)' : 'none',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <BuildingShop24Regular style={{ width: 16, height: 16 }} />
-              <span>Mini Mart Retail</span>
-            </button>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('minimart')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 18px',
+                    borderRadius: '7px',
+                    border: 'none',
+                    backgroundColor: activeTab === 'minimart' ? '#2563EB' : 'transparent',
+                    color: activeTab === 'minimart' ? '#FFFFFF' : T.textSecondary,
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    cursor: 'pointer',
+                    boxShadow: activeTab === 'minimart' ? '0 4px 14px rgba(37, 99, 235, 0.4)' : 'none',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <BuildingShop24Regular style={{ width: 16, height: 16 }} />
+                  <span>Mini Mart Retail</span>
+                </button>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: hasFastFood ? 'rgba(229, 25, 55, 0.1)' : 'rgba(37, 99, 235, 0.1)',
+                  border: `1px solid ${hasFastFood ? 'rgba(229, 25, 55, 0.25)' : 'rgba(37, 99, 235, 0.25)'}`,
+                  color: hasFastFood ? T.red : '#2563EB',
+                  fontWeight: 800,
+                  fontSize: '13px',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
+              >
+                {hasFastFood ? <Food24Regular style={{ width: 16, height: 16 }} /> : <BuildingShop24Regular style={{ width: 16, height: 16 }} />}
+                <span>{hasFastFood ? 'Fast Food Restaurant' : 'Mini Mart Retail'}</span>
+              </div>
+            )
+          )}
 
           {/* Date range filter */}
           <div
@@ -567,7 +616,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
           </div>
         </div>
 
-        {/* Card 3: Kitchen Velocity / Items Sold */}
+        {/* Card 3: Kitchen Velocity / Checkout Speed */}
         <div
           style={{
             backgroundColor: T.cardBg,
@@ -582,22 +631,22 @@ export function FastFoodDashboardView(): React.JSX.Element {
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', backgroundColor: T.amber, boxShadow: `0 0 10px ${T.amber}` }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ fontSize: '12px', fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              {activeTab === 'fastfood' ? 'Avg Kitchen Prep Speed' : 'Items Sold Today'}
+              {activeTab === 'fastfood' && hasKitchen ? 'Avg Kitchen Prep Speed' : 'Avg Checkout Speed'}
             </span>
             <div style={{ width: 36, height: 36, borderRadius: '8px', backgroundColor: 'rgba(245, 158, 11, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.amber }}>
               <Timer24Regular style={{ width: 20, height: 20 }} />
             </div>
           </div>
           <div style={{ fontSize: '28px', fontWeight: 900, color: T.textPrimary, marginTop: '12px', letterSpacing: '-0.02em' }}>
-            {activeTab === 'fastfood' ? `${metrics.avgPrepMinutes} ` : `${metrics.totalOrders * 2} `}
+            {activeTab === 'fastfood' && hasKitchen ? `${metrics.avgPrepMinutes} ` : '1.2 '}
             <span style={{ fontSize: '14px', fontWeight: 600, color: T.textMuted }}>
-              {activeTab === 'fastfood' ? 'Minutes / Ticket' : 'Units'}
+              Minutes / Ticket
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '11.5px', color: T.amber }}>
-            <Sparkle20Filled style={{ width: 14, height: 14 }} />
+            {activeTab === 'fastfood' && hasKitchen ? <Fire20Filled style={{ width: 14, height: 14, color: '#EF4444' }} /> : <Sparkle20Filled style={{ width: 14, height: 14 }} />}
             <span style={{ fontWeight: 800 }}>
-              {activeTab === 'fastfood' ? '🔥 94% under 15m target' : 'Fast Checkout Speed'}
+              {activeTab === 'fastfood' && hasKitchen ? '94% under 15m target' : 'Fast Checkout Speed'}
             </span>
           </div>
         </div>
@@ -652,11 +701,20 @@ export function FastFoodDashboardView(): React.JSX.Element {
             position: 'relative',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+            }}
+          >
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>
-                  {activeTab === 'fastfood' ? 'Hourly Orders & Sales (Column Chart)' : 'Hourly Retail Breakdown'}
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, fontFamily: 'inherit' }}>
+                  {activeTab === 'fastfood' ? 'Hourly Orders & Sales' : 'Hourly Retail Breakdown'}
                 </h3>
                 <span
                   style={{
@@ -666,9 +724,13 @@ export function FastFoodDashboardView(): React.JSX.Element {
                     borderRadius: '4px',
                     backgroundColor: 'rgba(229, 25, 55, 0.12)',
                     color: T.red,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
                   }}
                 >
-                  📊 Hourly Telemetry
+                  <DataHistogram24Regular style={{ width: 14, height: 14 }} />
+                  <span>Hourly Telemetry</span>
                 </span>
               </div>
               <p style={{ margin: '4px 0 0', fontSize: '12px', color: T.textSecondary }}>
@@ -678,6 +740,20 @@ export function FastFoodDashboardView(): React.JSX.Element {
 
             {/* Quick Live Actions & Peak indicators */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {/* Peak indicator tags */}
+              {activeTab === 'fastfood' && hasFastFood && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', backgroundColor: isDark ? '#27272A' : '#F1F5F9', color: T.amber, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <WeatherSunny20Regular style={{ width: 13, height: 13 }} />
+                    <span>Lunch (1 - 3 PM)</span>
+                  </span>
+                  <span style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', backgroundColor: isDark ? '#27272A' : '#F1F5F9', color: T.red, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <WeatherMoon20Regular style={{ width: 13, height: 13 }} />
+                    <span>Dinner (8 - 11 PM)</span>
+                  </span>
+                </div>
+              )}
+
               {/* Button to quickly test live dynamic updates */}
               <button
                 type="button"
@@ -689,19 +765,21 @@ export function FastFoodDashboardView(): React.JSX.Element {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
-                  padding: '5px 10px',
+                  padding: '5px 12px',
                   borderRadius: '6px',
                   border: `1px solid ${T.green}`,
                   backgroundColor: 'rgba(16, 185, 129, 0.12)',
                   color: T.green,
-                  fontSize: '11px',
+                  fontSize: '11.5px',
                   fontWeight: 800,
+                  fontFamily: 'inherit',
                   cursor: 'pointer',
+                  transition: 'all 0.15s ease',
                 }}
                 title="Punch a real live test order right now to see the column update dynamically"
               >
                 <Add20Regular style={{ width: 14, height: 14 }} />
-                <span>+ Test Live Order</span>
+                <span>Test Live Order</span>
               </button>
 
               {/* Clear demo data button if demo orders exist */}
@@ -721,8 +799,9 @@ export function FastFoodDashboardView(): React.JSX.Element {
                     border: '1px solid rgba(239, 68, 68, 0.4)',
                     backgroundColor: 'rgba(239, 68, 68, 0.08)',
                     color: '#EF4444',
-                    fontSize: '11px',
+                    fontSize: '11.5px',
                     fontWeight: 700,
+                    fontFamily: 'inherit',
                     cursor: 'pointer',
                   }}
                   title="Remove all pre-generated demo orders and show only real POS sales"
@@ -744,26 +823,15 @@ export function FastFoodDashboardView(): React.JSX.Element {
                     border: `1px solid ${T.cardBorder}`,
                     backgroundColor: 'transparent',
                     color: T.textMuted,
-                    fontSize: '11px',
+                    fontSize: '11.5px',
                     fontWeight: 700,
+                    fontFamily: 'inherit',
                     cursor: 'pointer',
                   }}
                   title="Reload sample demonstration orders"
                 >
                   Load Sample Data
                 </button>
-              )}
-
-              {/* Peak indicator tags */}
-              {activeTab === 'fastfood' && (
-                <>
-                  <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', backgroundColor: isDark ? '#27272A' : '#F1F5F9', color: T.amber, fontWeight: 700 }}>
-                    ☀️ Lunch (1 - 3 PM)
-                  </span>
-                  <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', backgroundColor: isDark ? '#27272A' : '#F1F5F9', color: T.red, fontWeight: 700 }}>
-                    🌙 Dinner (8 - 11 PM)
-                  </span>
-                </>
               )}
             </div>
           </div>
@@ -973,8 +1041,18 @@ export function FastFoodDashboardView(): React.JSX.Element {
                         {col.label} Slot
                       </span>
                       {col.isPeak && (
-                        <span style={{ fontSize: '10px', fontWeight: 800, color: col.hour >= 20 ? T.red : T.amber }}>
-                          {col.hour >= 20 ? '🌙 Dinner' : '☀️ Lunch'}
+                        <span style={{ fontSize: '10px', fontWeight: 800, color: col.hour >= 20 ? T.red : T.amber, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          {col.hour >= 20 ? (
+                            <>
+                              <WeatherMoon20Regular style={{ width: 12, height: 12 }} />
+                              <span>Dinner</span>
+                            </>
+                          ) : (
+                            <>
+                              <WeatherSunny20Regular style={{ width: 12, height: 12 }} />
+                              <span>Lunch</span>
+                            </>
+                          )}
                         </span>
                       )}
                     </div>
@@ -1334,7 +1412,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
             {metrics.topItems.map((item, idx) => {
               const maxQty = metrics.topItems[0]?.qty || 1;
               const barWidth = Math.round((item.qty / maxQty) * 100);
-              const rankMedal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+              const rankColor = idx === 0 ? '#F59E0B' : idx === 1 ? '#94A3B8' : idx === 2 ? '#B45309' : T.textMuted;
 
               return (
                 <div
@@ -1351,7 +1429,22 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 900, minWidth: '22px' }}>{rankMedal}</span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          minWidth: '22px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '2px',
+                          color: rankColor,
+                        }}
+                      >
+                        {idx === 0 && <Trophy20Filled style={{ width: 13, height: 13, color: '#F59E0B' }} />}
+                        {idx === 1 && <Ribbon20Filled style={{ width: 13, height: 13, color: '#94A3B8' }} />}
+                        {idx === 2 && <Ribbon20Filled style={{ width: 13, height: 13, color: '#B45309' }} />}
+                        #{idx + 1}
+                      </span>
                       {item.img && (
                         <img
                           src={item.img}
