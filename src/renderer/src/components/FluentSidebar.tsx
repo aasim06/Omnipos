@@ -1,15 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import {
-  Menu,
-  MenuTrigger,
-  MenuList,
-  MenuItem,
-  MenuPopover,
-  MenuDivider,
-  Avatar,
   Text,
-  Button,
   Badge,
   Dialog,
   DialogSurface,
@@ -478,21 +471,68 @@ const useStyles = makeStyles({
   menuHeaderSubtitle: {
     color: '#64748B',
   },
-  menuItemActive: {
+  flyoutItemBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '9px',
+    height: '34px',
+    padding: '0 10px',
+    borderRadius: '6px',
+    border: 'none',
+    fontSize: '12.5px',
+    cursor: 'pointer',
+    width: '100%',
+    boxSizing: 'border-box',
+    textAlign: 'left',
+    position: 'relative',
+    transition: 'background-color 0.12s ease, color 0.12s ease',
+    outline: 'none',
+  },
+  flyoutItemActiveDark: {
     fontWeight: 700,
     color: '#FF4D63',
+    backgroundColor: 'rgba(229, 25, 55, 0.12)',
   },
-  menuItemSpecial: {
-    fontWeight: 500,
-    color: '#FF4D63',
+  flyoutItemActiveLight: {
+    fontWeight: 700,
+    color: '#E51937',
+    backgroundColor: 'rgba(229, 25, 55, 0.08)',
   },
-  menuItemInactiveDark: {
+  flyoutItemInactiveDark: {
     fontWeight: 500,
     color: '#E2E8F0',
+    backgroundColor: 'transparent',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.07)',
+      color: '#FFFFFF',
+    },
   },
-  menuItemInactiveLight: {
+  flyoutItemInactiveLight: {
     fontWeight: 500,
-    color: '#1E293B',
+    color: '#334155',
+    backgroundColor: 'transparent',
+    ':hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+      color: '#0F172A',
+    },
+  },
+  flyoutItemSpecialDark: {
+    fontWeight: 600,
+    color: '#FF4D63',
+    backgroundColor: 'transparent',
+    ':hover': {
+      backgroundColor: 'rgba(229, 25, 55, 0.1)',
+      color: '#FF6B7D',
+    },
+  },
+  flyoutItemSpecialLight: {
+    fontWeight: 600,
+    color: '#E51937',
+    backgroundColor: 'transparent',
+    ':hover': {
+      backgroundColor: 'rgba(229, 25, 55, 0.08)',
+      color: '#B30018',
+    },
   },
   accordionBtnActiveDark: {
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
@@ -1094,6 +1134,46 @@ export function FluentSidebar(): React.JSX.Element {
     }
   }, [isInventoryActive]);
 
+  // Controlled Flyout state for collapsed accordion menus with 250ms anti-flicker grace period
+  const [flyout, setFlyout] = useState<{ label: string; top: number; left: number; item: any } | null>(null);
+  const flyoutTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const openFlyout = (e: React.MouseEvent<HTMLElement>, item: any) => {
+    if (flyoutTimerRef.current) clearTimeout(flyoutTimerRef.current);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const calculatedTop = Math.max(10, Math.min(rect.top, window.innerHeight - 300));
+    setFlyout({
+      label: item.label,
+      top: calculatedTop,
+      left: rect.right + 6,
+      item,
+    });
+  };
+
+  const closeFlyoutWithDelay = () => {
+    if (flyoutTimerRef.current) clearTimeout(flyoutTimerRef.current);
+    flyoutTimerRef.current = setTimeout(() => {
+      setFlyout(null);
+    }, 250);
+  };
+
+  const closeFlyoutImmediately = () => {
+    if (flyoutTimerRef.current) clearTimeout(flyoutTimerRef.current);
+    setFlyout(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (flyoutTimerRef.current) clearTimeout(flyoutTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isCollapsed) {
+      closeFlyoutImmediately();
+    }
+  }, [isCollapsed]);
+
   const allSections = [
     {
       title: 'HOME',
@@ -1321,70 +1401,36 @@ export function FluentSidebar(): React.JSX.Element {
                 // Special Accordion handling (Products & Catalog + Inventory & Stock)
                 if (item.isAccordion) {
                   if (isCollapsed) {
-                    // When collapsed: Flyout Popover Menu
+                    const isOpen = flyout?.label === item.label;
                     return (
-                      <Menu
+                      <div
                         key={item.label}
-                        positioning={{ position: 'after', align: 'top', offset: 4 }}
-                        openOnHover={true}
-                        hoverDelay={80}
+                        onMouseEnter={(e) => openFlyout(e, item)}
+                        onMouseLeave={closeFlyoutWithDelay}
                       >
-                        <MenuTrigger disableButtonEnhancement>
-                          <button
-                            type="button"
-                            title={item.label}
-                            aria-label={item.label}
-                            className={mergeClasses(
-                              styles.collapsedAccordionBtn,
-                              item.isActive
-                                ? (isDark ? styles.collapsedBtnActiveDark : styles.collapsedBtnActiveLight)
-                                : (isDark ? styles.collapsedBtnInactiveDark : styles.collapsedBtnInactiveLight)
-                            )}
-                          >
-                            <span className={styles.collapsedInnerSpan}>
-                              {item.isActive && (
-                                <div className={styles.collapsedActiveLaser} />
-                              )}
-                              {item.isActive ? item.activeIcon : item.icon}
-                            </span>
-                          </button>
-                        </MenuTrigger>
-                        <MenuPopover
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            if (isOpen) closeFlyoutImmediately();
+                            else openFlyout(e, item);
+                          }}
+                          title={item.label}
+                          aria-label={item.label}
                           className={mergeClasses(
-                            styles.menuPopover,
-                            isDark ? styles.menuPopoverDark : styles.menuPopoverLight
+                            styles.collapsedAccordionBtn,
+                            item.isActive
+                              ? (isDark ? styles.collapsedBtnActiveDark : styles.collapsedBtnActiveLight)
+                              : (isDark ? styles.collapsedBtnInactiveDark : styles.collapsedBtnInactiveLight)
                           )}
                         >
-                          <MenuList>
-                            <div className={mergeClasses(styles.menuHeader, isDark ? styles.menuHeaderDark : styles.menuHeaderLight)}>
-                              <Text weight="bold" size={200} block className={styles.menuHeaderTitle}>
-                                {item.label}
-                              </Text>
-                              <Text size={100} className={styles.menuHeaderSubtitle}>
-                                {item.subtitle || 'Module navigation'}
-                              </Text>
-                            </div>
-                            {item.subItems.map((sub: any) => (
-                              <MenuItem
-                                key={sub.to}
-                                icon={sub.icon}
-                                onClick={() => navigate(sub.to)}
-                                className={
-                                  location.pathname === sub.to
-                                    ? styles.menuItemActive
-                                    : sub.isSpecial
-                                    ? styles.menuItemSpecial
-                                    : isDark
-                                    ? styles.menuItemInactiveDark
-                                    : styles.menuItemInactiveLight
-                                }
-                              >
-                                {sub.label}
-                              </MenuItem>
-                            ))}
-                          </MenuList>
-                        </MenuPopover>
-                      </Menu>
+                          <span className={styles.collapsedInnerSpan}>
+                            {item.isActive && (
+                              <div className={styles.collapsedActiveLaser} />
+                            )}
+                            {item.isActive ? item.activeIcon : item.icon}
+                          </span>
+                        </button>
+                      </div>
                     );
                   }
 
@@ -1729,6 +1775,65 @@ export function FluentSidebar(): React.JSX.Element {
           </DialogBody>
         </DialogSurface>
       </Dialog>
+
+      {/* ── Collapsed Flyout Submenu Portal (Zero-Blink Pure React Portal) ── */}
+      {flyout &&
+        createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              top: `${flyout.top}px`,
+              left: `${flyout.left}px`,
+              zIndex: 999999,
+            }}
+            onMouseEnter={() => {
+              if (flyoutTimerRef.current) clearTimeout(flyoutTimerRef.current);
+            }}
+            onMouseLeave={closeFlyoutWithDelay}
+            className={mergeClasses(
+              styles.menuPopover,
+              isDark ? styles.menuPopoverDark : styles.menuPopoverLight
+            )}
+          >
+            <div className={mergeClasses(styles.menuHeader, isDark ? styles.menuHeaderDark : styles.menuHeaderLight)}>
+              <Text weight="bold" size={200} block className={styles.menuHeaderTitle}>
+                {flyout.item.label}
+              </Text>
+              <Text size={100} className={styles.menuHeaderSubtitle}>
+                {flyout.item.subtitle || 'Module navigation'}
+              </Text>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {flyout.item.subItems
+                .filter((sub: any) => !sub.moduleKey || can(sub.moduleKey))
+                .map((sub: any) => {
+                  const isSubActive = location.pathname === sub.to;
+                  return (
+                    <button
+                      key={sub.to}
+                      type="button"
+                      onClick={() => {
+                        closeFlyoutImmediately();
+                        navigate(sub.to);
+                      }}
+                      className={mergeClasses(
+                        styles.flyoutItemBtn,
+                        isSubActive
+                          ? (isDark ? styles.flyoutItemActiveDark : styles.flyoutItemActiveLight)
+                          : sub.isSpecial
+                          ? (isDark ? styles.flyoutItemSpecialDark : styles.flyoutItemSpecialLight)
+                          : (isDark ? styles.flyoutItemInactiveDark : styles.flyoutItemInactiveLight)
+                      )}
+                    >
+                      <span className={styles.iconWrap}>{sub.icon}</span>
+                      <span className={styles.noWrapText}>{sub.label}</span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>,
+          document.body
+        )}
     </nav>
   );
 }
