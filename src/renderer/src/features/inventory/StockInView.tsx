@@ -52,6 +52,7 @@ import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { vendorStorage } from './vendorStorage';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
+import { detectCategoryProfile } from '@/lib/categoryProfiles';
 
 const stockInSchema = z.object({
   module: z.enum(['fastfood', 'minimart']).default('minimart'),
@@ -109,9 +110,12 @@ const useStyles = makeStyles({
   },
   row1: {
     display: 'grid',
-    gridTemplateColumns: '1.2fr 1fr 1.8fr',
-    gap: '16px',
-    '@media (max-width: 900px)': {
+    gridTemplateColumns: '1.1fr 1fr 1fr 1.6fr',
+    gap: '14px',
+    '@media (max-width: 1100px)': {
+      gridTemplateColumns: '1fr 1fr',
+    },
+    '@media (max-width: 650px)': {
       gridTemplateColumns: '1fr',
     },
   },
@@ -1276,16 +1280,10 @@ export function StockInView(): React.JSX.Element {
     queryFn: () => posApi.fetchCategories(),
   });
 
+  const [selectedMainCategory, setSelectedMainCategory] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [tableMainCategoryFilter, setTableMainCategoryFilter] = useState<string>('all');
   const [tableCategoryFilter, setTableCategoryFilter] = useState<string>('all');
-
-  // Count products available in selected category
-  const categoryProducts = React.useMemo(() => {
-    if (!selectedCategory || selectedCategory === 'all') return allProducts;
-    return allProducts.filter(
-      (p) => (p.category || '').toLowerCase() === selectedCategory.toLowerCase()
-    );
-  }, [allProducts, selectedCategory]);
 
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
@@ -1312,6 +1310,87 @@ export function StockInView(): React.JSX.Element {
       discountPercent: 0,
     },
   });
+
+  const currentModule = form.watch('module') || (hasFastFood && !hasOmnimart ? 'fastfood' : 'minimart');
+
+  const moduleCategories = React.useMemo(() => {
+    return categories.filter((c) => c.module === currentModule);
+  }, [categories, currentModule]);
+
+  const mainCategoryOptions = React.useMemo(() => {
+    if (currentModule === 'fastfood') {
+      return [
+        { value: 'all', label: `All Kitchen Categories (${moduleCategories.length})` },
+        { value: 'food', label: 'Fast Food & Pizzas' },
+        { value: 'standard', label: 'General Food Items' },
+      ];
+    }
+
+    const retailProfileLabels: Record<string, string> = {
+      footwear: 'Footwear & Shoes',
+      apparel: 'Garments & Clothing',
+      grocery: 'Grocery & Supermarket',
+      bakery: 'Bakery & Confectionery',
+      cosmetics: 'Cosmetics & Beauty',
+      pharmacy: 'Pharmacy & Health',
+      hardware: 'Sanitary, Hardware & Paint',
+      electric: 'Electrical Store & Lighting',
+      electronics: 'Electronics & Mobile',
+      stationery: 'Books & Stationery',
+      toys: 'Baby & Kids Toys',
+      jewellery: 'Jewellery & Watches',
+      optics: 'Optics & Eyewear',
+      standard: 'General Retail',
+    };
+
+    const presentProfiles = new Set<string>();
+    moduleCategories.forEach((c) => {
+      const prof = detectCategoryProfile(c.name, c.profile);
+      if (prof && prof !== 'food') presentProfiles.add(prof);
+    });
+
+    const opts = [{ value: 'all', label: `All Retail Categories (${moduleCategories.length})` }];
+
+    presentProfiles.forEach((profKey) => {
+      const label = retailProfileLabels[profKey] || profKey.toUpperCase();
+      const count = moduleCategories.filter((c) => detectCategoryProfile(c.name, c.profile) === profKey).length;
+      opts.push({ value: profKey, label: `${label} (${count})` });
+    });
+
+    Object.entries(retailProfileLabels).forEach(([profKey, label]) => {
+      if (!presentProfiles.has(profKey) && profKey !== 'standard') {
+        opts.push({ value: profKey, label });
+      }
+    });
+
+    return opts;
+  }, [moduleCategories, currentModule]);
+
+  // Sub-categories available based on selected main category
+  const availableCategories = React.useMemo(() => {
+    if (selectedMainCategory === 'all') {
+      return moduleCategories;
+    }
+    const matched = moduleCategories.filter((c) => {
+      const prof = detectCategoryProfile(c.name, c.profile);
+      return prof === selectedMainCategory;
+    });
+    return matched.length > 0 ? matched : moduleCategories;
+  }, [moduleCategories, selectedMainCategory]);
+
+  // Count products available in selected category or main category
+  const categoryProducts = React.useMemo(() => {
+    if (selectedCategory !== 'all') {
+      return allProducts.filter(
+        (p) => (p.category || '').toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+    if (selectedMainCategory !== 'all') {
+      const allowedCats = availableCategories.map((c) => c.name.toLowerCase());
+      return allProducts.filter((p) => allowedCats.includes((p.category || '').toLowerCase()));
+    }
+    return allProducts;
+  }, [allProducts, selectedCategory, selectedMainCategory, availableCategories]);
 
   // Prefill from Navigation State (e.g. from Dashboard or Vendors)
   useEffect(() => {
@@ -2072,6 +2151,12 @@ export function StockInView(): React.JSX.Element {
       if ((matchedProd?.category || '').toLowerCase() !== tableCategoryFilter.toLowerCase()) {
         return false;
       }
+    } else if (tableMainCategoryFilter !== 'all') {
+      const catName = matchedProd?.category || '';
+      const prof = detectCategoryProfile(catName);
+      if (prof !== tableMainCategoryFilter) {
+        return false;
+      }
     }
 
     if (!searchQuery) return true;
@@ -2118,7 +2203,11 @@ export function StockInView(): React.JSX.Element {
               <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
                 <button
                   type="button"
-                  onClick={() => form.setValue('module', 'fastfood')}
+                  onClick={() => {
+                    form.setValue('module', 'fastfood');
+                    setSelectedMainCategory('all');
+                    setSelectedCategory('all');
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -2140,7 +2229,11 @@ export function StockInView(): React.JSX.Element {
                 </button>
                 <button
                   type="button"
-                  onClick={() => form.setValue('module', 'minimart')}
+                  onClick={() => {
+                    form.setValue('module', 'minimart');
+                    setSelectedMainCategory('all');
+                    setSelectedCategory('all');
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -2176,7 +2269,7 @@ export function StockInView(): React.JSX.Element {
         </div>
 
         <form onSubmit={form.handleSubmit(onSave)} className={styles.form}>
-          {/* Row 1: Vendor, Category & Product Select */}
+          {/* Row 1: Vendor, Main Category, Sub-Category & Product Select */}
           <div className={styles.row1}>
             <div>
               <Controller
@@ -2203,14 +2296,44 @@ export function StockInView(): React.JSX.Element {
 
             <div>
               <CustomSelect
-                label="FILTER BY CATEGORY"
-                placeholder="All Categories"
+                label="MAIN CATEGORY"
+                value={selectedMainCategory}
+                options={mainCategoryOptions}
+                onChange={(val) => {
+                  setSelectedMainCategory(val);
+                  if (val === 'all') {
+                    setSelectedCategory('all');
+                  } else {
+                    const inGroup = moduleCategories.filter((c) => detectCategoryProfile(c.name, c.profile) === val);
+                    if (!inGroup.some((c) => c.name.toLowerCase() === selectedCategory.toLowerCase())) {
+                      setSelectedCategory('all');
+                    }
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <CustomSelect
+                label="SUB-CATEGORY"
+                placeholder="All Sub-Categories"
                 value={selectedCategory}
                 options={[
-                  { value: 'all', label: 'All Categories' },
-                  ...categories.map((c) => ({ value: c.name, label: c.name }))
+                  { value: 'all', label: `All ${selectedMainCategory !== 'all' ? 'In Group' : 'Categories'} (${availableCategories.length})` },
+                  ...availableCategories.map((c) => ({ value: c.name, label: c.name }))
                 ]}
-                onChange={(val) => setSelectedCategory(val || 'all')}
+                onChange={(val) => {
+                  setSelectedCategory(val || 'all');
+                  if (val && val !== 'all') {
+                    const matched = moduleCategories.find((c) => c.name === val);
+                    if (matched) {
+                      const prof = detectCategoryProfile(matched.name, matched.profile);
+                      if (prof && prof !== 'food' && prof !== selectedMainCategory) {
+                        setSelectedMainCategory(prof);
+                      }
+                    }
+                  }
+                }}
               />
             </div>
 
@@ -2224,7 +2347,8 @@ export function StockInView(): React.JSX.Element {
                     label="ITEM SELECT"
                     required
                     filterModule={form.watch('module')}
-                    filterCategory={selectedCategory}
+                    filterCategory={selectedCategory !== 'all' ? selectedCategory : undefined}
+                    filterCategories={selectedCategory === 'all' && selectedMainCategory !== 'all' ? availableCategories.map((c) => c.name) : undefined}
                     placeholder="Search by product name, SKU or barcode..."
                     value={field.value || ''}
                     onChange={(name, prod) => {
@@ -2233,6 +2357,10 @@ export function StockInView(): React.JSX.Element {
                         form.setValue('selectedProductId', prod.id);
                         if (prod.category && selectedCategory === 'all') {
                           setSelectedCategory(prod.category);
+                          const prof = detectCategoryProfile(prod.category);
+                          if (prof && prof !== 'food') {
+                            setSelectedMainCategory(prof);
+                          }
                         }
                         if (prod.costPrice !== undefined && prod.costPrice !== null) {
                           form.setValue('unitPrice', prod.costPrice);
@@ -2684,15 +2812,48 @@ export function StockInView(): React.JSX.Element {
             />
           </div>
 
-          <div style={{ minWidth: '220px' }}>
+          <div style={{ minWidth: '170px' }}>
             <CustomSelect
-              label="FILTER BY CATEGORY"
+              label="MAIN CATEGORY"
+              value={tableMainCategoryFilter}
+              options={mainCategoryOptions}
+              onChange={(val) => {
+                setTableMainCategoryFilter(val || 'all');
+                if (val === 'all') {
+                  setTableCategoryFilter('all');
+                } else {
+                  const inGroup = moduleCategories.filter((c) => detectCategoryProfile(c.name, c.profile) === val);
+                  if (!inGroup.some((c) => c.name.toLowerCase() === tableCategoryFilter.toLowerCase())) {
+                    setTableCategoryFilter('all');
+                  }
+                }
+              }}
+            />
+          </div>
+
+          <div style={{ minWidth: '170px' }}>
+            <CustomSelect
+              label="SUB-CATEGORY"
               value={tableCategoryFilter}
               options={[
-                { value: 'all', label: 'All Categories' },
-                ...categories.map((c) => ({ value: c.name, label: c.name })),
+                { value: 'all', label: `All ${tableMainCategoryFilter !== 'all' ? 'In Group' : 'Categories'}` },
+                ...(tableMainCategoryFilter === 'all'
+                  ? moduleCategories
+                  : moduleCategories.filter((c) => detectCategoryProfile(c.name, c.profile) === tableMainCategoryFilter)
+                ).map((c) => ({ value: c.name, label: c.name })),
               ]}
-              onChange={(val) => setTableCategoryFilter(val || 'all')}
+              onChange={(val) => {
+                setTableCategoryFilter(val || 'all');
+                if (val && val !== 'all') {
+                  const matched = moduleCategories.find((c) => c.name === val);
+                  if (matched) {
+                    const prof = detectCategoryProfile(matched.name, matched.profile);
+                    if (prof && prof !== 'food' && prof !== tableMainCategoryFilter) {
+                      setTableMainCategoryFilter(prof);
+                    }
+                  }
+                }
+              }}
             />
           </div>
 

@@ -1491,7 +1491,11 @@ export function AddProductView(): React.JSX.Element {
     return 'standard';
   }, [businessProfiles, detectedProfile, searchParams]);
 
-  const [selectedMainCategory, setSelectedMainCategory] = useState<string>('all');
+  const initialUrlCat = searchParams.get('category');
+  const initialProf = initialUrlCat ? detectCategoryProfile(initialUrlCat) : null;
+  const [selectedMainCategory, setSelectedMainCategory] = useState<string>(
+    initialProf && initialProf !== 'food' && initialProf !== 'standard' ? initialProf : 'all'
+  );
 
   const mainCategoryOptions = React.useMemo(() => {
     const moduleCats = categories.filter((c) => c.module === watchedModule);
@@ -1507,10 +1511,16 @@ export function AddProductView(): React.JSX.Element {
       footwear: 'Footwear & Shoes',
       apparel: 'Garments & Clothing',
       grocery: 'Grocery & Supermarket',
+      bakery: 'Bakery & Confectionery',
       cosmetics: 'Cosmetics & Beauty',
       pharmacy: 'Pharmacy & Health',
       hardware: 'Sanitary, Hardware & Paint',
+      electric: 'Electrical Store & Lighting',
       electronics: 'Electronics & Mobile',
+      stationery: 'Books & Stationery',
+      toys: 'Baby & Kids Toys',
+      jewellery: 'Jewellery & Watches',
+      optics: 'Optics & Eyewear',
       standard: 'General Retail',
     };
 
@@ -2598,6 +2608,11 @@ export function AddProductView(): React.JSX.Element {
     const matchedCat = categories.find((c) => c.name.toLowerCase() === categoryName.toLowerCase());
     const detected = detectCategoryProfile(categoryName, matchedCat?.profile);
     const pCfg = CATEGORY_PROFILES[detected];
+
+    if (detected && detected !== 'food' && detected !== 'standard') {
+      setSelectedMainCategory(detected);
+    }
+
     if (detected === 'hardware') {
       if (isSanitaryCategory(categoryName)) {
         productForm.setValue('unit', 'PCS');

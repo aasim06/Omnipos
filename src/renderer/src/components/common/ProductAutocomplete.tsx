@@ -14,6 +14,7 @@ export interface ProductAutocompleteProps {
   onSelectProduct?: (product: Product) => void;
   filterModule?: 'fastfood' | 'minimart' | 'all';
   filterCategory?: string;
+  filterCategories?: string[];
   placeholder?: string;
   required?: boolean;
   label?: string;
@@ -178,6 +179,7 @@ export function ProductAutocomplete({
   onSelectProduct,
   filterModule = 'all',
   filterCategory,
+  filterCategories,
   placeholder = 'Search by product name, SKU or barcode...',
   required = false,
   label,
@@ -199,11 +201,18 @@ export function ProductAutocomplete({
   });
 
   const isCategoryFiltered = Boolean(filterCategory && filterCategory !== 'all');
+  const isMultipleCategoryFiltered = Boolean(!isCategoryFiltered && filterCategories && filterCategories.length > 0);
+  const isAnyCategoryFiltered = isCategoryFiltered || isMultipleCategoryFiltered;
 
   // Filter by module and category if requested
   const filteredByModule = allProducts.filter((p) => {
     if (isCategoryFiltered) {
       if ((p.category || '').toLowerCase() !== filterCategory!.toLowerCase()) {
+        return false;
+      }
+    } else if (isMultipleCategoryFiltered) {
+      const pCat = (p.category || '').toLowerCase();
+      if (!filterCategories!.some((c) => c.toLowerCase() === pCat)) {
         return false;
       }
     }
@@ -222,8 +231,8 @@ export function ProductAutocomplete({
     return true;
   });
 
-  // When filtering by a category, show strictly that category's items (even if 0)
-  const availableProducts = isCategoryFiltered
+  // When filtering by a category or category group, show strictly those items (even if 0)
+  const availableProducts = isAnyCategoryFiltered
     ? filteredByModule
     : (filteredByModule.length > 0 ? filteredByModule : allProducts);
 
