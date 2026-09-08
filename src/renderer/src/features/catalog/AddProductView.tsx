@@ -1491,47 +1491,68 @@ export function AddProductView(): React.JSX.Element {
     return 'standard';
   }, [businessProfiles, detectedProfile, searchParams]);
 
-  const relatedCategories = React.useMemo(() => {
+  const [selectedMainCategory, setSelectedMainCategory] = useState<string>('all');
+
+  const mainCategoryOptions = React.useMemo(() => {
+    const moduleCats = categories.filter((c) => c.module === watchedModule);
+    if (watchedModule === 'fastfood') {
+      return [
+        { value: 'all', label: `All Kitchen Categories (${moduleCats.length})` },
+        { value: 'food', label: 'Fast Food & Pizzas' },
+        { value: 'standard', label: 'General Food Items' },
+      ];
+    }
+
+    const retailProfileLabels: Record<string, string> = {
+      footwear: 'Footwear & Shoes',
+      apparel: 'Garments & Clothing',
+      grocery: 'Grocery & Supermarket',
+      cosmetics: 'Cosmetics & Beauty',
+      pharmacy: 'Pharmacy & Health',
+      hardware: 'Sanitary, Hardware & Paint',
+      electronics: 'Electronics & Mobile',
+      standard: 'General Retail',
+    };
+
+    const presentProfiles = new Set<string>();
+    moduleCats.forEach((c) => {
+      const prof = detectCategoryProfile(c.name, c.profile);
+      if (prof && prof !== 'food') presentProfiles.add(prof);
+    });
+
+    const opts = [{ value: 'all', label: `All Retail Categories (${moduleCats.length})` }];
+
+    presentProfiles.forEach((profKey) => {
+      const label = retailProfileLabels[profKey] || profKey.toUpperCase();
+      const count = moduleCats.filter((c) => detectCategoryProfile(c.name, c.profile) === profKey).length;
+      opts.push({ value: profKey, label: `${label} (${count})` });
+    });
+
+    Object.entries(retailProfileLabels).forEach(([profKey, label]) => {
+      if (!presentProfiles.has(profKey) && profKey !== 'standard') {
+        opts.push({ value: profKey, label });
+      }
+    });
+
+    return opts;
+  }, [categories, watchedModule]);
+
+  const filteredCategories = React.useMemo(() => {
     const moduleCats = categories.filter((c) => c.module === watchedModule);
     if (moduleCats.length === 0) return categories;
 
-    if (watchedModule === 'fastfood') {
-      const foodCats = moduleCats.filter((c) => {
-        const prof = detectCategoryProfile(c.name, c.profile);
-        return prof === 'food' || prof === 'standard';
-      });
-      return foodCats.length > 0 ? foodCats : moduleCats;
+    if (selectedMainCategory === 'all') {
+      return moduleCats;
     }
 
-    // In retail / minimart:
-    // 1. If we have a specific industry profile (footwear, apparel, cosmetics, pharmacy, etc.)
-    if (activeRetailProfileKey !== 'standard') {
-      const matchingCats = moduleCats.filter((c) => {
-        const prof = detectCategoryProfile(c.name, c.profile);
-        return prof === activeRetailProfileKey;
-      });
-      if (matchingCats.length > 0) {
-        // Ensure current watchedCategory is included if it belongs to module
-        if (watchedCategory && !matchingCats.some((c) => c.name.toLowerCase() === watchedCategory.toLowerCase())) {
-          const current = moduleCats.find((c) => c.name.toLowerCase() === watchedCategory.toLowerCase());
-          if (current) matchingCats.unshift(current);
-        }
-        return matchingCats;
-      }
-    }
+    const matched = moduleCats.filter((c) => {
+      const prof = detectCategoryProfile(c.name, c.profile);
+      return prof === selectedMainCategory;
+    });
 
-    // 2. If user's license has multiple specific retail business profiles
-    const userProfiles = businessProfiles.filter((p) => p !== 'standard' && p !== 'food');
-    if (userProfiles.length > 0) {
-      const matchingCats = moduleCats.filter((c) => {
-        const prof = detectCategoryProfile(c.name, c.profile);
-        return userProfiles.includes(prof);
-      });
-      if (matchingCats.length > 0) return matchingCats;
-    }
-
+    if (matched.length > 0) return matched;
     return moduleCats;
-  }, [categories, watchedModule, activeRetailProfileKey, watchedCategory, businessProfiles]);
+  }, [categories, watchedModule, selectedMainCategory]);
 
   // Calculate live total stock for the selected category across existing products
   const categoryStockInfo = React.useMemo(() => {
@@ -2990,7 +3011,7 @@ export function AddProductView(): React.JSX.Element {
               >
                 {activeDepartmentTab === 'fastfood'
                   ? '● Active: Fast Food & Kitchen Menu'
-                  : `● Active: ${profileConfig.label} Catalog`}
+                  : '● Active: Retail Mini Mart'}
               </span>
             </div>
           </div>
@@ -3004,6 +3025,7 @@ export function AddProductView(): React.JSX.Element {
                 onClick={() => {
                   setActiveDepartmentTab('fastfood');
                   productForm.setValue('module', 'fastfood');
+                  setSelectedMainCategory('all');
                   const ffCat = categories.find((c) => c.module === 'fastfood');
                   if (ffCat) {
                     productForm.setValue('category', ffCat.name);
@@ -3059,19 +3081,20 @@ export function AddProductView(): React.JSX.Element {
                 </div>
               </button>
 
-              {/* Retail / Profile Card */}
+              {/* Retail Mini Mart Card */}
               <button
                 type="button"
                 onClick={() => {
                   setActiveDepartmentTab('minimart');
                   productForm.setValue('module', 'minimart');
+                  setSelectedMainCategory('all');
                   const mmCat = categories.find((c) => c.module === 'minimart');
                   if (mmCat) {
                     productForm.setValue('category', mmCat.name);
                     applyCategoryProfileSettings(mmCat.name);
                   } else {
                     if (!productForm.getValues('skuCode')) productForm.setValue('skuCode', generateRandomSku());
-                    productForm.setValue('unit', profileConfig.suggestedUnits[0] || 'PCS');
+                    productForm.setValue('unit', 'PCS');
                     handlePricingTypeSelect('fixed');
                   }
                 }}
@@ -3082,12 +3105,12 @@ export function AddProductView(): React.JSX.Element {
                   padding: '14px 18px',
                   borderRadius: '10px',
                   boxSizing: 'border-box',
-                  border: `2px solid ${activeDepartmentTab === 'minimart' ? (profileConfig.accentColor || '#0284C7') : tokens.colorNeutralStroke2}`,
-                  backgroundColor: activeDepartmentTab === 'minimart' ? `${profileConfig.accentColor || '#0284C7'}15` : tokens.colorNeutralBackground2,
+                  border: `2px solid ${activeDepartmentTab === 'minimart' ? '#0284C7' : tokens.colorNeutralStroke2}`,
+                  backgroundColor: activeDepartmentTab === 'minimart' ? 'rgba(2, 132, 199, 0.09)' : tokens.colorNeutralBackground2,
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
-                  boxShadow: activeDepartmentTab === 'minimart' ? `0 4px 14px ${profileConfig.accentColor || '#0284C7'}30` : 'none',
+                  boxShadow: activeDepartmentTab === 'minimart' ? '0 4px 14px rgba(2, 132, 199, 0.20)' : 'none',
                 }}
               >
                 <div
@@ -3095,28 +3118,28 @@ export function AddProductView(): React.JSX.Element {
                     width: '44px',
                     height: '44px',
                     borderRadius: '10px',
-                    backgroundColor: activeDepartmentTab === 'minimart' ? (profileConfig.accentColor || '#0284C7') : tokens.colorNeutralBackground3,
+                    backgroundColor: activeDepartmentTab === 'minimart' ? '#0284C7' : tokens.colorNeutralBackground3,
                     color: activeDepartmentTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
-                    boxShadow: activeDepartmentTab === 'minimart' ? `0 2px 8px ${profileConfig.accentColor || '#0284C7'}40` : 'none',
+                    boxShadow: activeDepartmentTab === 'minimart' ? '0 2px 8px rgba(2, 132, 199, 0.35)' : 'none',
                   }}
                 >
                   <ShoppingBag24Regular style={{ width: 24, height: 24 }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 800, fontSize: '14px', color: activeDepartmentTab === 'minimart' ? (profileConfig.accentColor || '#0284C7') : tokens.colorNeutralForeground1 }}>
-                      {profileConfig.label}
+                    <span style={{ fontWeight: 800, fontSize: '14px', color: activeDepartmentTab === 'minimart' ? '#0284C7' : tokens.colorNeutralForeground1 }}>
+                      Retail Mini Mart
                     </span>
                     {activeDepartmentTab === 'minimart' && (
-                      <CheckmarkCircle20Filled style={{ color: profileConfig.accentColor || '#0284C7', width: 18, height: 18 }} />
+                      <CheckmarkCircle20Filled style={{ color: '#0284C7', width: 18, height: 18 }} />
                     )}
                   </div>
                   <span style={{ display: 'block', fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
-                    {profileConfig.description}
+                    Supermarket, Footwear, Garments, Sanitary & Retail Inventory
                   </span>
                 </div>
               </button>
@@ -3166,7 +3189,7 @@ export function AddProductView(): React.JSX.Element {
                       width: '36px',
                       height: '36px',
                       borderRadius: '8px',
-                      backgroundColor: profileConfig.accentColor || '#0284C7',
+                      backgroundColor: '#0284C7',
                       color: '#FFFFFF',
                       display: 'flex',
                       alignItems: 'center',
@@ -3178,10 +3201,10 @@ export function AddProductView(): React.JSX.Element {
                   </div>
                   <div>
                     <span style={{ fontWeight: 700, fontSize: '13.5px', color: tokens.colorNeutralForeground1 }}>
-                      {profileConfig.label} Catalog
+                      Retail Mini Mart Catalog
                     </span>
                     <span style={{ display: 'block', fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
-                      {profileConfig.description}
+                      Supermarket, Footwear, Garments, Sanitary & Retail Inventory
                     </span>
                   </div>
                 </>
@@ -3195,35 +3218,24 @@ export function AddProductView(): React.JSX.Element {
         <div className={styles.formGrid}>
           {/* Left Column: Form Details */}
           <div className={styles.cardSurface}>
-            {/* Target Module & Category */}
+            {/* Main Category & Product Category */}
             <div className={styles.twoColGrid}>
               <div className={styles.colEnd}>
-                <Controller
-                  control={productForm.control}
-                  name="module"
-                  render={({ field }) => (
-                    <CustomSelect
-                      label="Store Department"
-                      required
-                      value={field.value}
-                      options={[
-                        ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Restaurant Menu' }] : []),
-                        ...(hasOmnimart ? [{ value: 'minimart', label: 'Retail Mini Mart' }] : []),
-                      ]}
-                      onChange={(val) => {
-                        field.onChange(val as ModuleKey);
-                        setActiveDepartmentTab(val as 'fastfood' | 'minimart');
-                        const matchedCat = categories.find((c) => c.module === val);
-                        if (matchedCat) {
-                          productForm.setValue('category', matchedCat.name);
-                          applyCategoryProfileSettings(matchedCat.name);
-                        } else {
-                          setPricingType('fixed');
-                          productForm.setValue('pricingType', 'fixed');
-                        }
-                      }}
-                    />
-                  )}
+                <CustomSelect
+                  label="Main Category"
+                  value={selectedMainCategory}
+                  options={mainCategoryOptions}
+                  onChange={(val) => {
+                    setSelectedMainCategory(val);
+                    const moduleCats = categories.filter((c) => c.module === watchedModule);
+                    if (val !== 'all') {
+                      const inGroup = moduleCats.filter((c) => detectCategoryProfile(c.name, c.profile) === val);
+                      if (inGroup.length > 0 && !inGroup.some((c) => c.name === watchedCategory)) {
+                        productForm.setValue('category', inGroup[0].name);
+                        applyCategoryProfileSettings(inGroup[0].name);
+                      }
+                    }
+                  }}
                 />
               </div>
 
@@ -3245,7 +3257,7 @@ export function AddProductView(): React.JSX.Element {
                   control={productForm.control}
                   name="category"
                   render={({ field }) => {
-                    const displayList = relatedCategories.length > 0 ? relatedCategories : categories;
+                    const displayList = filteredCategories.length > 0 ? filteredCategories : categories;
 
                     return (
                       <CustomSelect
