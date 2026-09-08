@@ -37,7 +37,17 @@ import { posApi } from '@/lib/api';
 import { Product, Category, ModuleKey, ProductVariant } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
-import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
+import {
+  CATEGORY_PROFILES,
+  detectCategoryProfile,
+  SHOE_SIZE_PRESETS,
+  getShoePresetForCategory,
+  getAvailableShoePresetsForCategory,
+  ShoeSizePreset,
+  getItemTypesForCategory,
+  ItemTypeOption,
+  isSanitaryCategory,
+} from '@/lib/categoryProfiles';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import {
@@ -147,11 +157,11 @@ export const PRICING_TYPE_FIXED: PricingTypeItem = {
 
 export const PRICING_TYPE_SHOES: PricingTypeItem = {
   id: 'retail_shoes',
-  label: 'Shoes / Footwear (Sizes 38 - 45)',
+  label: 'Footwear Sizes (Article Sizes)',
   icon: Footprints,
-  desc: 'Footwear & shoes with standard size matrix (38, 39, 40, 41, 42, 43, 44, 45)',
+  desc: 'Footwear sizes (Baby 0-5, Kids 6-11, Youth 31-36, Mens 39-45, Ladies 36-41). All sizes share the same article price.',
   suggestedUnit: 'PAIR',
-  defaultSizes: ['38', '39', '40', '41', '42', '43', '44', '45'],
+  defaultSizes: ['39', '40', '41', '42', '43', '44'],
 };
 
 export const PRICING_TYPE_GARMENTS: PricingTypeItem = {
@@ -170,6 +180,33 @@ export const PRICING_TYPE_FABRIC: PricingTypeItem = {
   desc: 'Unstitched fabric and cloth sold per meter, gaz or suit length',
   suggestedUnit: 'METER',
   defaultSizes: ['1 Meter', '2.5 Meter', '4 Meter (Suit)'],
+};
+
+export const PRICING_TYPE_SANITARY_SIZES: PricingTypeItem = {
+  id: 'retail_sanitary_sizes',
+  label: 'Pipe & Fitting Sizes (1/2" - 4")',
+  icon: Droplets,
+  desc: 'PPRC, UPVC & CPVC pipes, elbows, tees, sockets, unions & valve diameters (1/2" to 4")',
+  suggestedUnit: 'PCS',
+  defaultSizes: ['1/2" (20mm)', '3/4" (25mm)', '1" (32mm)', '1.25" (40mm)', '1.5" (50mm)', '2" (63mm)', '3" (90mm)', '4" (110mm)'],
+};
+
+export const PRICING_TYPE_PIPE_LENGTHS: PricingTypeItem = {
+  id: 'retail_pipe_lengths',
+  label: 'Pipe Lengths (Per Foot / 10ft / 13ft)',
+  icon: Ruler,
+  desc: 'Pipes sold per running foot or standard full length (1 FT, 10 FT, 13 FT standard, 20 FT)',
+  suggestedUnit: 'FEET',
+  defaultSizes: ['Per Foot (1 FT)', '10 Feet Length', '13 Feet Length', '20 Feet Length'],
+};
+
+export const PRICING_TYPE_BATH_SET: PricingTypeItem = {
+  id: 'retail_bath_sets',
+  label: 'Showers & Taps Sets (Single vs Set)',
+  icon: Sparkles,
+  desc: 'Bathroom bib cocks, totyan, muslim shower, wall mixer and complete vanity sets',
+  suggestedUnit: 'PCS',
+  defaultSizes: ['Single Piece (Toti)', 'Muslim Shower Only', 'Shower Head & Arm', 'Complete Bath Set'],
 };
 
 export const PRICING_TYPE_PAINT: PricingTypeItem = {
@@ -282,6 +319,9 @@ export const PRICING_TYPE_CUSTOM: PricingTypeItem = {
 
 export const ALL_RETAIL_PRICING_TYPES: PricingTypeItem[] = [
   PRICING_TYPE_FIXED,
+  PRICING_TYPE_SANITARY_SIZES,
+  PRICING_TYPE_PIPE_LENGTHS,
+  PRICING_TYPE_BATH_SET,
   PRICING_TYPE_SHOES,
   PRICING_TYPE_GARMENTS,
   PRICING_TYPE_PAINT,
@@ -298,7 +338,7 @@ export const ALL_RETAIL_PRICING_TYPES: PricingTypeItem[] = [
   PRICING_TYPE_CUSTOM,
 ];
 
-export function getPricingTypesForProfile(profile: CategoryProfile, showAll: boolean = false): PricingTypeItem[] {
+export function getPricingTypesForProfile(profile: CategoryProfile, categoryName?: string, showAll: boolean = false): PricingTypeItem[] {
   if (showAll) return ALL_RETAIL_PRICING_TYPES;
 
   switch (profile) {
@@ -307,7 +347,27 @@ export function getPricingTypesForProfile(profile: CategoryProfile, showAll: boo
     case 'apparel':
       return [PRICING_TYPE_FIXED, PRICING_TYPE_GARMENTS, PRICING_TYPE_FABRIC, PRICING_TYPE_CUSTOM];
     case 'hardware':
-      return [PRICING_TYPE_FIXED, PRICING_TYPE_PAINT, PRICING_TYPE_PERKG, PRICING_TYPE_CUSTOM];
+      if (isSanitaryCategory(categoryName || '')) {
+        return [
+          PRICING_TYPE_FIXED,
+          PRICING_TYPE_SANITARY_SIZES,
+          PRICING_TYPE_PIPE_LENGTHS,
+          PRICING_TYPE_BATH_SET,
+          PRICING_TYPE_CUSTOM,
+        ];
+      }
+      if (/paint|distemper|color|coating|thinner|varnish/i.test(categoryName || '')) {
+        return [PRICING_TYPE_FIXED, PRICING_TYPE_PAINT, PRICING_TYPE_PERKG, PRICING_TYPE_CUSTOM];
+      }
+      return [
+        PRICING_TYPE_FIXED,
+        PRICING_TYPE_SANITARY_SIZES,
+        PRICING_TYPE_PIPE_LENGTHS,
+        PRICING_TYPE_BATH_SET,
+        PRICING_TYPE_PAINT,
+        PRICING_TYPE_PERKG,
+        PRICING_TYPE_CUSTOM,
+      ];
     case 'electric':
       return [PRICING_TYPE_FIXED, PRICING_TYPE_WIRE, PRICING_TYPE_WATTAGE, PRICING_TYPE_CUSTOM];
     case 'grocery':
@@ -335,6 +395,9 @@ export const isVariantPricingType = (pt: string): boolean =>
     'water',
     'retail_garments',
     'retail_shoes',
+    'retail_sanitary_sizes',
+    'retail_pipe_lengths',
+    'retail_bath_sets',
     'retail_shades',
     'retail_volumes',
     'retail_paint',
@@ -354,32 +417,54 @@ export const PRICING_TYPES = PRICING_TYPES_FASTFOOD;
 
 const UNIT_OPTIONS = [
   { value: 'PCS', label: 'Piece (PCS)' },
+  { value: 'SET', label: 'Set (SET)' },
   { value: 'PAIR', label: 'Pair (PAIR)' },
-  { value: 'SUIT', label: 'Suit (SUIT)' },
+  { value: 'FEET', label: 'Feet (ft)' },
+  { value: 'LENGTH', label: 'Pipe Length (10ft / 13ft Length)' },
+  { value: 'RFT', label: 'Running Feet (RFT)' },
   { value: 'METER', label: 'Meter (m)' },
-  { value: 'GAZ', label: 'Gaz / Yard' },
+  { value: 'INCH', label: 'Inch (in)' },
+  { value: 'ROLL', label: 'Roll (Teflon / Tape / Pipe / Wire)' },
+  { value: 'TUBE', label: 'Tube (Cream / Ointment / Sealant)' },
+  { value: 'PACK', label: 'Pack' },
+  { value: 'BOX', label: 'Box' },
+  { value: 'CARTON', label: 'Carton / Peti (CTN)' },
+  { value: 'DOZEN', label: 'Dozen (Darjan)' },
+  { value: 'COIL', label: 'Coil / Bundle' },
+  { value: 'SHEET', label: 'Sheet' },
+  { value: 'BAG', label: 'Bag / Bori' },
   { value: 'KG', label: 'Kilogram (KG)' },
   { value: 'Gram', label: 'Gram (g)' },
   { value: 'Liter', label: 'Liter (L)' },
   { value: 'ML', label: 'Milliliter (ml)' },
-  { value: 'PACK', label: 'Pack' },
-  { value: 'BOX', label: 'Box' },
-  { value: 'DABBA', label: 'Box / Pack (Dabba)' },
-  { value: 'STRIP', label: 'Strip (Tablets)' },
-  { value: 'TABLET', label: 'Tablet' },
-  { value: 'SYRUP', label: 'Syrup Bottle' },
-  { value: 'BOTTLE', label: 'Bottle' },
-  { value: 'SET', label: 'Set' },
-  { value: 'DOZEN', label: 'Dozen' },
-  { value: 'FEET', label: 'Feet (ft)' },
+  { value: 'POUND', label: 'Pound / Lbs (Cakes)' },
   { value: 'GALLON', label: 'Gallon' },
   { value: 'QUARTER', label: 'Quarter (1L)' },
   { value: 'BALTI', label: 'Bucket / Balti (16L)' },
-  { value: 'COIL', label: 'Coil / Roll' },
-  { value: 'BAG', label: 'Bag' },
+  { value: 'SUIT', label: 'Suit (SUIT)' },
+  { value: 'GAZ', label: 'Gaz / Yard' },
+  { value: 'THAN', label: 'Than / Fabric Bolt (Cloth)' },
+  { value: 'DABBA', label: 'Box / Pack (Dabba)' },
+  { value: 'TRAY', label: 'Tray (Eggs / Sweets)' },
+  { value: 'STRIP', label: 'Strip (Tablets)' },
+  { value: 'TABLET', label: 'Tablet' },
+  { value: 'CAPSULE', label: 'Capsule' },
+  { value: 'SYRUP', label: 'Syrup Bottle' },
+  { value: 'BOTTLE', label: 'Bottle' },
+  { value: 'JAR', label: 'Jar (Honey / Jam / Cream)' },
+  { value: 'TIN', label: 'Tin / Can' },
+  { value: 'CAN', label: 'Can (Beverage / Food)' },
+  { value: 'SACHET', label: 'Sachet / Pouch' },
+  { value: 'VIAL', label: 'Vial (Injection)' },
+  { value: 'AMPOULE', label: 'Ampoule' },
+  { value: 'KIT', label: 'Kit / Combo' },
   { value: 'BUNDLE', label: 'Bundle' },
+  { value: 'PORTION', label: 'Portion' },
+  { value: 'PLATE', label: 'Plate' },
   { value: 'SERVING', label: 'Serving' },
   { value: 'DEAL', label: 'Deal / Combo' },
+  { value: 'CUP', label: 'Cup' },
+  { value: 'GLASS', label: 'Glass' },
 ];
 
 const productSchema = z.object({
@@ -393,7 +478,7 @@ const productSchema = z.object({
   skuCode: z.string().optional(),
   rackLocation: z.string().optional(),
   prepTime: z.coerce.number().min(0).optional(),
-  openingStock: z.coerce.number().min(0, 'Stock cannot be negative').default(50),
+  openingStock: z.coerce.number().min(0, 'Stock cannot be negative').default(0),
   minThreshold: z.coerce.number().min(0).default(10),
   imageUrl: z.string().optional(),
   description: z.string().optional(),
@@ -605,11 +690,12 @@ const useStyles = makeStyles({
     fontSize: '12.5px',
     fontWeight: 600,
     cursor: 'pointer',
-    transition: 'all 0.15s ease',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    boxSizing: 'border-box',
+    border: `1.5px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
     color: tokens.colorNeutralForeground2,
     outline: 'none',
+    transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground3,
       color: tokens.colorNeutralForeground1,
@@ -617,16 +703,24 @@ const useStyles = makeStyles({
   },
   pricingTypeBtnActive: {
     backgroundColor: '#E51937',
-    color: '#FFFFFF',
+    color: '#FFFFFF !important',
     fontWeight: 700,
     borderTopColor: '#E51937',
     borderBottomColor: '#E51937',
     borderLeftColor: '#E51937',
     borderRightColor: '#E51937',
+    borderTopWidth: '1.5px',
+    borderBottomWidth: '1.5px',
+    borderLeftWidth: '1.5px',
+    borderRightWidth: '1.5px',
+    borderTopStyle: 'solid',
+    borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid',
+    borderRightStyle: 'solid',
     boxShadow: '0 2px 10px rgba(229, 25, 55, 0.35)',
     ':hover': {
       backgroundColor: '#be123c',
-      color: '#FFFFFF',
+      color: '#FFFFFF !important',
     },
   },
   pricingTypeDesc: {
@@ -1184,6 +1278,12 @@ export function AddProductView(): React.JSX.Element {
     queryFn: () => posApi.fetchCategories(),
   });
 
+  const { data: allProducts = [] } = useQuery<Product[]>({
+    queryKey: ['products'],
+    queryFn: () => posApi.fetchProducts(),
+    staleTime: 60000,
+  });
+
   const generateRandomSku = () => String(Math.floor(10000000 + Math.random() * 90000000));
 
   const productForm = useForm<ProductFormData>({
@@ -1191,14 +1291,14 @@ export function AddProductView(): React.JSX.Element {
     defaultValues: {
       name: '',
       module: defaultModule,
-      category: 'General',
+      category: searchParams.get('category') || 'General',
       price: undefined,
       costPrice: undefined,
       pricingType: 'fixed',
       unit: defaultModule === 'minimart' ? 'PCS' : 'PCS',
       skuCode: generateRandomSku(),
       rackLocation: '',
-      openingStock: 50,
+      openingStock: 0,
       minThreshold: 10,
       imageUrl: '',
       description: '',
@@ -1250,16 +1350,9 @@ export function AddProductView(): React.JSX.Element {
     xl: '',
   });
 
-  const [shoeSizes, setShoeSizes] = useState({
-    s38: '',
-    s39: '',
-    s40: '',
-    s41: '',
-    s42: '',
-    s43: '',
-    s44: '',
-    s45: '',
-  });
+  const [activeShoePresetId, setActiveShoePresetId] = useState<string>('kids');
+  const [selectedShoeSizes, setSelectedShoeSizes] = useState<string[]>(['6', '7', '8', '9', '10', '11']);
+  const [customShoeInput, setCustomShoeInput] = useState<string>('');
 
   const [shadeSizes, setShadeSizes] = useState({
     s01: '',
@@ -1279,6 +1372,36 @@ export function AddProductView(): React.JSX.Element {
     quarter: '',
     gallon: '',
     balti: '',
+  });
+
+  // Dedicated Sanitary Pipe & Fitting Diameters (1/2" to 4" / 20mm to 110mm)
+  const [sanitarySizes, setSanitarySizes] = useState({
+    half: '',          // 1/2" (20mm)
+    threeQuarter: '',  // 3/4" (25mm)
+    one: '',           // 1" (32mm)
+    sawa: '',          // 1.25" (40mm)
+    dhed: '',          // 1.5" (50mm)
+    two: '',           // 2" (63mm)
+    three: '',         // 3" (90mm)
+    four: '',          // 4" (110mm)
+  });
+  const [bulkSanitaryPrice, setBulkSanitaryPrice] = useState('');
+
+  // Dedicated Sanitary Pipe Lengths (Per Foot, 10ft, 13ft, 20ft)
+  const [pipeLengthSizes, setPipeLengthSizes] = useState({
+    foot1: '', // Per Foot (1 FT)
+    ft10: '',  // 10 Feet Length
+    ft13: '',  // 13 Feet Length
+    ft20: '',  // 20 Feet Length
+  });
+  const [bulkPipeFootPrice, setBulkPipeFootPrice] = useState('');
+
+  // Dedicated Bathroom Sets (Showers & Taps Sets)
+  const [bathSetSizes, setBathSetSizes] = useState({
+    singlePiece: '',  // Single Piece (Toti / Bib Cock)
+    muslimShower: '', // Muslim Shower Only
+    showerHead: '',   // Shower Head & Arm
+    completeSet: '',  // Complete Bath Set
   });
 
   // Dedicated Electric Wire Gauge & Lengths
@@ -1352,9 +1475,36 @@ export function AddProductView(): React.JSX.Element {
   const detectedProfile = detectCategoryProfile(watchedCategory || '', activeCategoryObj?.profile);
   const profileConfig = CATEGORY_PROFILES[detectedProfile];
 
-  // Strictly filter unit options to ONLY the units that belong to the active category profile
-  const categoryUnitOptions = useMemo(() => {
-    const suggested = profileConfig?.suggestedUnits || ['PCS'];
+  // Calculate live total stock for the selected category across existing products
+  const categoryStockInfo = React.useMemo(() => {
+    if (!watchedCategory) return { totalStock: 0, count: 0 };
+    const prodsInCat = (allProducts || []).filter(
+      (p) => (p.category || '').trim().toLowerCase() === watchedCategory.trim().toLowerCase()
+    );
+    const total = prodsInCat.reduce((sum, p) => sum + (p.openingStock || 0), 0);
+    return { totalStock: total, count: prodsInCat.length };
+  }, [allProducts, watchedCategory]);
+
+  const [selectedItemTypeId, setSelectedItemTypeId] = useState<string>('');
+
+  const availableItemTypes = React.useMemo(() => {
+    return getItemTypesForCategory(watchedCategory || '', detectedProfile);
+  }, [watchedCategory, detectedProfile]);
+
+  const activeItemType = React.useMemo(() => {
+    return availableItemTypes.find((t) => t.id === selectedItemTypeId) || null;
+  }, [availableItemTypes, selectedItemTypeId]);
+
+  // Strictly filter unit options to ONLY the units that belong to the active item type or category profile
+  const categoryUnitOptions = React.useMemo(() => {
+    let suggested = activeItemType?.suggestedUnits || profileConfig?.suggestedUnits || ['PCS'];
+    if (!activeItemType && detectedProfile === 'hardware') {
+      if (isSanitaryCategory(watchedCategory || '')) {
+        suggested = ['PCS', 'SET', 'FEET', 'LENGTH', 'RFT', 'INCH', 'ROLL', 'TUBE', 'PACK', 'DOZEN', 'PAIR', 'METER'];
+      } else if (/paint|distemper|color|coating|thinner|varnish/i.test(watchedCategory || '')) {
+        suggested = ['GALLON', 'QUARTER', 'BALTI', 'LITER', 'KG', 'PCS'];
+      }
+    }
     const matched: { value: string; label: string }[] = [];
     suggested.forEach((su) => {
       const found = UNIT_OPTIONS.find((opt) => opt.value.toUpperCase() === su.toUpperCase());
@@ -1363,9 +1513,9 @@ export function AddProductView(): React.JSX.Element {
       }
     });
     return matched.length > 0 ? matched : [{ value: 'PCS', label: 'Piece (PCS)' }];
-  }, [profileConfig]);
+  }, [profileConfig, detectedProfile, watchedCategory, activeItemType]);
 
-  // When category changes, auto-align the unit to the category's primary unit if current unit is invalid
+  // When category or item type changes, auto-align the unit to the primary unit if current unit is invalid
   useEffect(() => {
     if (categoryUnitOptions.length > 0) {
       const currentUnit = productForm.getValues('unit');
@@ -1377,6 +1527,47 @@ export function AddProductView(): React.JSX.Element {
       }
     }
   }, [categoryUnitOptions, productForm]);
+
+  // Reset or align selected item type when category changes
+  useEffect(() => {
+    if (availableItemTypes.length > 0) {
+      const exists = availableItemTypes.some((t) => t.id === selectedItemTypeId);
+      if (!exists) {
+        setSelectedItemTypeId('');
+      }
+    } else {
+      setSelectedItemTypeId('');
+    }
+  }, [watchedCategory, availableItemTypes]);
+
+  const handleSelectItemType = (itemType: ItemTypeOption) => {
+    if (selectedItemTypeId === itemType.id) {
+      // Toggle off - return to category default
+      setSelectedItemTypeId('');
+      productForm.setValue('unit', profileConfig.suggestedUnits[0] || 'PCS');
+      return;
+    }
+    setSelectedItemTypeId(itemType.id);
+    productForm.setValue('unit', itemType.defaultUnit);
+    if (itemType.recommendedPricingType) {
+      handlePricingTypeSelect(itemType.recommendedPricingType);
+    }
+  };
+
+  // Smart auto-detection: if user types in product name (e.g. "toti", "shower", "pipe", "elbow", "paint", "than", "wire")
+  useEffect(() => {
+    if (!watchedName || watchedName.trim().length < 2) return;
+    if (availableItemTypes.length > 0) {
+      const matched = availableItemTypes.find((t) => t.keywordMatch && t.keywordMatch.test(watchedName));
+      if (matched && matched.id !== selectedItemTypeId) {
+        setSelectedItemTypeId(matched.id);
+        productForm.setValue('unit', matched.defaultUnit);
+        if (matched.recommendedPricingType && pricingType === 'fixed') {
+          handlePricingTypeSelect(matched.recommendedPricingType);
+        }
+      }
+    }
+  }, [watchedName, availableItemTypes]);
 
   const rebuildVariantsFromPizzaSizes = (sizesObj: typeof pizzaSizes) => {
     const mapping: { key: keyof typeof pizzaSizes; label: string }[] = [
@@ -1448,44 +1639,101 @@ export function AddProductView(): React.JSX.Element {
     }
   };
 
-  const rebuildVariantsFromShoeSizes = (sizesObj: typeof shoeSizes) => {
-    const mapping: { key: keyof typeof shoeSizes; label: string }[] = [
-      { key: 's38', label: '38' },
-      { key: 's39', label: '39' },
-      { key: 's40', label: '40' },
-      { key: 's41', label: '41' },
-      { key: 's42', label: '42' },
-      { key: 's43', label: '43' },
-      { key: 's44', label: '44' },
-      { key: 's45', label: '45' },
-    ];
-    const built: ProductVariant[] = [];
-    let firstPrice: number | undefined = undefined;
+  const rebuildVariantsFromShoeSelection = (
+    sizesList: string[],
+    overridePrice?: number
+  ) => {
+    const articlePrice = overridePrice !== undefined
+      ? overridePrice
+      : Number(productForm.getValues('price') || 0);
 
-    mapping.forEach(({ key, label }) => {
-      const valStr = (sizesObj[key] || '').trim();
-      if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
-        const pNum = Number(valStr);
-        if (firstPrice === undefined) firstPrice = pNum;
-        built.push({
-          id: uid(`var_shoe_${label}_`),
-          label,
-          price: pNum,
-          priceDelta: 0,
-          costDelta: 0,
-          stock: 50,
-          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${label}` : undefined,
-        });
-      }
+    const defaultStock = Number(productForm.getValues('openingStock')) || 0;
+    const built: ProductVariant[] = sizesList.map((sizeLabel) => {
+      return {
+        id: uid(`var_shoe_${sizeLabel.toLowerCase().replace(/[^a-z0-9]/g, '')}_`),
+        label: `Size ${sizeLabel}`,
+        price: articlePrice > 0 ? articlePrice : undefined,
+        priceDelta: 0,
+        costDelta: 0,
+        stock: defaultStock,
+        skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${sizeLabel}` : undefined,
+      };
     });
 
     setVariants(built);
     setHasVariants(built.length > 0);
-    if (firstPrice !== undefined) {
-      productForm.setValue('price', firstPrice);
-      productForm.clearErrors('price');
+  };
+
+  const handleToggleShoeSize = (sizeLabel: string) => {
+    const exists = selectedShoeSizes.includes(sizeLabel);
+    const updated = exists
+      ? selectedShoeSizes.filter((s) => s !== sizeLabel)
+      : [...selectedShoeSizes, sizeLabel].sort((a, b) => {
+          const numA = parseFloat(a);
+          const numB = parseFloat(b);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return a.localeCompare(b);
+        });
+    setSelectedShoeSizes(updated);
+    rebuildVariantsFromShoeSelection(updated);
+  };
+
+  const handleSelectAllShoeSizesInPreset = (presetSizes: string[]) => {
+    const combined = Array.from(new Set([...selectedShoeSizes, ...presetSizes])).sort((a, b) => {
+      const numA = parseFloat(a);
+      const numB = parseFloat(b);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      return a.localeCompare(b);
+    });
+    setSelectedShoeSizes(combined);
+    rebuildVariantsFromShoeSelection(combined);
+  };
+
+  const handleDeselectShoePreset = (presetSizes: string[]) => {
+    const filtered = selectedShoeSizes.filter((s) => !presetSizes.includes(s));
+    setSelectedShoeSizes(filtered);
+    rebuildVariantsFromShoeSelection(filtered);
+  };
+
+  const handleClearAllShoeSizes = () => {
+    setSelectedShoeSizes([]);
+    rebuildVariantsFromShoeSelection([]);
+  };
+
+  const handleAddCustomShoeSize = () => {
+    const trimmed = customShoeInput.trim();
+    if (trimmed && !selectedShoeSizes.includes(trimmed)) {
+      const updated = [...selectedShoeSizes, trimmed];
+      setSelectedShoeSizes(updated);
+      setCustomShoeInput('');
+      rebuildVariantsFromShoeSelection(updated);
     }
   };
+
+  // Strictly align footwear size preset and variants to the active retail category
+  useEffect(() => {
+    if (detectedProfile === 'footwear') {
+      const available = getAvailableShoePresetsForCategory(watchedCategory || '');
+      const bestPreset = getShoePresetForCategory(watchedCategory || '');
+      const isCurrentValid = available.some((p) => p.id === activeShoePresetId);
+      const targetPreset = isCurrentValid
+        ? (available.find((p) => p.id === activeShoePresetId) || bestPreset)
+        : bestPreset;
+
+      setActiveShoePresetId(targetPreset.id);
+      setSelectedShoeSizes(targetPreset.sizes);
+      if (pricingType === 'retail_shoes') {
+        rebuildVariantsFromShoeSelection(targetPreset.sizes);
+      }
+    }
+  }, [watchedCategory, detectedProfile, pricingType]);
+
+  // Keep all shoe size variants synchronized with the article price whenever price changes
+  useEffect(() => {
+    if (pricingType === 'retail_shoes' && selectedShoeSizes.length > 0) {
+      rebuildVariantsFromShoeSelection(selectedShoeSizes, Number(watchedPrice) || 0);
+    }
+  }, [watchedPrice, pricingType]);
 
   const rebuildVariantsFromShadeSizes = (sizesObj: typeof shadeSizes) => {
     const mapping: { key: keyof typeof shadeSizes; label: string }[] = [
@@ -1562,11 +1810,7 @@ export function AddProductView(): React.JSX.Element {
     rebuildVariantsFromGarmentSizes(updated);
   };
 
-  const handleShoeSizeChange = (key: keyof typeof shoeSizes, val: string) => {
-    const updated = { ...shoeSizes, [key]: val };
-    setShoeSizes(updated);
-    rebuildVariantsFromShoeSizes(updated);
-  };
+
 
   const handleShadeSizeChange = (key: keyof typeof shadeSizes, val: string) => {
     const updated = { ...shadeSizes, [key]: val };
@@ -1578,6 +1822,133 @@ export function AddProductView(): React.JSX.Element {
     const updated = { ...volumeSizes, [key]: val };
     setVolumeSizes(updated);
     rebuildVariantsFromVolumeSizes(updated);
+  };
+
+  const rebuildVariantsFromSanitarySizes = (sizesObj: typeof sanitarySizes) => {
+    const mapping: { key: keyof typeof sanitarySizes; label: string }[] = [
+      { key: 'half', label: '1/2" (20mm)' },
+      { key: 'threeQuarter', label: '3/4" (25mm)' },
+      { key: 'one', label: '1" (32mm)' },
+      { key: 'sawa', label: '1.25" (40mm)' },
+      { key: 'dhed', label: '1.5" (50mm)' },
+      { key: 'two', label: '2" (63mm)' },
+      { key: 'three', label: '3" (90mm)' },
+      { key: 'four', label: '4" (110mm)' },
+    ];
+    const built: ProductVariant[] = [];
+    let firstPrice: number | undefined = undefined;
+
+    mapping.forEach(({ key, label }) => {
+      const valStr = (sizesObj[key] || '').trim();
+      if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
+        const pNum = Number(valStr);
+        if (firstPrice === undefined) firstPrice = pNum;
+        built.push({
+          id: uid(`var_san_${key}_`),
+          label,
+          price: pNum,
+          priceDelta: 0,
+          costDelta: 0,
+          stock: 50,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
+        });
+      }
+    });
+
+    setVariants(built);
+    setHasVariants(built.length > 0);
+    if (firstPrice !== undefined) {
+      productForm.setValue('price', firstPrice);
+      productForm.clearErrors('price');
+    }
+  };
+
+  const handleSanitarySizeChange = (key: keyof typeof sanitarySizes, val: string) => {
+    const updated = { ...sanitarySizes, [key]: val };
+    setSanitarySizes(updated);
+    rebuildVariantsFromSanitarySizes(updated);
+  };
+
+  const rebuildVariantsFromPipeLengthSizes = (sizesObj: typeof pipeLengthSizes) => {
+    const mapping: { key: keyof typeof pipeLengthSizes; label: string }[] = [
+      { key: 'foot1', label: 'Per Foot (1 FT)' },
+      { key: 'ft10', label: '10 Feet Length' },
+      { key: 'ft13', label: '13 Feet Length' },
+      { key: 'ft20', label: '20 Feet Length' },
+    ];
+    const built: ProductVariant[] = [];
+    let firstPrice: number | undefined = undefined;
+
+    mapping.forEach(({ key, label }) => {
+      const valStr = (sizesObj[key] || '').trim();
+      if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
+        const pNum = Number(valStr);
+        if (firstPrice === undefined) firstPrice = pNum;
+        built.push({
+          id: uid(`var_pipe_${key}_`),
+          label,
+          price: pNum,
+          priceDelta: 0,
+          costDelta: 0,
+          stock: 40,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
+        });
+      }
+    });
+
+    setVariants(built);
+    setHasVariants(built.length > 0);
+    if (firstPrice !== undefined) {
+      productForm.setValue('price', firstPrice);
+      productForm.clearErrors('price');
+    }
+  };
+
+  const handlePipeLengthSizeChange = (key: keyof typeof pipeLengthSizes, val: string) => {
+    const updated = { ...pipeLengthSizes, [key]: val };
+    setPipeLengthSizes(updated);
+    rebuildVariantsFromPipeLengthSizes(updated);
+  };
+
+  const rebuildVariantsFromBathSetSizes = (sizesObj: typeof bathSetSizes) => {
+    const mapping: { key: keyof typeof bathSetSizes; label: string }[] = [
+      { key: 'singlePiece', label: 'Single Piece (Toti)' },
+      { key: 'muslimShower', label: 'Muslim Shower Only' },
+      { key: 'showerHead', label: 'Shower Head & Arm' },
+      { key: 'completeSet', label: 'Complete Bath Set' },
+    ];
+    const built: ProductVariant[] = [];
+    let firstPrice: number | undefined = undefined;
+
+    mapping.forEach(({ key, label }) => {
+      const valStr = (sizesObj[key] || '').trim();
+      if (valStr !== '' && !isNaN(Number(valStr)) && Number(valStr) > 0) {
+        const pNum = Number(valStr);
+        if (firstPrice === undefined) firstPrice = pNum;
+        built.push({
+          id: uid(`var_bath_${key}_`),
+          label,
+          price: pNum,
+          priceDelta: 0,
+          costDelta: 0,
+          stock: 25,
+          skuCode: watchedName ? `SKU-${watchedName.replace(/\s+/g, '').toUpperCase().slice(0, 5)}-${key}` : undefined,
+        });
+      }
+    });
+
+    setVariants(built);
+    setHasVariants(built.length > 0);
+    if (firstPrice !== undefined) {
+      productForm.setValue('price', firstPrice);
+      productForm.clearErrors('price');
+    }
+  };
+
+  const handleBathSetSizeChange = (key: keyof typeof bathSetSizes, val: string) => {
+    const updated = { ...bathSetSizes, [key]: val };
+    setBathSetSizes(updated);
+    rebuildVariantsFromBathSetSizes(updated);
   };
 
   const rebuildVariantsFromPaintSizes = (sizesObj: typeof paintSizes) => {
@@ -2076,7 +2447,7 @@ export function AddProductView(): React.JSX.Element {
     const activeList =
       watchedModule === 'fastfood'
         ? PRICING_TYPES_FASTFOOD
-        : getPricingTypesForProfile(detectedProfile, false);
+        : getPricingTypesForProfile(detectedProfile, watchedCategory, false);
     const typeConfig = activeList.find((p) => p.id === typeId) || ALL_RETAIL_PRICING_TYPES.find((p) => p.id === typeId);
     if (!typeConfig) return;
 
@@ -2091,7 +2462,22 @@ export function AddProductView(): React.JSX.Element {
     } else if (typeId === 'retail_garments') {
       rebuildVariantsFromGarmentSizes(garmentSizes);
     } else if (typeId === 'retail_shoes') {
-      rebuildVariantsFromShoeSizes(shoeSizes);
+      const available = getAvailableShoePresetsForCategory(watchedCategory || '');
+      const bestPreset = getShoePresetForCategory(watchedCategory || '');
+      const isCurrentValid = available.some((p) => p.id === activeShoePresetId);
+      const targetPreset = isCurrentValid
+        ? (available.find((p) => p.id === activeShoePresetId) || bestPreset)
+        : bestPreset;
+
+      setActiveShoePresetId(targetPreset.id);
+      setSelectedShoeSizes(targetPreset.sizes);
+      rebuildVariantsFromShoeSelection(targetPreset.sizes);
+    } else if (typeId === 'retail_sanitary_sizes') {
+      rebuildVariantsFromSanitarySizes(sanitarySizes);
+    } else if (typeId === 'retail_pipe_lengths') {
+      rebuildVariantsFromPipeLengthSizes(pipeLengthSizes);
+    } else if (typeId === 'retail_bath_sets') {
+      rebuildVariantsFromBathSetSizes(bathSetSizes);
     } else if (typeId === 'retail_paint') {
       rebuildVariantsFromPaintSizes(paintSizes);
     } else if (typeId === 'retail_wire') {
@@ -2130,13 +2516,33 @@ export function AddProductView(): React.JSX.Element {
   };
 
   useEffect(() => {
+    const queryCat = searchParams.get('category');
+    if (queryCat && categories.some((c) => c.name.toLowerCase() === queryCat.toLowerCase())) {
+      productForm.setValue('category', queryCat);
+      return;
+    }
     if (categories.length > 0) {
       const match = categories.find((c) => c.module === watchedModule);
       if (match && !categories.some((c) => c.name === productForm.getValues('category') && c.module === watchedModule)) {
         productForm.setValue('category', match.name);
       }
     }
-  }, [watchedModule, categories, productForm]);
+  }, [watchedModule, categories, productForm, searchParams]);
+
+  // Whenever article price changes, sync all shoe size variants to the same article price
+  useEffect(() => {
+    if (pricingType === 'retail_shoes' && variants.length > 0) {
+      const numPrice = Number(watchedPrice);
+      if (!isNaN(numPrice) && numPrice > 0) {
+        setVariants((prev) =>
+          prev.map((v) => ({
+            ...v,
+            price: numPrice,
+          }))
+        );
+      }
+    }
+  }, [watchedPrice, pricingType]);
 
   const saveProductMutation = useMutation({
     mutationFn: async (data: ProductFormData) => {
@@ -2148,9 +2554,27 @@ export function AddProductView(): React.JSX.Element {
         alert('Please enter a price for at least one garment size (XS, S, M, L, XL, etc.).');
         throw new Error('No garment size price entered');
       }
-      if (pricingType === 'retail_shoes' && variants.length === 0) {
-        alert('Please enter a price for at least one shoe size (38 - 45).');
-        throw new Error('No shoe size price entered');
+      if (pricingType === 'retail_shoes') {
+        if (variants.length === 0) {
+          alert('Please select at least one shoe size for this article.');
+          throw new Error('No shoe size selected');
+        }
+        if (!data.price || data.price <= 0) {
+          alert('Please enter a retail selling price for this shoe article.');
+          throw new Error('No retail price entered');
+        }
+      }
+      if (pricingType === 'retail_sanitary_sizes' && variants.length === 0) {
+        alert('Please enter a price for at least one pipe or fitting size (1/2" to 4").');
+        throw new Error('No sanitary size price entered');
+      }
+      if (pricingType === 'retail_pipe_lengths' && variants.length === 0) {
+        alert('Please enter a price for at least one pipe length or per foot.');
+        throw new Error('No pipe length price entered');
+      }
+      if (pricingType === 'retail_bath_sets' && variants.length === 0) {
+        alert('Please enter a price for at least one shower / tap set option.');
+        throw new Error('No bath set price entered');
       }
       if (pricingType === 'retail_paint' && variants.length === 0) {
         alert('Please enter a price for at least one paint container size (Quarter, Gallon, Balti).');
@@ -2241,16 +2665,60 @@ export function AddProductView(): React.JSX.Element {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      navigate(watchedModule === 'fastfood' ? '/catalog/fastfood' : '/catalog/omnimart');
+      const returnUrl = searchParams.get('returnUrl');
+      if (returnUrl) {
+        navigate(returnUrl);
+      } else {
+        navigate(watchedModule === 'fastfood' ? '/catalog/fastfood' : '/catalog/omnimart');
+      }
     },
   });
 
+  const watchedCatModule = categoryForm.watch('module') || watchedModule;
+  const addCatProfileKey = watchedCatModule === 'fastfood' ? 'food' : (detectedProfile || 'footwear');
+
+  const { data: addCatBusinessProfile } = useQuery({
+    queryKey: ['business-profile-template', addCatProfileKey],
+    queryFn: () => posApi.fetchBusinessProfile(addCatProfileKey),
+  });
+
+  const addCatDefaultOptions = React.useMemo(() => {
+    const backendCategories = addCatBusinessProfile?.defaultCategories || [];
+    const list = backendCategories.map((c) => c.name);
+
+    const existing = new Set(categories.filter((c) => c.module === watchedCatModule).map((c) => c.name.toLowerCase().trim()));
+    return list.map((catName) => {
+      const isAlreadyAdded = existing.has(catName.toLowerCase().trim());
+      return {
+        value: catName,
+        label: isAlreadyAdded ? `${catName} (Already Added)` : catName,
+        disabled: isAlreadyAdded,
+      };
+    });
+  }, [addCatBusinessProfile, addCatProfileKey, categories, watchedCatModule]);
+
+  useEffect(() => {
+    if (isCategoryDialogOpen && addCatDefaultOptions.length > 0) {
+      const currentName = categoryForm.getValues('name');
+      const currentOpt = addCatDefaultOptions.find((opt) => opt.value === currentName);
+      if (!currentOpt || currentOpt.disabled) {
+        const firstAvail = addCatDefaultOptions.find((opt) => !opt.disabled)?.value || addCatDefaultOptions[0].value;
+        categoryForm.setValue('name', firstAvail);
+      }
+    }
+  }, [isCategoryDialogOpen, addCatDefaultOptions, categoryForm]);
+
   const createCategoryMutation = useMutation({
     mutationFn: async (data: CategoryFormData) => {
+      const prof = data.module === 'fastfood' ? 'food' : (detectedProfile || 'standard');
+      const pConfig = CATEGORY_PROFILES[prof] || CATEGORY_PROFILES.standard;
       const newCat: Category = {
         id: uid('cat_'),
         module: data.module,
         name: data.name.trim(),
+        profile: prof,
+        suggestedSizes: pConfig.suggestedSizes,
+        suggestedUnits: pConfig.suggestedUnits,
       };
       return await posApi.saveCategory(newCat);
     },
@@ -2404,11 +2872,12 @@ export function AddProductView(): React.JSX.Element {
                   gap: '14px',
                   padding: '14px 18px',
                   borderRadius: '10px',
-                  border: activeDepartmentTab === 'fastfood' ? '2px solid #E51937' : `1px solid ${tokens.colorNeutralStroke2}`,
+                  boxSizing: 'border-box',
+                  border: `2px solid ${activeDepartmentTab === 'fastfood' ? '#E51937' : tokens.colorNeutralStroke2}`,
                   backgroundColor: activeDepartmentTab === 'fastfood' ? 'rgba(229, 25, 55, 0.09)' : tokens.colorNeutralBackground2,
                   cursor: 'pointer',
                   textAlign: 'left',
-                  transition: 'all 0.15s ease',
+                  transition: 'background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
                   boxShadow: activeDepartmentTab === 'fastfood' ? '0 4px 14px rgba(229, 25, 55, 0.18)' : 'none',
                 }}
               >
@@ -2461,11 +2930,12 @@ export function AddProductView(): React.JSX.Element {
                   gap: '14px',
                   padding: '14px 18px',
                   borderRadius: '10px',
-                  border: activeDepartmentTab === 'minimart' ? `2px solid ${profileConfig.accentColor || '#0284C7'}` : `1px solid ${tokens.colorNeutralStroke2}`,
+                  boxSizing: 'border-box',
+                  border: `2px solid ${activeDepartmentTab === 'minimart' ? (profileConfig.accentColor || '#0284C7') : tokens.colorNeutralStroke2}`,
                   backgroundColor: activeDepartmentTab === 'minimart' ? `${profileConfig.accentColor || '#0284C7'}15` : tokens.colorNeutralBackground2,
                   cursor: 'pointer',
                   textAlign: 'left',
-                  transition: 'all 0.15s ease',
+                  transition: 'background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
                   boxShadow: activeDepartmentTab === 'minimart' ? `0 4px 14px ${profileConfig.accentColor || '#0284C7'}30` : 'none',
                 }}
               >
@@ -2640,13 +3110,35 @@ export function AddProductView(): React.JSX.Element {
                           const matchedCat = categories.find((c) => c.name === val);
                           const detected = detectCategoryProfile(val, matchedCat?.profile);
                           const pCfg = CATEGORY_PROFILES[detected];
-                          if (pCfg && pCfg.suggestedUnits.length > 0) {
+                          if (detected === 'hardware') {
+                            if (isSanitaryCategory(val)) {
+                              productForm.setValue('unit', 'PCS');
+                              setPricingType('fixed');
+                              productForm.setValue('pricingType', 'fixed');
+                              setVariants([]);
+                              setHasVariants(false);
+                            } else if (/paint|distemper|color|coating/i.test(val)) {
+                              productForm.setValue('unit', 'GALLON');
+                              setPricingType('retail_paint');
+                              productForm.setValue('pricingType', 'retail_paint');
+                              rebuildVariantsFromPaintSizes(paintSizes);
+                            } else {
+                              productForm.setValue('unit', 'PCS');
+                              setPricingType('fixed');
+                              productForm.setValue('pricingType', 'fixed');
+                              setVariants([]);
+                              setHasVariants(false);
+                            }
+                          } else if (pCfg && pCfg.suggestedUnits.length > 0) {
                             productForm.setValue('unit', pCfg.suggestedUnits[0]);
                           }
                           if (detected === 'footwear') {
                             setPricingType('retail_shoes');
                             productForm.setValue('pricingType', 'retail_shoes');
-                            rebuildVariantsFromShoeSizes(shoeSizes);
+                            const preset = getShoePresetForCategory(val);
+                            setActiveShoePresetId(preset.id);
+                            setSelectedShoeSizes(preset.sizes);
+                            rebuildVariantsFromShoeSelection(preset.sizes);
                           } else if (detected === 'apparel') {
                             setPricingType('retail_garments');
                             productForm.setValue('pricingType', 'retail_garments');
@@ -2672,6 +3164,98 @@ export function AddProductView(): React.JSX.Element {
               </div>
             </div>
 
+            {/* ── Sub-Category / Specific Item Type Chips ── */}
+            {availableItemTypes.length > 0 && (
+              <div
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  backgroundColor: tokens.colorNeutralBackground2,
+                  border: `1px solid ${selectedItemTypeId ? `${profileConfig.accentColor || '#0284C7'}60` : tokens.colorNeutralStroke2}`,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      Specific Item Type / Sub-Category:
+                    </span>
+                    <span style={{ fontSize: '11px', fontWeight: 500, color: tokens.colorNeutralForeground3 }}>
+                      (Item select karein taake unit aur pricing type is item k hisaab se set ho)
+                    </span>
+                  </div>
+                  {selectedItemTypeId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedItemTypeId('');
+                        productForm.setValue('unit', profileConfig.suggestedUnits[0] || 'PCS');
+                      }}
+                      style={{ fontSize: '11px', fontWeight: 600, color: '#E51937', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Clear Filter
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {availableItemTypes.map((itemType) => {
+                    const isSelected = selectedItemTypeId === itemType.id;
+                    const accent = profileConfig.accentColor || '#0284C7';
+                    const renderItemTypeIcon = (iconName?: string) => {
+                      const iconStyle = { width: 14, height: 14, flexShrink: 0, color: isSelected ? accent : 'inherit' };
+                      switch (iconName) {
+                        case 'Droplets': return <Droplets style={iconStyle} />;
+                        case 'Ruler': return <Ruler style={iconStyle} />;
+                        case 'Wrench': return <Wrench style={iconStyle} />;
+                        case 'Palette': return <Palette style={iconStyle} />;
+                        case 'Shirt': return <Shirt style={iconStyle} />;
+                        case 'Zap': return <Zap style={iconStyle} />;
+                        case 'HeartPulse': return <HeartPulse style={iconStyle} />;
+                        case 'Scale': return <Scale style={iconStyle} />;
+                        case 'Cake': return <Cake style={iconStyle} />;
+                        case 'Sparkles': return <Sparkles style={iconStyle} />;
+                        case 'Footprints': return <Footprints style={iconStyle} />;
+                        case 'Smartphone': return <Smartphone style={iconStyle} />;
+                        case 'Package':
+                        default:
+                          return <Package style={iconStyle} />;
+                      }
+                    };
+                    return (
+                      <button
+                        key={itemType.id}
+                        type="button"
+                        onClick={() => handleSelectItemType(itemType)}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          boxSizing: 'border-box',
+                          border: `1.5px solid ${isSelected ? accent : tokens.colorNeutralStroke1}`,
+                          backgroundColor: isSelected ? `${accent}22` : tokens.colorNeutralBackground1,
+                          color: isSelected ? accent : tokens.colorNeutralForeground1,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
+                          boxShadow: isSelected ? `0 2px 8px ${accent}35` : 'none',
+                        }}
+                      >
+                        {isSelected ? (
+                          <Checkmark16Filled style={{ width: 14, height: 14, color: accent, flexShrink: 0 }} />
+                        ) : (
+                          renderItemTypeIcon(itemType.iconName)
+                        )}
+                        <span style={{ color: isSelected ? accent : tokens.colorNeutralForeground1 }}>{itemType.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Product Name */}
             <div>
               <Controller
@@ -2681,7 +3265,12 @@ export function AddProductView(): React.JSX.Element {
                   <CustomInput
                     label="Product Name"
                     required
-                    placeholder={watchedModule === 'fastfood' ? 'e.g. Crispy Zinger Burger / Tikka Pizza' : 'e.g. White Cotton Kurta / Leather Shoes / Whitening Cream / RC Toy Car'}
+                    placeholder={
+                      activeItemType?.placeholderName ||
+                      (watchedModule === 'fastfood'
+                        ? 'e.g. Crispy Zinger Burger / Tikka Pizza'
+                        : 'e.g. White Cotton Kurta / Leather Shoes / Whitening Cream / RC Toy Car')
+                    }
                     value={field.value || ''}
                     onChange={field.onChange}
                     error={productForm.formState.errors.name?.message}
@@ -2712,8 +3301,8 @@ export function AddProductView(): React.JSX.Element {
                 <label className={styles.pricingTypeLabel} style={{ marginBottom: 0 }}>
                   Pricing Type <span className={styles.requiredStar}>*</span>
                   {watchedModule !== 'fastfood' && (
-                    <span style={{ marginLeft: '8px', fontSize: '11px', color: profileConfig.accentColor, fontWeight: 700 }}>
-                      ({profileConfig.shortTag} Recommended)
+                    <span style={{ marginLeft: '8px', fontSize: '11px', color: isSanitaryCategory(watchedCategory || '') ? '#0284C7' : profileConfig.accentColor, fontWeight: 700 }}>
+                      ({isSanitaryCategory(watchedCategory || '') ? 'Sanitary & Pipes' : profileConfig.shortTag} Recommended)
                     </span>
                   )}
                 </label>
@@ -2722,29 +3311,43 @@ export function AddProductView(): React.JSX.Element {
               <div className={styles.pricingTypeRow}>
                 {(watchedModule === 'fastfood'
                   ? PRICING_TYPES_FASTFOOD
-                  : getPricingTypesForProfile(detectedProfile, false)
+                  : getPricingTypesForProfile(detectedProfile, watchedCategory, false)
                 ).map((pt) => {
                   const Icon = pt.icon;
                   const isSelected = pricingType === pt.id;
+                  let displayLabel = pt.label;
+                  if (pt.id === 'retail_shoes') {
+                    const preset = getShoePresetForCategory(watchedCategory || '');
+                    displayLabel = `Footwear Sizes (${preset.rangeText})`;
+                  }
                   return (
                     <button
                       key={pt.id}
                       type="button"
                       onClick={() => handlePricingTypeSelect(pt.id)}
-                      className={`${styles.pricingTypeBtn} ${isSelected ? styles.pricingTypeBtnActive : ''}`}
+                      className={mergeClasses(styles.pricingTypeBtn, isSelected && styles.pricingTypeBtnActive)}
+                      style={{
+                        backgroundColor: isSelected ? '#E51937' : undefined,
+                        color: isSelected ? '#FFFFFF' : undefined,
+                        borderColor: isSelected ? '#E51937' : undefined,
+                        borderWidth: '1.5px',
+                        boxSizing: 'border-box',
+                      }}
                     >
-                      <Icon size={14} className={styles.flexShrink0} />
-                      <span>{pt.label}</span>
+                      <Icon size={14} className={styles.flexShrink0} style={{ color: isSelected ? '#FFFFFF' : undefined, stroke: isSelected ? '#FFFFFF' : undefined }} />
+                      <span style={{ color: isSelected ? '#FFFFFF' : undefined }}>{displayLabel}</span>
                     </button>
                   );
                 })}
               </div>
 
               <div className={styles.pricingTypeDesc}>
-                {(watchedModule === 'fastfood'
-                  ? PRICING_TYPES_FASTFOOD
-                  : ALL_RETAIL_PRICING_TYPES
-                ).find((p) => p.id === pricingType)?.desc}
+                {pricingType === 'retail_shoes'
+                  ? `Select available sizes for this ${watchedCategory || 'footwear'} article (${getShoePresetForCategory(watchedCategory || '').name}). All sizes share the same article price.`
+                  : (watchedModule === 'fastfood'
+                      ? PRICING_TYPES_FASTFOOD
+                      : ALL_RETAIL_PRICING_TYPES
+                    ).find((p) => p.id === pricingType)?.desc}
               </div>
 
               {/* ── 1. Dedicated S / M / L / XL Pizza Size Pricing (Fast Food) ── */}
@@ -2898,151 +3501,335 @@ export function AddProductView(): React.JSX.Element {
                 </div>
               )}
 
-              {/* ── 3. Dedicated Retail Shoe Sizes: 40, 41, 42, 43, 44 ── */}
-              {pricingType === 'retail_shoes' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Footprints size={18} color="#E51937" />
-                      <div>
-                        <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
-                          Footwear Sizes (40, 41, 42, 43, 44)
-                        </span>
-                        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
-                          Enter pricing for formal shoes, joggers, loafers, or chappals
-                        </p>
+              {/* ── 3. Dedicated Retail Shoe Size Matrix (Category-Specific Ranges & Unified Price) ── */}
+              {pricingType === 'retail_shoes' && (() => {
+                const availablePresets = getAvailableShoePresetsForCategory(watchedCategory || '');
+                const currentPreset = availablePresets.find((p) => p.id === activeShoePresetId) || availablePresets[0] || SHOE_SIZE_PRESETS[0];
+                const activePriceNum = Number(watchedPrice) || 0;
+
+                return (
+                  <div
+                    style={{
+                      marginTop: '16px',
+                      padding: '16px 18px',
+                      borderRadius: '12px',
+                      backgroundColor: tokens.colorNeutralBackground2,
+                      border: `1px solid ${tokens.colorNeutralStroke1}`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '14px',
+                    }}
+                  >
+                    {/* Header: Title, Category Match Notice & Unified Article Price */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '10px',
+                        paddingBottom: '12px',
+                        borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            backgroundColor: 'rgba(229, 25, 55, 0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Footprints size={20} color="#E51937" />
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                              Footwear Article Sizes
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '10.5px',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(229, 25, 55, 0.12)',
+                                color: '#E51937',
+                                border: '1px solid rgba(229, 25, 55, 0.3)',
+                              }}
+                            >
+                              {watchedCategory || 'Kids Footwear'}
+                            </span>
+                          </div>
+                          <p style={{ margin: '3px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                            Select available sizes in this article. In shoe retail, all sizes share one unified retail price.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Unified Selling Price Display & Quick Edit */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          backgroundColor: tokens.colorNeutralBackground3,
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          border: `1px solid ${tokens.colorNeutralStroke1}`,
+                        }}
+                      >
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '10.5px', fontWeight: 600, color: tokens.colorNeutralForeground3 }}>
+                            Unified Selling Price:
+                          </div>
+                          <div style={{ fontSize: '14px', fontWeight: 800, color: activePriceNum > 0 ? '#10b981' : '#f59e0b' }}>
+                            {activePriceNum > 0 ? formatPKR(activePriceNum) : 'Price Not Set'}
+                          </div>
+                        </div>
+                        <input
+                          type="number"
+                          placeholder="Set Price (PKR)"
+                          value={watchedPrice || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            productForm.setValue('price', Number(val));
+                            productForm.clearErrors('price');
+                          }}
+                          style={{
+                            width: '105px',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: `1px solid ${tokens.colorNeutralStroke1}`,
+                            backgroundColor: tokens.colorNeutralBackground1,
+                            color: tokens.colorNeutralForeground1,
+                            fontSize: '12px',
+                            fontWeight: 700,
+                          }}
+                        />
                       </div>
                     </div>
 
-                    {/* Quick Same Price tool */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>
-                        Same price for all:
-                      </span>
-                      <input
-                        type="number"
-                        placeholder="e.g. 4800"
-                        value={bulkShoePrice}
-                        onChange={(e) => setBulkShoePrice(e.target.value)}
-                        style={{ width: '90px', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${tokens.colorNeutralStroke1}`, fontSize: '12px' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (bulkShoePrice) {
-                            const updated = {
-                              s38: bulkShoePrice,
-                              s39: bulkShoePrice,
-                              s40: bulkShoePrice,
-                              s41: bulkShoePrice,
-                              s42: bulkShoePrice,
-                              s43: bulkShoePrice,
-                              s44: bulkShoePrice,
-                              s45: bulkShoePrice,
-                            };
-                            setShoeSizes(updated);
-                            rebuildVariantsFromShoeSizes(updated);
-                          }
-                        }}
-                        style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#E51937', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        Apply to All
-                      </button>
-                    </div>
-                  </div>
+                    {/* Preset Switcher (Category-filtered: Kids Footwear only shows Kids/Baby/Youth; Men's only shows Men's) */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11.5px', fontWeight: 700, color: tokens.colorNeutralForeground2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          {availablePresets.length > 1 ? 'Category Size Ranges:' : `Standard Range: ${currentPreset.name} (${currentPreset.rangeText})`}
+                        </span>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectAllShoeSizesInPreset(currentPreset.sizes)}
+                            style={{
+                              padding: '3px 9px',
+                              borderRadius: '6px',
+                              border: '1px solid rgba(229, 25, 55, 0.4)',
+                              backgroundColor: 'rgba(229, 25, 55, 0.1)',
+                              color: '#E51937',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Select All ({currentPreset.rangeText})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeselectShoePreset(currentPreset.sizes)}
+                            style={{
+                              padding: '3px 9px',
+                              borderRadius: '6px',
+                              border: `1px solid ${tokens.colorNeutralStroke1}`,
+                              backgroundColor: tokens.colorNeutralBackground3,
+                              color: tokens.colorNeutralForeground2,
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Deselect Range
+                          </button>
+                        </div>
+                      </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Size 38
-                      </label>
-                      <CustomInput
-                        type="number"
-                        placeholder="4800"
-                        value={shoeSizes.s38}
-                        onChange={(e) => handleShoeSizeChange('s38', e.target.value)}
-                      />
+                      {availablePresets.length > 1 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {availablePresets.map((preset) => {
+                            const isActive = activeShoePresetId === preset.id;
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() => {
+                                  setActiveShoePresetId(preset.id);
+                                  setSelectedShoeSizes(preset.sizes);
+                                  rebuildVariantsFromShoeSelection(preset.sizes);
+                                }}
+                                style={{
+                                  padding: '6px 14px',
+                                  borderRadius: '8px',
+                                  boxSizing: 'border-box',
+                                  border: `1.5px solid ${isActive ? '#E51937' : tokens.colorNeutralStroke1}`,
+                                  backgroundColor: isActive ? 'rgba(229, 25, 55, 0.15)' : tokens.colorNeutralBackground3,
+                                  color: isActive ? '#fff' : tokens.colorNeutralForeground2,
+                                  fontWeight: 600,
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
+                                }}
+                              >
+                                <span>{preset.name}</span>
+                                <span
+                                  style={{
+                                    fontSize: '10.5px',
+                                    padding: '1px 5px',
+                                    borderRadius: '4px',
+                                    backgroundColor: isActive ? '#E51937' : 'rgba(255, 255, 255, 0.08)',
+                                    color: '#fff',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {preset.badge}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
+
+                    {/* Interactive Size Chips Grid */}
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Size 39
-                      </label>
-                      <CustomInput
-                        type="number"
-                        placeholder="4800"
-                        value={shoeSizes.s39}
-                        onChange={(e) => handleShoeSizeChange('s39', e.target.value)}
-                      />
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground3, marginBottom: '8px' }}>
+                        Click to toggle sizes available for this article:
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(95px, 1fr))',
+                          gap: '8px',
+                        }}
+                      >
+                        {currentPreset.sizes.map((sizeStr) => {
+                          const isSelected = selectedShoeSizes.includes(sizeStr);
+                          return (
+                            <button
+                              key={sizeStr}
+                              type="button"
+                              onClick={() => handleToggleShoeSize(sizeStr)}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: '8px',
+                                boxSizing: 'border-box',
+                                border: `1.5px solid ${isSelected ? '#E51937' : tokens.colorNeutralStroke1}`,
+                                backgroundColor: isSelected ? 'rgba(229, 25, 55, 0.14)' : tokens.colorNeutralBackground3,
+                                color: isSelected ? '#fff' : tokens.colorNeutralForeground2,
+                                display: 'flex',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                cursor: 'pointer',
+                                transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
+                                boxShadow: isSelected ? '0 0 10px rgba(229, 25, 55, 0.25)' : 'none',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {isSelected ? (
+                                <Checkmark16Filled style={{ color: '#E51937', fontSize: '14px', flexShrink: 0 }} />
+                              ) : (
+                                <span style={{ width: '12px', height: '12px', borderRadius: '50%', border: `1px solid ${tokens.colorNeutralStroke1}`, display: 'inline-block', flexShrink: 0 }} />
+                              )}
+                              <span style={{ fontSize: '13px', fontWeight: 700 }}>
+                                {sizeStr} Size
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Custom Size Addition */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+                        <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                          Custom Size:
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="e.g. 46, 12, 13"
+                          value={customShoeInput}
+                          onChange={(e) => setCustomShoeInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddCustomShoeSize();
+                            }
+                          }}
+                          style={{
+                            width: '100px',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            border: `1px solid ${tokens.colorNeutralStroke1}`,
+                            fontSize: '11.5px',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCustomShoeSize}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            border: `1px solid ${tokens.colorNeutralStroke1}`,
+                            backgroundColor: tokens.colorNeutralBackground3,
+                            color: tokens.colorNeutralForeground1,
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          + Add Size
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Size 40
-                      </label>
-                      <CustomInput
-                        type="number"
-                        placeholder="4800"
-                        value={shoeSizes.s40}
-                        onChange={(e) => handleShoeSizeChange('s40', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Size 41
-                      </label>
-                      <CustomInput
-                        type="number"
-                        placeholder="4800"
-                        value={shoeSizes.s41}
-                        onChange={(e) => handleShoeSizeChange('s41', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Size 42
-                      </label>
-                      <CustomInput
-                        type="number"
-                        placeholder="4800"
-                        value={shoeSizes.s42}
-                        onChange={(e) => handleShoeSizeChange('s42', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Size 43
-                      </label>
-                      <CustomInput
-                        type="number"
-                        placeholder="4800"
-                        value={shoeSizes.s43}
-                        onChange={(e) => handleShoeSizeChange('s43', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Size 44
-                      </label>
-                      <CustomInput
-                        type="number"
-                        placeholder="4800"
-                        value={shoeSizes.s44}
-                        onChange={(e) => handleShoeSizeChange('s44', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
-                        Size 45
-                      </label>
-                      <CustomInput
-                        type="number"
-                        placeholder="4950"
-                        value={shoeSizes.s45}
-                        onChange={(e) => handleShoeSizeChange('s45', e.target.value)}
-                      />
+
+                    {/* Article Summary Bar */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        backgroundColor: 'rgba(229, 25, 55, 0.08)',
+                        border: '1px solid rgba(229, 25, 55, 0.25)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                          Article Summary:
+                        </span>
+                        <span style={{ fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
+                          <strong>{selectedShoeSizes.length}</strong> Sizes Selected ({selectedShoeSizes.join(', ') || 'None'})
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <span style={{ fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
+                          Article Price: <strong style={{ color: '#10b981' }}>{activePriceNum > 0 ? formatPKR(activePriceNum) : 'Not Set'}</strong>
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* ── 4. Dedicated Retail Shades & Colors ── */}
               {pricingType === 'retail_shades' && (
@@ -3153,6 +3940,316 @@ export function AddProductView(): React.JSX.Element {
                         placeholder="1250"
                         value={volumeSizes.v3}
                         onChange={(e) => handleVolumeSizeChange('v3', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── 6a. Dedicated Sanitary Pipe & Fitting Diameters (1/2" to 4") ── */}
+              {pricingType === 'retail_sanitary_sizes' && (
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Droplets size={18} color="#0284C7" />
+                      <div>
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                          Pipe & Fitting Sizes Matrix (1/2" to 4" / 20mm to 110mm)
+                        </span>
+                        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                          PPRC, UPVC, CPVC pipes, elbows, tees, sockets, unions & valves pricing
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Quick Auto Multiplier */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>
+                        1/2" Base Price:
+                      </span>
+                      <input
+                        type="number"
+                        placeholder="e.g. 150"
+                        value={bulkSanitaryPrice}
+                        onChange={(e) => setBulkSanitaryPrice(e.target.value)}
+                        style={{ width: '90px', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${tokens.colorNeutralStroke1}`, fontSize: '12px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (bulkSanitaryPrice) {
+                            const pNum = Number(bulkSanitaryPrice);
+                            const updated = {
+                              half: String(pNum),
+                              threeQuarter: String(Math.round(pNum * 1.45)),
+                              one: String(Math.round(pNum * 2.1)),
+                              sawa: String(Math.round(pNum * 3.2)),
+                              dhed: String(Math.round(pNum * 4.2)),
+                              two: String(Math.round(pNum * 6.5)),
+                              three: String(Math.round(pNum * 12.0)),
+                              four: String(Math.round(pNum * 18.0)),
+                            };
+                            setSanitarySizes(updated);
+                            rebuildVariantsFromSanitarySizes(updated);
+                          }
+                        }}
+                        style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#0284C7', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Auto Multipliers
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        1/2" (20mm)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="150"
+                        value={sanitarySizes.half}
+                        onChange={(e) => handleSanitarySizeChange('half', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        3/4" (25mm)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="220"
+                        value={sanitarySizes.threeQuarter}
+                        onChange={(e) => handleSanitarySizeChange('threeQuarter', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        1" (32mm)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="320"
+                        value={sanitarySizes.one}
+                        onChange={(e) => handleSanitarySizeChange('one', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        1.25" / Sawa Inch (40mm)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="480"
+                        value={sanitarySizes.sawa}
+                        onChange={(e) => handleSanitarySizeChange('sawa', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        1.5" / Dhed Inch (50mm)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="650"
+                        value={sanitarySizes.dhed}
+                        onChange={(e) => handleSanitarySizeChange('dhed', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        2" / Do Inch (63mm)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="980"
+                        value={sanitarySizes.two}
+                        onChange={(e) => handleSanitarySizeChange('two', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        3" (90mm)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="1800"
+                        value={sanitarySizes.three}
+                        onChange={(e) => handleSanitarySizeChange('three', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        4" (110mm)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="2700"
+                        value={sanitarySizes.four}
+                        onChange={(e) => handleSanitarySizeChange('four', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── 6b. Dedicated Sanitary Pipe Lengths (Per Foot / 10ft / 13ft / 20ft) ── */}
+              {pricingType === 'retail_pipe_lengths' && (
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Ruler size={18} color="#0284C7" />
+                      <div>
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                          Pipe Lengths & Running Foot (FT / 10ft / 13ft / 20ft)
+                        </span>
+                        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                          Pipes sold per running foot or standard full length pipes (PPRC standard length is 13ft / 4m)
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Quick Auto Lengths */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>
+                        Per Foot Price:
+                      </span>
+                      <input
+                        type="number"
+                        placeholder="e.g. 80"
+                        value={bulkPipeFootPrice}
+                        onChange={(e) => setBulkPipeFootPrice(e.target.value)}
+                        style={{ width: '90px', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${tokens.colorNeutralStroke1}`, fontSize: '12px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (bulkPipeFootPrice) {
+                            const pNum = Number(bulkPipeFootPrice);
+                            const updated = {
+                              foot1: String(pNum),
+                              ft10: String(pNum * 10),
+                              ft13: String(pNum * 13),
+                              ft20: String(pNum * 20),
+                            };
+                            setPipeLengthSizes(updated);
+                            rebuildVariantsFromPipeLengthSizes(updated);
+                          }
+                        }}
+                        style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#0284C7', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Auto Fill Lengths
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Per Foot (1 FT)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="80"
+                        value={pipeLengthSizes.foot1}
+                        onChange={(e) => handlePipeLengthSizeChange('foot1', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        10 Feet Length (Standard)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="800"
+                        value={pipeLengthSizes.ft10}
+                        onChange={(e) => handlePipeLengthSizeChange('ft10', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        13 Feet Length (Standard PPRC)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="1040"
+                        value={pipeLengthSizes.ft13}
+                        onChange={(e) => handlePipeLengthSizeChange('ft13', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        20 Feet Length
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="1600"
+                        value={pipeLengthSizes.ft20}
+                        onChange={(e) => handlePipeLengthSizeChange('ft20', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── 6c. Dedicated Showers & Taps Sets (Single Toti vs Complete Set) ── */}
+              {pricingType === 'retail_bath_sets' && (
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <Sparkles size={18} color="#0284C7" />
+                    <div>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        Showers & Taps Sets (Single Toti vs Complete Bathroom Set)
+                      </span>
+                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        Enter individual pricing for bib cocks, muslim shower, shower head, or complete master bathroom set
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Single Piece (Toti / Bib Cock)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="850"
+                        value={bathSetSizes.singlePiece}
+                        onChange={(e) => handleBathSetSizeChange('singlePiece', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Muslim Shower Only
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="1250"
+                        value={bathSetSizes.muslimShower}
+                        onChange={(e) => handleBathSetSizeChange('muslimShower', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Shower Head & Arm
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="2200"
+                        value={bathSetSizes.showerHead}
+                        onChange={(e) => handleBathSetSizeChange('showerHead', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                        Complete Bath Set (Taps+Mixer+Shower)
+                      </label>
+                      <CustomInput
+                        type="number"
+                        placeholder="14500"
+                        value={bathSetSizes.completeSet}
+                        onChange={(e) => handleBathSetSizeChange('completeSet', e.target.value)}
                       />
                     </div>
                   </div>
@@ -3842,14 +4939,29 @@ export function AddProductView(): React.JSX.Element {
                       control={productForm.control}
                       name="openingStock"
                       render={({ field }) => (
-                        <CustomInput
-                          label={pricingType === 'perkg' || pricingType === 'amountse' ? 'Stock Weight (KG / Grams)' : 'Stock Quantity (Pieces / Units)'}
-                          type="number"
-                          placeholder="e.g. 50"
-                          value={field.value !== undefined ? String(field.value) : ''}
-                          onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-                          error={productForm.formState.errors.openingStock?.message}
-                        />
+                        <div>
+                          <CustomInput
+                            label={pricingType === 'perkg' || pricingType === 'amountse' ? 'Stock Weight (KG / Grams - Read-only)' : 'Stock Quantity (Read-only)'}
+                            type="number"
+                            readOnly
+                            disabled
+                            placeholder="0"
+                            value={field.value !== undefined ? String(field.value) : '0'}
+                            onChange={() => {}}
+                            error={productForm.formState.errors.openingStock?.message}
+                          />
+                          <div style={{ marginTop: '4px', fontSize: '11px', color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <Package style={{ width: 13, height: 13 }} />
+                              Initial stock: <strong>0</strong> (Add via Stock In)
+                            </span>
+                            {watchedCategory && (
+                              <span style={{ color: '#2563EB', fontWeight: 600 }}>
+                                Category &quot;{watchedCategory}&quot;: {categoryStockInfo.totalStock} in stock ({categoryStockInfo.count} items)
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       )}
                     />
                   </div>
@@ -3905,14 +5017,29 @@ export function AddProductView(): React.JSX.Element {
                     control={productForm.control}
                     name="openingStock"
                     render={({ field }) => (
-                      <CustomInput
-                        label="Total Opening Stock Quantity"
-                        type="number"
-                        placeholder="e.g. 50"
-                        value={field.value !== undefined ? String(field.value) : ''}
-                        onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-                        error={productForm.formState.errors.openingStock?.message}
-                      />
+                      <div>
+                        <CustomInput
+                          label="Total Opening Stock (Read-only)"
+                          type="number"
+                          readOnly
+                          disabled
+                          placeholder="0"
+                          value={field.value !== undefined ? String(field.value) : '0'}
+                          onChange={() => {}}
+                          error={productForm.formState.errors.openingStock?.message}
+                        />
+                          <div style={{ marginTop: '4px', fontSize: '11px', color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <Package style={{ width: 13, height: 13 }} />
+                              Initial stock: <strong>0</strong> (Add via Stock In)
+                            </span>
+                          {watchedCategory && (
+                            <span style={{ color: '#2563EB', fontWeight: 600 }}>
+                              Category &quot;{watchedCategory}&quot;: {categoryStockInfo.totalStock} in stock ({categoryStockInfo.count} items)
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     )}
                   />
                 </div>
@@ -4015,7 +5142,13 @@ export function AddProductView(): React.JSX.Element {
             {(() => {
               const unitsToDisplay = (pricingType === 'perkg' || pricingType === 'amountse')
                 ? ['KG', 'Gram', 'Liter', 'ML', 'PACK']
-                : profileConfig.suggestedUnits;
+                : activeItemType
+                  ? activeItemType.suggestedUnits
+                  : (detectedProfile === 'hardware' && isSanitaryCategory(watchedCategory || ''))
+                    ? ['PCS', 'SET', 'FEET', 'LENGTH', 'RFT', 'INCH', 'ROLL', 'TUBE', 'PACK', 'DOZEN', 'PAIR', 'METER']
+                    : (detectedProfile === 'hardware' && /paint|distemper|color|coating/i.test(watchedCategory || ''))
+                      ? ['GALLON', 'QUARTER', 'BALTI', 'LITER', 'KG', 'PCS']
+                      : profileConfig.suggestedUnits;
 
               if (unitsToDisplay.length === 0) return null;
 
@@ -4034,10 +5167,12 @@ export function AddProductView(): React.JSX.Element {
                           onClick={() => productForm.setValue('unit', u)}
                           className={styles.presetChip}
                           style={{
-                            fontWeight: isSelected ? 800 : 600,
-                            border: isSelected ? `1.5px solid ${profileConfig.accentColor}` : `1px solid ${tokens.colorNeutralStroke1}`,
+                            boxSizing: 'border-box',
+                            fontWeight: 600,
+                            border: `1.5px solid ${isSelected ? profileConfig.accentColor : tokens.colorNeutralStroke1}`,
                             backgroundColor: isSelected ? `${profileConfig.accentColor}25` : tokens.colorNeutralBackground1,
                             color: isSelected ? profileConfig.accentColor : tokens.colorNeutralForeground2,
+                            transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
                           }}
                         >
                           {u}
@@ -4103,10 +5238,12 @@ export function AddProductView(): React.JSX.Element {
                             onClick={() => handleToggleSize(size)}
                             className={styles.variantChipBtn}
                             style={{
-                              border: isSelected ? `2px solid ${profileConfig.accentColor}` : `1px solid ${tokens.colorNeutralStroke1}`,
+                              boxSizing: 'border-box',
+                              border: `1.5px solid ${isSelected ? profileConfig.accentColor : tokens.colorNeutralStroke1}`,
                               backgroundColor: isSelected ? `${profileConfig.accentColor}22` : tokens.colorNeutralBackground1,
                               color: isSelected ? profileConfig.accentColor : tokens.colorNeutralForeground1,
-                              fontWeight: isSelected ? 800 : 600,
+                              fontWeight: 600,
+                              transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
                             }}
                           >
                             <span>{size}</span>
@@ -4415,12 +5552,12 @@ export function AddProductView(): React.JSX.Element {
                 control={categoryForm.control}
                 name="name"
                 render={({ field }) => (
-                  <CustomInput
-                    label="Category Name"
+                  <CustomSelect
+                    label="Select Category"
                     required
-                    placeholder="e.g. Burgers, Dairy, Shirts, Shoes..."
                     value={field.value || ''}
-                    onChange={field.onChange}
+                    options={addCatDefaultOptions}
+                    onChange={(val) => field.onChange(val)}
                     error={categoryForm.formState.errors.name?.message}
                   />
                 )}

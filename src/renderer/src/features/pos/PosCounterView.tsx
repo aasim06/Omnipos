@@ -885,19 +885,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
     const fromDb = dbCategories.filter((c) => !c.module || c.module === module).map((c) => c.name);
     const fromProducts = products.filter((p) => !p.module || p.module === module).map((p) => p.category).filter(Boolean);
 
-    // Explicit retail category tabs for minimart counter
-    const minimartDefaults = module === 'minimart' ? [
-      'Cosmetics & Skincare',
-      "Men's Garments",
-      'Footwear & Shoes',
-      'Toys & Kids',
-      'Paints & Wall Primer',
-      'Sanitary & Taps',
-      'Hardware & Iron',
-      'General Store',
-    ] : [];
-
-    return Array.from(new Set(['All', ...minimartDefaults, ...fromDb, ...fromProducts]));
+    return Array.from(new Set(['All', ...fromDb, ...fromProducts]));
   }, [dbCategories, products, module]);
 
   // Count items per category for visual badge in Fast Food sidebar
@@ -2430,30 +2418,50 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
               </div>
             ) : (
               /* ── Visual Grid View: Exactly 4 Cards Per Row ── */
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
-                {filteredProducts.map((product) => {
-                  const isSelected = selectedProduct?.id === product.id;
-                  const isWeightItem = isWeighableOrLiquid(product.unit) || product.pricingType === 'perkg' || product.pricingType === 'amountse';
+              <div style={{ display: 'grid', gridTemplateColumns: filteredProducts.length === 0 ? '1fr' : 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
+                {filteredProducts.length === 0 ? (
+                  <div
+                    style={{
+                      padding: '48px 24px',
+                      textAlign: 'center',
+                      backgroundColor: F.bgCard,
+                      borderRadius: F.radiusMd,
+                      border: `1px dashed ${F.border}`,
+                      color: F.textMuted,
+                    }}
+                  >
+                    <p style={{ fontSize: '15px', fontWeight: 700, color: F.textPrimary, margin: '0 0 6px 0' }}>
+                      No Products in Catalog
+                    </p>
+                    <p style={{ fontSize: '13px', margin: 0 }}>
+                      Store catalog is empty. Click "+ Add New Item" from the left menu to create your products.
+                    </p>
+                  </div>
+                ) : (
+                  filteredProducts.map((product) => {
+                    const isSelected = selectedProduct?.id === product.id;
+                    const isWeightItem = isWeighableOrLiquid(product.unit) || product.pricingType === 'perkg' || product.pricingType === 'amountse';
 
-                  return (
-                    <FastFoodVisualCard
-                      key={product.id}
-                      product={product}
-                      isSelected={isSelected}
-                      isDark={isDark}
-                      F={F}
-                      inCartMap={inCartMap}
-                      addToCart={addToCart}
-                      setSelectedProduct={setSelectedProduct}
-                      setSelectedQty={setSelectedQty}
-                      playBeep={playBeep}
-                      isWeightItem={isWeightItem}
-                      setWeighingProduct={setWeighingProduct}
-                      setWeightAmount={setWeightAmount}
-                      setVariantPickerProduct={setVariantPickerProduct}
-                    />
-                  );
-                })}
+                    return (
+                      <FastFoodVisualCard
+                        key={product.id}
+                        product={product}
+                        isSelected={isSelected}
+                        isDark={isDark}
+                        F={F}
+                        inCartMap={inCartMap}
+                        addToCart={addToCart}
+                        setSelectedProduct={setSelectedProduct}
+                        setSelectedQty={setSelectedQty}
+                        playBeep={playBeep}
+                        isWeightItem={isWeightItem}
+                        setWeighingProduct={setWeighingProduct}
+                        setWeightAmount={setWeightAmount}
+                        setVariantPickerProduct={setVariantPickerProduct}
+                      />
+                    );
+                  })
+                )}
               </div>
             )}
           </div>

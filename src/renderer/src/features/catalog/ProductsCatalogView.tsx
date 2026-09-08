@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   makeStyles,
@@ -47,7 +47,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { posApi } from '@/lib/api';
-import { Product, Category, ModuleKey } from '@shared/types';
+import { Product, Category, ModuleKey, CategoryProfile } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
@@ -56,19 +56,54 @@ import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles
 
 const UNIT_OPTIONS = [
   { value: 'PCS', label: 'Piece (PCS)' },
+  { value: 'SET', label: 'Set (SET)' },
+  { value: 'PAIR', label: 'Pair (PAIR)' },
+  { value: 'FEET', label: 'Feet (ft)' },
+  { value: 'LENGTH', label: 'Pipe Length (10ft / 13ft Length)' },
+  { value: 'RFT', label: 'Running Feet (RFT)' },
+  { value: 'METER', label: 'Meter (m)' },
+  { value: 'INCH', label: 'Inch (in)' },
+  { value: 'ROLL', label: 'Roll (Teflon / Tape / Pipe / Wire)' },
+  { value: 'TUBE', label: 'Tube (Cream / Ointment / Sealant)' },
+  { value: 'PACK', label: 'Pack' },
+  { value: 'BOX', label: 'Box' },
+  { value: 'CARTON', label: 'Carton / Peti (CTN)' },
+  { value: 'DOZEN', label: 'Dozen (Darjan)' },
+  { value: 'COIL', label: 'Coil / Bundle' },
+  { value: 'SHEET', label: 'Sheet' },
+  { value: 'BAG', label: 'Bag / Bori' },
   { value: 'KG', label: 'Kilogram (KG)' },
   { value: 'Gram', label: 'Gram (g)' },
   { value: 'Liter', label: 'Liter (L)' },
   { value: 'ML', label: 'Milliliter (ml)' },
-  { value: 'PACK', label: 'Pack' },
-  { value: 'BOX', label: 'Box' },
-  { value: 'DOZEN', label: 'Dozen' },
-  { value: 'FEET', label: 'Feet (ft)' },
-  { value: 'METER', label: 'Meter (m)' },
+  { value: 'POUND', label: 'Pound / Lbs (Cakes)' },
   { value: 'GALLON', label: 'Gallon' },
-  { value: 'BAG', label: 'Bag' },
+  { value: 'QUARTER', label: 'Quarter (1L)' },
+  { value: 'BALTI', label: 'Bucket / Balti (16L)' },
+  { value: 'SUIT', label: 'Suit (SUIT)' },
+  { value: 'GAZ', label: 'Gaz / Yard' },
+  { value: 'THAN', label: 'Than / Fabric Bolt (Cloth)' },
+  { value: 'DABBA', label: 'Box / Pack (Dabba)' },
+  { value: 'TRAY', label: 'Tray (Eggs / Sweets)' },
+  { value: 'STRIP', label: 'Strip (Tablets)' },
+  { value: 'TABLET', label: 'Tablet' },
+  { value: 'CAPSULE', label: 'Capsule' },
+  { value: 'SYRUP', label: 'Syrup Bottle' },
+  { value: 'BOTTLE', label: 'Bottle' },
+  { value: 'JAR', label: 'Jar (Honey / Jam / Cream)' },
+  { value: 'TIN', label: 'Tin / Can' },
+  { value: 'CAN', label: 'Can (Beverage / Food)' },
+  { value: 'SACHET', label: 'Sachet / Pouch' },
+  { value: 'VIAL', label: 'Vial (Injection)' },
+  { value: 'AMPOULE', label: 'Ampoule' },
+  { value: 'KIT', label: 'Kit / Combo' },
   { value: 'BUNDLE', label: 'Bundle' },
-  { value: 'PAIR', label: 'Pair' },
+  { value: 'PORTION', label: 'Portion' },
+  { value: 'PLATE', label: 'Plate' },
+  { value: 'SERVING', label: 'Serving' },
+  { value: 'DEAL', label: 'Deal / Combo' },
+  { value: 'CUP', label: 'Cup' },
+  { value: 'GLASS', label: 'Glass' },
 ];
 
 /* ── Zod Schemas ───────────────────────────────────────────────────── */
@@ -266,6 +301,16 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'center',
     color: '#E51937',
+  },
+  kpiIconBlue: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '10px',
+    background: 'rgba(2, 132, 199, 0.12)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#0284C7',
   },
   kpiIconGreen: {
     width: '38px',
@@ -1469,7 +1514,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
       costPrice: undefined,
       skuCode: '',
       rackLocation: '',
-      openingStock: 50,
+      openingStock: 0,
       imageUrl: '',
       description: '',
     },
@@ -1587,7 +1632,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
       unit: defaultMod === 'minimart' ? 'PCS' : 'PCS',
       skuCode: `SKU-${Math.floor(10000000 + Math.random() * 90000000)}`,
       rackLocation: '',
-      openingStock: 50,
+      openingStock: 0,
       imageUrl: '',
       description: '',
     });
@@ -1637,25 +1682,65 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     saveProductMutation.mutate(prod);
   };
 
-  const onCategorySubmit = (data: CategoryFormData) => {
-    const cat: Category = {
-      id: uid('cat_'),
-      name: data.name.trim(),
-      module: data.module,
-    };
-    saveCategoryMutation.mutate(cat);
-  };
   const { can, businessProfiles = ['standard'] } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
 
-  const activeRetailProfile = useMemo(() => {
+  const activeRetailProfile = React.useMemo(() => {
     const specific = businessProfiles.find((p) => p !== 'standard' && p !== 'food');
     return specific && CATEGORY_PROFILES[specific] ? CATEGORY_PROFILES[specific] : null;
   }, [businessProfiles]);
 
   const activeRetailLabel = activeRetailProfile?.label || 'Retail Store';
   const activeRetailShort = activeRetailProfile?.shortTag || 'Retail';
+
+  const watchedCatModule = categoryForm.watch('module') || (hasFastFood ? 'fastfood' : 'minimart');
+  const catProfileKey = watchedCatModule === 'fastfood' ? 'food' : (activeRetailProfile?.key || 'footwear');
+
+  const { data: catBusinessProfile } = useQuery({
+    queryKey: ['business-profile-template', catProfileKey],
+    queryFn: () => posApi.fetchBusinessProfile(catProfileKey),
+  });
+
+  const catDefaultOptions = React.useMemo(() => {
+    const backendCategories = catBusinessProfile?.defaultCategories || [];
+    const list = backendCategories.map((c) => c.name);
+
+    const existing = new Set(categories.filter((c) => c.module === watchedCatModule).map((c) => c.name.toLowerCase().trim()));
+    return list.map((catName) => {
+      const isAlreadyAdded = existing.has(catName.toLowerCase().trim());
+      return {
+        value: catName,
+        label: isAlreadyAdded ? `${catName} (Already Added)` : catName,
+        disabled: isAlreadyAdded,
+      };
+    });
+  }, [catBusinessProfile, catProfileKey, categories, watchedCatModule]);
+
+  useEffect(() => {
+    if (isCategoryDialogOpen && catDefaultOptions.length > 0) {
+      const currentName = categoryForm.getValues('name');
+      const currentOpt = catDefaultOptions.find((opt) => opt.value === currentName);
+      if (!currentOpt || currentOpt.disabled) {
+        const firstAvail = catDefaultOptions.find((opt) => !opt.disabled)?.value || catDefaultOptions[0].value;
+        categoryForm.setValue('name', firstAvail);
+      }
+    }
+  }, [isCategoryDialogOpen, catDefaultOptions, categoryForm]);
+
+  const onCategorySubmit = (data: CategoryFormData) => {
+    const prof = data.module === 'fastfood' ? 'food' : (activeRetailProfile?.key || 'standard');
+    const profileConfig = CATEGORY_PROFILES[prof as CategoryProfile] || CATEGORY_PROFILES.standard;
+    const cat: Category = {
+      id: uid('cat_'),
+      name: data.name.trim(),
+      module: data.module,
+      profile: prof as CategoryProfile,
+      suggestedSizes: profileConfig.suggestedSizes,
+      suggestedUnits: profileConfig.suggestedUnits,
+    };
+    saveCategoryMutation.mutate(cat);
+  };
 
   // Filtered products
   const filteredProducts = products.filter((p) => {
@@ -1692,6 +1777,9 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
   );
   const fastFoodProducts = activeProducts.filter((p) => p.module === 'fastfood');
   const omnimartProducts = activeProducts.filter((p) => p.module === 'minimart');
+  const activeCategories = categories.filter((c) =>
+    c.module === 'fastfood' ? hasFastFood : hasOmnimart,
+  );
   const totalRetailValue = activeProducts.reduce((acc, p) => acc + (p.price * (p.openingStock || 0)), 0);
   const totalCostValue = activeProducts.reduce((acc, p) => acc + ((p.costPrice || (p.price * 0.7)) * (p.openingStock || 0)), 0);
   const outOfStockProducts = activeProducts.filter((p) => (p.openingStock || 0) <= 0);
@@ -1776,17 +1864,25 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                     Catalog Inventory
                   </div>
                   <div className={styles.kpiValue}>
-                    {products.length} <span className={styles.kpiSkus}>SKUs</span>
+                    {activeProducts.length} <span className={styles.kpiSkus}>SKUs</span>
                   </div>
                 </div>
-                <div className={styles.kpiIconFastFood}>
+                <div className={hasFastFood && !hasOmnimart ? styles.kpiIconFastFood : styles.kpiIconBlue}>
                   <Box20Regular className={styles.icon22} />
                 </div>
               </div>
               <div className={styles.kpiSubRow}>
-                <span className={styles.kpiRedText}>{fastFoodProducts.length} Fast Food</span>
-                <span className={styles.kpiDot}>•</span>
-                <span className={styles.kpiBlueText}>{omnimartProducts.length} Omnimart</span>
+                {hasFastFood && hasOmnimart ? (
+                  <>
+                    <span className={styles.kpiRedText}>{fastFoodProducts.length} Fast Food</span>
+                    <span className={styles.kpiDot}>•</span>
+                    <span className={styles.kpiBlueText}>{omnimartProducts.length} Omnimart</span>
+                  </>
+                ) : hasFastFood ? (
+                  <span className={styles.kpiRedText}>{fastFoodProducts.length} Fast Food Items</span>
+                ) : (
+                  <span className={styles.kpiBlueText}>{omnimartProducts.length} Omnimart Retail Items</span>
+                )}
               </div>
             </div>
 
@@ -1835,7 +1931,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                     Active Categories
                   </div>
                   <div className={styles.kpiValue}>
-                    {categories.length} <span className={styles.kpiSkus}>Departments</span>
+                    {activeCategories.length} <span className={styles.kpiSkus}>Departments</span>
                   </div>
                 </div>
                 <div className={styles.kpiIconPurple}>
@@ -2776,12 +2872,12 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                 control={categoryForm.control}
                 name="name"
                 render={({ field }) => (
-                  <CustomInput
-                    label="Category Name"
+                  <CustomSelect
+                    label="Select Category"
                     required
-                    placeholder="e.g. Desserts, Beverages, Lubricants"
                     value={field.value}
                     onChange={field.onChange}
+                    options={catDefaultOptions}
                     error={categoryForm.formState.errors.name?.message}
                   />
                 )}

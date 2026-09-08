@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
 import { Product } from '@shared/types';
 import { CustomInput } from '@/components/ui';
+import { useNavigate } from 'react-router-dom';
 
 export interface ProductAutocompleteProps {
   id?: string;
@@ -12,6 +13,7 @@ export interface ProductAutocompleteProps {
   onChange: (value: string, product?: Product) => void;
   onSelectProduct?: (product: Product) => void;
   filterModule?: 'fastfood' | 'minimart' | 'all';
+  filterCategory?: string;
   placeholder?: string;
   required?: boolean;
   label?: string;
@@ -175,6 +177,7 @@ export function ProductAutocomplete({
   onChange,
   onSelectProduct,
   filterModule = 'all',
+  filterCategory,
   placeholder = 'Search by product name, SKU or barcode...',
   required = false,
   label,
@@ -184,6 +187,7 @@ export function ProductAutocomplete({
   labelBg,
 }: ProductAutocompleteProps): React.JSX.Element {
   const styles = useStyles();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -194,8 +198,15 @@ export function ProductAutocomplete({
     staleTime: 60000,
   });
 
-  // Filter by module if requested
+  const isCategoryFiltered = Boolean(filterCategory && filterCategory !== 'all');
+
+  // Filter by module and category if requested
   const filteredByModule = allProducts.filter((p) => {
+    if (isCategoryFiltered) {
+      if ((p.category || '').toLowerCase() !== filterCategory!.toLowerCase()) {
+        return false;
+      }
+    }
     if (filterModule === 'all') return true;
     if (filterModule === 'fastfood') {
       return (
@@ -211,7 +222,10 @@ export function ProductAutocomplete({
     return true;
   });
 
-  const availableProducts = filteredByModule.length > 0 ? filteredByModule : allProducts;
+  // When filtering by a category, show strictly that category's items (even if 0)
+  const availableProducts = isCategoryFiltered
+    ? filteredByModule
+    : (filteredByModule.length > 0 ? filteredByModule : allProducts);
 
   // Filter suggestions by search query (name, SKU barcode, category, variant barcode)
   const query = (value || '').toLowerCase().trim();
@@ -293,7 +307,42 @@ export function ProductAutocomplete({
 
           {suggestions.length === 0 ? (
             <div className={styles.noItems}>
-              No items match &quot;{value}&quot;. Custom name will be used.
+              {isCategoryFiltered ? (
+                <div style={{ textAlign: 'center', padding: '8px 4px' }}>
+                  <div style={{ fontWeight: 600, color: tokens.colorNeutralForeground1, marginBottom: '4px' }}>
+                    No products found in &quot;{filterCategory}&quot;
+                  </div>
+                  <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, marginBottom: '10px' }}>
+                    Is category mein abhi tak koi item create nahi kiya gaya.
+                  </div>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      navigate(
+                        `/catalog/new?category=${encodeURIComponent(filterCategory!)}&module=${filterModule || 'minimart'}&returnUrl=/inventory/stock-in`
+                      );
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '6px 14px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      color: '#ffffff',
+                      backgroundColor: '#E51937',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    + Add New Product in &quot;{filterCategory}&quot;
+                  </button>
+                </div>
+              ) : (
+                `No items match "${value}". Custom name will be used.`
+              )}
             </div>
           ) : (
             suggestions.slice(0, 20).map((prod) => {

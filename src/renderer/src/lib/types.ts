@@ -12,6 +12,7 @@ export interface Product {
   isKitchenRouted?: boolean; // Send line to Kitchen Display System / KOT
   category: string;
   skuCode?: string; // e.g. SKU-62658411
+  barcode?: string; // e.g. barcode scanner string
   rackLocation?: string; // e.g. Rack A-01
   unit?: string; // e.g. PCS / KG / LTR / PACK
   minThreshold?: number; // Low stock threshold e.g. 10
@@ -59,6 +60,9 @@ export interface Order {
   customerName?: string;
   orderType?: "dine-in" | "takeaway" | "delivery" | "khata";
   stage: OrderStage;
+  totalAmount?: number;
+  tokenNo?: number | string;
+  tableNo?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,10 +76,12 @@ export interface StockMovement {
   productName: string;
   type: StockMovementType;
   quantity: number;
-  unitCost?: number; // Purchase price per unit
-  unitPrice?: number; // Retail selling price per unit
+  unitCost?: number | null; // Purchase price per unit
+  unitPrice?: number | null; // Retail selling price per unit
   reason?: string; // for stock-out: sale / damage / waste / adjustment
   note?: string;
+  referenceInvoice?: string;
+  vendorName?: string;
   date: string;
 }
 

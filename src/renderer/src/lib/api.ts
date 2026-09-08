@@ -1,10 +1,14 @@
-import { Product, Category, Order, StockMovement, CategoryProfile, ModuleKey } from './types';
+import { Product, Category, Order, StockMovement, CategoryProfile, ModuleKey, ProductVariant } from './types';
 import { offlineDb, LocalOrder, LocalCustomerKhata, LocalKhataTx, LocalExpense } from './offlineDb';
 import { syncEngine } from './syncEngine';
 import { KEYS, storage } from './storage';
-import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, isDemoLicense } from './seedData';
 import { decodeProductVariants, encodeProductVariants, setLocalVariantRegistry } from './variants';
-import { CATEGORY_PROFILES } from './categoryProfiles';
+import {
+  CATEGORY_PROFILES,
+  DefaultCategoryItem,
+  BusinessProfile,
+  BusinessCategoryTemplate,
+} from './categoryProfiles';
 
 let cachedApiUrl: string | null = null;
 let cachedTenantMeta: { key?: string; schemaId?: string } | null = null;
@@ -69,6 +73,36 @@ export async function resolveApiUrl(): Promise<string> {
   return envUrl;
 }
 
+const DELETED_MOVEMENTS_KEY = 'omnipos_deleted_stock_movement_ids';
+
+const LEGACY_DEMO_MOVEMENT_IDS = new Set([
+  'mov_1788421309500',
+  'mov_1788420004940',
+  'mov_1788412007818',
+]);
+
+export function getDeletedMovementIds(): Set<string> {
+  const set = new Set<string>(LEGACY_DEMO_MOVEMENT_IDS);
+  try {
+    const raw = localStorage.getItem(DELETED_MOVEMENTS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((id: string) => set.add(id));
+      }
+    }
+  } catch {}
+  return set;
+}
+
+export function recordDeletedMovementId(id: string): void {
+  try {
+    const set = getDeletedMovementIds();
+    set.add(id);
+    localStorage.setItem(DELETED_MOVEMENTS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
 export const posApi = {
   /**
    * Fetch products: Cache-First for instant UI load (<5ms).
@@ -97,6 +131,34 @@ export const posApi = {
       } catch (storageErr) {
         console.warn('[Storage] localStorage product query error:', storageErr);
       }
+    }
+
+    // 3. Purge any lingering legacy demo items from offlineDb and localStorage
+    const isLegacyDemo = (p: Product) => {
+      const id = p.id || '';
+      if (id.startsWith('p_mm_') || id.startsWith('p_ff_') || id.startsWith('prod_ff_') || id.startsWith('prod_mm_')) return true;
+      const n = (p.name || '').toLowerCase();
+      return (
+        n.includes('barbie doll') ||
+        n.includes('cooking oil (refill') ||
+        n.includes('farm fresh red onion') ||
+        n.includes('fresh milk (1 liter)') ||
+        n.includes('oil filter premium') ||
+        n.includes('potato chips (family') ||
+        n.includes('shopping bags') ||
+        n.includes('super basmati rice (loose)') ||
+        n.includes('cotton casual t-shirt') ||
+        n.includes('crispy chicken burger') ||
+        n.includes('zinger burger') ||
+        n.includes('tikka pizza')
+      );
+    };
+
+    if (localProducts.some(isLegacyDemo)) {
+      const demoIds = localProducts.filter(isLegacyDemo).map((p) => p.id);
+      void offlineDb.products.bulkDelete(demoIds);
+      localProducts = localProducts.filter((p) => !isLegacyDemo(p));
+      storage.setList(KEYS.products, localProducts);
     }
 
     // Background sync helper: update cache without stalling the UI
@@ -271,6 +333,37 @@ export const posApi = {
       } catch {}
     }
 
+    // Purge legacy demo categories from offlineDb and localStorage
+    const isLegacyDemoCat = (c: Category) => {
+      const id = c.id || '';
+      if (id.startsWith('cat_mm_') || id.startsWith('cat_ff_')) return true;
+      const n = (c.name || '').toLowerCase();
+      return (
+        n === 'cosmetics & skincare' ||
+        n === "men's garments" ||
+        n === 'footwear & shoes' ||
+        n === 'toys & kids' ||
+        n === 'paints & wall primer' ||
+        n === 'sanitary & taps' ||
+        n === 'hardware & iron' ||
+        n === 'general store' ||
+        n === 'toys' ||
+        n === 'grocery' ||
+        n === 'vegetables' ||
+        n === 'dairy' ||
+        n === 'automotive' ||
+        n === 'snacks' ||
+        n === 'general'
+      );
+    };
+
+    if (localCats.some(isLegacyDemoCat)) {
+      const demoCatIds = localCats.filter(isLegacyDemoCat).map((c) => c.id);
+      void offlineDb.categories.bulkDelete(demoCatIds);
+      localCats = localCats.filter((c) => !isLegacyDemoCat(c));
+      storage.setList(KEYS.categories, localCats);
+    }
+
     const syncRemoteCategories = async () => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) return;
       try {
@@ -361,39 +454,72 @@ export const posApi = {
     }
   },
 
-  async seedBusinessProfile(profileKey: string, module?: ModuleKey): Promise<Category[]> {
-    const config = CATEGORY_PROFILES[profileKey as CategoryProfile];
-    if (!config) return [];
-    const targetModule: ModuleKey = module || (profileKey === 'food' ? 'fastfood' : 'minimart');
-    const createdCats: Category[] = [];
-
-    for (const catName of config.defaultCategories) {
-      const newCat: Category = {
-        id: `cat_${profileKey}_${catName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-        module: targetModule,
-        name: catName,
-        profile: profileKey as CategoryProfile,
-        suggestedSizes: config.suggestedSizes,
-        suggestedUnits: config.suggestedUnits,
-        createdAt: new Date().toISOString(),
-      };
-      await posApi.saveCategory(newCat);
-      createdCats.push(newCat);
-    }
-
-    if (typeof navigator === 'undefined' || navigator.onLine) {
-      try {
+  /**
+   * Fetch Default Categories by Business Profile from database/backend template registry
+   */
+  async fetchDefaultCategories(
+    profile?: string,
+    module?: string
+  ): Promise<DefaultCategoryItem[]> {
+    try {
+      if (typeof navigator === 'undefined' || navigator.onLine) {
         const base = await resolveApiUrl();
         const tenantHeaders = await getTenantHeaders();
-        fetch(`${base}/api/categories/seed-profile`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-          body: JSON.stringify({ profileKey, module: targetModule }),
-        }).catch(() => {});
-      } catch {}
+        const query = new URLSearchParams();
+        if (profile) query.set('profile', profile);
+        if (module) query.set('module', module);
+
+        const res = await fetch(`${base}/api/categories/default-templates?${query.toString()}`, {
+          headers: tenantHeaders,
+        });
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list)) {
+            return list;
+          }
+        }
+      }
+    } catch {
+      /* network or server error */
     }
 
-    return createdCats;
+    return [];
+  },
+
+  /**
+   * Fetch Business Profiles from backend (omnipos-server / embedded backend)
+   */
+  async fetchBusinessProfiles(): Promise<BusinessProfile[]> {
+    try {
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const res = await fetch(`${base}/api/business-profiles`, {
+          headers: tenantHeaders,
+        });
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list)) return list;
+        }
+      }
+    } catch {}
+    return [];
+  },
+
+  async fetchBusinessProfile(id: string): Promise<BusinessProfile | null> {
+    try {
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const res = await fetch(`${base}/api/business-profiles/${id}`, {
+          headers: tenantHeaders,
+        });
+        if (res.ok) {
+          return await res.json();
+        }
+      }
+    } catch {}
+    return null;
   },
 
   /**
@@ -898,12 +1024,18 @@ export const posApi = {
    * Fetch Stock Movements: Cache-First for instant load (<5ms)
    */
   async fetchStockMovements(module?: string): Promise<StockMovement[]> {
+    const deletedIds = getDeletedMovementIds();
+
     let localMovements: StockMovement[] = [];
     try {
       if (module && module !== 'all') {
         localMovements = await offlineDb.stockMovements.where('module').equals(module).reverse().sortBy('date');
       } else {
         localMovements = await offlineDb.stockMovements.reverse().sortBy('date');
+      }
+      if (deletedIds.size > 0) {
+        localMovements = localMovements.filter((m) => !deletedIds.has(m.id));
+        void offlineDb.stockMovements.bulkDelete(Array.from(deletedIds));
       }
     } catch {}
 
@@ -922,8 +1054,16 @@ export const posApi = {
         clearTimeout(timeoutId);
         if (res.ok) {
           const remote = await res.json();
-          if (Array.isArray(remote) && remote.length > 0) {
-            await offlineDb.stockMovements.bulkPut(remote);
+          if (Array.isArray(remote)) {
+            const currentDeleted = getDeletedMovementIds();
+            // Never re-add records that the user has deleted
+            const validRemote = remote.filter((r: any) => !currentDeleted.has(r.id));
+            if (currentDeleted.size > 0) {
+              await offlineDb.stockMovements.bulkDelete(Array.from(currentDeleted));
+            }
+            if (validRemote.length > 0) {
+              await offlineDb.stockMovements.bulkPut(validRemote);
+            }
           }
         }
       } catch {}
@@ -936,16 +1076,20 @@ export const posApi = {
 
     await syncRemote();
     try {
+      let fresh: StockMovement[] = [];
       if (module && module !== 'all') {
-        return await offlineDb.stockMovements.where('module').equals(module).reverse().sortBy('date');
+        fresh = await offlineDb.stockMovements.where('module').equals(module).reverse().sortBy('date');
+      } else {
+        fresh = await offlineDb.stockMovements.reverse().sortBy('date');
       }
-      return await offlineDb.stockMovements.reverse().sortBy('date');
+      const currentDeleted = getDeletedMovementIds();
+      return fresh.filter((m) => !currentDeleted.has(m.id));
     } catch {
       return [];
     }
   },
 
-  async saveStockMovement(data: Partial<StockMovement>): Promise<StockMovement> {
+  async saveStockMovement(data: Partial<StockMovement> & { variants?: ProductVariant[] }): Promise<StockMovement> {
     const record: StockMovement = {
       id: data.id || `mov_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       module: data.module || 'minimart',
@@ -954,6 +1098,7 @@ export const posApi = {
       type: data.type || 'in',
       quantity: Number(data.quantity || 0),
       reason: data.reason || 'Inventory Adjustment',
+      note: data.note || data.referenceInvoice || '',
       referenceInvoice: data.referenceInvoice || '',
       vendorName: data.vendorName || '',
       unitCost: data.unitCost,
@@ -963,7 +1108,7 @@ export const posApi = {
     // 1. Instant local write to Dexie
     await offlineDb.stockMovements.put(record);
 
-    // 2. Instant stock adjustment in local products table
+    // 2. Instant stock adjustment in local products table (including variants)
     if (record.productId) {
       try {
         const prod = await offlineDb.products.get(record.productId);
@@ -972,10 +1117,23 @@ export const posApi = {
           const updatedStock = record.type === 'in' 
             ? currentStock + record.quantity 
             : Math.max(0, currentStock - record.quantity);
-          await offlineDb.products.update(record.productId, {
+
+          const updates: Partial<Product> = {
             openingStock: updatedStock,
             updatedAt: new Date().toISOString(),
-          });
+          };
+
+          if (data.variants && data.variants.length > 0) {
+            updates.variants = data.variants;
+            setLocalVariantRegistry(record.productId, data.variants, prod.pricingType);
+          }
+
+          await offlineDb.products.update(record.productId, updates);
+
+          // Keep storage cache synchronous
+          const currentList = storage.getList<Product>(KEYS.products);
+          const updatedList = currentList.map((p) => (p.id === record.productId ? { ...p, ...updates } : p));
+          storage.setList(KEYS.products, updatedList);
         }
       } catch (err) {
         console.warn('[OfflineDB] Stock movement product update error:', err);
@@ -1004,6 +1162,61 @@ export const posApi = {
     }
 
     return record;
+  },
+
+  async updateStockMovement(id: string, patch: Partial<StockMovement>): Promise<void> {
+    try {
+      // 1. Instant local update in Dexie
+      const existing = await offlineDb.stockMovements.get(id);
+      if (existing) {
+        await offlineDb.stockMovements.update(id, patch);
+      }
+
+      // 2. Enqueue for offline sync
+      await syncEngine.enqueue('stockMovement', id, 'UPDATE', { id, ...patch });
+
+      // 3. Push to backend if online
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        await fetch(`${base}/api/stock-movements/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify(patch),
+        });
+      }
+    } catch (err) {
+      console.error('[OfflineDB] updateStockMovement error:', err);
+    }
+  },
+
+  async deleteStockMovement(id: string): Promise<void> {
+    try {
+      // 1. Permanently record in tombstone blacklist so remote GET never resurrects it
+      recordDeletedMovementId(id);
+
+      // 2. Instant local removal from Dexie IndexedDB
+      await offlineDb.stockMovements.delete(id);
+
+      // 3. Enqueue deletion for sync engine
+      await syncEngine.enqueue('stockMovement', id, 'DELETE', { id });
+
+      // 4. Try remote delete, safely ignoring 404/405 if cloud backend route doesn't exist
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        try {
+          const base = await resolveApiUrl();
+          const tenantHeaders = await getTenantHeaders();
+          await fetch(`${base}/api/stock-movements/${id}`, {
+            method: 'DELETE',
+            headers: tenantHeaders,
+          });
+        } catch {
+          /* Remote DELETE route might be 404 on cloud; handled offline */
+        }
+      }
+    } catch (err) {
+      console.error('[OfflineDB] deleteStockMovement error:', err);
+    }
   },
 
   /**
@@ -1232,6 +1445,17 @@ export const posApi = {
       });
     } catch {
       /* offline */
+    }
+
+    // 5. Broadcast reset event so all active React hooks reload blank
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new CustomEvent('pos_orders_updated'));
+        window.dispatchEvent(new CustomEvent('pos_khata_updated'));
+      }
+    } catch {
+      /* ignore */
     }
   },
 };

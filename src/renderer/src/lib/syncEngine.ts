@@ -258,6 +258,9 @@ class SyncEngine {
     });
 
     if (!res.ok) {
+      if (item.action === 'DELETE' && (res.status === 404 || res.status === 405)) {
+        return;
+      }
       throw new Error(`Server responded with ${res.status}: ${res.statusText}`);
     }
   }

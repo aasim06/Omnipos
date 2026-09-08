@@ -13,7 +13,6 @@ import {
   ShoppingBasket,
 } from "lucide-react";
 import { KEYS } from "@/lib/storage";
-import { ensureInitialData } from "@/lib/seedData";
 import { useOrders } from "@/lib/useOrders";
 import { ProductsList } from "@/components/admin/ProductsList";
 import { AddProductForm } from "@/components/admin/AddProductForm";
@@ -21,6 +20,7 @@ import { CategoryManager } from "@/components/admin/CategoryManager";
 import { AnalyticsView } from "@/components/admin/AnalyticsView";
 import { SettingsView } from "@/components/admin/SettingsView";
 import { ModuleKey } from "@/lib/types";
+import { posApi } from "@/lib/api";
 
 type AdminTab = "products" | "add-product" | "categories" | "analytics" | "settings" | "backup";
 
@@ -40,14 +40,11 @@ function AdminContent() {
     }
   }, [searchParams]);
 
-  function handleResetData() {
+  async function handleResetData() {
     if (typeof window === "undefined") return;
-    localStorage.removeItem(KEYS.products);
-    localStorage.removeItem(KEYS.orders);
-    localStorage.removeItem(KEYS.stockMovements);
-    ensureInitialData();
+    await posApi.wipeAllDataExceptAdmin();
     reloadOrders();
-    showNotice("Demo data reset successfully!");
+    showNotice("Store data cleared!");
   }
 
   function showNotice(msg: string) {

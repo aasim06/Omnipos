@@ -8,7 +8,6 @@ import {
   Badge,
   Button,
   Checkbox,
-  Tooltip,
   Dialog,
   DialogSurface,
   DialogTitle,
@@ -896,45 +895,45 @@ export function VendorsView(): React.JSX.Element {
                       <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         {/* ── ACTION ICONS: Stock In Shortcut, Print, Edit (Right Drawer), Delete ── */}
                         <div className={styles.actionBtnsRow}>
-                          <Tooltip content="Record Stock In from this Vendor" relationship="label" positioning="above">
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<ArrowCircleDown20Regular className={styles.iconStockIn} />}
-                              onClick={() => navigate('/inventory/stock-in', { state: { vendorName: v.companyName || v.name, vendorId: v.id } })}
-                              className={styles.actionBtnStockIn}
-                            />
-                          </Tooltip>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<ArrowCircleDown20Regular className={styles.iconStockIn} />}
+                            onClick={() => navigate('/inventory/stock-in', { state: { vendorName: v.companyName || v.name, vendorId: v.id } })}
+                            className={styles.actionBtnStockIn}
+                            title="Record Stock In from this Vendor"
+                            aria-label="Record Stock In from this Vendor"
+                          />
 
-                          <Tooltip content="Print Vendor Slip / Statement" relationship="label" positioning="above">
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<Print20Regular className={styles.iconPrint} />}
-                              onClick={() => handleOpenPrint(v)}
-                              className={styles.actionBtnPrint}
-                            />
-                          </Tooltip>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Print20Regular className={styles.iconPrint} />}
+                            onClick={() => handleOpenPrint(v)}
+                            className={styles.actionBtnPrint}
+                            title="Print Vendor Slip / Statement"
+                            aria-label="Print Vendor Slip / Statement"
+                          />
 
-                          <Tooltip content="Edit Vendor (Right Drawer)" relationship="label" positioning="above">
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<Edit20Regular className={styles.iconEdit} />}
-                              onClick={() => handleOpenEdit(v)}
-                              className={styles.actionBtnEdit}
-                            />
-                          </Tooltip>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Edit20Regular className={styles.iconEdit} />}
+                            onClick={() => handleOpenEdit(v)}
+                            className={styles.actionBtnEdit}
+                            title="Edit Vendor (Right Drawer)"
+                            aria-label="Edit Vendor (Right Drawer)"
+                          />
 
-                          <Tooltip content="Delete Vendor" relationship="label" positioning="above">
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<Delete20Regular className={styles.iconDelete} />}
-                              onClick={() => handleDelete(v.id)}
-                              className={styles.actionBtnDelete}
-                            />
-                          </Tooltip>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Delete20Regular className={styles.iconDelete} />}
+                            onClick={() => handleDelete(v.id)}
+                            className={styles.actionBtnDelete}
+                            title="Delete Vendor"
+                            aria-label="Delete Vendor"
+                          />
                         </div>
                       </td>
                     </tr>

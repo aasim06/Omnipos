@@ -20,7 +20,6 @@ import {
   Divider,
   Badge,
   Avatar,
-  Tooltip,
 } from '@fluentui/react-components';
 import {
   BuildingShop24Regular,
@@ -1140,33 +1139,33 @@ export function AdminSettingsView(): React.JSX.Element {
 
                     <td className={mergeClasses(styles.td, styles.tdRight)}>
                       <div className={styles.actionBtnsRow}>
-                        <Tooltip content="Change Password" relationship="label">
-                          <Button
-                            size="small"
-                            appearance="subtle"
-                            icon={<Key20Regular />}
-                            onClick={() => handleOpenChangePassword(u)}
-                          />
-                        </Tooltip>
+                        <Button
+                          size="small"
+                          appearance="subtle"
+                          icon={<Key20Regular />}
+                          onClick={() => handleOpenChangePassword(u)}
+                          title="Change Password"
+                          aria-label="Change Password"
+                        />
 
-                        <Tooltip content="Edit Permissions" relationship="label">
-                          <Button
-                            size="small"
-                            appearance="subtle"
-                            icon={<Edit20Regular />}
-                            onClick={() => handleOpenEditUser(u)}
-                          />
-                        </Tooltip>
+                        <Button
+                          size="small"
+                          appearance="subtle"
+                          icon={<Edit20Regular />}
+                          onClick={() => handleOpenEditUser(u)}
+                          title="Edit Permissions"
+                          aria-label="Edit Permissions"
+                        />
 
                         {u.username !== 'admin' && (
-                          <Tooltip content="Delete Cashier" relationship="label">
-                            <Button
-                              size="small"
-                              appearance="subtle"
-                              icon={<Delete20Regular className={styles.deleteIcon} />}
-                              onClick={() => handleDeleteUser(u)}
-                            />
-                          </Tooltip>
+                          <Button
+                            size="small"
+                            appearance="subtle"
+                            icon={<Delete20Regular className={styles.deleteIcon} />}
+                            onClick={() => handleDeleteUser(u)}
+                            title="Delete Cashier"
+                            aria-label="Delete Cashier"
+                          />
                         )}
                       </div>
                     </td>

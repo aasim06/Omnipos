@@ -12,7 +12,6 @@ import {
       Checkbox,
   TabList,
   Tab,
-  Tooltip,
   Label,
   Dialog,
   DialogSurface,
@@ -31,13 +30,14 @@ import {
   Dismiss20Regular,
   Food24Regular,
   ShoppingBag24Regular,
+  Folder20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { resolveApiUrl, posApi } from '@/lib/api';
-import { StockMovement, Product } from '@shared/types';
+import { StockMovement, Product, Category } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
@@ -108,11 +108,23 @@ const useStyles = makeStyles({
   },
   row1: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: '1.2fr 1fr 1.8fr',
     gap: '16px',
-    '@media (max-width: 768px)': {
+    '@media (max-width: 900px)': {
       gridTemplateColumns: '1fr',
     },
+  },
+  categoryBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: '2px 7px',
+    borderRadius: '4px',
+    width: 'fit-content',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   row2: {
     display: 'grid',
@@ -625,6 +637,22 @@ export function StockOutView(): React.JSX.Element {
     queryFn: () => posApi.fetchStockMovements(),
   });
 
+  // Fetch Products for Live Stock Inspection & Category Lookup
+  const { data: allProducts = [] } = useQuery<Product[]>({
+    queryKey: ['products'],
+    queryFn: () => posApi.fetchProducts(),
+    staleTime: 60000,
+  });
+
+  // Fetch Categories for quick category filtering
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ['categories'],
+    queryFn: () => posApi.fetchCategories(),
+  });
+
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [tableCategoryFilter, setTableCategoryFilter] = useState<string>('all');
+
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
@@ -701,17 +729,12 @@ export function StockOutView(): React.JSX.Element {
   // Mutation to Update Stock Out Entry via Right Drawer
   const updateMutation = useMutation({
     mutationFn: async (data: EditOutFormData) => {
-      const base = await resolveApiUrl();
-      await fetch(`${base}/api/stock-movements/${data.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName: data.productName,
-          quantity: data.quantity,
-          unitCost: data.unitCost ?? null,
-          reason: data.reason,
-          note: data.note || '',
-        }),
+      await posApi.updateStockMovement(data.id, {
+        productName: data.productName,
+        quantity: data.quantity,
+        unitCost: data.unitCost ?? null,
+        reason: data.reason,
+        note: data.note || '',
       });
     },
     onSuccess: () => {
@@ -725,10 +748,7 @@ export function StockOutView(): React.JSX.Element {
   // Mutation to Delete Stock Out Entry
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const base = await resolveApiUrl();
-      await fetch(`${base}/api/stock-movements/${id}`, {
-        method: 'DELETE',
-      });
+      await posApi.deleteStockMovement(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
@@ -773,6 +793,16 @@ export function StockOutView(): React.JSX.Element {
     }
   };
 
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} selected stock out records?`)) {
+      for (const id of selectedIds) {
+        await deleteMutation.mutateAsync(id);
+      }
+      setSelectedIds([]);
+    }
+  };
+
   // Only Outflow Movements (filtered by licensed modules)
   const stockOutMovements = movements.filter((m) => {
     if (m.type !== 'out') return false;
@@ -781,17 +811,25 @@ export function StockOutView(): React.JSX.Element {
     return true;
   });
 
-  // Filtered List by Tab and Search Query
+  // Filtered List by Tab, Search Query and Category Filter
   const filteredMovements = stockOutMovements.filter((m) => {
     if (outflowTab === 'fastfood' && m.module !== 'fastfood') return false;
     if (outflowTab === 'minimart' && m.module === 'fastfood') return false;
+
+    const matchedProd = allProducts.find((p) => p.id === m.productId || p.name.toLowerCase() === m.productName.toLowerCase());
+    if (tableCategoryFilter !== 'all') {
+      if ((matchedProd?.category || '').toLowerCase() !== tableCategoryFilter.toLowerCase()) {
+        return false;
+      }
+    }
 
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       !searchQuery ||
       m.productName.toLowerCase().includes(q) ||
       (m.reason && m.reason.toLowerCase().includes(q)) ||
-      (m.note && m.note.toLowerCase().includes(q));
+      (m.note && m.note.toLowerCase().includes(q)) ||
+      (matchedProd?.category && matchedProd.category.toLowerCase().includes(q));
 
     return matchesSearch;
   });
@@ -902,7 +940,7 @@ export function StockOutView(): React.JSX.Element {
         </div>
 
         <form onSubmit={form.handleSubmit(onSave)} className={styles.formColumn}>
-          {/* Row 1: Reason & Product Select */}
+          {/* Row 1: Reason, Category & Product Select */}
           <div className={styles.row1}>
             <div>
               <Controller
@@ -921,6 +959,19 @@ export function StockOutView(): React.JSX.Element {
             </div>
 
             <div>
+              <CustomSelect
+                label="FILTER BY CATEGORY"
+                placeholder="All Categories"
+                value={selectedCategory}
+                options={[
+                  { value: 'all', label: 'All Categories' },
+                  ...categories.map((c) => ({ value: c.name, label: c.name })),
+                ]}
+                onChange={(val) => setSelectedCategory(val || 'all')}
+              />
+            </div>
+
+            <div>
               <Controller
                 control={form.control}
                 name="productName"
@@ -930,17 +981,23 @@ export function StockOutView(): React.JSX.Element {
                     label="ITEM SELECT"
                     required
                     filterModule={form.watch('module')}
+                    filterCategory={selectedCategory}
                     placeholder="Search and select product..."
                     value={field.value || ''}
                     onChange={(name, prod) => {
                       field.onChange(name);
                       if (prod) {
                         form.setValue('selectedProductId', prod.id);
+                        if (prod.category && selectedCategory === 'all') {
+                          setSelectedCategory(prod.category);
+                        }
                         if (prod.costPrice !== undefined && prod.costPrice !== null) {
                           form.setValue('unitCost', prod.costPrice);
                         } else if (prod.price) {
                           form.setValue('unitCost', prod.price);
                         }
+                      } else {
+                        form.setValue('selectedProductId', '');
                       }
                     }}
                     error={form.formState.errors.productName?.message}
@@ -1118,7 +1175,7 @@ export function StockOutView(): React.JSX.Element {
           <div className={styles.searchContainer}>
             <CustomInput
               label="Search Stock Out Logs"
-              placeholder="Search by product, reason, note..."
+              placeholder="Search by product, category, reason, note..."
               icon={<Search20Regular />}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -1126,9 +1183,34 @@ export function StockOutView(): React.JSX.Element {
             />
           </div>
 
-          <Caption1 className={styles.totalRecords}>
-            Total {filteredMovements.length} Stock Out Records
-          </Caption1>
+          <div style={{ minWidth: '220px' }}>
+            <CustomSelect
+              label="FILTER BY CATEGORY"
+              value={tableCategoryFilter}
+              options={[
+                { value: 'all', label: 'All Categories' },
+                ...categories.map((c) => ({ value: c.name, label: c.name })),
+              ]}
+              onChange={(val) => setTableCategoryFilter(val || 'all')}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {selectedIds.length > 0 && (
+              <Button
+                appearance="primary"
+                size="small"
+                icon={<Delete20Regular />}
+                onClick={handleBatchDelete}
+                style={{ backgroundColor: '#D13438', color: '#FFFFFF', fontWeight: 600 }}
+              >
+                Delete Selected ({selectedIds.length})
+              </Button>
+            )}
+            <Caption1 className={styles.totalRecords}>
+              Total {filteredMovements.length} Stock Out Records
+            </Caption1>
+          </div>
         </div>
 
         {/* Table */}
@@ -1160,6 +1242,9 @@ export function StockOutView(): React.JSX.Element {
                   const isChecked = selectedIds.includes(mov.id);
                   const dt = new Date(mov.date);
                   const totalLine = (mov.unitCost || 0) * (mov.quantity || 0);
+                  const matchedProd = allProducts.find(
+                    (p) => p.id === mov.productId || p.name.toLowerCase() === mov.productName.toLowerCase()
+                  );
 
                   return (
                     <tr key={mov.id} className={styles.tableRow}>
@@ -1167,9 +1252,15 @@ export function StockOutView(): React.JSX.Element {
                         <Checkbox checked={isChecked} onChange={() => toggleSelectRow(mov.id)} />
                       </td>
                       <td className={styles.td}>
-                        <span className={styles.productNameText}>
-                          {mov.productName}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span className={styles.productNameText}>
+                            {mov.productName}
+                          </span>
+                          <span className={styles.categoryBadge}>
+                            <Folder20Regular style={{ width: 12, height: 12, color: '#E51937' }} />
+                            <span>{matchedProd?.category || 'General'}</span>
+                          </span>
+                        </div>
                       </td>
                       <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         <Badge appearance="tint" color="danger" className={styles.badgeBold}>
@@ -1195,35 +1286,35 @@ export function StockOutView(): React.JSX.Element {
                       <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         {/* ── ACTION ICONS: Print, Edit (Right Drawer), Delete ── */}
                         <div className={styles.actionGroup}>
-                          <Tooltip content="Print Deduction Slip" relationship="label" positioning="above">
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<Print20Regular className={styles.iconPrint} />}
-                              onClick={() => handleOpenPrint(mov)}
-                              className={styles.actionBtnPrint}
-                            />
-                          </Tooltip>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Print20Regular className={styles.iconPrint} />}
+                            onClick={() => handleOpenPrint(mov)}
+                            className={styles.actionBtnPrint}
+                            title="Print Deduction Slip"
+                            aria-label="Print Deduction Slip"
+                          />
 
-                          <Tooltip content="Edit Deduction (Right Drawer)" relationship="label" positioning="above">
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<Edit20Regular className={styles.iconRed} />}
-                              onClick={() => handleOpenEdit(mov)}
-                              className={styles.actionBtnEdit}
-                            />
-                          </Tooltip>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Edit20Regular className={styles.iconRed} />}
+                            onClick={() => handleOpenEdit(mov)}
+                            className={styles.actionBtnEdit}
+                            title="Edit Deduction (Right Drawer)"
+                            aria-label="Edit Deduction (Right Drawer)"
+                          />
 
-                          <Tooltip content="Delete Record" relationship="label" positioning="above">
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<Delete20Regular className={styles.iconRed} />}
-                              onClick={() => handleDelete(mov.id)}
-                              className={styles.actionBtnDelete}
-                            />
-                          </Tooltip>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Delete20Regular className={styles.iconRed} />}
+                            onClick={() => handleDelete(mov.id)}
+                            className={styles.actionBtnDelete}
+                            title="Delete Record"
+                            aria-label="Delete Record"
+                          />
                         </div>
                       </td>
                     </tr>

@@ -25,7 +25,6 @@ import { useAppTheme } from '@/theme/AppProviders';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { offlineDb, LocalOrder } from '@/lib/offlineDb';
 import { Product } from '@/lib/types';
-import { ensureDashboardSeedOrders, clearDashboardSeedOrders, createLiveTestOrder } from '@/lib/seedData';
 
 type DashboardTab = 'fastfood' | 'minimart';
 type DateRange = 'today' | 'week' | 'month';
@@ -66,19 +65,10 @@ export function FastFoodDashboardView(): React.JSX.Element {
     hourOrders: LocalOrder[];
   } | null>(null);
 
-  const hasDemoOrders = useMemo(() => {
-    return orders.some((o) => o.id.startsWith('ord_ff_demo_') || o.id.startsWith('ord_ff_hist_') || o.id.startsWith('ord_mm_demo_'));
-  }, [orders]);
-
   // Load orders and products from offlineDb
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const demoCleared = typeof window !== 'undefined' && localStorage.getItem('omnipos_demo_orders_cleared') === 'true';
-      const existingCount = await offlineDb.orders.count();
-      if (existingCount === 0 && !demoCleared) {
-        await ensureDashboardSeedOrders();
-      }
       const allOrders = await offlineDb.orders.toArray();
       const allProducts = await offlineDb.products.toArray();
       setOrders(allOrders);
@@ -121,8 +111,8 @@ export function FastFoodDashboardView(): React.JSX.Element {
     purple: '#8B5CF6',
   };
 
-  // Filter orders by module and date range
-  const filteredOrders = useMemo(() => {
+  // Filtered orders by module and date range
+  const filteredOrders = React.useMemo(() => {
     const now = new Date();
     return orders.filter((o) => {
       if (o.module !== activeTab) return false;
@@ -146,7 +136,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
   }, [orders, activeTab, dateRange]);
 
   // Key KPI Calculations
-  const metrics = useMemo(() => {
+  const metrics = React.useMemo(() => {
     let totalRevenue = 0;
     let completedCount = 0;
     let inKitchenCount = 0;
@@ -209,7 +199,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
   }, [filteredOrders, products, activeTab]);
 
   // Hourly curve data calculation (Dynamic: operational window + current hour + all hours with orders)
-  const hourlyData = useMemo(() => {
+  const hourlyData = React.useMemo(() => {
     const now = new Date();
     const currentH = now.getHours();
 
@@ -251,7 +241,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
   }, [filteredOrders]);
 
   // Professional Column Chart Geometry & Metrics (Hourly Breakdown)
-  const columnChart = useMemo(() => {
+  const columnChart = React.useMemo(() => {
     const width = 760;
     const height = 230;
     const padLeft = 40;
@@ -310,7 +300,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
   }, [hourlyData]);
 
   // Donut chart calculations
-  const donutData = useMemo(() => {
+  const donutData = React.useMemo(() => {
     const total = metrics.totalOrders || 1;
     const dineInPct = Math.round((metrics.dineInCount / total) * 100);
     const takeawayPct = Math.round((metrics.takeawayCount / total) * 100);
@@ -752,86 +742,6 @@ export function FastFoodDashboardView(): React.JSX.Element {
                     <span>Dinner (8 - 11 PM)</span>
                   </span>
                 </div>
-              )}
-
-              {/* Button to quickly test live dynamic updates */}
-              <button
-                type="button"
-                onClick={async () => {
-                  await createLiveTestOrder(activeTab);
-                  await loadData();
-                }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: `1px solid ${T.green}`,
-                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                  color: T.green,
-                  fontSize: '11.5px',
-                  fontWeight: 800,
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-                title="Punch a real live test order right now to see the column update dynamically"
-              >
-                <Add20Regular style={{ width: 14, height: 14 }} />
-                <span>Test Live Order</span>
-              </button>
-
-              {/* Clear demo data button if demo orders exist */}
-              {hasDemoOrders ? (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await clearDashboardSeedOrders();
-                    await loadData();
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '5px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(239, 68, 68, 0.4)',
-                    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                    color: '#EF4444',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                  }}
-                  title="Remove all pre-generated demo orders and show only real POS sales"
-                >
-                  <Delete20Regular style={{ width: 13, height: 13 }} />
-                  <span>Clear Demo Data</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    localStorage.removeItem('omnipos_demo_orders_cleared');
-                    await ensureDashboardSeedOrders(true);
-                    await loadData();
-                  }}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: '6px',
-                    border: `1px solid ${T.cardBorder}`,
-                    backgroundColor: 'transparent',
-                    color: T.textMuted,
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                  }}
-                  title="Reload sample demonstration orders"
-                >
-                  Load Sample Data
-                </button>
               )}
             </div>
           </div>

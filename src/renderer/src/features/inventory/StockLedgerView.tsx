@@ -21,8 +21,9 @@ import {
   ArrowDownload20Regular,
   Food24Regular,
   ShoppingBag24Regular,
+  Delete20Regular,
 } from '@fluentui/react-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
 import { StockMovement } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
@@ -230,6 +231,23 @@ const useStyles = makeStyles({
     fontWeight: 700,
     color: '#D13438',
   },
+  actionBtnDelete: {
+    width: '30px',
+    height: '30px',
+    minWidth: '30px',
+    padding: 0,
+    borderRadius: '6px',
+    backgroundColor: 'rgba(209, 52, 56, 0.12)',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(209, 52, 56, 0.25)', borderBottomColor: 'rgba(209, 52, 56, 0.25)',
+    borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
+  },
+  iconDelete: {
+    color: '#D13438',
+  },
 });
 
 export function StockLedgerView(): React.JSX.Element {
@@ -244,6 +262,7 @@ export function StockLedgerView(): React.JSX.Element {
     if (!hasFastFood && hasOmnimart) return 'minimart';
     return 'all';
   });
+  const [typeTab, setTypeTab] = useState<'all' | 'in' | 'out'>('all');
   const [timeFilter, setTimeFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   // Fetch Stock Movements: Offline-First Cache (<5ms)
@@ -251,6 +270,23 @@ export function StockLedgerView(): React.JSX.Element {
     queryKey: ['stock-movements'],
     queryFn: () => posApi.fetchStockMovements(),
   });
+
+  const queryClient = useQueryClient();
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await posApi.deleteStockMovement(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this stock ledger entry?')) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -813,12 +849,13 @@ export function StockLedgerView(): React.JSX.Element {
                 <th className={mergeClasses(styles.th, styles.thRight)}>Unit Cost</th>
                 <th className={mergeClasses(styles.th, styles.thCenter)}>Quantity</th>
                 <th className={mergeClasses(styles.th, styles.thRight)}>Impact Value</th>
+                <th className={mergeClasses(styles.th, styles.thCenter)}>Action</th>
               </tr>
             </thead>
             <tbody>
               {filteredMovements.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className={styles.emptyTd}>
+                  <td colSpan={8} className={styles.emptyTd}>
                     No stock movements found matching current search criteria.
                   </td>
                 </tr>
@@ -878,6 +915,18 @@ export function StockLedgerView(): React.JSX.Element {
 
                       <td className={mergeClasses(styles.td, isIn ? styles.impactValIn : styles.impactValOut)}>
                         {lineCost > 0 ? `${isIn ? '+' : '-'}${formatPKR(lineCost)}` : '—'}
+                      </td>
+
+                      <td className={mergeClasses(styles.td, styles.tdCenter)}>
+                        <Button
+                          appearance="subtle"
+                          size="small"
+                          icon={<Delete20Regular className={styles.iconDelete} />}
+                          onClick={() => handleDelete(mov.id)}
+                          className={styles.actionBtnDelete}
+                          title="Delete Ledger Record"
+                          aria-label="Delete Ledger Record"
+                        />
                       </td>
                     </tr>
                   );

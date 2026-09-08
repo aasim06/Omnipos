@@ -81,6 +81,10 @@ export class OmniposDexieDatabase extends Dexie {
     this.version(2).stores({
       khataTransactions: 'id, khataId, createdAt',
     });
+    this.on('versionchange', () => {
+      this.close();
+      return false;
+    });
   }
 }
 

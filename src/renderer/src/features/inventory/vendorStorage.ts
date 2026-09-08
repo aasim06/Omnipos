@@ -18,7 +18,13 @@ export interface Vendor {
 
 const STORAGE_KEY = 'pos.vendors';
 
-const INITIAL_VENDORS: Vendor[] = [];
+const LEGACY_DUMMY_IDS = new Set(['vend_1', 'vend_2', 'vend_3', 'vend_4']);
+const LEGACY_DUMMY_NAMES = new Set([
+  'metro cash & carry wholesale',
+  'dawn bread & bun distributors',
+  'prime meat & chicken supplies',
+  'pak packaging & disposables',
+]);
 
 export const vendorStorage = {
   getVendors(): Vendor[] {
@@ -27,9 +33,20 @@ export const vendorStorage = {
       return [];
     }
 
+    // Auto-purge legacy static demo vendors from storage
+    const cleaned = list.filter((v) => {
+      if (v.id && LEGACY_DUMMY_IDS.has(v.id)) return false;
+      const lower = (v.name || '').trim().toLowerCase();
+      if (LEGACY_DUMMY_NAMES.has(lower)) return false;
+      const compLower = (v.companyName || '').trim().toLowerCase();
+      if (LEGACY_DUMMY_NAMES.has(compLower)) return false;
+      return true;
+    });
+
+    let changed = cleaned.length !== list.length;
+
     // Auto-migrate legacy entries so that business name is consistently in 'name'
-    let changed = false;
-    const migrated = list.map((v) => {
+    const migrated = cleaned.map((v) => {
       if (v.companyName && v.companyName !== v.name && !v.contactPerson) {
         changed = true;
         return {
@@ -46,7 +63,7 @@ export const vendorStorage = {
       return migrated;
     }
 
-    return list;
+    return migrated;
   },
 
   saveVendor(vendor: Omit<Vendor, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Vendor {

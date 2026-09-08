@@ -10,12 +10,6 @@ import './index.css';
 
 setupTenantInterceptor();
 
-// One-time complete database wipe as requested: removes all data, keeping ONLY admin user
-if (typeof window !== 'undefined' && localStorage.getItem('omnipos_full_wipe_done_2026') !== 'true') {
-  localStorage.setItem('omnipos_full_wipe_done_2026', 'true');
-  void posApi.wipeAllDataExceptAdmin();
-}
-
 // Detect whether running in Electron desktop app or standard web browser
 const isElectron =
   typeof window !== 'undefined' &&
@@ -31,16 +25,30 @@ if (!isElectron && typeof window !== 'undefined' && window.location.hash.startsW
 
 const Router = isElectron ? HashRouter : BrowserRouter;
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <Router>
-        <AppProviders>
-          <App />
-        </AppProviders>
-      </Router>
-    </ErrorBoundary>
-  </React.StrictMode>,
-);
+async function bootstrap() {
+  // One-time complete database wipe: cleans any lingering demo items before UI mounts
+  if (typeof window !== 'undefined' && localStorage.getItem('omnipos_prod_wipe_v5_clean') !== 'true') {
+    try {
+      await posApi.wipeAllDataExceptAdmin();
+      localStorage.setItem('omnipos_prod_wipe_v5_clean', 'true');
+    } catch (e) {
+      console.warn('Bootstrap wipe error:', e);
+    }
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <Router>
+          <AppProviders>
+            <App />
+          </AppProviders>
+        </Router>
+      </ErrorBoundary>
+    </React.StrictMode>,
+  );
+}
+
+void bootstrap();
 
 

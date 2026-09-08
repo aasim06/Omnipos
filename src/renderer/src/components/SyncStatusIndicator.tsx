@@ -3,7 +3,6 @@ import {
   makeStyles,
   tokens,
   mergeClasses,
-  Tooltip,
 } from '@fluentui/react-components';
 import { syncEngine, SyncState } from '@/lib/syncEngine';
 
@@ -199,24 +198,20 @@ export function SyncStatusIndicator({ isCollapsed = false }: SyncStatusProps): R
 
   if (isCollapsed) {
     return (
-      <Tooltip
-        content={`${statusText} — ${subText} (Click to Sync)`}
-        relationship="label"
-        positioning="after"
+      <button
+        type="button"
+        onClick={handleClick}
+        className={styles.collapsedBtn}
+        title={`${statusText} — ${subText} (Click to Sync)`}
+        aria-label={`${statusText} — ${subText} (Click to Sync)`}
       >
-        <button
-          type="button"
-          onClick={handleClick}
-          className={styles.collapsedBtn}
-        >
-          <span className={mergeClasses(styles.dotCollapsed, dotClass)} />
-          {pendingCount > 0 && (
-            <span className={styles.collapsedBadge}>
-              {pendingCount}
-            </span>
-          )}
-        </button>
-      </Tooltip>
+        <span className={mergeClasses(styles.dotCollapsed, dotClass)} />
+        {pendingCount > 0 && (
+          <span className={styles.collapsedBadge}>
+            {pendingCount}
+          </span>
+        )}
+      </button>
     );
   }
 

@@ -3,14 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { KEYS, storage } from "./storage";
 import { ModuleKey, Product } from "./types";
-import { ensureInitialData } from "./seedData";
 import { nowISO, uid } from "./utils";
 
 export function useProducts(module: ModuleKey) {
   const [products, setProducts] = useState<Product[]>([]);
 
   const reloadProducts = useCallback(() => {
-    ensureInitialData();
     const all = storage.getList<Product>(KEYS.products);
     setProducts(all.filter((p) => p.module === module));
   }, [module]);

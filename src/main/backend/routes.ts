@@ -76,6 +76,316 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  // ── Predefined Default Business Categories Registry ──
+  const DEFAULT_BUSINESS_CATEGORIES = [
+    // footwear
+    { name: 'Formal Shoes', profile: 'footwear', module: 'minimart' },
+    { name: 'Sneakers & Joggers', profile: 'footwear', module: 'minimart' },
+    { name: 'Slippers & Chappal', profile: 'footwear', module: 'minimart' },
+    { name: 'Sandals & Peshawari', profile: 'footwear', module: 'minimart' },
+    { name: 'Boots & High Tops', profile: 'footwear', module: 'minimart' },
+    { name: 'Kids Footwear', profile: 'footwear', module: 'minimart' },
+
+    // apparel
+    { name: 'Gents Kurta & Shalwar Kameez', profile: 'apparel', module: 'minimart' },
+    { name: 'Casual Shirts & Polos', profile: 'apparel', module: 'minimart' },
+    { name: 'Trousers, Jeans & Pants', profile: 'apparel', module: 'minimart' },
+    { name: 'Ladies Unstitched Suits', profile: 'apparel', module: 'minimart' },
+    { name: 'Ladies Ready-to-Wear (Pret)', profile: 'apparel', module: 'minimart' },
+    { name: 'Kids Wear', profile: 'apparel', module: 'minimart' },
+    { name: 'Jackets & Winter Wear', profile: 'apparel', module: 'minimart' },
+
+    // grocery
+    { name: 'Beverages & Cold Drinks', profile: 'grocery', module: 'minimart' },
+    { name: 'Snacks, Chips & Biscuits', profile: 'grocery', module: 'minimart' },
+    { name: 'Dairy, Milk & Eggs', profile: 'grocery', module: 'minimart' },
+    { name: 'Staples, Rice, Flour & Daal', profile: 'grocery', module: 'minimart' },
+    { name: 'Cooking Oil & Banaspati Ghee', profile: 'grocery', module: 'minimart' },
+    { name: 'Household & Cleaning', profile: 'grocery', module: 'minimart' },
+    { name: 'Spices & Condiments', profile: 'grocery', module: 'minimart' },
+
+    // cosmetics
+    { name: 'Lipsticks & Lip Gloss', profile: 'cosmetics', module: 'minimart' },
+    { name: 'Foundations & Face Powders', profile: 'cosmetics', module: 'minimart' },
+    { name: 'Skin Care, Creams & Serums', profile: 'cosmetics', module: 'minimart' },
+    { name: 'Eye Makeup & Mascara', profile: 'cosmetics', module: 'minimart' },
+    { name: 'Perfumes & Body Mists', profile: 'cosmetics', module: 'minimart' },
+    { name: 'Hair Care & Shampoos', profile: 'cosmetics', module: 'minimart' },
+    { name: 'Nail Polishes & Nail Care', profile: 'cosmetics', module: 'minimart' },
+
+    // pharmacy
+    { name: 'Tablets & Capsules', profile: 'pharmacy', module: 'minimart' },
+    { name: 'Syrups & Suspensions', profile: 'pharmacy', module: 'minimart' },
+    { name: 'Injections & Infusions', profile: 'pharmacy', module: 'minimart' },
+    { name: 'Ointments & Topical Drops', profile: 'pharmacy', module: 'minimart' },
+    { name: 'Medical Devices & Surgicals', profile: 'pharmacy', module: 'minimart' },
+    { name: 'Baby Food & Diapers', profile: 'pharmacy', module: 'minimart' },
+
+    // electronics
+    { name: 'Smartphones & Handsets', profile: 'electronics', module: 'minimart' },
+    { name: 'Chargers, Adapters & Cables', profile: 'electronics', module: 'minimart' },
+    { name: 'Wireless Earbuds & Audio', profile: 'electronics', module: 'minimart' },
+    { name: 'Screen Protectors & Glass', profile: 'electronics', module: 'minimart' },
+    { name: 'Mobile Covers & Pouches', profile: 'electronics', module: 'minimart' },
+    { name: 'Power Banks & Batteries', profile: 'electronics', module: 'minimart' },
+
+    // bakery
+    { name: 'Traditional Sweets & Mithai', profile: 'bakery', module: 'minimart' },
+    { name: 'Cakes, Pastries & Desserts', profile: 'bakery', module: 'minimart' },
+    { name: 'Bakery Biscuits & Cookies', profile: 'bakery', module: 'minimart' },
+    { name: 'Fresh Breads, Rusk & Buns', profile: 'bakery', module: 'minimart' },
+    { name: 'Savories, Samosa & Nimko', profile: 'bakery', module: 'minimart' },
+
+    // food
+    { name: 'Burgers & Sandwiches', profile: 'food', module: 'fastfood' },
+    { name: 'Pizzas & Calzones', profile: 'food', module: 'fastfood' },
+    { name: 'Crispy Broast & Wings', profile: 'food', module: 'fastfood' },
+    { name: 'Karahi, Handi & Gravies', profile: 'food', module: 'fastfood' },
+    { name: 'BBQ, Tikka & Kebabs', profile: 'food', module: 'fastfood' },
+    { name: 'Cold Beverages & Shakes', profile: 'food', module: 'fastfood' },
+    { name: 'Family Deals & Combos', profile: 'food', module: 'fastfood' },
+
+    // hardware
+    { name: 'Paints, Distemper & Coatings', profile: 'hardware', module: 'minimart' },
+    { name: 'Sanitary Fittings & Bathroom Pipes', profile: 'hardware', module: 'minimart' },
+    { name: 'Fasteners, Screws & Nails', profile: 'hardware', module: 'minimart' },
+    { name: 'Hand Tools & Power Equipment', profile: 'hardware', module: 'minimart' },
+    { name: 'Locks, Handles & Security', profile: 'hardware', module: 'minimart' },
+
+    // electric
+    { name: 'Electrical Cables & Flexible Wires', profile: 'electric', module: 'minimart' },
+    { name: 'Switches, Sockets & Face Plates', profile: 'electric', module: 'minimart' },
+    { name: 'LED Lights, Bulbs & Panels', profile: 'electric', module: 'minimart' },
+    { name: 'Circuit Breakers & DB Distribution Boxes', profile: 'electric', module: 'minimart' },
+    { name: 'PVC Conduit Pipes & Fittings', profile: 'electric', module: 'minimart' },
+    { name: 'Ceiling & Exhaust Fans', profile: 'electric', module: 'minimart' },
+    { name: 'Extension Boards & Power Strips', profile: 'electric', module: 'minimart' },
+
+    // standard
+    { name: 'General Items', profile: 'standard', module: 'minimart' },
+    { name: 'Packaged Goods', profile: 'standard', module: 'minimart' },
+  ];
+
+  app.get('/api/categories/default-templates', (req: Request, res: Response) => {
+    try {
+      const profile = req.query.profile as string | undefined;
+      const module = req.query.module as string | undefined;
+      let list = DEFAULT_BUSINESS_CATEGORIES;
+      if (profile) list = list.filter((c) => c.profile === profile);
+      if (module) list = list.filter((c) => !c.module || c.module === module);
+      res.json(list);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  const BUSINESS_PROFILES_MAP: Record<string, any> = {
+    footwear: {
+      id: 'footwear',
+      name: 'Footwear & Shoes Store',
+      iconName: 'Footprints',
+      module: 'minimart',
+      description: 'Specialized for shoe shops with sizes 38 - 45, colors, pairs and article codes',
+      suggestedUnits: ['PAIR', 'PCS', 'BOX', 'PACK', 'DOZEN', 'SET'],
+      suggestedSizes: ['38', '39', '40', '41', '42', '43', '44', '45'],
+      defaultCategories: [
+        { name: 'Formal Shoes', profile: 'footwear' },
+        { name: 'Sneakers & Joggers', profile: 'footwear' },
+        { name: 'Slippers & Chappal', profile: 'footwear' },
+        { name: 'Sandals & Peshawari', profile: 'footwear' },
+        { name: 'Boots & High Tops', profile: 'footwear' },
+        { name: 'Kids Footwear', profile: 'footwear' },
+      ],
+      features: { hasColorShades: true },
+    },
+    apparel: {
+      id: 'apparel',
+      name: 'Garments, Clothing & Boutique',
+      iconName: 'Shirt',
+      module: 'minimart',
+      description: 'Standard apparel sizes (XS to 3XL) and unstitched fabric / meter measurements',
+      suggestedUnits: ['PCS', 'SUIT', 'METER', 'GAZ', 'THAN', 'SET', 'PACK', 'DOZEN', 'PAIR', 'BOX'],
+      suggestedSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
+      defaultCategories: [
+        { name: 'Gents Kurta & Shalwar Kameez', profile: 'apparel' },
+        { name: 'Casual Shirts & Polos', profile: 'apparel' },
+        { name: 'Trousers, Jeans & Pants', profile: 'apparel' },
+        { name: 'Ladies Unstitched Suits', profile: 'apparel' },
+        { name: 'Ladies Ready-to-Wear (Pret)', profile: 'apparel' },
+        { name: 'Kids Wear', profile: 'apparel' },
+        { name: 'Jackets & Winter Wear', profile: 'apparel' },
+      ],
+      features: { hasColorShades: true },
+    },
+    grocery: {
+      id: 'grocery',
+      name: 'Grocery, Supermarket & Mini Mart',
+      iconName: 'ShoppingBag',
+      module: 'minimart',
+      description: 'Barcode scanning POS with weighed loose grains (KG/Grams) and FMCG items',
+      suggestedUnits: ['KG', 'GRAM', 'LITER', 'ML', 'PCS', 'PACK', 'BOX', 'CARTON', 'BAG', 'DOZEN', 'BOTTLE', 'JAR', 'TIN', 'SACHET', 'TRAY', 'BUNDLE'],
+      suggestedSizes: ['250g', '500g', '1 KG', '5 KG'],
+      defaultCategories: [
+        { name: 'Beverages & Cold Drinks', profile: 'grocery' },
+        { name: 'Snacks, Chips & Biscuits', profile: 'grocery' },
+        { name: 'Dairy, Milk & Eggs', profile: 'grocery' },
+        { name: 'Staples, Rice, Flour & Daal', profile: 'grocery' },
+        { name: 'Cooking Oil & Banaspati Ghee', profile: 'grocery' },
+        { name: 'Household & Cleaning', profile: 'grocery' },
+        { name: 'Spices & Condiments', profile: 'grocery' },
+      ],
+      features: { hasWeighingScale: true },
+    },
+    cosmetics: {
+      id: 'cosmetics',
+      name: 'Cosmetics & Beauty Store',
+      iconName: 'Palette',
+      module: 'minimart',
+      description: 'Beauty products with shade color numbers (#01, #08) and bottle volume sizes',
+      suggestedUnits: ['PCS', 'PACK', 'BOTTLE', 'SET', 'KIT', 'TUBE', 'JAR', 'BOX', 'DOZEN', 'ML', 'Gram', 'STRIP'],
+      suggestedSizes: ['#01 Red', '#08 Nude', '#14 Maroon', '#22 Gold', '50ml', '100ml', '250ml'],
+      defaultCategories: [
+        { name: 'Lipsticks & Lip Gloss', profile: 'cosmetics' },
+        { name: 'Foundations & Face Powders', profile: 'cosmetics' },
+        { name: 'Skin Care, Creams & Serums', profile: 'cosmetics' },
+        { name: 'Eye Makeup & Mascara', profile: 'cosmetics' },
+        { name: 'Perfumes & Body Mists', profile: 'cosmetics' },
+        { name: 'Hair Care & Shampoos', profile: 'cosmetics' },
+        { name: 'Nail Polishes & Nail Care', profile: 'cosmetics' },
+      ],
+      features: { hasColorShades: true, hasBatchExpiry: true },
+    },
+    pharmacy: {
+      id: 'pharmacy',
+      name: 'Pharmacy & Medical Store',
+      iconName: 'Cross',
+      module: 'minimart',
+      description: 'Medicines with strip/box/tablet division, batch numbers and expiry tracking',
+      suggestedUnits: ['STRIP', 'BOX', 'TABLET', 'CAPSULE', 'SYRUP', 'BOTTLE', 'TUBE', 'SACHET', 'VIAL', 'AMPOULE', 'PACK', 'ROLL', 'BAG', 'PCS'],
+      suggestedSizes: ['Strip (10 Tablets)', 'Box (100 Tablets)', '60ml', '120ml'],
+      defaultCategories: [
+        { name: 'Tablets & Capsules', profile: 'pharmacy' },
+        { name: 'Syrups & Suspensions', profile: 'pharmacy' },
+        { name: 'Injections & Infusions', profile: 'pharmacy' },
+        { name: 'Ointments & Topical Drops', profile: 'pharmacy' },
+        { name: 'Medical Devices & Surgicals', profile: 'pharmacy' },
+        { name: 'Baby Food & Diapers', profile: 'pharmacy' },
+      ],
+      features: { hasBatchExpiry: true },
+    },
+    electronics: {
+      id: 'electronics',
+      name: 'Mobile, Electronics & Accessories',
+      iconName: 'Smartphone',
+      module: 'minimart',
+      description: 'Smartphones and electronics with unique IMEI/Serial numbers and warranty tracking',
+      suggestedUnits: ['PCS', 'SET', 'BOX', 'PACK', 'PAIR', 'KIT', 'METER', 'ROLL'],
+      suggestedSizes: ['64GB', '128GB', '256GB', '512GB'],
+      defaultCategories: [
+        { name: 'Smartphones & Handsets', profile: 'electronics' },
+        { name: 'Chargers, Adapters & Cables', profile: 'electronics' },
+        { name: 'Wireless Earbuds & Audio', profile: 'electronics' },
+        { name: 'Screen Protectors & Glass', profile: 'electronics' },
+        { name: 'Mobile Covers & Pouches', profile: 'electronics' },
+        { name: 'Power Banks & Batteries', profile: 'electronics' },
+      ],
+      features: { hasImeiSerial: true },
+    },
+    bakery: {
+      id: 'bakery',
+      name: 'Bakery & Sweets / Confectionery',
+      iconName: 'Cake',
+      module: 'minimart',
+      description: 'Fresh confectionery and traditional sweets sold by box / weight (250g, 500g, 1 KG)',
+      suggestedUnits: ['KG', 'GRAM', 'POUND', 'DABBA', 'BOX', 'PCS', 'DOZEN', 'PACK', 'TRAY'],
+      suggestedSizes: ['250g', '500g', '1 KG', '2 KG'],
+      defaultCategories: [
+        { name: 'Traditional Sweets & Mithai', profile: 'bakery' },
+        { name: 'Cakes, Pastries & Desserts', profile: 'bakery' },
+        { name: 'Bakery Biscuits & Cookies', profile: 'bakery' },
+        { name: 'Fresh Breads, Rusk & Buns', profile: 'bakery' },
+        { name: 'Savories, Samosa & Nimko', profile: 'bakery' },
+      ],
+      features: { hasWeighingScale: true },
+    },
+    food: {
+      id: 'food',
+      name: 'Fast Food, Cafe & Restaurant',
+      iconName: 'Utensils',
+      module: 'fastfood',
+      description: 'Food and kitchen menu with KDS ticket dispatch, portion sizes and deal combos',
+      suggestedUnits: ['PCS', 'SERVING', 'PORTION', 'PLATE', 'DEAL', 'PACK', 'CUP', 'GLASS', 'BOTTLE', 'CAN', 'KG', 'BOX'],
+      suggestedSizes: ['Regular', 'Small', 'Medium', 'Large', 'Family', 'Half', 'Full'],
+      defaultCategories: [
+        { name: 'Burgers & Sandwiches', profile: 'food' },
+        { name: 'Pizzas & Calzones', profile: 'food' },
+        { name: 'Crispy Broast & Wings', profile: 'food' },
+        { name: 'Karahi, Handi & Gravies', profile: 'food' },
+        { name: 'BBQ, Tikka & Kebabs', profile: 'food' },
+        { name: 'Cold Beverages & Shakes', profile: 'food' },
+        { name: 'Family Deals & Combos', profile: 'food' },
+      ],
+      features: { hasKitchenKDS: true },
+    },
+    hardware: {
+      id: 'hardware',
+      name: 'Hardware, Sanitary & Paint Store',
+      iconName: 'Wrench',
+      module: 'minimart',
+      description: 'Building materials, paints, plumbing, sanitary fittings, fasteners and tools',
+      suggestedUnits: ['PCS', 'SET', 'FEET', 'LENGTH', 'RFT', 'INCH', 'ROLL', 'TUBE', 'PACK', 'BOX', 'BAG', 'DOZEN', 'PAIR', 'METER', 'KG', 'COIL', 'SHEET', 'GALLON', 'QUARTER', 'BALTI'],
+      suggestedSizes: ['Quarter (1L)', 'Gallon (4L)', 'Balti (16L)', '0.5 KG', '1.0 KG', 'Half Inch', 'One Inch'],
+      defaultCategories: [
+        { name: 'Paints, Distemper & Coatings', profile: 'hardware' },
+        { name: 'Sanitary Fittings & Bathroom Pipes', profile: 'hardware' },
+        { name: 'Fasteners, Screws & Nails', profile: 'hardware' },
+        { name: 'Hand Tools & Power Equipment', profile: 'hardware' },
+        { name: 'Locks, Handles & Security', profile: 'hardware' },
+      ],
+      features: { hasPipeDecimals: true, hasWeighingScale: true },
+    },
+    electric: {
+      id: 'electric',
+      name: 'Electrical Store & Lighting',
+      iconName: 'Zap',
+      module: 'minimart',
+      description: 'Electrical cables, switches, sockets, LED lights, breakers, conduits and appliances',
+      suggestedUnits: ['COIL', 'METER', 'FEET', 'LENGTH', 'ROLL', 'PCS', 'SET', 'PACK', 'BOX', 'DOZEN', 'PAIR', 'GAZ'],
+      suggestedSizes: ['1.5mm', '2.5mm', '7/29', '7/36', '7/44', '9W', '12W', '18W'],
+      defaultCategories: [
+        { name: 'Electrical Cables & Flexible Wires', profile: 'electric' },
+        { name: 'Switches, Sockets & Face Plates', profile: 'electric' },
+        { name: 'LED Lights, Bulbs & Panels', profile: 'electric' },
+        { name: 'Circuit Breakers & DB Distribution Boxes', profile: 'electric' },
+        { name: 'PVC Conduit Pipes & Fittings', profile: 'electric' },
+        { name: 'Ceiling & Exhaust Fans', profile: 'electric' },
+        { name: 'Extension Boards & Power Strips', profile: 'electric' },
+      ],
+      features: { hasPipeDecimals: true },
+    },
+  };
+
+  app.get('/api/business-profiles', (_req: Request, res: Response) => {
+    try {
+      res.json(Object.values(BUSINESS_PROFILES_MAP));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/business-profiles/:id', (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      const profile = BUSINESS_PROFILES_MAP[id] || null;
+      if (!profile) {
+        return res.status(404).json({ error: 'Business profile not found' });
+      }
+      res.json(profile);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Categories ──
   app.get('/api/categories', async (req: Request, res: Response) => {
     try {
@@ -241,12 +551,20 @@ export function registerRoutes(app: Express): void {
 
   app.post('/api/stock-movements', async (req: Request, res: Response) => {
     try {
+      const { id, module, productId, productName, type, quantity, unitCost, unitPrice, reason, note, referenceInvoice, date } = req.body;
       const movement = await db.stockMovement.create({
         data: {
-          ...req.body,
-          quantity: Number(req.body.quantity),
-          unitCost: req.body.unitCost ? Number(req.body.unitCost) : null,
-          unitPrice: req.body.unitPrice ? Number(req.body.unitPrice) : null,
+          ...(id ? { id } : {}),
+          module: module || 'minimart',
+          productId: productId || '',
+          productName: productName || 'Unknown Product',
+          type: type || 'in',
+          quantity: Number(quantity || 0),
+          unitCost: unitCost ? Number(unitCost) : null,
+          unitPrice: unitPrice ? Number(unitPrice) : null,
+          reason: reason || null,
+          note: note || referenceInvoice || null,
+          ...(date ? { date: new Date(date) } : {}),
         },
       });
 
@@ -322,13 +640,20 @@ export function registerRoutes(app: Express): void {
     try {
       const id = String(req.params.id);
       const prev = await db.stockMovement.findUnique({ where: { id } });
+      const { id: _id, module, productId, productName, type, quantity, unitCost, unitPrice, reason, note, referenceInvoice, date } = req.body;
       const updated = await db.stockMovement.update({
         where: { id },
         data: {
-          ...req.body,
-          quantity: req.body.quantity !== undefined ? Number(req.body.quantity) : undefined,
-          unitCost: req.body.unitCost !== undefined ? (req.body.unitCost ? Number(req.body.unitCost) : null) : undefined,
-          unitPrice: req.body.unitPrice !== undefined ? (req.body.unitPrice ? Number(req.body.unitPrice) : null) : undefined,
+          ...(module ? { module } : {}),
+          ...(productId ? { productId } : {}),
+          ...(productName ? { productName } : {}),
+          ...(type ? { type } : {}),
+          ...(quantity !== undefined ? { quantity: Number(quantity) } : {}),
+          ...(unitCost !== undefined ? { unitCost: unitCost ? Number(unitCost) : null } : {}),
+          ...(unitPrice !== undefined ? { unitPrice: unitPrice ? Number(unitPrice) : null } : {}),
+          ...(reason !== undefined ? { reason } : {}),
+          ...(note !== undefined || referenceInvoice !== undefined ? { note: note || referenceInvoice || null } : {}),
+          ...(date ? { date: new Date(date) } : {}),
         },
       });
 

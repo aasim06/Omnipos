@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -531,11 +531,12 @@ function renderProfileIcon(iconName: string, size = 18, color?: string) {
 export function CategoriesView(): React.JSX.Element {
   const styles = useStyles();
   const queryClient = useQueryClient();
+  const { can, businessProfiles = ['standard', 'food'] } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
-  const [seedingProfile, setSeedingProfile] = useState<string | null>(null);
-  const [seedSuccessMessage, setSeedSuccessMessage] = useState<string | null>(null);
-  const [targetModule, setTargetModule] = useState<ModuleKey>('fastfood');
+  const [targetModule, setTargetModule] = useState<ModuleKey>(hasFastFood ? 'fastfood' : 'minimart');
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
     queryKey: ['categories'],
@@ -551,7 +552,7 @@ export function CategoriesView(): React.JSX.Element {
     resolver: zodResolver(categorySchema) as any,
     defaultValues: {
       name: '',
-      module: 'fastfood',
+      module: hasFastFood ? 'fastfood' : 'minimart',
     },
   });
 
@@ -579,29 +580,8 @@ export function CategoriesView(): React.JSX.Element {
     },
   });
 
-  const handleSeedProfile = async (profileKey: CategoryProfile, targetMod: ModuleKey) => {
-    setSeedingProfile(profileKey);
-    try {
-      const seeded = await posApi.seedBusinessProfile(profileKey, targetMod);
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      setSeedSuccessMessage(`Added ${seeded.length} starter categories for ${CATEGORY_PROFILES[profileKey]?.label || profileKey}!`);
-      setTimeout(() => {
-        setSeedSuccessMessage(null);
-        setIsTemplateDialogOpen(false);
-      }, 1200);
-    } catch (err) {
-      console.error('Failed to seed categories:', err);
-    } finally {
-      setSeedingProfile(null);
-    }
-  };
-
-  const { can, businessProfiles = ['standard', 'food'] } = useLicense();
-  const hasFastFood = can('fastfood');
-  const hasOmnimart = can('omnimart');
-
   // Filtered by active license business profile(s)
-  const allowedProfiles = useMemo<ProfileOption[]>(() => {
+  const allowedProfiles = React.useMemo<ProfileOption[]>(() => {
     const valid = ALL_PROFILE_OPTIONS.filter((opt: ProfileOption) => businessProfiles.includes(opt.value));
     return valid.length > 0 ? valid : ALL_PROFILE_OPTIONS;
   }, [businessProfiles]);
@@ -609,12 +589,12 @@ export function CategoriesView(): React.JSX.Element {
   const watchedModule = categoryForm.watch('module');
 
   // Profile options matching the current store module (fastfood vs minimart)
-  const filteredProfileOptions = useMemo<ProfileOption[]>(() => {
+  const filteredProfileOptions = React.useMemo<ProfileOption[]>(() => {
     const forModule = allowedProfiles.filter((opt: ProfileOption) => opt.module === watchedModule);
     return forModule.length > 0 ? forModule : allowedProfiles;
   }, [allowedProfiles, watchedModule]);
 
-  const activeRetailProfile = useMemo(() => {
+  const activeRetailProfile = React.useMemo(() => {
     const specific = businessProfiles.find((p) => p !== 'standard' && p !== 'food');
     return specific && CATEGORY_PROFILES[specific] ? CATEGORY_PROFILES[specific] : null;
   }, [businessProfiles]);
@@ -622,7 +602,7 @@ export function CategoriesView(): React.JSX.Element {
   const activeRetailLabel = activeRetailProfile?.label || 'Retail Store';
   const activeRetailShort = activeRetailProfile?.shortTag || 'Retail';
 
-  const moduleOptions = useMemo(() => [
+  const moduleOptions = React.useMemo(() => [
     ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
     ...(hasOmnimart ? [{ value: 'minimart', label: activeRetailLabel }] : []),
   ], [hasFastFood, hasOmnimart, activeRetailLabel]);
@@ -630,22 +610,33 @@ export function CategoriesView(): React.JSX.Element {
   const isSingleBusinessProfile = businessProfiles.length === 1;
   const isProfileLocked = isSingleBusinessProfile || filteredProfileOptions.length === 1;
 
-  const [showAllTemplates, setShowAllTemplates] = useState(false);
 
-  // Starter templates strictly filtered to active licensed business profile(s)
-  const licensedTemplates = useMemo(() => {
-    const all = (Object.entries(CATEGORY_PROFILES) as [CategoryProfile, typeof CATEGORY_PROFILES[CategoryProfile]][])
-      .filter(([key]) => key !== 'standard');
+  const watchedCategoryModule = categoryForm.watch('module') || targetModule;
+  const watchedCategoryProfile = categoryForm.watch('profile') || (watchedCategoryModule === 'fastfood' ? 'food' : (activeRetailProfile?.key || 'standard'));
 
-    if (showAllTemplates) return all;
+  const existingCategoryNames = React.useMemo(() => {
+    return new Set(categories.filter((c) => c.module === watchedCategoryModule).map((c) => c.name.toLowerCase().trim()));
+  }, [categories, watchedCategoryModule]);
 
-    const hasSpecificProfiles = businessProfiles && businessProfiles.length > 0 && !businessProfiles.includes('standard');
-    if (hasSpecificProfiles) {
-      const filtered = all.filter(([key]) => businessProfiles.includes(key));
-      if (filtered.length > 0) return filtered;
-    }
-    return all;
-  }, [businessProfiles, showAllTemplates]);
+  const { data: defaultTemplates = [] } = useQuery({
+    queryKey: ['default-category-templates', watchedCategoryProfile, watchedCategoryModule],
+    queryFn: () => posApi.fetchDefaultCategories(watchedCategoryProfile, watchedCategoryModule),
+  });
+
+  const defaultCategoryOptions = React.useMemo(() => {
+    const list = defaultTemplates.length > 0
+      ? defaultTemplates.map((t) => t.name)
+      : (CATEGORY_PROFILES[watchedCategoryProfile as CategoryProfile]?.defaultCategories || []);
+
+    return list.map((catName) => {
+      const isAlreadyAdded = existingCategoryNames.has(catName.toLowerCase().trim());
+      return {
+        value: catName,
+        label: isAlreadyAdded ? `${catName} (Already Added)` : catName,
+        disabled: isAlreadyAdded,
+      };
+    });
+  }, [defaultTemplates, watchedCategoryProfile, existingCategoryNames]);
 
   const handleOpenDialog = (module?: ModuleKey) => {
     let selectedModule: ModuleKey = module || (hasFastFood ? 'fastfood' : 'minimart');
@@ -665,13 +656,33 @@ export function CategoriesView(): React.JSX.Element {
     }
 
     setTargetModule(selectedModule);
+
+    const activeKey = (selectedProfile in CATEGORY_PROFILES)
+      ? selectedProfile
+      : (selectedModule === 'fastfood' ? 'food' : 'standard');
+    const config = CATEGORY_PROFILES[activeKey] || CATEGORY_PROFILES.standard;
+    const catList = config.defaultCategories || [];
+    const existingInMod = new Set(categories.filter((c) => c.module === selectedModule).map((c) => c.name.toLowerCase().trim()));
+    const firstAvailable = catList.find((name) => !existingInMod.has(name.toLowerCase().trim())) || catList[0] || '';
+
     categoryForm.reset({
-      name: '',
+      name: firstAvailable,
       module: selectedModule,
       profile: selectedProfile,
     });
     setIsDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (isDialogOpen && defaultCategoryOptions.length > 0) {
+      const currentName = categoryForm.getValues('name');
+      const currentOpt = defaultCategoryOptions.find((opt) => opt.value === currentName);
+      if (!currentOpt || currentOpt.disabled) {
+        const firstAvail = defaultCategoryOptions.find((opt) => !opt.disabled)?.value || defaultCategoryOptions[0].value;
+        categoryForm.setValue('name', firstAvail);
+      }
+    }
+  }, [isDialogOpen, defaultCategoryOptions, categoryForm]);
 
   const onCategorySubmit = (data: CategoryFormData) => {
     createCategoryMutation.mutate(data);
@@ -697,17 +708,7 @@ export function CategoriesView(): React.JSX.Element {
           </Caption1>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <Button
-            appearance="secondary"
-            icon={<Sparkle20Regular style={{ color: '#E51937' }} />}
-            onClick={() => setIsTemplateDialogOpen(true)}
-            style={{ fontWeight: 600, border: `1px solid ${tokens.colorNeutralStroke1}` }}
-          >
-            {isSingleBusinessProfile && licensedTemplates.length === 1
-              ? `1-Click ${licensedTemplates[0][1].shortTag} Template`
-              : '1-Click Industry Templates'}
-          </Button>
+        <div>
           <Button
             appearance="primary"
             icon={<Add20Regular />}
@@ -863,152 +864,7 @@ export function CategoriesView(): React.JSX.Element {
         </div>
       )}
 
-      {/* ── 1-Click Industry Starter Templates Dialog ────────── */}
-      <Dialog open={isTemplateDialogOpen} onOpenChange={(_, data) => setIsTemplateDialogOpen(data.open)}>
-        <DialogSurface className={styles.templateDialogSurface}>
-          <div className={styles.templateDialogHeader}>
-            <div className={styles.templateHeaderLeft}>
-              <div className={styles.templateIconBox}>
-                <Sparkle20Regular style={{ width: 22, height: 22 }} />
-              </div>
-              <div>
-                <div className={styles.templateDialogTitle}>
-                  {licensedTemplates.length === 1 && !showAllTemplates
-                    ? `1-Click ${licensedTemplates[0][1].shortTag} Starter Template`
-                    : '1-Click Industry Starter Templates'}
-                </div>
-                <div className={styles.templateDialogSubtitle}>
-                  {licensedTemplates.length === 1 && !showAllTemplates
-                    ? `Instantly populate recommended default categories, size matrices, and standard units for your licensed vertical (${licensedTemplates[0][1].label}) in 1 click.`
-                    : 'Choose your business vertical to instantly populate recommended default categories, size matrices, and standard units in 1 click.'}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {businessProfiles && businessProfiles.length > 0 && !businessProfiles.includes('standard') && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllTemplates((prev) => !prev)}
-                  style={{
-                    background: 'none',
-                    border: `1px solid ${tokens.colorNeutralStroke1}`,
-                    borderRadius: '6px',
-                    padding: '4px 10px',
-                    color: tokens.colorNeutralForeground2,
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {showAllTemplates ? 'Show My License Only' : 'Show All Industries'}
-                </button>
-              )}
-              <Button
-                size="small"
-                appearance="subtle"
-                icon={<Dismiss16Regular />}
-                onClick={() => setIsTemplateDialogOpen(false)}
-                type="button"
-              />
-            </div>
-          </div>
 
-          {seedSuccessMessage && (
-            <div className={styles.successBanner}>
-              {seedSuccessMessage}
-            </div>
-          )}
-
-          <div
-            className={styles.templateGrid}
-            style={licensedTemplates.length === 1 ? { maxWidth: '460px', margin: '0 auto', display: 'flex', flexDirection: 'column' } : undefined}
-          >
-            {licensedTemplates.map(([key, profile]) => {
-                const targetMod: ModuleKey = key === 'food' ? 'fastfood' : 'minimart';
-                const isModuleEnabled = (targetMod === 'fastfood' && hasFastFood) || (targetMod === 'minimart' && hasOmnimart);
-                const isCurrentSeeding = seedingProfile === key;
-
-                return (
-                  <div
-                    key={key}
-                    className={styles.templateCard}
-                    style={{
-                      borderTop: `3px solid ${profile.accentColor}`,
-                      opacity: isModuleEnabled ? 1 : 0.6,
-                    }}
-                  >
-                    <div className={styles.templateCardTop}>
-                      <div
-                        className={styles.templateCardIcon}
-                        style={{
-                          backgroundColor: `${profile.accentColor}18`,
-                          border: `1px solid ${profile.accentColor}35`,
-                          color: profile.accentColor,
-                        }}
-                      >
-                        {renderProfileIcon(profile.icon, 20, profile.accentColor)}
-                      </div>
-                      <div className={styles.templateCardMeta}>
-                        <div className={styles.templateCardTitleRow}>
-                          <span className={styles.templateCardTitle}>{profile.label}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className={styles.templateCardDesc}>{profile.description}</p>
-
-                    <div className={styles.templateSpecsRow}>
-                      <span className={styles.specLabel}>Units:</span>
-                      <span className={styles.specValue}>{profile.suggestedUnits.slice(0, 3).join(', ')}</span>
-                      {profile.suggestedSizes.length > 0 && (
-                        <>
-                          <span className={styles.specDivider}>•</span>
-                          <span className={styles.specLabel}>Sizes:</span>
-                          <span className={styles.specValue}>
-                            {profile.suggestedSizes.slice(0, 3).join(', ')}...
-                          </span>
-                        </>
-                      )}
-                    </div>
-
-                    <div className={styles.chipsContainer}>
-                      <div className={styles.chipsTitle}>Categories Preview:</div>
-                      <div className={styles.chipsWrapper}>
-                        {profile.defaultCategories.map((cName) => (
-                          <span key={cName} className={styles.previewChip}>
-                            {cName}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className={styles.templateCardFooter}>
-                      <Button
-                        size="small"
-                        appearance="primary"
-                        disabled={!isModuleEnabled || seedingProfile !== null}
-                        onClick={() => handleSeedProfile(key, targetMod)}
-                        style={{
-                          backgroundColor: isModuleEnabled ? profile.accentColor : tokens.colorNeutralBackgroundDisabled,
-                          color: '#ffffff',
-                          fontWeight: 700,
-                          borderRadius: '8px',
-                          width: '100%',
-                        }}
-                      >
-                        {isCurrentSeeding
-                          ? 'Adding Categories...'
-                          : !isModuleEnabled
-                          ? `Disabled (${targetMod === 'fastfood' ? 'Food' : 'Mart'} module off)`
-                          : `Populate ${profile.shortTag} Template`}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </DialogSurface>
-      </Dialog>
 
       {/* ── Create Category Dialog ─────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
@@ -1043,11 +899,12 @@ export function CategoriesView(): React.JSX.Element {
                 control={categoryForm.control}
                 name="name"
                 render={({ field }) => (
-                  <CustomInput
-                    {...field}
-                    label="Category Name"
+                  <CustomSelect
+                    label="Select Category"
                     required
-                    placeholder="e.g. Boots, Joggers, Slippers, Casual, Formal..."
+                    value={field.value}
+                    onChange={(val) => field.onChange(val)}
+                    options={defaultCategoryOptions}
                     error={categoryForm.formState.errors.name?.message}
                   />
                 )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   makeStyles,
   mergeClasses,
@@ -12,7 +12,6 @@ import {
   Button,
   Select,
   Checkbox,
-  Tooltip,
   Label,
   Dialog,
   DialogSurface,
@@ -37,13 +36,16 @@ import {
   Tag20Regular,
   Location20Regular,
   Ruler20Regular,
+  Warning20Regular,
+  ArrowSync20Regular,
+  Flash20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { resolveApiUrl, posApi } from '@/lib/api';
-import { StockMovement, Product } from '@shared/types';
+import { StockMovement, Product, Category, ProductVariant } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
@@ -107,11 +109,23 @@ const useStyles = makeStyles({
   },
   row1: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: '1.2fr 1fr 1.8fr',
     gap: '16px',
-    '@media (max-width: 768px)': {
+    '@media (max-width: 900px)': {
       gridTemplateColumns: '1fr',
     },
+  },
+  categoryBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: '2px 7px',
+    borderRadius: '4px',
+    width: 'fit-content',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   productDetailCard: {
     backgroundColor: tokens.colorNeutralBackground2,
@@ -393,27 +407,74 @@ const useStyles = makeStyles({
     fontWeight: 500,
   },
   variantsWrap: {
-    paddingTop: '8px',
+    paddingTop: '10px',
     borderTopWidth: '1px',
     borderTopStyle: 'dashed',
     borderTopColor: tokens.colorNeutralStroke2,
   },
+  variantsHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginBottom: '8px',
+  },
   variantsTitle: {
-    fontSize: '11px',
+    fontSize: '11.5px',
     fontWeight: 700,
-    color: tokens.colorNeutralForeground3,
+    color: tokens.colorNeutralForeground2,
     textTransform: 'uppercase',
-    marginBottom: '6px',
     letterSpacing: '0.4px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  variantHeaderActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  variantActionBtn: {
+    padding: '3px 9px',
+    fontSize: '11px',
+    fontWeight: 600,
+    borderRadius: '4px',
+    backgroundColor: 'rgba(229, 25, 55, 0.08)',
+    color: '#E51937',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: 'rgba(229, 25, 55, 0.25)', borderBottomColor: 'rgba(229, 25, 55, 0.25)',
+    borderLeftColor: 'rgba(229, 25, 55, 0.25)', borderRightColor: 'rgba(229, 25, 55, 0.25)',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    ':hover': {
+      backgroundColor: 'rgba(229, 25, 55, 0.16)',
+    },
+  },
+  variantActionBtnSubtle: {
+    padding: '3px 8px',
+    fontSize: '11px',
+    fontWeight: 500,
+    borderRadius: '4px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground2,
+    border: 'none',
+    cursor: 'pointer',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground4,
+    },
   },
   variantsList: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: '8px',
   },
-  variantItem: {
-    padding: '4px 10px',
-    borderRadius: '6px',
+  variantCard: {
+    padding: '8px 12px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     borderTopWidth: '1px', borderBottomWidth: '1px',
     borderLeftWidth: '1px', borderRightWidth: '1px',
@@ -421,30 +482,134 @@ const useStyles = makeStyles({
     borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
     borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    fontSize: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    minWidth: '150px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+    transition: 'all 0.15s ease',
+  },
+  variantCardActive: {
+    borderTopColor: '#E51937', borderBottomColor: '#E51937',
+    borderLeftColor: '#E51937', borderRightColor: '#E51937',
+    backgroundColor: '#FFF5F5',
+  },
+  variantCardTop: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: '8px',
   },
-  variantLabel: {
-    color: tokens.colorBrandForeground1,
+  variantLabelBadge: {
+    fontWeight: 800,
+    fontSize: '13px',
+    color: '#E51937',
   },
-  variantStockText: {
+  variantCardMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    fontSize: '11px',
     color: tokens.colorNeutralForeground3,
+    gap: '8px',
   },
-  variantStockVal: {
+  variantMetaItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3px',
+  },
+  stockValZero: {
+    color: '#DC2626',
+    fontWeight: 700,
+  },
+  stockValNormal: {
+    color: '#15803D',
+    fontWeight: 700,
+  },
+  variantInputRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    marginTop: '2px',
+  },
+  variantInputPlus: {
+    fontSize: '12px',
+    fontWeight: 800,
+    color: '#E51937',
+  },
+  variantNumberInput: {
+    width: '64px',
+    height: '28px',
+    textAlign: 'center',
+    fontWeight: 700,
+    fontSize: '13px',
+    borderRadius: '4px',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    backgroundColor: tokens.colorNeutralBackground1,
     color: tokens.colorNeutralForeground1,
+    outline: 'none',
+    ':focus': {
+      borderTopColor: '#E51937', borderBottomColor: '#E51937',
+      borderLeftColor: '#E51937', borderRightColor: '#E51937',
+    },
   },
-  variantPriceText: {
-    color: tokens.colorNeutralForeground2,
+  variantUnitBadge: {
+    fontSize: '10px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+  },
+  variantProjected: {
+    fontSize: '10.5px',
+    color: '#15803D',
+    fontWeight: 600,
+    textAlign: 'right',
   },
   variantSkuBadge: {
     fontFamily: 'monospace',
-    fontSize: '10.5px',
+    fontSize: '10px',
     color: tokens.colorNeutralForeground3,
     backgroundColor: tokens.colorNeutralBackground3,
     padding: '1px 4px',
     borderRadius: '3px',
+  },
+  emptyCategoryNotice: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '12px',
+    padding: '12px 16px',
+    backgroundColor: '#FFFBEB',
+    borderRadius: '8px',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#FDE68A', borderBottomColor: '#FDE68A',
+    borderLeftColor: '#FDE68A', borderRightColor: '#FDE68A',
+    marginTop: '6px',
+    marginBottom: '6px',
+  },
+  emptyCategoryNoticeLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  emptyCategoryNoticeTitle: {
+    fontWeight: 700,
+    fontSize: '13px',
+    color: '#92400e',
+  },
+  emptyCategoryNoticeSub: {
+    fontSize: '12px',
+    color: '#b45309',
+    marginTop: '2px',
   },
   percentSuffix: {
     fontSize: '11px',
@@ -1090,6 +1255,7 @@ export function StockInView(): React.JSX.Element {
 
   const vendors = vendorStorage.getVendors();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Fetch Stock Movements: Offline-First Cache (<5ms)
   const { data: movements = [], isLoading } = useQuery<StockMovement[]>({
@@ -1103,6 +1269,23 @@ export function StockInView(): React.JSX.Element {
     queryFn: () => posApi.fetchProducts(),
     staleTime: 60000,
   });
+
+  // Fetch Categories for quick category filtering in form & logs table
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ['categories'],
+    queryFn: () => posApi.fetchCategories(),
+  });
+
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [tableCategoryFilter, setTableCategoryFilter] = useState<string>('all');
+
+  // Count products available in selected category
+  const categoryProducts = React.useMemo(() => {
+    if (!selectedCategory || selectedCategory === 'all') return allProducts;
+    return allProducts.filter(
+      (p) => (p.category || '').toLowerCase() === selectedCategory.toLowerCase()
+    );
+  }, [allProducts, selectedCategory]);
 
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
@@ -1182,6 +1365,58 @@ export function StockInView(): React.JSX.Element {
     return null;
   }, [watchedProductId, watchedProductName, allProducts]);
 
+  // Per-size / variant allocation state for stock receiving
+  const [variantStockInQty, setVariantStockInQty] = useState<Record<string, number>>({});
+
+  // Reset/re-initialize variant allocations whenever selected product changes
+  useEffect(() => {
+    if (selectedProduct && selectedProduct.variants && selectedProduct.variants.length > 0) {
+      const initialMap: Record<string, number> = {};
+      selectedProduct.variants.forEach((v) => {
+        initialMap[v.id] = 0;
+      });
+      setVariantStockInQty(initialMap);
+    } else {
+      setVariantStockInQty({});
+    }
+  }, [selectedProduct?.id]);
+
+  const handleVariantQtyChange = (variantId: string, qty: number) => {
+    setVariantStockInQty((prev) => {
+      const next = { ...prev, [variantId]: qty };
+      const totalUnits = Object.values(next).reduce((sum, q) => sum + (Number(q) || 0), 0);
+      if (totalUnits > 0) {
+        form.setValue('quantity', totalUnits, { shouldValidate: true });
+      }
+      return next;
+    });
+  };
+
+  const handleDistributeEvenly = () => {
+    if (!selectedProduct?.variants || selectedProduct.variants.length === 0) return;
+    const total = Number(form.getValues('quantity')) || 0;
+    const count = selectedProduct.variants.length;
+    if (total <= 0) return;
+
+    const basePerVariant = Math.floor(total / count);
+    const remainder = total % count;
+
+    const next: Record<string, number> = {};
+    selectedProduct.variants.forEach((v, index) => {
+      next[v.id] = basePerVariant + (index < remainder ? 1 : 0);
+    });
+    setVariantStockInQty(next);
+  };
+
+  const handleResetVariantQuantities = () => {
+    if (!selectedProduct?.variants) return;
+    const next: Record<string, number> = {};
+    selectedProduct.variants.forEach((v) => {
+      next[v.id] = 0;
+    });
+    setVariantStockInQty(next);
+  };
+
   const subTotal = watchedQty * watchedPrice;
   const discountAmount = Math.round((subTotal * watchedDiscountPercent) / 100);
   const lineTotal = Math.max(0, subTotal - discountAmount);
@@ -1203,9 +1438,31 @@ export function StockInView(): React.JSX.Element {
       const discAmt = Math.round((sub * (data.discountPercent || 0)) / 100);
       const calcTotal = Math.max(0, sub - discAmt);
 
+      // Prepare updated variants array if product has variants
+      let updatedVariants: ProductVariant[] | undefined;
+      const hasAnyVariantQty = Object.values(variantStockInQty).some((q) => q > 0);
+
+      if (selectedProduct && selectedProduct.variants && selectedProduct.variants.length > 0) {
+        updatedVariants = selectedProduct.variants.map((v) => {
+          const added = hasAnyVariantQty ? (Number(variantStockInQty[v.id]) || 0) : 0;
+          return {
+            ...v,
+            stock: Math.max(0, (Number(v.stock) || 0) + added),
+          };
+        });
+      }
+
+      const variantSummary = updatedVariants && hasAnyVariantQty
+        ? updatedVariants
+            .filter((v) => (variantStockInQty[v.id] || 0) > 0)
+            .map((v) => `${v.label} (+${variantStockInQty[v.id]})`)
+            .join(', ')
+        : null;
+
       const noteDetails = [
         data.vendorName ? `Vendor: ${data.vendorName}` : null,
         data.discountPercent && data.discountPercent > 0 ? `Discount: ${data.discountPercent}% (-PKR ${discAmt.toLocaleString()})` : null,
+        variantSummary ? `Sizes: ${variantSummary}` : null,
         `Line Total: PKR ${calcTotal.toLocaleString()}`,
       ]
         .filter(Boolean)
@@ -1220,6 +1477,7 @@ export function StockInView(): React.JSX.Element {
         unitCost: unitCost,
         reason: data.vendorName || 'Supplier Purchase',
         referenceInvoice: noteDetails,
+        variants: updatedVariants,
       });
 
       // Update Vendor Payable Balance in real-time
@@ -1243,6 +1501,7 @@ export function StockInView(): React.JSX.Element {
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-dashboard'] });
+      setVariantStockInQty({});
       form.reset({
         module: form.getValues('module') || 'minimart',
         selectedProductId: '',
@@ -1259,7 +1518,6 @@ export function StockInView(): React.JSX.Element {
   // Mutation to Update via Right Drawer
   const updateMutation = useMutation({
     mutationFn: async (data: EditFormData) => {
-      const base = await resolveApiUrl();
       const sub = data.quantity * data.unitPrice;
       const discAmt = Math.round((sub * (data.discountPercent || 0)) / 100);
       const calcTotal = Math.max(0, sub - discAmt);
@@ -1273,16 +1531,12 @@ export function StockInView(): React.JSX.Element {
         .filter(Boolean)
         .join(' • ');
 
-      await fetch(`${base}/api/stock-movements/${data.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName: data.productName,
-          quantity: data.quantity,
-          unitCost: data.unitPrice,
-          reason: data.vendorName || 'Supplier Purchase',
-          note: noteDetails,
-        }),
+      await posApi.updateStockMovement(data.id, {
+        productName: data.productName,
+        quantity: data.quantity,
+        unitCost: data.unitPrice,
+        reason: data.vendorName || 'Supplier Purchase',
+        note: noteDetails,
       });
 
       // Update Vendor Payable Balance difference
@@ -1316,10 +1570,7 @@ export function StockInView(): React.JSX.Element {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const target = movements.find((m) => m.id === id);
-      const base = await resolveApiUrl();
-      await fetch(`${base}/api/stock-movements/${id}`, {
-        method: 'DELETE',
-      });
+      await posApi.deleteStockMovement(id);
 
       // Revert vendor payable balance if linked
       if (target && target.reason && target.reason !== 'Supplier Purchase') {
@@ -1793,6 +2044,16 @@ export function StockInView(): React.JSX.Element {
     }
   };
 
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} selected stock in records?`)) {
+      for (const id of selectedIds) {
+        await deleteMutation.mutateAsync(id);
+      }
+      setSelectedIds([]);
+    }
+  };
+
   // Only Inflow Movements (filtered by licensed modules)
   const stockInMovements = movements.filter((m) => {
     if (m.type !== 'in') return false;
@@ -1801,17 +2062,25 @@ export function StockInView(): React.JSX.Element {
     return true;
   });
 
-  // Filtered List by Tab and Search Query
+  // Filtered List by Tab, Search Query and Category Filter
   const filteredMovements = stockInMovements.filter((m) => {
     if (inventoryTab === 'fastfood' && m.module !== 'fastfood') return false;
     if (inventoryTab === 'minimart' && m.module === 'fastfood') return false;
+
+    const matchedProd = allProducts.find((p) => p.id === m.productId || p.name.toLowerCase() === m.productName.toLowerCase());
+    if (tableCategoryFilter !== 'all') {
+      if ((matchedProd?.category || '').toLowerCase() !== tableCategoryFilter.toLowerCase()) {
+        return false;
+      }
+    }
 
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
       m.productName.toLowerCase().includes(q) ||
       (m.reason && m.reason.toLowerCase().includes(q)) ||
-      (m.note && m.note.toLowerCase().includes(q))
+      (m.note && m.note.toLowerCase().includes(q)) ||
+      (matchedProd?.category && matchedProd.category.toLowerCase().includes(q))
     );
   });
 
@@ -1907,7 +2176,7 @@ export function StockInView(): React.JSX.Element {
         </div>
 
         <form onSubmit={form.handleSubmit(onSave)} className={styles.form}>
-          {/* Row 1: Vendor & Product Select */}
+          {/* Row 1: Vendor, Category & Product Select */}
           <div className={styles.row1}>
             <div>
               <Controller
@@ -1933,6 +2202,19 @@ export function StockInView(): React.JSX.Element {
             </div>
 
             <div>
+              <CustomSelect
+                label="FILTER BY CATEGORY"
+                placeholder="All Categories"
+                value={selectedCategory}
+                options={[
+                  { value: 'all', label: 'All Categories' },
+                  ...categories.map((c) => ({ value: c.name, label: c.name }))
+                ]}
+                onChange={(val) => setSelectedCategory(val || 'all')}
+              />
+            </div>
+
+            <div>
               <Controller
                 control={form.control}
                 name="productName"
@@ -1942,12 +2224,16 @@ export function StockInView(): React.JSX.Element {
                     label="ITEM SELECT"
                     required
                     filterModule={form.watch('module')}
+                    filterCategory={selectedCategory}
                     placeholder="Search by product name, SKU or barcode..."
                     value={field.value || ''}
                     onChange={(name, prod) => {
                       field.onChange(name);
                       if (prod) {
                         form.setValue('selectedProductId', prod.id);
+                        if (prod.category && selectedCategory === 'all') {
+                          setSelectedCategory(prod.category);
+                        }
                         if (prod.costPrice !== undefined && prod.costPrice !== null) {
                           form.setValue('unitPrice', prod.costPrice);
                         } else if (prod.price) {
@@ -1963,6 +2249,35 @@ export function StockInView(): React.JSX.Element {
               />
             </div>
           </div>
+
+          {/* Empty Category Notice Banner */}
+          {selectedCategory !== 'all' && categoryProducts.length === 0 && (
+            <div className={styles.emptyCategoryNotice}>
+              <div className={styles.emptyCategoryNoticeLeft}>
+                <Warning20Regular style={{ width: 22, height: 22, color: '#D97706', flexShrink: 0 }} />
+                <div>
+                  <div className={styles.emptyCategoryNoticeTitle}>
+                    No products found in category &quot;{selectedCategory}&quot;
+                  </div>
+                  <div className={styles.emptyCategoryNoticeSub}>
+                    Is category mein abhi tak koi item register nahi hai. Stock In karne ke liye pehle is category mein naya product add karein:
+                  </div>
+                </div>
+              </div>
+              <Button
+                appearance="primary"
+                size="small"
+                icon={<Add20Regular />}
+                onClick={() => {
+                  navigate(
+                    `/catalog/new?category=${encodeURIComponent(selectedCategory)}&module=${form.getValues('module') || 'minimart'}&returnUrl=/inventory/stock-in`
+                  );
+                }}
+              >
+                + Add Product in &quot;{selectedCategory}&quot;
+              </Button>
+            </div>
+          )}
 
           {/* Selected Product Live Stock & Details Card */}
           {selectedProduct && (
@@ -2083,39 +2398,101 @@ export function StockInView(): React.JSX.Element {
                 </div>
               </div>
 
-              {/* Portion Sizes / Variants details if configured */}
+              {/* Portion Sizes / Variants details & Stock In allocation */}
               {selectedProduct.variants && selectedProduct.variants.length > 0 && (
                 <div className={styles.variantsWrap}>
-                  <div className={styles.variantsTitle}>
-                    Configured Portion Sizes / Variants ({selectedProduct.variants.length})
-                  </div>
-                  <div className={styles.variantsList}>
-                    {selectedProduct.variants.map((v) => (
-                      <div
-                        key={v.id}
-                        className={styles.variantItem}
+                  <div className={styles.variantsHeaderRow}>
+                    <div className={styles.variantsTitle}>
+                      <span>Portion Sizes / Variants Stock In Allocation ({selectedProduct.variants.length} Sizes)</span>
+                    </div>
+                    <div className={styles.variantHeaderActions}>
+                      <button
+                        type="button"
+                        className={styles.variantActionBtn}
+                        onClick={handleDistributeEvenly}
+                        title="Distribute current total QTY evenly across all sizes"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       >
-                        <strong className={styles.variantLabel}>{v.label}</strong>
-                        <span className={styles.variantStockText}>
-                          Stock: <strong className={styles.variantStockVal}>{v.stock ?? 0}</strong>
-                        </span>
-                        <span className={styles.variantPriceText}>
-                          Price:{' '}
-                          <strong>
-                            PKR{' '}
-                            {(v.price !== undefined && v.price > 0
-                              ? v.price
-                              : selectedProduct.price + (v.priceDelta || 0)
-                            ).toLocaleString()}
-                          </strong>
-                        </span>
-                        {v.skuCode && (
-                          <span className={styles.variantSkuBadge}>
-                            {v.skuCode}
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                        <Flash20Regular style={{ width: 14, height: 14 }} />
+                        Distribute Total Evenly
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.variantActionBtnSubtle}
+                        onClick={handleResetVariantQuantities}
+                        title="Reset all size addition quantities to 0"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <ArrowSync20Regular style={{ width: 14, height: 14 }} />
+                        Reset Sizes
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.variantsList}>
+                    {selectedProduct.variants.map((v) => {
+                      const currentStock = v.stock ?? 0;
+                      const added = variantStockInQty[v.id] || 0;
+                      const projected = currentStock + added;
+                      const effectivePrice =
+                        v.price !== undefined && v.price > 0
+                          ? v.price
+                          : selectedProduct.price + (v.priceDelta || 0);
+
+                      return (
+                        <div
+                          key={v.id}
+                          className={mergeClasses(
+                            styles.variantCard,
+                            added > 0 && styles.variantCardActive
+                          )}
+                        >
+                          <div className={styles.variantCardTop}>
+                            <span className={styles.variantLabelBadge}>{v.label}</span>
+                            {v.skuCode && (
+                              <span className={styles.variantSkuBadge}>
+                                {v.skuCode}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className={styles.variantCardMeta}>
+                            <div className={styles.variantMetaItem}>
+                              <span>Stock:</span>
+                              <strong className={currentStock <= 0 ? styles.stockValZero : styles.stockValNormal}>
+                                {currentStock}
+                              </strong>
+                            </div>
+                            <div className={styles.variantMetaItem}>
+                              <span>Price:</span>
+                              <strong>Rs. {effectivePrice.toLocaleString()}</strong>
+                            </div>
+                          </div>
+
+                          <div className={styles.variantInputRow}>
+                            <span className={styles.variantInputPlus}>+</span>
+                            <input
+                              type="number"
+                              min="0"
+                              className={styles.variantNumberInput}
+                              placeholder="0"
+                              value={variantStockInQty[v.id] !== undefined && variantStockInQty[v.id] > 0 ? variantStockInQty[v.id] : ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                                handleVariantQtyChange(v.id, val);
+                              }}
+                            />
+                            <span className={styles.variantUnitBadge}>{selectedProduct.unit || 'PAIR'}</span>
+                          </div>
+
+                          {added > 0 && (
+                            <div className={styles.variantProjected}>
+                              New: {projected} {selectedProduct.unit || 'PAIR'}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -2299,7 +2676,7 @@ export function StockInView(): React.JSX.Element {
           <div className={styles.searchWrap}>
             <CustomInput
               label="Search Stock In Logs"
-              placeholder="Search by product, reason, note..."
+              placeholder="Search by product, category, reason, note..."
               icon={<Search20Regular />}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -2307,9 +2684,34 @@ export function StockInView(): React.JSX.Element {
             />
           </div>
 
-          <Caption1 className={styles.countCaption}>
-            Total {filteredMovements.length} Stock In Records
-          </Caption1>
+          <div style={{ minWidth: '220px' }}>
+            <CustomSelect
+              label="FILTER BY CATEGORY"
+              value={tableCategoryFilter}
+              options={[
+                { value: 'all', label: 'All Categories' },
+                ...categories.map((c) => ({ value: c.name, label: c.name })),
+              ]}
+              onChange={(val) => setTableCategoryFilter(val || 'all')}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {selectedIds.length > 0 && (
+              <Button
+                appearance="primary"
+                size="small"
+                icon={<Delete20Regular />}
+                onClick={handleBatchDelete}
+                style={{ backgroundColor: '#D13438', color: '#FFFFFF', fontWeight: 600 }}
+              >
+                Delete Selected ({selectedIds.length})
+              </Button>
+            )}
+            <Caption1 className={styles.countCaption}>
+              Total {filteredMovements.length} Stock In Records
+            </Caption1>
+          </div>
         </div>
 
         {/* Table with Checkbox, Item, Qty, Unit Price, Line Total, Vendor, Date, and Actions */}
@@ -2341,6 +2743,9 @@ export function StockInView(): React.JSX.Element {
                   const isChecked = selectedIds.includes(mov.id);
                   const dt = new Date(mov.date);
                   const totalLine = (mov.unitCost || 0) * (mov.quantity || 0);
+                  const matchedProd = allProducts.find(
+                    (p) => p.id === mov.productId || p.name.toLowerCase() === mov.productName.toLowerCase()
+                  );
 
                   return (
                     <tr key={mov.id} className={styles.tableRow}>
@@ -2348,9 +2753,15 @@ export function StockInView(): React.JSX.Element {
                         <Checkbox checked={isChecked} onChange={() => toggleSelectRow(mov.id)} />
                       </td>
                       <td className={styles.td}>
-                        <span className={styles.logProdName}>
-                          {mov.productName}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span className={styles.logProdName}>
+                            {mov.productName}
+                          </span>
+                          <span className={styles.categoryBadge}>
+                            <Folder20Regular style={{ width: 12, height: 12, color: '#2563EB' }} />
+                            <span>{matchedProd?.category || 'General'}</span>
+                          </span>
+                        </div>
                       </td>
                       <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         <Badge appearance="tint" color="success" className={styles.badgeBold}>
@@ -2376,35 +2787,35 @@ export function StockInView(): React.JSX.Element {
                       <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         {/* ── ACTION ICONS: Print, Edit (Right Drawer), Delete ── */}
                         <div className={styles.actionGroup}>
-                          <Tooltip content="Print Receiving Slip" relationship="label" positioning="above">
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<Print20Regular className={styles.iconPrint} />}
-                              onClick={() => handleOpenPrint(mov)}
-                              className={styles.actionBtnPrint}
-                            />
-                          </Tooltip>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Print20Regular className={styles.iconPrint} />}
+                            onClick={() => handleOpenPrint(mov)}
+                            className={styles.actionBtnPrint}
+                            title="Print Receiving Slip"
+                            aria-label="Print Receiving Slip"
+                          />
 
-                          <Tooltip content="Edit Invoice (Right Drawer)" relationship="label" positioning="above">
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<Edit20Regular className={styles.iconEdit} />}
-                              onClick={() => handleOpenEdit(mov)}
-                              className={styles.actionBtnEdit}
-                            />
-                          </Tooltip>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Edit20Regular className={styles.iconEdit} />}
+                            onClick={() => handleOpenEdit(mov)}
+                            className={styles.actionBtnEdit}
+                            title="Edit Invoice (Right Drawer)"
+                            aria-label="Edit Invoice (Right Drawer)"
+                          />
 
-                          <Tooltip content="Delete Record" relationship="label" positioning="above">
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<Delete20Regular className={styles.iconDelete} />}
-                              onClick={() => handleDelete(mov.id)}
-                              className={styles.actionBtnDelete}
-                            />
-                          </Tooltip>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Delete20Regular className={styles.iconDelete} />}
+                            onClick={() => handleDelete(mov.id)}
+                            className={styles.actionBtnDelete}
+                            title="Delete Record"
+                            aria-label="Delete Record"
+                          />
                         </div>
                       </td>
                     </tr>

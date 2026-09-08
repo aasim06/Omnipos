@@ -7,6 +7,7 @@ export interface CustomSelectOption {
   label: string;
   icon?: string | React.ReactNode;
   balance?: string | number;
+  disabled?: boolean;
 }
 
 export interface CustomSelectProps {
@@ -388,9 +389,11 @@ export function CustomSelect({
                 <div
                   key={opt.value}
                   onClick={() => {
+                    if (opt.disabled) return;
                     onChange(opt.value);
                     setIsOpen(false);
                   }}
+                  style={opt.disabled ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
                   className={mergeClasses(
                     styles.optionItem,
                     isSelected && styles.optionItemSelected
