@@ -1457,6 +1457,72 @@ export const posApi = {
   },
 
   /**
+   * Database Backup & Recovery operations
+   */
+  async getBackupStatus(): Promise<{ dbPath: string; dbSize: number; lastBackup?: string | null; lastBackupPath?: string | null; lastBackupSize?: number | null; isElectron: boolean }> {
+    if (typeof window !== 'undefined' && window.posApi?.backup?.getStatus) {
+      const status = await window.posApi.backup.getStatus();
+      return { ...status, isElectron: true };
+    }
+    return {
+      dbPath: 'IndexedDB (Browser Offline Storage)',
+      dbSize: 0,
+      lastBackup: null,
+      lastBackupPath: null,
+      lastBackupSize: null,
+      isElectron: false,
+    };
+  },
+
+  async createBackup(promptDialog: boolean = true): Promise<{ ok: boolean; path?: string; size?: number; cancelled?: boolean; error?: string }> {
+    if (typeof window !== 'undefined' && window.posApi?.backup?.create) {
+      return await window.posApi.backup.create({ promptDialog });
+    }
+
+    // Web Browser Fallback: dump all Dexie tables into JSON file download
+    try {
+      const dump = {
+        app: 'Omnipos',
+        version: '2.0',
+        exportedAt: new Date().toISOString(),
+        products: await offlineDb.products.toArray(),
+        categories: await offlineDb.categories.toArray(),
+        orders: await offlineDb.orders.toArray(),
+        refunds: await offlineDb.refunds.toArray(),
+        khatas: await offlineDb.khatas.toArray(),
+        khataTransactions: await offlineDb.khataTransactions.toArray(),
+        expenses: await offlineDb.expenses.toArray(),
+      };
+      const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Omnipos_Backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return { ok: true, path: a.download, size: blob.size };
+    } catch (e: any) {
+      return { ok: false, error: e.message || 'Failed to download backup' };
+    }
+  },
+
+  async restoreBackup(): Promise<{ ok: boolean; message?: string; cancelled?: boolean; error?: string }> {
+    if (typeof window !== 'undefined' && window.posApi?.backup?.restore) {
+      return await window.posApi.backup.restore();
+    }
+    return { ok: false, error: 'Database restore is supported in the Windows Desktop application.' };
+  },
+
+  async exportJsonBackup(): Promise<{ ok: boolean; path?: string; counts?: any; cancelled?: boolean; error?: string }> {
+    if (typeof window !== 'undefined' && window.posApi?.backup?.exportJson) {
+      return await window.posApi.backup.exportJson();
+    }
+    return await this.createBackup(true);
+  },
+
+  /**
    * Complete database wipe: removes all products, categories, orders, khata,
    * expenses, and cash drawer data across Dexie IndexedDB, LocalStorage, and SQLite backend.
    * Keeps strictly the Admin user account.

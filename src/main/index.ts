@@ -6,6 +6,7 @@ import { disconnectPrisma, initializeDatabase } from './database/client';
 import { startBackendServer, type BackendServer } from './backend/server';
 import { registerLicenseIpc } from './license/license.ipc';
 import { registerPrintIpc } from './print/print.ipc';
+import { registerBackupIpc } from './backup/backup.ipc';
 
 app.setName('Omnipos');
 app.setPath('userData', join(app.getPath('appData'), 'Omnipos'));
@@ -93,6 +94,7 @@ app.whenReady().then(async () => {
     // 3. Register IPC handlers
     registerLicenseIpc();
     registerPrintIpc();
+    registerBackupIpc();
 
     // 4. Create Main Desktop Window
     createWindow();

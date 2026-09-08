@@ -25,6 +25,12 @@ export interface PosApi {
   };
   getPrinters: () => Promise<any[]>;
   printReceipt: (options?: { printerName?: string; silent?: boolean }) => Promise<{ ok: boolean; error?: string }>;
+  backup: {
+    create: (options?: { promptDialog?: boolean }) => Promise<{ ok: boolean; path?: string; size?: number; cancelled?: boolean; error?: string }>;
+    restore: (filePath?: string) => Promise<{ ok: boolean; message?: string; cancelled?: boolean; error?: string }>;
+    exportJson: () => Promise<{ ok: boolean; path?: string; counts?: any; cancelled?: boolean; error?: string }>;
+    getStatus: () => Promise<{ dbPath: string; dbSize: number; lastBackup?: string | null; lastBackupPath?: string | null; lastBackupSize?: number | null }>;
+  };
 }
 
 const posApi: PosApi = {
@@ -42,6 +48,12 @@ const posApi: PosApi = {
   },
   getPrinters: () => ipcRenderer.invoke('print:get-printers'),
   printReceipt: (options) => ipcRenderer.invoke('print:receipt', options),
+  backup: {
+    create: (options) => ipcRenderer.invoke('backup:create', options),
+    restore: (filePath) => ipcRenderer.invoke('backup:restore', filePath),
+    exportJson: () => ipcRenderer.invoke('backup:export-json'),
+    getStatus: () => ipcRenderer.invoke('backup:get-status'),
+  },
 };
 
 try {

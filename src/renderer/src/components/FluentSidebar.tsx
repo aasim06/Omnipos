@@ -51,7 +51,9 @@ import {
   DocumentTableSearch20Regular,
   Database20Regular,
   ArrowSync20Filled,
+  ArrowDownload20Regular,
 } from '@fluentui/react-icons';
+import { posApi } from '@/lib/api';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useLicense, LicenseModules } from '@/features/auth/LicenseModulesContext';
 import { MODULE_TO_PERMISSION } from './RouteAccessGate';
@@ -1089,6 +1091,23 @@ export function FluentSidebar(): React.JSX.Element {
     }
   };
 
+  const handleQuickBackup = async () => {
+    setStorageStatusMsg('Creating database backup (.db)...');
+    try {
+      const res = await posApi.createBackup(true);
+      if (res.ok && res.path) {
+        setStorageStatusMsg(`Database backup saved successfully!`);
+        setTimeout(() => setStorageStatusMsg(''), 4000);
+      } else if (!res.cancelled) {
+        setStorageStatusMsg(res.error || 'Backup creation failed.');
+      } else {
+        setStorageStatusMsg('');
+      }
+    } catch (e: any) {
+      setStorageStatusMsg(e.message || 'Backup failed');
+    }
+  };
+
   // Collapsed state persisted in localStorage
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('omnipos_sidebar_collapsed') === 'true';
@@ -1769,6 +1788,26 @@ export function FluentSidebar(): React.JSX.Element {
                 className={mergeClasses(styles.storageCloseBtn, isDark ? styles.storageCloseDark : styles.storageCloseLight)}
               >
                 Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsStorageModalOpen(false);
+                  navigate('/settings', { state: { tab: 'backup' } });
+                }}
+                className={mergeClasses(styles.storageCloseBtn, isDark ? styles.storageCloseDark : styles.storageCloseLight)}
+                style={{ fontWeight: 600 }}
+              >
+                <span>Full Backup Manager</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleQuickBackup}
+                className={styles.storageResyncBtn}
+                style={{ backgroundColor: '#0078D4', boxShadow: '0 2px 8px rgba(0, 120, 212, 0.3)' }}
+              >
+                <ArrowDownload20Regular className={styles.icon15} />
+                <span>Backup Now (.db)</span>
               </button>
               <button
                 type="button"

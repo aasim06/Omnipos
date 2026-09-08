@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   makeStyles,
   mergeClasses,
@@ -37,6 +38,15 @@ import {
   LockClosed20Regular,
   Checkmark20Regular,
   Dismiss20Regular,
+  Database24Regular,
+  Database20Regular,
+  ArrowDownload20Regular,
+  ArrowUpload20Regular,
+  ArrowSync20Regular,
+  FolderOpen20Regular,
+  Warning20Regular,
+  ArrowClockwise20Regular,
+  DocumentTableSearch20Regular,
 } from '@fluentui/react-icons';
 import { posApi } from '@/lib/api';
 import { storage, KEYS } from '@/lib/storage';
@@ -257,6 +267,48 @@ const useStyles = makeStyles({
   cardIconBoxRed: {
     backgroundColor: 'rgba(229, 25, 55, 0.1)',
     color: '#E51937',
+  },
+  cardIconBoxBlue: {
+    backgroundColor: 'rgba(0, 120, 212, 0.1)',
+    color: '#0078D4',
+  },
+  cardIconBoxGreen: {
+    backgroundColor: 'rgba(16, 124, 65, 0.1)',
+    color: '#107C41',
+  },
+  cardIconBoxOrange: {
+    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    color: '#D97706',
+  },
+  cardIconBoxPurple: {
+    backgroundColor: 'rgba(136, 23, 152, 0.1)',
+    color: '#881798',
+  },
+  backupGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gap: '16px',
+  },
+  backupActionCard: {
+    padding: '20px',
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    boxShadow: tokens.shadow2,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    gap: '14px',
+    transition: 'all 0.15s ease',
+    ':hover': {
+      boxShadow: tokens.shadow4,
+      borderTopColor: tokens.colorNeutralStroke1Hover,
+      borderBottomColor: tokens.colorNeutralStroke1Hover,
+      borderLeftColor: tokens.colorNeutralStroke1Hover,
+      borderRightColor: tokens.colorNeutralStroke1Hover,
+    },
   },
   icon20: {
     width: '20px',
@@ -769,8 +821,110 @@ export function AdminSettingsView(): React.JSX.Element {
   const [cloudUrl, setCloudUrl] = useState('https://omni-server-seven.vercel.app');
   const [licenseMsg, setLicenseMsg] = useState('');
 
+  const location = useLocation();
+
   // ── Tab State ──
-  const [activeTab, setActiveTab] = useState<'staff' | 'profile' | 'hardware'>('staff');
+  const [activeTab, setActiveTab] = useState<'staff' | 'profile' | 'hardware' | 'backup'>(() => {
+    return (location.state as any)?.tab || 'staff';
+  });
+
+  useEffect(() => {
+    if ((location.state as any)?.tab) {
+      setActiveTab((location.state as any).tab);
+    }
+  }, [location.state]);
+
+  // ── Database Backup State ──
+  const [backupStatus, setBackupStatus] = useState<{
+    dbPath: string;
+    dbSize: number;
+    lastBackup?: string | null;
+    lastBackupPath?: string | null;
+    lastBackupSize?: number | null;
+    isElectron: boolean;
+  } | null>(null);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupMsg, setBackupMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
+
+  const refreshBackupStatus = async () => {
+    try {
+      const status = await posApi.getBackupStatus();
+      setBackupStatus(status);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    refreshBackupStatus();
+  }, []);
+
+  const handleCreateDbBackup = async (promptDialog: boolean = true) => {
+    setBackupLoading(true);
+    setBackupMsg(null);
+    try {
+      const res = await posApi.createBackup(promptDialog);
+      if (res.ok && res.path) {
+        setBackupMsg({
+          type: 'success',
+          text: `Database backup created successfully: ${res.path}`,
+        });
+        await refreshBackupStatus();
+      } else if (!res.cancelled) {
+        setBackupMsg({ type: 'error', text: res.error || 'Failed to create backup.' });
+      }
+    } catch (err: any) {
+      setBackupMsg({ type: 'error', text: err.message || 'Backup failed.' });
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleExportJsonArchive = async () => {
+    setBackupLoading(true);
+    setBackupMsg(null);
+    try {
+      const res = await posApi.exportJsonBackup();
+      if (res.ok && res.path) {
+        setBackupMsg({
+          type: 'success',
+          text: `Complete JSON archive exported: ${res.path}`,
+        });
+      } else if (!res.cancelled) {
+        setBackupMsg({ type: 'error', text: res.error || 'Failed to export JSON.' });
+      }
+    } catch (err: any) {
+      setBackupMsg({ type: 'error', text: err.message || 'JSON export failed.' });
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleExecuteRestore = async () => {
+    setIsRestoreConfirmOpen(false);
+    setBackupLoading(true);
+    setBackupMsg(null);
+    try {
+      const res = await posApi.restoreBackup();
+      if (res.ok) {
+        setBackupMsg({
+          type: 'success',
+          text: res.message || 'Database restored successfully! Please restart or reload the app.',
+        });
+        await refreshBackupStatus();
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else if (!res.cancelled) {
+        setBackupMsg({ type: 'error', text: res.error || 'Failed to restore database.' });
+      }
+    } catch (err: any) {
+      setBackupMsg({ type: 'error', text: err.message || 'Restore failed.' });
+    } finally {
+      setBackupLoading(false);
+    }
+  };
 
   // ── User Management State ──
   const [users, setUsers] = useState<AppUser[]>(() => userStorage.getUsers());
@@ -1023,6 +1177,22 @@ export function AdminSettingsView(): React.JSX.Element {
         >
           <Print24Regular className={mergeClasses(styles.tabIcon, activeTab === 'hardware' && styles.tabIconActive)} />
           <span>Printer, Drawer &amp; Billing</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('backup')}
+          className={mergeClasses(styles.tabButton, activeTab === 'backup' && styles.tabButtonActive)}
+        >
+          <Database24Regular className={mergeClasses(styles.tabIcon, activeTab === 'backup' && styles.tabIconActive)} />
+          <span>Database &amp; Data Backup</span>
+          <Badge
+            appearance="tint"
+            color="success"
+            className={activeTab === 'backup' ? styles.tabBadgeActive : styles.tabBadge}
+          >
+            SQLite WAL
+          </Badge>
         </button>
       </div>
 
@@ -1405,6 +1575,258 @@ export function AdminSettingsView(): React.JSX.Element {
           </div>
         </div>
       )}
+
+      {/* ── TAB 4: Database Backup & Recovery (SQLite & JSON) ── */}
+      {activeTab === 'backup' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Top Status Card */}
+          <div className={styles.card}>
+            <div className={mergeClasses(styles.cardHeader, styles.cardHeaderBetween)}>
+              <div className={styles.headerFlex}>
+                <div className={mergeClasses(styles.cardIconBox, styles.cardIconBoxGreen)}>
+                  <Database24Regular className={styles.icon20} />
+                </div>
+                <div className={styles.headerTextCol}>
+                  <div className={styles.headerTitleRow}>
+                    <Body1 className={styles.headerTitle}>
+                      Windows Offline Database &amp; Data Safety
+                    </Body1>
+                    <Badge appearance="tint" color="success">
+                      SQLite 3 (WAL Mode Active)
+                    </Badge>
+                  </div>
+                  <Caption1 className={styles.headerSubtitle}>
+                    Your business data is stored locally on this machine with immediate atomic writes.
+                  </Caption1>
+                </div>
+              </div>
+
+              <Button
+                appearance="outline"
+                size="small"
+                icon={<ArrowSync20Regular />}
+                onClick={refreshBackupStatus}
+              >
+                Refresh Database Status
+              </Button>
+            </div>
+
+            <div className={styles.cardBody} style={{ gap: '14px' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                  gap: '14px',
+                  backgroundColor: tokens.colorNeutralBackground3,
+                  padding: '16px',
+                  borderRadius: tokens.borderRadiusMedium,
+                }}
+              >
+                <div>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                    Active Database File:
+                  </Caption1>
+                  <Text size={300} weight="bold" style={{ wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                    {backupStatus?.dbPath || 'Loading...'}
+                  </Text>
+                </div>
+
+                <div>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                    Database File Size:
+                  </Caption1>
+                  <Text size={300} weight="bold" style={{ color: '#0078D4' }}>
+                    {backupStatus?.dbSize ? `${(backupStatus.dbSize / (1024 * 1024)).toFixed(2)} MB` : 'Calculating...'}
+                  </Text>
+                </div>
+
+                <div>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                    Last Backup Created:
+                  </Caption1>
+                  <Text size={300} weight="bold" style={{ color: backupStatus?.lastBackup ? '#107C41' : tokens.colorNeutralForeground4 }}>
+                    {backupStatus?.lastBackup ? new Date(backupStatus.lastBackup).toLocaleString() : 'No backup taken yet'}
+                  </Text>
+                </div>
+              </div>
+
+              {backupMsg && (
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: backupMsg.type === 'success' ? 'rgba(16, 124, 65, 0.1)' : 'rgba(209, 52, 56, 0.1)',
+                    border: `1px solid ${backupMsg.type === 'success' ? 'rgba(16, 124, 65, 0.3)' : 'rgba(209, 52, 56, 0.3)'}`,
+                    color: backupMsg.type === 'success' ? '#107C41' : '#D13438',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                  }}
+                >
+                  {backupMsg.type === 'success' ? <Checkmark20Regular /> : <Warning20Regular />}
+                  <span>{backupMsg.text}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Backup & Restore Action Grid */}
+          <div className={styles.backupGrid}>
+            {/* Card 1: SQLite Full Backup */}
+            <div className={styles.backupActionCard}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className={mergeClasses(styles.cardIconBox, styles.cardIconBoxBlue)}>
+                    <ArrowDownload20Regular className={styles.icon20} />
+                  </div>
+                  <Badge appearance="filled" color="success">Recommended</Badge>
+                </div>
+                <Body1 style={{ fontWeight: 700, fontSize: '15px' }}>
+                  1-Click SQLite Database Backup (.db)
+                </Body1>
+                <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.5 }}>
+                  Creates a clean, 100% full snapshot of your active SQLite database file including all sales invoices, products, stock levels, khata ledgers, and settings.
+                </Caption1>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                <Button
+                  appearance="primary"
+                  icon={<ArrowDownload20Regular />}
+                  disabled={backupLoading}
+                  onClick={() => handleCreateDbBackup(true)}
+                  style={{ backgroundColor: '#0078D4', fontWeight: 700 }}
+                >
+                  {backupLoading ? 'Backing up...' : 'Save Backup to USB / Drive (.db)'}
+                </Button>
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  disabled={backupLoading}
+                  onClick={() => handleCreateDbBackup(false)}
+                >
+                  Quick Save to Local Backups Folder
+                </Button>
+              </div>
+            </div>
+
+            {/* Card 2: JSON Archive Export */}
+            <div className={styles.backupActionCard}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className={mergeClasses(styles.cardIconBox, styles.cardIconBoxPurple)}>
+                    <DocumentTableSearch20Regular className={styles.icon20} />
+                  </div>
+                  <Badge appearance="tint" color="brand">Universal Archive</Badge>
+                </div>
+                <Body1 style={{ fontWeight: 700, fontSize: '15px' }}>
+                  Export Complete JSON Archive (.json)
+                </Body1>
+                <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.5 }}>
+                  Exports all tables as a readable and portable JSON archive. Useful for custom analytics, third-party audits, or cross-platform migrations.
+                </Caption1>
+              </div>
+
+              <div style={{ marginTop: '10px' }}>
+                <Button
+                  appearance="outline"
+                  icon={<DocumentTableSearch20Regular />}
+                  disabled={backupLoading}
+                  onClick={handleExportJsonArchive}
+                  style={{ width: '100%', fontWeight: 600 }}
+                >
+                  Export Data as JSON (.json)
+                </Button>
+              </div>
+            </div>
+
+            {/* Card 3: Database Restore */}
+            <div className={styles.backupActionCard}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className={mergeClasses(styles.cardIconBox, styles.cardIconBoxOrange)}>
+                    <ArrowUpload20Regular className={styles.icon20} />
+                  </div>
+                  <Badge appearance="tint" color="danger">Restore Safeguard</Badge>
+                </div>
+                <Body1 style={{ fontWeight: 700, fontSize: '15px' }}>
+                  Restore Database from Backup (.db)
+                </Body1>
+                <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.5 }}>
+                  Restore from an existing backup file. A pre-restore safety copy of your current database is automatically created before replacement.
+                </Caption1>
+              </div>
+
+              <div style={{ marginTop: '10px' }}>
+                <Button
+                  appearance="outline"
+                  icon={<ArrowUpload20Regular />}
+                  disabled={backupLoading}
+                  onClick={() => setIsRestoreConfirmOpen(true)}
+                  style={{ width: '100%', borderColor: '#D97706', color: '#D97706', fontWeight: 700 }}
+                >
+                  Restore from .DB Backup...
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Help Tip Banner */}
+          <div
+            style={{
+              padding: '14px 18px',
+              borderRadius: tokens.borderRadiusMedium,
+              backgroundColor: tokens.colorNeutralBackground3,
+              border: `1px solid ${tokens.colorNeutralStroke2}`,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+            }}
+          >
+            <Info16Regular style={{ color: '#0078D4', marginTop: '2px', flexShrink: 0 }} />
+            <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.6 }}>
+              <strong>Best Practice for Point of Sale Safety:</strong> It is strongly recommended to copy your backup file to an external USB flash drive or cloud-synced folder (such as OneDrive or Google Drive) at least once a week or before updating software.
+            </Caption1>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Restore Database Confirmation Dialog ────── */}
+      <Dialog open={isRestoreConfirmOpen} onOpenChange={(_, d) => setIsRestoreConfirmOpen(d.open)}>
+        <DialogSurface style={{ maxWidth: '460px' }}>
+          <DialogBody>
+            <DialogTitle>Confirm Database Restore</DialogTitle>
+            <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#D97706' }}>
+                <Warning20Regular style={{ width: 28, height: 28 }} />
+                <Text weight="bold" size={300}>
+                  Are you sure you want to restore?
+                </Text>
+              </div>
+              <Text size={200} style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.5 }}>
+                Restoring will replace your current SQLite database with the selected backup file. Any recent sales or transactions made after that backup will be overwritten.
+              </Text>
+              <div style={{ padding: '10px', borderRadius: '6px', backgroundColor: tokens.colorNeutralBackground3, fontSize: '11.5px', color: tokens.colorNeutralForeground2 }}>
+                A safety fallback snapshot of your current database will be saved automatically as <code>pos.db.pre_restore_safety</code>.
+              </div>
+            </DialogContent>
+            <DialogActions style={{ marginTop: '16px' }}>
+              <Button appearance="secondary" onClick={() => setIsRestoreConfirmOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                appearance="primary"
+                style={{ backgroundColor: '#D13438' }}
+                onClick={handleExecuteRestore}
+              >
+                Proceed &amp; Select Backup File (.db)
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
       {/* ── Status Bar (read-only system info) ─────────────── */}
       <div className={styles.statusBar}>
