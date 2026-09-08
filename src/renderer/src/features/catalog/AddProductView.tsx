@@ -1258,16 +1258,20 @@ export function AddProductView(): React.JSX.Element {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
-  const { can } = useLicense();
+  const { can, businessProfiles = ['standard'] } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
 
-  const defaultModule =
-    ((searchParams.get('module') as ModuleKey) && can(searchParams.get('module') as any))
-      ? (searchParams.get('module') as ModuleKey)
-      : hasFastFood
+  const rawUrlModule = searchParams.get('module');
+  const normalizedUrlModule: ModuleKey | null =
+    rawUrlModule === 'minimart' || rawUrlModule === 'omnimart'
+      ? 'minimart'
+      : rawUrlModule === 'fastfood'
       ? 'fastfood'
-      : 'minimart';
+      : null;
+
+  const defaultModule: ModuleKey =
+    normalizedUrlModule || (hasFastFood ? 'fastfood' : 'minimart');
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
@@ -1461,7 +1465,7 @@ export function AddProductView(): React.JSX.Element {
   const [bulkStoragePrice, setBulkStoragePrice] = useState('');
   const [bulkBakeryPrice, setBulkBakeryPrice] = useState('');
   const [activeDepartmentTab, setActiveDepartmentTab] = useState<'fastfood' | 'minimart'>(
-    defaultModule === 'fastfood' && hasFastFood ? 'fastfood' : (hasOmnimart ? 'minimart' : 'fastfood')
+    defaultModule
   );
 
   const watchedModule = productForm.watch('module');
@@ -1474,6 +1478,60 @@ export function AddProductView(): React.JSX.Element {
   const activeCategoryObj = categories.find((c) => c.name === watchedCategory);
   const detectedProfile = detectCategoryProfile(watchedCategory || '', activeCategoryObj?.profile);
   const profileConfig = CATEGORY_PROFILES[detectedProfile];
+
+  const activeRetailProfileKey = React.useMemo<CategoryProfile>(() => {
+    const specific = businessProfiles.find((p) => p !== 'standard' && p !== 'food');
+    if (specific && specific in CATEGORY_PROFILES) return specific;
+    if (detectedProfile && detectedProfile !== 'standard' && detectedProfile !== 'food') return detectedProfile;
+    const queryCat = searchParams.get('category');
+    if (queryCat) {
+      const qp = detectCategoryProfile(queryCat);
+      if (qp && qp !== 'standard' && qp !== 'food') return qp;
+    }
+    return 'standard';
+  }, [businessProfiles, detectedProfile, searchParams]);
+
+  const relatedCategories = React.useMemo(() => {
+    const moduleCats = categories.filter((c) => c.module === watchedModule);
+    if (moduleCats.length === 0) return categories;
+
+    if (watchedModule === 'fastfood') {
+      const foodCats = moduleCats.filter((c) => {
+        const prof = detectCategoryProfile(c.name, c.profile);
+        return prof === 'food' || prof === 'standard';
+      });
+      return foodCats.length > 0 ? foodCats : moduleCats;
+    }
+
+    // In retail / minimart:
+    // 1. If we have a specific industry profile (footwear, apparel, cosmetics, pharmacy, etc.)
+    if (activeRetailProfileKey !== 'standard') {
+      const matchingCats = moduleCats.filter((c) => {
+        const prof = detectCategoryProfile(c.name, c.profile);
+        return prof === activeRetailProfileKey;
+      });
+      if (matchingCats.length > 0) {
+        // Ensure current watchedCategory is included if it belongs to module
+        if (watchedCategory && !matchingCats.some((c) => c.name.toLowerCase() === watchedCategory.toLowerCase())) {
+          const current = moduleCats.find((c) => c.name.toLowerCase() === watchedCategory.toLowerCase());
+          if (current) matchingCats.unshift(current);
+        }
+        return matchingCats;
+      }
+    }
+
+    // 2. If user's license has multiple specific retail business profiles
+    const userProfiles = businessProfiles.filter((p) => p !== 'standard' && p !== 'food');
+    if (userProfiles.length > 0) {
+      const matchingCats = moduleCats.filter((c) => {
+        const prof = detectCategoryProfile(c.name, c.profile);
+        return userProfiles.includes(prof);
+      });
+      if (matchingCats.length > 0) return matchingCats;
+    }
+
+    return moduleCats;
+  }, [categories, watchedModule, activeRetailProfileKey, watchedCategory, businessProfiles]);
 
   // Calculate live total stock for the selected category across existing products
   const categoryStockInfo = React.useMemo(() => {
@@ -2515,19 +2573,104 @@ export function AddProductView(): React.JSX.Element {
     }
   };
 
-  useEffect(() => {
-    const queryCat = searchParams.get('category');
-    if (queryCat && categories.some((c) => c.name.toLowerCase() === queryCat.toLowerCase())) {
-      productForm.setValue('category', queryCat);
-      return;
+  const applyCategoryProfileSettings = (categoryName: string) => {
+    const matchedCat = categories.find((c) => c.name.toLowerCase() === categoryName.toLowerCase());
+    const detected = detectCategoryProfile(categoryName, matchedCat?.profile);
+    const pCfg = CATEGORY_PROFILES[detected];
+    if (detected === 'hardware') {
+      if (isSanitaryCategory(categoryName)) {
+        productForm.setValue('unit', 'PCS');
+        setPricingType('fixed');
+        productForm.setValue('pricingType', 'fixed');
+        setVariants([]);
+        setHasVariants(false);
+      } else if (/paint|distemper|color|coating/i.test(categoryName)) {
+        productForm.setValue('unit', 'GALLON');
+        setPricingType('retail_paint');
+        productForm.setValue('pricingType', 'retail_paint');
+        rebuildVariantsFromPaintSizes(paintSizes);
+      } else {
+        productForm.setValue('unit', 'PCS');
+        setPricingType('fixed');
+        productForm.setValue('pricingType', 'fixed');
+        setVariants([]);
+        setHasVariants(false);
+      }
+    } else if (pCfg && pCfg.suggestedUnits.length > 0) {
+      productForm.setValue('unit', pCfg.suggestedUnits[0]);
     }
-    if (categories.length > 0) {
-      const match = categories.find((c) => c.module === watchedModule);
-      if (match && !categories.some((c) => c.name === productForm.getValues('category') && c.module === watchedModule)) {
-        productForm.setValue('category', match.name);
+
+    if (detected === 'footwear') {
+      setPricingType('retail_shoes');
+      productForm.setValue('pricingType', 'retail_shoes');
+      const preset = getShoePresetForCategory(categoryName);
+      setActiveShoePresetId(preset.id);
+      setSelectedShoeSizes(preset.sizes);
+      rebuildVariantsFromShoeSelection(preset.sizes);
+    } else if (detected === 'apparel') {
+      setPricingType('retail_garments');
+      productForm.setValue('pricingType', 'retail_garments');
+      rebuildVariantsFromGarmentSizes(garmentSizes);
+    } else if (detected === 'cosmetics') {
+      setPricingType('retail_shades');
+      productForm.setValue('pricingType', 'retail_shades');
+      rebuildVariantsFromShadeSizes(shadeSizes);
+    } else if (detected === 'grocery' || detected === 'bakery') {
+      setPricingType('perkg');
+      productForm.setValue('pricingType', 'perkg');
+    } else if (detected === 'food') {
+      setPricingType('smlxl');
+      productForm.setValue('pricingType', 'smlxl');
+      rebuildVariantsFromPizzaSizes(pizzaSizes);
+    }
+  };
+
+  // Keep activeDepartmentTab in sync whenever watchedModule changes
+  useEffect(() => {
+    if (watchedModule === 'fastfood' || watchedModule === 'minimart') {
+      setActiveDepartmentTab(watchedModule);
+    }
+  }, [watchedModule]);
+
+  // Synchronize URL parameters (module, category, returnUrl) dynamically
+  useEffect(() => {
+    const rawModule = searchParams.get('module');
+    const queryCat = searchParams.get('category');
+
+    let targetModule: ModuleKey | null = null;
+    if (rawModule === 'minimart' || rawModule === 'omnimart') {
+      targetModule = 'minimart';
+    } else if (rawModule === 'fastfood') {
+      targetModule = 'fastfood';
+    }
+
+    let targetCategoryName: string | null = null;
+    if (queryCat) {
+      const matched = categories.find((c) => c.name.toLowerCase() === queryCat.toLowerCase());
+      if (matched) {
+        targetCategoryName = matched.name;
+        if (!targetModule) targetModule = matched.module as ModuleKey;
+      } else {
+        targetCategoryName = queryCat;
       }
     }
-  }, [watchedModule, categories, productForm, searchParams]);
+
+    if (targetModule) {
+      productForm.setValue('module', targetModule);
+      setActiveDepartmentTab(targetModule);
+    }
+
+    if (targetCategoryName) {
+      productForm.setValue('category', targetCategoryName);
+      applyCategoryProfileSettings(targetCategoryName);
+    } else if (categories.length > 0 && targetModule) {
+      const fallbackCat = categories.find((c) => c.module === targetModule);
+      if (fallbackCat && !categories.some((c) => c.name === productForm.getValues('category') && c.module === targetModule)) {
+        productForm.setValue('category', fallbackCat.name);
+        applyCategoryProfileSettings(fallbackCat.name);
+      }
+    }
+  }, [searchParams, categories]);
 
   // Whenever article price changes, sync all shoe size variants to the same article price
   useEffect(() => {
@@ -2675,7 +2818,7 @@ export function AddProductView(): React.JSX.Element {
   });
 
   const watchedCatModule = categoryForm.watch('module') || watchedModule;
-  const addCatProfileKey = watchedCatModule === 'fastfood' ? 'food' : (detectedProfile || 'footwear');
+  const addCatProfileKey = watchedCatModule === 'fastfood' ? 'food' : (activeRetailProfileKey !== 'standard' ? activeRetailProfileKey : (detectedProfile || 'footwear'));
 
   const { data: addCatBusinessProfile } = useQuery({
     queryKey: ['business-profile-template', addCatProfileKey],
@@ -2862,9 +3005,13 @@ export function AddProductView(): React.JSX.Element {
                   setActiveDepartmentTab('fastfood');
                   productForm.setValue('module', 'fastfood');
                   const ffCat = categories.find((c) => c.module === 'fastfood');
-                  if (ffCat) productForm.setValue('category', ffCat.name);
-                  productForm.setValue('unit', 'PCS');
-                  handlePricingTypeSelect('fixed');
+                  if (ffCat) {
+                    productForm.setValue('category', ffCat.name);
+                    applyCategoryProfileSettings(ffCat.name);
+                  } else {
+                    productForm.setValue('unit', 'PCS');
+                    handlePricingTypeSelect('fixed');
+                  }
                 }}
                 style={{
                   display: 'flex',
@@ -2919,10 +3066,14 @@ export function AddProductView(): React.JSX.Element {
                   setActiveDepartmentTab('minimart');
                   productForm.setValue('module', 'minimart');
                   const mmCat = categories.find((c) => c.module === 'minimart');
-                  if (mmCat) productForm.setValue('category', mmCat.name);
-                  if (!productForm.getValues('skuCode')) productForm.setValue('skuCode', generateRandomSku());
-                  productForm.setValue('unit', profileConfig.suggestedUnits[0] || 'PCS');
-                  handlePricingTypeSelect('fixed');
+                  if (mmCat) {
+                    productForm.setValue('category', mmCat.name);
+                    applyCategoryProfileSettings(mmCat.name);
+                  } else {
+                    if (!productForm.getValues('skuCode')) productForm.setValue('skuCode', generateRandomSku());
+                    productForm.setValue('unit', profileConfig.suggestedUnits[0] || 'PCS');
+                    handlePricingTypeSelect('fixed');
+                  }
                 }}
                 style={{
                   display: 'flex',
@@ -3061,12 +3212,11 @@ export function AddProductView(): React.JSX.Element {
                       ]}
                       onChange={(val) => {
                         field.onChange(val as ModuleKey);
+                        setActiveDepartmentTab(val as 'fastfood' | 'minimart');
                         const matchedCat = categories.find((c) => c.module === val);
-                        if (matchedCat) productForm.setValue('category', matchedCat.name);
-                        // Default pricing type when switching modules
-                        if (val === 'minimart') {
-                          setPricingType('fixed');
-                          productForm.setValue('pricingType', 'fixed');
+                        if (matchedCat) {
+                          productForm.setValue('category', matchedCat.name);
+                          applyCategoryProfileSettings(matchedCat.name);
                         } else {
                           setPricingType('fixed');
                           productForm.setValue('pricingType', 'fixed');
@@ -3095,8 +3245,7 @@ export function AddProductView(): React.JSX.Element {
                   control={productForm.control}
                   name="category"
                   render={({ field }) => {
-                    const activeGroupCats = categories.filter((c) => c.module === watchedModule);
-                    const displayList = activeGroupCats.length > 0 ? activeGroupCats : categories;
+                    const displayList = relatedCategories.length > 0 ? relatedCategories : categories;
 
                     return (
                       <CustomSelect
@@ -3107,54 +3256,7 @@ export function AddProductView(): React.JSX.Element {
                         options={displayList.map((c) => ({ value: c.name, label: c.name }))}
                         onChange={(val) => {
                           field.onChange(val);
-                          const matchedCat = categories.find((c) => c.name === val);
-                          const detected = detectCategoryProfile(val, matchedCat?.profile);
-                          const pCfg = CATEGORY_PROFILES[detected];
-                          if (detected === 'hardware') {
-                            if (isSanitaryCategory(val)) {
-                              productForm.setValue('unit', 'PCS');
-                              setPricingType('fixed');
-                              productForm.setValue('pricingType', 'fixed');
-                              setVariants([]);
-                              setHasVariants(false);
-                            } else if (/paint|distemper|color|coating/i.test(val)) {
-                              productForm.setValue('unit', 'GALLON');
-                              setPricingType('retail_paint');
-                              productForm.setValue('pricingType', 'retail_paint');
-                              rebuildVariantsFromPaintSizes(paintSizes);
-                            } else {
-                              productForm.setValue('unit', 'PCS');
-                              setPricingType('fixed');
-                              productForm.setValue('pricingType', 'fixed');
-                              setVariants([]);
-                              setHasVariants(false);
-                            }
-                          } else if (pCfg && pCfg.suggestedUnits.length > 0) {
-                            productForm.setValue('unit', pCfg.suggestedUnits[0]);
-                          }
-                          if (detected === 'footwear') {
-                            setPricingType('retail_shoes');
-                            productForm.setValue('pricingType', 'retail_shoes');
-                            const preset = getShoePresetForCategory(val);
-                            setActiveShoePresetId(preset.id);
-                            setSelectedShoeSizes(preset.sizes);
-                            rebuildVariantsFromShoeSelection(preset.sizes);
-                          } else if (detected === 'apparel') {
-                            setPricingType('retail_garments');
-                            productForm.setValue('pricingType', 'retail_garments');
-                            rebuildVariantsFromGarmentSizes(garmentSizes);
-                          } else if (detected === 'cosmetics') {
-                            setPricingType('retail_shades');
-                            productForm.setValue('pricingType', 'retail_shades');
-                            rebuildVariantsFromShadeSizes(shadeSizes);
-                          } else if (detected === 'grocery' || detected === 'bakery') {
-                            setPricingType('perkg');
-                            productForm.setValue('pricingType', 'perkg');
-                          } else if (detected === 'food') {
-                            setPricingType('smlxl');
-                            productForm.setValue('pricingType', 'smlxl');
-                            rebuildVariantsFromPizzaSizes(pizzaSizes);
-                          }
+                          applyCategoryProfileSettings(val);
                         }}
                         error={productForm.formState.errors.category?.message}
                       />
