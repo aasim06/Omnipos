@@ -17,6 +17,7 @@ import {
   Receipt24Regular,
   ArrowClockwise20Regular,
   BuildingShop24Regular,
+  ArrowCounterclockwise24Regular,
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { resolveApiUrl } from '@/lib/api';
@@ -158,6 +159,15 @@ const useStyles = makeStyles({
     color: '#D13438',
     display: 'block',
   },
+  refundIcon: {
+    color: '#E51937',
+  },
+  refundValue: {
+    fontSize: '26px',
+    fontWeight: 800,
+    color: '#E51937',
+    display: 'block',
+  },
   netProfitValueSuccess: {
     fontSize: '30px',
     fontWeight: 800,
@@ -280,15 +290,18 @@ export function ReportsAnalyticsView(): React.JSX.Element {
         } catch {}
       }
 
-      // 2. Offline fallback: calculate directly from local Dexie IndexedDB orders & expenses
+      // 2. Offline fallback: calculate directly from local Dexie IndexedDB orders, refunds & expenses
       try {
         const localOrders = await offlineDb.orders.toArray();
         const localExpenses = await offlineDb.expenses.toArray();
+        const localRefunds = await offlineDb.refunds.toArray();
         const paidOrders = localOrders.filter((o) => o.stage === 'paid');
         const grossSales = paidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+        const totalRefunds = localRefunds.reduce((sum, r) => sum + (r.refundAmount || 0), 0);
+        const netSales = Math.max(0, grossSales - totalRefunds);
         const totalExpenses = localExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-        const estimatedCOGS = Math.round(grossSales * 0.45);
-        const netProfit = grossSales - estimatedCOGS - totalExpenses;
+        const estimatedCOGS = Math.round(netSales * 0.45);
+        const netProfit = netSales - estimatedCOGS - totalExpenses;
 
         const itemMap = new Map<string, { name: string; quantity: number; revenue: number }>();
         paidOrders.forEach((o) => {
@@ -306,10 +319,13 @@ export function ReportsAnalyticsView(): React.JSX.Element {
 
         return {
           totalGrossSales: grossSales,
+          totalRefunds,
+          netSales,
           estimatedCOGS,
           totalExpenses,
           netProfit,
           totalOrdersCount: paidOrders.length,
+          totalRefundsCount: localRefunds.length,
           topSellingItems,
         };
       } catch {
@@ -319,10 +335,13 @@ export function ReportsAnalyticsView(): React.JSX.Element {
   });
 
   const grossSales = report?.totalGrossSales || 0;
+  const totalRefunds = report?.totalRefunds || 0;
+  const netSales = report?.netSales ?? Math.max(0, grossSales - totalRefunds);
   const cogs = report?.estimatedCOGS || 0;
   const expenses = report?.totalExpenses || 0;
   const netProfit = report?.netProfit || 0;
   const totalOrders = report?.totalOrdersCount || 0;
+  const totalRefundsCount = report?.totalRefundsCount || 0;
   const topItems = report?.topSellingItems || [];
 
   if (isLoading) {
@@ -344,7 +363,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
             as="p"
             className={styles.headerSubtitle}
           >
-            Live revenue, inventory cost of goods, daily expenses, and net earnings
+            Live revenue, sales returns/refunds, inventory cost of goods, daily expenses, and net earnings
           </Caption1>
         </div>
         <Badge appearance="tint" color={netProfit >= 0 ? 'success' : 'danger'} size="large">
@@ -364,6 +383,32 @@ export function ReportsAnalyticsView(): React.JSX.Element {
           </Subtitle1>
           <Caption1 className={styles.metricSubtext}>
             From {totalOrders} completed orders
+          </Caption1>
+        </div>
+
+        <div className={styles.metricCard}>
+          <div className={styles.metricHeader}>
+            <ArrowCounterclockwise24Regular className={styles.refundIcon} />
+            <Caption1 className={styles.metricLabel}>Sales Returns &amp; Refunds</Caption1>
+          </div>
+          <Subtitle1 className={styles.refundValue}>
+            - {formatPKR(totalRefunds)}
+          </Subtitle1>
+          <Caption1 className={styles.metricSubtext}>
+            {totalRefundsCount} processed returns
+          </Caption1>
+        </div>
+
+        <div className={styles.metricCard}>
+          <div className={styles.metricHeader}>
+            <ShoppingBag24Regular className={styles.salesIcon} />
+            <Caption1 className={styles.metricLabel}>Net Realized Sales</Caption1>
+          </div>
+          <Subtitle1 className={styles.salesValue}>
+            {formatPKR(netSales)}
+          </Subtitle1>
+          <Caption1 className={styles.metricSubtext}>
+            Gross sales minus returns
           </Caption1>
         </div>
 
@@ -404,7 +449,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
             {formatPKR(netProfit)}
           </Subtitle1>
           <Caption1 className={styles.metricSubtext}>
-            Sales minus COGS minus Expenses
+            Net Sales minus COGS minus Expenses
           </Caption1>
         </div>
       </div>

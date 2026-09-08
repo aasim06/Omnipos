@@ -244,6 +244,27 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     )
   `);
 
+  await database.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "OrderRefund" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "orderId" TEXT NOT NULL,
+      "customerName" TEXT,
+      "refundAmount" REAL NOT NULL,
+      "paymentMode" TEXT NOT NULL DEFAULT 'cash',
+      "reason" TEXT,
+      "items" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE
+    )
+  `);
+
+  try {
+    await database.$executeRawUnsafe(`ALTER TABLE "Order" ADD COLUMN "refundedAmount" REAL DEFAULT 0`);
+  } catch {
+    /* Ignore if column already exists */
+  }
+
   isInitialized = true;
 }
+
 

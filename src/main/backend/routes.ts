@@ -534,6 +534,184 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  // ── Order Refunds & Sales Returns ──
+  app.get('/api/refunds', async (_req: Request, res: Response) => {
+    try {
+      const refunds = await (db as any).orderRefund.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+      res.json(refunds);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/orders/:id/refund', async (req: Request, res: Response) => {
+    try {
+      const orderId = String(req.params.id);
+      const { returnedLines, refundAmount, reason, paymentMode, customerName } = req.body;
+
+      const order = await db.order.findUnique({
+        where: { id: orderId },
+        include: { lines: true },
+      });
+
+      if (!order) {
+        return res.status(404).json({ error: `Order #${orderId} not found` });
+      }
+
+      // 1. Restock products in inventory & create incoming StockMovements
+      if (Array.isArray(returnedLines) && returnedLines.length > 0) {
+        for (const line of returnedLines) {
+          const qty = Number(line.quantity || 1);
+          if (qty <= 0) continue;
+
+          let product: any = null;
+          if (line.productId) {
+            product = await db.product.findUnique({
+              where: { id: String(line.productId) },
+            });
+          }
+
+          if (product) {
+            const currentStock = Number(product.openingStock ?? 0);
+            const newStock = currentStock + qty;
+
+            let updatedVariants = product.variants;
+            if (line.variantLabel && product.variants) {
+              try {
+                let vars = typeof product.variants === 'string' ? JSON.parse(product.variants) : product.variants;
+                if (Array.isArray(vars)) {
+                  vars = vars.map((v: any) => {
+                    if (v.label === line.variantLabel && v.stock !== undefined) {
+                      return { ...v, stock: Number(v.stock || 0) + qty };
+                    }
+                    return v;
+                  });
+                  updatedVariants = JSON.stringify(vars);
+                }
+              } catch {}
+            }
+
+            await db.product.update({
+              where: { id: product.id },
+              data: {
+                openingStock: newStock,
+                variants: updatedVariants,
+                updatedAt: new Date(),
+              },
+            });
+          }
+
+          // Create incoming Stock Movement
+          await db.stockMovement.create({
+            data: {
+              module: order.module || 'minimart',
+              productId: String(line.productId || 'manual'),
+              productName: line.name || product?.name || 'Returned Product',
+              type: 'in',
+              quantity: qty,
+              unitCost: product?.costPrice || null,
+              unitPrice: Number(line.unitPrice || 0),
+              reason: 'Sales Return / Customer Refund',
+              note: `Return for Order #${order.id}. Reason: ${reason || 'Customer Return'}`,
+              date: new Date(),
+            },
+          });
+        }
+      }
+
+      const totalRefund = Number(refundAmount || 0);
+
+      // 2. Adjust Cash Drawer if refunded in Cash
+      const pMode = String(paymentMode || 'cash').toLowerCase();
+      if (pMode === 'cash' && totalRefund > 0) {
+        try {
+          const todayDrawer = await db.cashDrawer.findFirst({
+            where: { status: 'open' },
+            orderBy: { date: 'desc' },
+          });
+          if (todayDrawer) {
+            await db.cashDrawer.update({
+              where: { id: todayDrawer.id },
+              data: {
+                cashOut: (todayDrawer.cashOut || 0) + totalRefund,
+              },
+            });
+          }
+        } catch (drawerErr) {
+          console.warn('[Refund] Cash Drawer update error:', drawerErr);
+        }
+      }
+
+      // 3. Adjust Customer Khata if refunded to Khata account
+      const custName = customerName || order.customerName;
+      if (pMode === 'khata' && custName && totalRefund > 0) {
+        try {
+          const khata = await db.customerKhata.findFirst({
+            where: { name: custName },
+          });
+          if (khata) {
+            const newDebt = Math.max(0, (khata.currentDebt || 0) - totalRefund);
+            await db.customerKhata.update({
+              where: { id: khata.id },
+              data: { currentDebt: newDebt, updatedAt: new Date() },
+            });
+            await db.khataTransaction.create({
+              data: {
+                khataId: khata.id,
+                type: 'CREDIT',
+                amount: totalRefund,
+                balanceAfter: newDebt,
+                description: `Refund Reversal - Invoice #${order.id}`,
+                orderId: order.id,
+                date: new Date(),
+              },
+            });
+          }
+        } catch (khataErr) {
+          console.warn('[Refund] Khata update error:', khataErr);
+        }
+      }
+
+      // 4. Create OrderRefund record
+      const refund = await (db as any).orderRefund.create({
+        data: {
+          orderId: order.id,
+          customerName: custName || 'Walk-In Customer',
+          refundAmount: totalRefund,
+          paymentMode: pMode,
+          reason: reason || 'Customer Return',
+          items: JSON.stringify(returnedLines || []),
+        },
+      });
+
+      // 5. Update Order status & refundedAmount
+      const prevRefunded = Number((order as any).refundedAmount || 0);
+      const newRefundedTotal = prevRefunded + totalRefund;
+      const isFullyRefunded = newRefundedTotal >= (order.totalAmount || 0);
+
+      const updatedOrder = await db.order.update({
+        where: { id: order.id },
+        data: {
+          refundedAmount: newRefundedTotal,
+          stage: isFullyRefunded ? 'refunded' : order.stage,
+          updatedAt: new Date(),
+        } as any,
+        include: { lines: true },
+      });
+
+      res.json({
+        ok: true,
+        refund,
+        order: updatedOrder,
+      });
+    } catch (err: any) {
+      console.error('[Refund] Error processing refund:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Stock Movements ──
   app.get('/api/stock-movements', async (req: Request, res: Response) => {
     try {
@@ -950,8 +1128,14 @@ export function registerRoutes(app: Express): void {
       const orders = await db.order.findMany({ include: { lines: true } });
       const expenses = await db.expense.findMany();
       const products = await db.product.findMany();
+      let refunds: any[] = [];
+      try {
+        refunds = await (db as any).orderRefund.findMany();
+      } catch {}
 
       const totalGrossSales = orders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0);
+      const totalRefunds = refunds.reduce((sum: number, r: any) => sum + (r.refundAmount || 0), 0);
+      const netSales = Math.max(0, totalGrossSales - totalRefunds);
       const totalExpenses = expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
 
       // Estimate Cost of Goods Sold (COGS)
@@ -972,7 +1156,7 @@ export function registerRoutes(app: Express): void {
         }
       }
 
-      const grossProfit = totalGrossSales - estimatedCOGS;
+      const grossProfit = netSales - estimatedCOGS;
       const netProfit = grossProfit - totalExpenses;
       const topSellingItems = Object.values(itemCountMap)
         .sort((a, b) => b.count - a.count)
@@ -980,6 +1164,8 @@ export function registerRoutes(app: Express): void {
 
       res.json({
         totalGrossSales,
+        totalRefunds,
+        netSales,
         estimatedCOGS,
         grossProfit,
         totalExpenses,

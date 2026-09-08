@@ -130,10 +130,10 @@ const useStyles = makeStyles({
   },
   row2: {
     display: 'grid',
-    gridTemplateColumns: '1.2fr 2.4fr auto',
+    gridTemplateColumns: '1.2fr 1fr 2fr auto',
     gap: '16px',
-    alignItems: 'center',
-    '@media (max-width: 900px)': {
+    alignItems: 'flex-end',
+    '@media (max-width: 1000px)': {
       gridTemplateColumns: '1fr 1fr',
     },
     '@media (max-width: 600px)': {
@@ -774,7 +774,23 @@ export function VendorsView(): React.JSX.Element {
               )}
             />
 
-            {/* Field 5: COMPANY / ADDRESS NOTE */}
+            {/* Field 5: OPENING BALANCE */}
+            <Controller
+              name="openingBalance"
+              control={form.control}
+              render={({ field }) => (
+                <CustomInput
+                  label="Opening Balance (PKR)"
+                  type="number"
+                  placeholder="0"
+                  value={field.value !== undefined ? String(field.value) : '0'}
+                  onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                  error={form.formState.errors.openingBalance?.message}
+                />
+              )}
+            />
+
+            {/* Field 6: COMPANY / ADDRESS NOTE */}
             <Controller
               name="address"
               control={form.control}
@@ -1036,6 +1052,22 @@ export function VendorsView(): React.JSX.Element {
                       placeholder="Address..."
                       value={field.value || ''}
                       onChange={field.onChange}
+                    />
+                  )}
+                />
+
+                {/* OPENING / PAYABLE BALANCE */}
+                <Controller
+                  name="openingBalance"
+                  control={editForm.control}
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Opening / Current Balance (PKR)"
+                      type="number"
+                      placeholder="0"
+                      value={field.value !== undefined ? String(field.value) : '0'}
+                      onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                      error={editForm.formState.errors.openingBalance?.message}
                     />
                   )}
                 />

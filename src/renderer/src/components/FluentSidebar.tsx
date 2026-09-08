@@ -1256,6 +1256,13 @@ export function FluentSidebar(): React.JSX.Element {
           ],
         },
         {
+          to: '/customers',
+          label: 'Customers & Returns',
+          moduleKey: 'khata' as const,
+          icon: <PeopleCommunity24Regular className={styles.icon19} />,
+          activeIcon: <PeopleCommunity24Filled className={styles.icon19} />,
+        },
+        {
           to: '/khata',
           label: 'Customer Khata (Credit)',
           moduleKey: 'khata' as const,

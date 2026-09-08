@@ -1,4 +1,4 @@
-import { Product, Category, Order, StockMovement, CategoryProfile, ModuleKey, ProductVariant } from './types';
+import { Product, Category, Order, StockMovement, CategoryProfile, ModuleKey, ProductVariant, OrderRefund, ReturnedLineItem } from './types';
 import { offlineDb, LocalOrder, LocalCustomerKhata, LocalKhataTx, LocalExpense } from './offlineDb';
 import { syncEngine } from './syncEngine';
 import { KEYS, storage } from './storage';
@@ -869,6 +869,119 @@ export const posApi = {
 
     const legacy = storage.getList<Order>(KEYS.orders);
     return module ? legacy.filter((o) => o.module === module) : legacy;
+  },
+
+  /**
+   * Fetch Refunds
+   */
+  async fetchRefunds(): Promise<OrderRefund[]> {
+    let localRefunds: OrderRefund[] = [];
+    try {
+      localRefunds = await offlineDb.refunds.reverse().sortBy('createdAt');
+    } catch {}
+
+    const syncRemoteRefunds = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const res = await fetch(`${base}/api/refunds`, {
+          headers: tenantHeaders,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const remoteRefunds = await res.json();
+          if (Array.isArray(remoteRefunds)) {
+            await offlineDb.refunds.bulkPut(remoteRefunds);
+          }
+        }
+      } catch (err) {
+        console.warn('[OfflineDB] syncRemoteRefunds error:', err);
+      }
+    };
+
+    if (localRefunds.length > 0) {
+      syncRemoteRefunds().catch(() => {});
+      return localRefunds;
+    }
+
+    await syncRemoteRefunds();
+    try {
+      return await offlineDb.refunds.reverse().sortBy('createdAt');
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Process Order Refund: Restocks inventory, updates sales, and logs movement
+   */
+  async processOrderRefund(orderId: string, payload: {
+    returnedLines: ReturnedLineItem[];
+    refundAmount: number;
+    reason?: string;
+    paymentMode?: string;
+    customerName?: string;
+  }): Promise<{ ok: boolean; refund: OrderRefund; order: Order }> {
+    // 1. Instant local Dexie stock restoration
+    try {
+      for (const line of payload.returnedLines) {
+        const p = await offlineDb.products.get(line.productId);
+        if (p && p.openingStock !== undefined && p.openingStock !== null) {
+          const newStock = (p.openingStock || 0) + Number(line.quantity || 1);
+          await offlineDb.products.update(p.id, { openingStock: newStock });
+        }
+      }
+    } catch (dexErr) {
+      console.warn('[OfflineDB] local restock error:', dexErr);
+    }
+
+    // 2. Call backend API
+    const base = await resolveApiUrl();
+    const tenantHeaders = await getTenantHeaders();
+    const res = await fetch(`${base}/api/orders/${orderId}/refund`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...tenantHeaders,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Failed to process refund');
+    }
+
+    const data = await res.json();
+
+    // 3. Save refund to local Dexie
+    if (data.refund) {
+      try {
+        await offlineDb.refunds.put(data.refund);
+      } catch {}
+    }
+
+    // 4. Update order in local Dexie
+    if (data.order) {
+      try {
+        await offlineDb.orders.update(orderId, {
+          refundedAmount: data.order.refundedAmount,
+          stage: data.order.stage,
+        });
+      } catch {}
+    }
+
+    // Notify listeners
+    window.dispatchEvent(new CustomEvent('pos_orders_updated'));
+    window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
+
+    return data;
   },
 
   /**

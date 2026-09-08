@@ -41,11 +41,12 @@ export function FastFoodDashboard() {
   );
 
   // Stage indicator badge styling
-  const stageBadges: Record<OrderStage, { label: string; bg: string; text: string }> = {
+  const stageBadges: Record<OrderStage | 'refunded', { label: string; bg: string; text: string }> = {
     cart: { label: "Cart", bg: "bg-surface-2", text: "text-text-muted" },
     kot: { label: "In Kitchen (KOT)", bg: "bg-fastfood-soft", text: "text-fastfood" },
     billed: { label: "Billed", bg: "bg-amber-950/60", text: "text-amber-400" },
     paid: { label: "Paid", bg: "bg-emerald-950/60", text: "text-emerald-400" },
+    refunded: { label: "Refunded", bg: "bg-rose-950/60", text: "text-rose-400" },
   };
 
   return (

@@ -59,12 +59,32 @@ export interface Order {
   discountPercent: number;
   customerName?: string;
   orderType?: "dine-in" | "takeaway" | "delivery" | "khata";
-  stage: OrderStage;
+  stage: OrderStage | "refunded";
   totalAmount?: number;
+  refundedAmount?: number;
   tokenNo?: number | string;
   tableNo?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ReturnedLineItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  variantLabel?: string;
+}
+
+export interface OrderRefund {
+  id: string;
+  orderId: string;
+  customerName?: string;
+  refundAmount: number;
+  paymentMode: 'cash' | 'khata' | 'card' | string;
+  reason?: string;
+  items: ReturnedLineItem[] | string;
+  createdAt: string;
 }
 
 export type StockMovementType = "in" | "out";

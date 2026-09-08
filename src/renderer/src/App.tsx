@@ -17,6 +17,7 @@ import { AdminSettingsView } from '@/features/admin/AdminSettingsView';
 import { ProductsCatalogView } from '@/features/catalog/ProductsCatalogView';
 import { CategoriesView } from '@/features/catalog/CategoriesView';
 import { AddProductView } from '@/features/catalog/AddProductView';
+import { CustomersView } from '@/features/customers/CustomersView';
 import { LoginView } from '@/features/auth/LoginView';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
 import { LicenseModulesProvider, useLicense } from '@/features/auth/LicenseModulesContext';
@@ -322,6 +323,16 @@ export default function App(): React.JSX.Element {
               element={
                 <RouteAccessGate moduleKey="khata">
                   <KhataView />
+                </RouteAccessGate>
+              }
+            />
+
+            {/* Customers & Returns Directory */}
+            <Route
+              path="/customers"
+              element={
+                <RouteAccessGate moduleKey="khata">
+                  <CustomersView />
                 </RouteAccessGate>
               }
             />
