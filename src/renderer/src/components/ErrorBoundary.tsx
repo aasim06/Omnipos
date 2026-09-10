@@ -52,6 +52,11 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     marginBottom: '12px',
   },
+  warningIcon: {
+    width: '40px',
+    height: '40px',
+    color: '#f59e0b',
+  },
   title: {
     margin: '0 0 8px 0',
     fontSize: '20px',
@@ -107,7 +112,7 @@ function ErrorFallbackView({
     <div className={styles.fullPage}>
       <div className={styles.card}>
         <div className={styles.icon}>
-          <Warning28Regular style={{ width: 40, height: 40, color: '#f59e0b' }} />
+          <Warning28Regular className={styles.warningIcon} />
         </div>
         <h2 className={styles.title}>
           Omnipos Interface Recovery

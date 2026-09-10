@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
+import { makeStyles, mergeClasses } from '@fluentui/react-components';
 
 export interface BarcodeRenderProps {
   value: string;
@@ -11,8 +12,16 @@ export interface BarcodeRenderProps {
   margin?: number; // quiet zone in px
   background?: string;
   lineColor?: string;
-  style?: React.CSSProperties;
+  className?: string;
 }
+
+const useStyles = makeStyles({
+  svg: {
+    display: 'block',
+    margin: '0 auto',
+    maxWidth: '100%',
+  },
+});
 
 export const BarcodeRender: React.FC<BarcodeRenderProps> = ({
   value,
@@ -24,8 +33,9 @@ export const BarcodeRender: React.FC<BarcodeRenderProps> = ({
   margin = 8,
   background = '#FFFFFF',
   lineColor = '#000000',
-  style,
+  className,
 }) => {
+  const styles = useStyles();
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -63,12 +73,7 @@ export const BarcodeRender: React.FC<BarcodeRenderProps> = ({
   return (
     <svg
       ref={svgRef}
-      style={{
-        display: 'block',
-        margin: '0 auto',
-        maxWidth: '100%',
-        ...style,
-      }}
+      className={mergeClasses(styles.svg, className)}
     />
   );
 };

@@ -59,6 +59,12 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: '14px',
   },
+  headerTitle: {
+    fontWeight: 800,
+  },
+  headerSubtitle: {
+    color: tokens.colorNeutralForeground3,
+  },
   iconBox: {
     width: '46px',
     height: '46px',
@@ -68,6 +74,12 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'center',
     color: '#E51937',
+  },
+  printBtn: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    borderRadius: '8px',
   },
   mainLayout: {
     display: 'grid',
@@ -95,17 +107,27 @@ const useStyles = makeStyles({
     textTransform: 'uppercase',
     letterSpacing: '0.4px',
   },
-  previewCard: {
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: '12px',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: tokens.colorNeutralStroke2,
-    padding: '20px',
-    boxShadow: tokens.shadow2,
+  queueHeader: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: '14px',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '6px',
+  },
+  queueCountText: {
+    fontSize: '11.5px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground3,
+  },
+  totalStickersBadge: {
+    fontSize: '11px',
+    fontWeight: 800,
+    color: '#E51937',
+  },
+  emptyQueueText: {
+    padding: '16px',
+    textAlign: 'center',
+    color: tokens.colorNeutralForeground4,
+    fontSize: '11.5px',
   },
   queueList: {
     display: 'flex',
@@ -124,6 +146,198 @@ const useStyles = makeStyles({
     borderWidth: '1px',
     borderStyle: 'solid',
     borderColor: tokens.colorNeutralStroke2,
+  },
+  queueItemInfo: {
+    flexGrow: 1,
+    paddingRight: '8px',
+  },
+  queueItemName: {
+    fontSize: '12px',
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    overflowX: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  queueItemMeta: {
+    fontSize: '10.5px',
+    color: tokens.colorNeutralForeground3,
+  },
+  queueItemActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  qtyInput: {
+    width: '45px',
+    padding: '2px 4px',
+    borderRadius: '4px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: tokens.colorNeutralStroke1,
+    textAlign: 'center',
+    fontSize: '11.5px',
+    fontWeight: 700,
+  },
+  deleteBtn: {
+    borderTopStyle: 'none',
+    borderBottomStyle: 'none',
+    borderLeftStyle: 'none',
+    borderRightStyle: 'none',
+    backgroundColor: 'transparent',
+    color: '#EF4444',
+    cursor: 'pointer',
+    padding: 0,
+  },
+  deleteIcon: {
+    width: '14px',
+    height: '14px',
+  },
+  layoutSelect: {
+    width: '100%',
+    padding: '8px 10px',
+    borderRadius: '8px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: tokens.colorNeutralStroke1,
+    fontSize: '12.5px',
+    fontWeight: 600,
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+  },
+  checkboxGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  previewCard: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderRadius: '12px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: tokens.colorNeutralStroke2,
+    padding: '20px',
+    boxShadow: tokens.shadow2,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+  },
+  previewHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  previewTitle: {
+    fontWeight: 800,
+    fontSize: '13px',
+    color: tokens.colorNeutralForeground1,
+  },
+  previewCount: {
+    fontSize: '11.5px',
+    color: tokens.colorNeutralForeground3,
+  },
+  sheetPrintArea: {
+    display: 'grid',
+    gap: '4px',
+    backgroundColor: '#FFFFFF',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#E2E8F0',
+    padding: '10px',
+    borderRadius: '6px',
+    boxSizing: 'border-box',
+  },
+  emptyPreview: {
+    gridColumn: '1 / -1',
+    padding: '48px 20px',
+    textAlign: 'center',
+    color: tokens.colorNeutralForeground4,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+  },
+  emptyPreviewIcon: {
+    fontSize: '32px',
+    color: tokens.colorNeutralForeground3,
+  },
+  emptyPreviewTitle: {
+    fontWeight: 700,
+    fontSize: '13.5px',
+    color: tokens.colorNeutralForeground2,
+  },
+  emptyPreviewDesc: {
+    fontSize: '11.5px',
+    color: tokens.colorNeutralForeground3,
+    maxWidth: '340px',
+  },
+  stickerCard: {
+    borderWidth: '1px',
+    borderStyle: 'dashed',
+    borderColor: '#CBD5E1',
+    borderRadius: '4px',
+    padding: '4px 6px',
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    textAlign: 'center',
+    backgroundColor: '#FFFFFF',
+    color: '#000000',
+    fontFamily: 'system-ui, sans-serif',
+    overflowX: 'hidden',
+    overflowY: 'hidden',
+  },
+  stickerStoreName: {
+    fontSize: '7.5px',
+    fontWeight: 800,
+    textTransform: 'uppercase',
+    letterSpacing: '0.4px',
+    color: '#000000',
+    lineHeight: 1,
+    whiteSpace: 'nowrap',
+    overflowX: 'hidden',
+    textOverflow: 'ellipsis',
+    width: '100%',
+  },
+  stickerProductName: {
+    fontWeight: 700,
+    lineHeight: 1.1,
+    whiteSpace: 'nowrap',
+    overflowX: 'hidden',
+    textOverflow: 'ellipsis',
+    width: '100%',
+    color: '#000000',
+    marginTop: '1px',
+  },
+  stickerBarcodeBox: {
+    width: '100%',
+    display: 'flex',
+    justifyContent: 'center',
+    marginTop: '1px',
+    marginBottom: '1px',
+  },
+  stickerBottomRow: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    paddingLeft: '4px',
+    paddingRight: '4px',
+    boxSizing: 'border-box',
+    fontWeight: 700,
+    lineHeight: 1,
+  },
+  stickerSku: {
+    fontSize: '8px',
+    color: '#334155',
+    letterSpacing: '0.5px',
+    whiteSpace: 'nowrap',
+  },
+  stickerPrice: {
+    fontWeight: 900,
+    color: '#000000',
+    whiteSpace: 'nowrap',
   },
 });
 
@@ -389,9 +603,9 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
             <BarcodeScanner24Regular />
           </div>
           <div>
-            <Subtitle1 style={{ fontWeight: 800 }}>Barcode Sticker & Label Generator</Subtitle1>
+            <Subtitle1 className={styles.headerTitle}>Barcode Sticker & Label Generator</Subtitle1>
             <div>
-              <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
+              <Caption1 className={styles.headerSubtitle}>
                 Generate Code-39 / Code-128 sticker labels for A4 sticker sheets and thermal roll printers
               </Caption1>
             </div>
@@ -403,12 +617,7 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
           icon={<Print20Regular />}
           onClick={handlePrint}
           disabled={allStickers.length === 0}
-          style={{
-            backgroundColor: '#E51937',
-            color: '#FFFFFF',
-            fontWeight: 700,
-            borderRadius: '8px',
-          }}
+          className={styles.printBtn}
         >
           Print {allStickers.length} Labels
         </Button>
@@ -434,54 +643,46 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
 
           {/* Queue List */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{ fontSize: '11.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>
+            <div className={styles.queueHeader}>
+              <span className={styles.queueCountText}>
                 Items in Queue ({queue.length})
               </span>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#E51937' }}>
+              <span className={styles.totalStickersBadge}>
                 Total Stickers: {allStickers.length}
               </span>
             </div>
 
             {queue.length === 0 ? (
-              <div style={{ padding: '16px', textAlign: 'center', color: tokens.colorNeutralForeground4, fontSize: '11.5px' }}>
+              <div className={styles.emptyQueueText}>
                 No items added yet. Select products above.
               </div>
             ) : (
               <div className={styles.queueList}>
                 {queue.map((item) => (
                   <div key={item.id} className={styles.queueItem}>
-                    <div style={{ flex: 1, paddingRight: '8px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div className={styles.queueItemInfo}>
+                      <div className={styles.queueItemName}>
                         {item.name}
                       </div>
-                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3 }}>
+                      <div className={styles.queueItemMeta}>
                         {item.sku} • {formatPKR(item.price)}
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div className={styles.queueItemActions}>
                       <input
                         type="number"
                         min="1"
                         value={item.quantity}
                         onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
-                        style={{
-                          width: '45px',
-                          padding: '2px 4px',
-                          borderRadius: '4px',
-                          border: `1px solid ${tokens.colorNeutralStroke1}`,
-                          textAlign: 'center',
-                          fontSize: '11.5px',
-                          fontWeight: 700,
-                        }}
+                        className={styles.qtyInput}
                       />
                       <button
                         type="button"
                         onClick={() => removeItem(item.id)}
-                        style={{ border: 'none', background: 'none', color: '#EF4444', cursor: 'pointer', padding: 0 }}
+                        className={styles.deleteBtn}
                       >
-                        <Delete20Regular style={{ width: 14, height: 14 }} />
+                        <Delete20Regular className={styles.deleteIcon} />
                       </button>
                     </div>
                   </div>
@@ -496,16 +697,7 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
             <select
               value={layout}
               onChange={(e) => setLayout(e.target.value as SheetLayout)}
-              style={{
-                width: '100%',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                border: `1px solid ${tokens.colorNeutralStroke1}`,
-                fontSize: '12.5px',
-                fontWeight: 600,
-                backgroundColor: tokens.colorNeutralBackground1,
-                color: tokens.colorNeutralForeground1,
-              }}
+              className={styles.layoutSelect}
             >
               <option value="thermal_80mm">Thermal 80mm Roll (Bixolon / POS Receipt Printer)</option>
               <option value="thermal_50x25">Thermal Label Roll - 50mm x 25mm (Barcode Gun)</option>
@@ -519,7 +711,7 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
           {/* Section 3: Label Content Toggles */}
           <div>
             <div className={styles.sectionTitle}>3. What to Print on Sticker</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div className={styles.checkboxGroup}>
               <Checkbox
                 checked={showStoreName}
                 onChange={(_, d) => setShowStoreName(!!d.checked)}
@@ -551,159 +743,125 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
 
         {/* Right Preview Sheet */}
         <div className={styles.previewCard}>
-          <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontWeight: 800, fontSize: '13px', color: tokens.colorNeutralForeground1 }}>
+          <div className={`no-print ${styles.previewHeader}`}>
+            <div className={styles.previewTitle}>
               Live Sheet Preview ({layoutConfig.name})
             </div>
-            <div style={{ fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+            <div className={styles.previewCount}>
               Total Stickers: <strong>{allStickers.length}</strong>
             </div>
           </div>
 
           {/* Sheet Canvas */}
-          <div
-            id="barcode-sheet-print-area"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: layoutConfig.gridColumns,
-              gap: '4px',
-              backgroundColor: '#FFFFFF',
-              border: '1px solid #E2E8F0',
-              padding: '10px',
-              borderRadius: '6px',
-              boxSizing: 'border-box',
-              width: layout.startsWith('thermal') ? layoutConfig.widthMm : '100%',
-              maxWidth: layout.startsWith('thermal') ? layoutConfig.widthMm : '100%',
-              margin: layout.startsWith('thermal') ? '0 auto' : '0',
-            }}
-          >
-            {allStickers.length === 0 ? (
+          {(() => {
+            const sheetLayoutClass =
+              layout === 'thermal_80mm'
+                ? 'thermal-80mm-sheet'
+                : layout === 'thermal_50x25'
+                ? 'thermal-50x25-sheet'
+                : layout === 'thermal_38x25'
+                ? 'thermal-38x25-sheet'
+                : layout === 'a4_40'
+                ? 'a4-sheet-40'
+                : layout === 'a4_24'
+                ? 'a4-sheet-24'
+                : 'a4-sheet-65';
+
+            const cardHeightClass =
+              layout === 'thermal_80mm'
+                ? 'card-h-thermal-80mm'
+                : layout === 'thermal_50x25'
+                ? 'card-h-thermal-50x25'
+                : layout === 'thermal_38x25'
+                ? 'card-h-thermal-38x25'
+                : layout === 'a4_40'
+                ? 'card-h-a4-40'
+                : layout === 'a4_24'
+                ? 'card-h-a4-24'
+                : 'card-h-a4-65';
+
+            const priceClass =
+              layout === 'thermal_80mm'
+                ? 'price-thermal-80mm'
+                : layout === 'thermal_50x25'
+                ? 'price-thermal-50x25'
+                : layout === 'thermal_38x25'
+                ? 'price-thermal-38x25'
+                : layout === 'a4_40'
+                ? 'price-a4-40'
+                : layout === 'a4_24'
+                ? 'price-a4-24'
+                : 'price-a4-65';
+
+            return (
               <div
-                style={{
-                  gridColumn: '1 / -1',
-                  padding: '48px 20px',
-                  textAlign: 'center',
-                  color: tokens.colorNeutralForeground4,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                }}
+                id="barcode-sheet-print-area"
+                className={`${styles.sheetPrintArea} ${sheetLayoutClass}`}
               >
-                <BarcodeScanner24Regular style={{ fontSize: '32px', color: tokens.colorNeutralForeground3 }} />
-                <div style={{ fontWeight: 700, fontSize: '13.5px', color: tokens.colorNeutralForeground2 }}>
-                  Queue Khali Hai (No Products Selected)
-                </div>
-                <div style={{ fontSize: '11.5px', color: tokens.colorNeutralForeground3, maxWidth: '340px' }}>
-                  Left side par "Search product from catalog..." mein apne products select karein, un ke stickers yahan live preview mein show honge.
-                </div>
+                {allStickers.length === 0 ? (
+                  <div className={styles.emptyPreview}>
+                    <BarcodeScanner24Regular className={styles.emptyPreviewIcon} />
+                    <div className={styles.emptyPreviewTitle}>
+                      Queue Khali Hai (No Products Selected)
+                    </div>
+                    <div className={styles.emptyPreviewDesc}>
+                      Left side par "Search product from catalog..." mein apne products select karein, un ke stickers yahan live preview mein show honge.
+                    </div>
+                  </div>
+                ) : (
+                  allStickers.map((sticker, idx) => {
+                    const barWidth = layout === 'thermal_80mm' ? 1.35 : layout === 'a4_65' ? 1.0 : layout === 'thermal_38x25' ? 1.1 : layout === 'a4_40' ? 1.15 : 1.3;
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`print-sticker-card ${styles.stickerCard} ${cardHeightClass}`}
+                      >
+                        {/* Store Name */}
+                        {showStoreName && (
+                          <div className={styles.stickerStoreName}>
+                            {storeSettings.storeName}
+                          </div>
+                        )}
+
+                        {/* Product Title & Variant */}
+                        {showProductName && (
+                          <div className={styles.stickerProductName}>
+                            {sticker.name}
+                            {showVariant && sticker.variant ? ` (${sticker.variant})` : ''}
+                          </div>
+                        )}
+
+                        {/* Barcode Render */}
+                        <div className={styles.stickerBarcodeBox}>
+                          <BarcodeRender
+                            value={sticker.sku}
+                            width={barWidth}
+                            height={layoutConfig.barcodeHeight}
+                            margin={4}
+                          />
+                        </div>
+
+                        {/* SKU & Price Bottom Row */}
+                        <div className={`${styles.stickerBottomRow} ${showSkuText && showPrice ? 'justify-between' : 'justify-center'}`}>
+                          {showSkuText && (
+                            <span className={styles.stickerSku}>
+                              {sticker.sku}
+                            </span>
+                          )}
+                          {showPrice && (
+                            <span className={`${styles.stickerPrice} ${priceClass}`}>
+                              Rs. {sticker.price.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-            ) : (
-              allStickers.map((sticker, idx) => {
-              const barWidth = layout === 'thermal_80mm' ? 1.35 : layout === 'a4_65' ? 1.0 : layout === 'thermal_38x25' ? 1.1 : layout === 'a4_40' ? 1.15 : 1.3;
-
-              return (
-                <div
-                  key={idx}
-                  className="print-sticker-card"
-                  style={{
-                    border: '1px dashed #CBD5E1',
-                    borderRadius: '4px',
-                    padding: '4px 6px',
-                    boxSizing: 'border-box',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    textAlign: 'center',
-                    backgroundColor: '#FFFFFF',
-                    color: '#000000',
-                    fontFamily: 'system-ui, sans-serif',
-                    minHeight: layoutConfig.heightMm,
-                    maxHeight: layoutConfig.heightMm,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* Store Name */}
-                  {showStoreName && (
-                    <div
-                      style={{
-                        fontSize: '7.5px',
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.4px',
-                        color: '#000000',
-                        lineHeight: 1,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        width: '100%',
-                      }}
-                    >
-                      {storeSettings.storeName}
-                    </div>
-                  )}
-
-                  {/* Product Title & Variant */}
-                  {showProductName && (
-                    <div
-                      style={{
-                        fontSize: layoutConfig.fontSize,
-                        fontWeight: 700,
-                        lineHeight: 1.1,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        width: '100%',
-                        color: '#000000',
-                        marginTop: '1px',
-                      }}
-                    >
-                      {sticker.name}
-                      {showVariant && sticker.variant ? ` (${sticker.variant})` : ''}
-                    </div>
-                  )}
-
-                  {/* Barcode Render (Code 128 standard with quiet zones for 100% scanner gun compatibility) */}
-                  <div style={{ width: '100%', display: 'flex', justifyContent: 'center', margin: '1px 0' }}>
-                    <BarcodeRender
-                      value={sticker.sku}
-                      width={barWidth}
-                      height={layoutConfig.barcodeHeight}
-                      margin={4}
-                    />
-                  </div>
-
-                  {/* SKU & Price Bottom Row */}
-                  <div
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      justifyContent: showSkuText && showPrice ? 'space-between' : 'center',
-                      alignItems: 'center',
-                      padding: '0 4px',
-                      boxSizing: 'border-box',
-                      fontSize: layoutConfig.fontSize,
-                      fontWeight: 700,
-                      lineHeight: 1,
-                    }}
-                  >
-                    {showSkuText && (
-                      <span style={{ fontSize: '8px', color: '#334155', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
-                        {sticker.sku}
-                      </span>
-                    )}
-                    {showPrice && (
-                      <span style={{ fontSize: layoutConfig.priceSize, fontWeight: 900, color: '#000000', whiteSpace: 'nowrap' }}>
-                        Rs. {sticker.price.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            }))}
-          </div>
+            );
+          })()}
         </div>
       </div>
 
