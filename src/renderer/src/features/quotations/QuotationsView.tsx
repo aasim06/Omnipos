@@ -23,6 +23,7 @@ import {
   ArrowRepeatAll20Regular,
   Timer20Regular,
   Money20Regular,
+  BarcodeScanner20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
@@ -243,6 +244,7 @@ export function QuotationsView(): React.JSX.Element {
   const [discountPercent, setDiscountPercent] = useState(0);
   const [notes, setNotes] = useState('');
   const [terms, setTerms] = useState('Payment terms: 50% advance on order confirmation, 50% upon delivery.');
+  const [barcodeToast, setBarcodeToast] = useState<{ isSuccess: boolean; text: string } | null>(null);
 
   const storeSettings = useMemo(() => {
     return storage.getItem<StoreSettings>(KEYS.storeSettings, {
@@ -362,6 +364,66 @@ export function QuotationsView(): React.JSX.Element {
       ];
     });
   };
+
+  // Hardware Barcode Scanner Listener for Quotation Dialog
+  React.useEffect(() => {
+    if (!isDialogOpen) return;
+
+    let buffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      // If user is typing in notes/terms/phone, don't intercept unless it's a barcode burst
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+
+      const currentTime = Date.now();
+      const timeDiff = currentTime - lastKeyTime;
+      lastKeyTime = currentTime;
+
+      if (e.key === 'Enter') {
+        const candidate = buffer.trim().toLowerCase();
+        if (candidate.length >= 2) {
+          const match = products.find((p) => {
+            if (p.barcode && p.barcode.toLowerCase() === candidate) return true;
+            if (p.skuCode && p.skuCode.toLowerCase() === candidate) return true;
+            if (p.id.toLowerCase() === candidate) return true;
+            if (`sku-${p.id.slice(-6)}`.toLowerCase() === candidate) return true;
+            return (
+              p.variants &&
+              p.variants.some(
+                (v) =>
+                  (v.skuCode && v.skuCode.toLowerCase() === candidate) ||
+                  ((v as any).barcode && (v as any).barcode.toLowerCase() === candidate)
+              )
+            );
+          });
+
+          if (match) {
+            e.preventDefault();
+            addProductToLines(match);
+            setBarcodeToast({ isSuccess: true, text: `Scanned: ${match.name} (PKR ${match.price})` });
+            setTimeout(() => setBarcodeToast(null), 3500);
+            buffer = '';
+            return;
+          }
+        }
+        buffer = '';
+        return;
+      }
+
+      if (e.key.length === 1) {
+        if (timeDiff > 120) {
+          buffer = e.key;
+        } else {
+          buffer += e.key;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDialogOpen, products]);
 
   const addCustomLine = () => {
     setLines((prev) => [
@@ -846,14 +908,63 @@ export function QuotationsView(): React.JSX.Element {
               </Button>
             </div>
 
-            {/* Rapid Search from Catalog */}
-            <div style={{ marginBottom: '14px' }}>
-              <ProductAutocomplete
-                placeholder="Search catalog by product name, SKU or barcode to add to quotation..."
-                onSelectProduct={addProductToLines}
-                filterModule={targetModule === 'fastfood' ? 'fastfood' : 'minimart'}
-                onChange={() => {}}
-              />
+            {/* Rapid Search from Catalog with Barcode Gun support */}
+            <div style={{ marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <ProductAutocomplete
+                    placeholder="Search catalog by product name, SKU or barcode to add to quotation..."
+                    onSelectProduct={addProductToLines}
+                    filterModule="all"
+                    clearOnSelect={true}
+                    onChange={() => {}}
+                  />
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: tokens.colorNeutralBackground3,
+                    border: `1px solid ${tokens.colorNeutralStroke2}`,
+                    fontSize: '11px',
+                    color: tokens.colorNeutralForeground3,
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                  }}
+                  title="Barcode gun is active. You can scan barcodes directly anytime."
+                >
+                  <BarcodeScanner20Regular style={{ width: 16, height: 16, color: '#E51937' }} />
+                  <span>Scanner Gun Ready</span>
+                </div>
+              </div>
+
+              {/* Barcode Scanner Feedback Toast */}
+              {barcodeToast && (
+                <div
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: barcodeToast.isSuccess ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                    border: `1px solid ${barcodeToast.isSuccess ? '#10B981' : '#EF4444'}`,
+                    color: barcodeToast.isSuccess ? '#059669' : '#DC2626',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  {barcodeToast.isSuccess ? (
+                    <CheckmarkCircle20Regular style={{ width: 16, height: 16 }} />
+                  ) : (
+                    <Dismiss16Regular style={{ width: 16, height: 16 }} />
+                  )}
+                  <span>{barcodeToast.text}</span>
+                </div>
+              )}
             </div>
 
             {/* Line Items Table */}

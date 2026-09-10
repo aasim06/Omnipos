@@ -215,8 +215,8 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
 
     const isThermal = layout.startsWith('thermal');
     const is80mm = layout === 'thermal_80mm';
-    const targetWidth = is80mm ? '72mm' : isThermal ? layoutConfig.widthMm : '100%';
-    const pageSize = is80mm ? '80mm auto' : isThermal ? `${layoutConfig.widthMm} ${layoutConfig.heightMm}` : 'A4 portrait';
+    const targetWidth = is80mm ? '65mm' : isThermal ? layoutConfig.widthMm : '100%';
+    const pageSize = is80mm ? 'auto' : isThermal ? `${layoutConfig.widthMm} ${layoutConfig.heightMm}` : 'A4 portrait';
 
     const printHtml = `<!DOCTYPE html>
 <html>
@@ -229,7 +229,7 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
         margin: 0mm !important;
       }
       * {
-        box-sizing: border-box;
+        box-sizing: border-box !important;
         margin: 0;
         padding: 0;
       }
@@ -237,24 +237,28 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
         margin: 0 !important;
         padding: 0 !important;
         width: ${targetWidth} !important;
+        max-width: ${targetWidth} !important;
         height: auto !important;
         background: #ffffff !important;
-        font-family: system-ui, -apple-system, sans-serif !important;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        overflow-x: hidden !important;
       }
       #print-canvas {
         display: ${isThermal ? 'block' : 'grid'};
-        ${!isThermal ? `grid-template-columns: ${layoutConfig.gridColumns}; gap: 1.5mm; padding: 4mm;` : 'margin: 0 auto;'}
-        width: 100% !important;
+        ${!isThermal ? `grid-template-columns: ${layoutConfig.gridColumns}; gap: 1.5mm; padding: 4mm;` : 'margin: 0; padding: 0;'}
+        width: ${targetWidth} !important;
+        max-width: ${targetWidth} !important;
       }
       .print-sticker-card {
         width: ${targetWidth} !important;
+        max-width: ${targetWidth} !important;
         height: ${layoutConfig.heightMm} !important;
         max-height: ${layoutConfig.heightMm} !important;
         box-sizing: border-box !important;
-        padding: 2px 4px !important;
-        margin: ${isThermal ? '0 auto 1mm auto' : '0'} !important;
+        padding: 2px 6px !important;
+        margin: ${isThermal ? '0 0 2mm 0' : '0'} !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
         page-break-after: ${isThermal ? 'always' : 'auto'} !important;
@@ -271,7 +275,8 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
       svg {
         display: block !important;
         margin: 0 auto !important;
-        max-width: 100% !important;
+        max-width: 95% !important;
+        height: auto !important;
       }
     </style>
   </head>
@@ -316,11 +321,11 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
         return {
           name: 'Thermal 80mm Roll (Bixolon / POS Receipt)',
           gridColumns: '1fr',
-          widthMm: '72mm',
+          widthMm: '65mm',
           heightMm: '30mm',
           barcodeHeight: 28,
-          fontSize: '10.5px',
-          priceSize: '12.5px',
+          fontSize: '10px',
+          priceSize: '12px',
         };
       case 'a4_40':
         return {
@@ -596,7 +601,7 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
               </div>
             ) : (
               allStickers.map((sticker, idx) => {
-              const barWidth = layout === 'thermal_80mm' ? 1.55 : layout === 'a4_65' ? 1.0 : layout === 'thermal_38x25' ? 1.1 : layout === 'a4_40' ? 1.15 : 1.3;
+              const barWidth = layout === 'thermal_80mm' ? 1.35 : layout === 'a4_65' ? 1.0 : layout === 'thermal_38x25' ? 1.1 : layout === 'a4_40' ? 1.15 : 1.3;
 
               return (
                 <div
@@ -677,18 +682,20 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
                       display: 'flex',
                       justifyContent: showSkuText && showPrice ? 'space-between' : 'center',
                       alignItems: 'center',
+                      padding: '0 4px',
+                      boxSizing: 'border-box',
                       fontSize: layoutConfig.fontSize,
                       fontWeight: 700,
                       lineHeight: 1,
                     }}
                   >
                     {showSkuText && (
-                      <span style={{ fontSize: '8px', color: '#334155', letterSpacing: '0.5px' }}>
+                      <span style={{ fontSize: '8px', color: '#334155', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
                         {sticker.sku}
                       </span>
                     )}
                     {showPrice && (
-                      <span style={{ fontSize: layoutConfig.priceSize, fontWeight: 900, color: '#000000' }}>
+                      <span style={{ fontSize: layoutConfig.priceSize, fontWeight: 900, color: '#000000', whiteSpace: 'nowrap' }}>
                         Rs. {sticker.price.toLocaleString()}
                       </span>
                     )}
@@ -704,7 +711,7 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
       <style>{`
         @media print {
           @page {
-            size: ${layout === 'thermal_80mm' ? '80mm auto' : layout.startsWith('thermal') ? `${layoutConfig.widthMm} ${layoutConfig.heightMm}` : 'A4 portrait'};
+            size: ${layout === 'thermal_80mm' ? 'auto' : layout.startsWith('thermal') ? `${layoutConfig.widthMm} ${layoutConfig.heightMm}` : 'A4 portrait'};
             margin: 0mm !important;
           }
           html, body {
@@ -726,19 +733,28 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
             position: absolute;
             left: 0;
             top: 0;
-            width: ${layout === 'thermal_80mm' ? '72mm' : layout.startsWith('thermal') ? layoutConfig.widthMm : '100%'} !important;
-            max-width: ${layout === 'thermal_80mm' ? '72mm' : layout.startsWith('thermal') ? layoutConfig.widthMm : '100%'} !important;
+            width: ${layout === 'thermal_80mm' ? '65mm' : layout.startsWith('thermal') ? layoutConfig.widthMm : '100%'} !important;
+            max-width: ${layout === 'thermal_80mm' ? '65mm' : layout.startsWith('thermal') ? layoutConfig.widthMm : '100%'} !important;
             height: auto !important;
             border: none !important;
             padding: 0 !important;
-            margin: 0 auto !important;
+            margin: 0 !important;
             gap: 1mm !important;
           }
           .print-sticker-card {
+            width: ${layout === 'thermal_80mm' ? '65mm' : layout.startsWith('thermal') ? layoutConfig.widthMm : '100%'} !important;
+            max-width: ${layout === 'thermal_80mm' ? '65mm' : layout.startsWith('thermal') ? layoutConfig.widthMm : '100%'} !important;
+            box-sizing: border-box !important;
+            padding: 2px 6px !important;
+            margin: ${layout.startsWith('thermal') ? '0 0 2mm 0' : '0'} !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
             page-break-after: ${layout.startsWith('thermal') ? 'always' : 'auto'} !important;
             break-after: ${layout.startsWith('thermal') ? 'page' : 'auto'} !important;
+          }
+          .print-sticker-card svg {
+            max-width: 95% !important;
+            height: auto !important;
           }
           .no-print {
             display: none !important;

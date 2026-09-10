@@ -170,12 +170,24 @@ export function ProductGrid({
                       {formatPKR(p.price)}
                     </span>
 
-                    <button
-                      onClick={() => onAddToCart(p)}
-                      className="px-3 py-1.5 rounded-md bg-[#e53935] hover:bg-[#d32f2f] text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95"
-                    >
-                      <ShoppingCart size={13} /> Add
-                    </button>
+                    {(() => {
+                      const isOut = p.openingStock !== null && p.openingStock !== undefined && p.openingStock <= 0;
+                      return (
+                        <button
+                          disabled={isOut}
+                          onClick={() => {
+                            if (!isOut) onAddToCart(p);
+                          }}
+                          className={`px-3 py-1.5 rounded-md text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm ${
+                            isOut
+                              ? 'bg-neutral-700 opacity-50 cursor-not-allowed'
+                              : 'bg-[#e53935] hover:bg-[#d32f2f] active:scale-95'
+                          }`}
+                        >
+                          <ShoppingCart size={13} /> {isOut ? 'Out of Stock' : 'Add'}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

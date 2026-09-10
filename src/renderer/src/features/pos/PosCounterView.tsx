@@ -68,7 +68,7 @@ import { uid, nowISO } from '@/lib/utils';
 import { useAppTheme } from '@/theme/AppProviders';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { PosCounterSkeleton } from '@/components/skeletons/PageSkeletons';
-import { playBeep, playSuccessChime } from '@/lib/soundFx';
+import { playBeep, playSuccessChime, playErrorBeep } from '@/lib/soundFx';
 import { decodeProductVariants } from '@/lib/variants';
 import { A4InvoiceTemplate } from '@/components/print/A4InvoiceTemplate';
 import { storage, KEYS } from '@/lib/storage';
@@ -648,14 +648,7 @@ const FastFoodVisualCard = React.memo(
   return true;
 });
 
-/* ─── Addon Ingredients (Build Your Meal) ──────────────────────────── */
-const ADDONS = [
-  { icon: <FoodCarrot24Regular style={{ width: 18, height: 18 }} />, label: 'Veggies' },
-  { icon: <FoodApple24Regular style={{ width: 18, height: 18 }} />, label: 'Fresh' },
-  { icon: <LeafOne20Regular style={{ width: 18, height: 18 }} />, label: 'Herbs' },
-  { icon: <FoodEgg24Regular style={{ width: 18, height: 18 }} />, label: 'Extra' },
-  { icon: <FoodGrains24Regular style={{ width: 18, height: 18 }} />, label: 'Grains' },
-];
+/* ─── Fast Food Order Types & Parked Orders ──────────────────────────── */
 
 type FastFoodOrderType = 'dine-in' | 'takeaway' | 'delivery';
 
@@ -690,8 +683,6 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
   const [activeCategory, setActiveCategory] = useState('All');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedQty, setSelectedQty] = useState(1);
-  const [selectedSize, setSelectedSize] = useState(1);
-  const [selectedAddons, setSelectedAddons] = useState<number[]>([0, 2]);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [isCartExpanded, setIsCartExpanded] = useState(false);
   const [promoCode, setPromoCode] = useState('');
@@ -1076,7 +1067,43 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
     if (found) {
       setSelectedProduct(found);
 
+      const isProductOutOfStock =
+        found.openingStock !== null && found.openingStock !== undefined && found.openingStock <= 0;
+
       if (matchedVariant) {
+        const isVariantOutOfStock =
+          matchedVariant.stock !== undefined && matchedVariant.stock !== null
+            ? matchedVariant.stock <= 0
+            : isProductOutOfStock;
+
+        if (isVariantOutOfStock) {
+          playErrorBeep();
+          setLastScannedFeedback({
+            isSuccess: false,
+            text: `"${found.name} (${matchedVariant.label})" is OUT OF STOCK!`
+          });
+          setBarcodeInput('');
+          setTimeout(() => setLastScannedFeedback(null), 3500);
+          return;
+        }
+
+        const maxStock =
+          matchedVariant.stock !== undefined && matchedVariant.stock !== null
+            ? matchedVariant.stock
+            : found.openingStock;
+
+        const currentInCart = inCartMap[`${found.id}__${matchedVariant.label}`] || 0;
+        if (maxStock !== undefined && maxStock !== null && currentInCart + qty > maxStock) {
+          playErrorBeep();
+          setLastScannedFeedback({
+            isSuccess: false,
+            text: `Stock limit reached! Only ${maxStock} available (${currentInCart} in cart)`
+          });
+          setBarcodeInput('');
+          setTimeout(() => setLastScannedFeedback(null), 3500);
+          return;
+        }
+
         const vPrice =
           matchedVariant.price !== undefined && matchedVariant.price > 0
             ? matchedVariant.price
@@ -1089,6 +1116,44 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         setBarcodeInput('');
         setTimeout(() => setLastScannedFeedback(null), 3500);
         return;
+      }
+
+      // Check if product is out of stock when no specific variant matched
+      if (isProductOutOfStock) {
+        const hasAvailableVariant =
+          found.variants &&
+          found.variants.length > 0 &&
+          found.variants.some((v) => (v.stock !== undefined && v.stock !== null ? v.stock > 0 : false));
+
+        if (!hasAvailableVariant) {
+          playErrorBeep();
+          setLastScannedFeedback({
+            isSuccess: false,
+            text: `"${found.name}" is OUT OF STOCK! (0 Available)`
+          });
+          setBarcodeInput('');
+          setTimeout(() => setLastScannedFeedback(null), 3500);
+          return;
+        }
+      }
+
+      // Check available quantity limit if stock is tracked
+      const currentInCart = inCartMap[found.id] || 0;
+      if (
+        found.openingStock !== undefined &&
+        found.openingStock !== null &&
+        (!found.variants || found.variants.length === 0)
+      ) {
+        if (currentInCart + qty > found.openingStock) {
+          playErrorBeep();
+          setLastScannedFeedback({
+            isSuccess: false,
+            text: `Stock limit reached! Only ${found.openingStock} available (${currentInCart} in cart)`
+          });
+          setBarcodeInput('');
+          setTimeout(() => setLastScannedFeedback(null), 3500);
+          return;
+        }
       }
 
       if (found.variants && found.variants.length > 0) {
@@ -1115,7 +1180,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
       setBarcodeInput('');
       setTimeout(() => setLastScannedFeedback(null), 3500);
     } else {
-      playBeep();
+      playErrorBeep();
       setLastScannedFeedback({
         isSuccess: false,
         text: `"${lookupTerm}" not found in catalog`
@@ -1127,6 +1192,20 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
   /* Scale / Loose Weight & Liquid Volume Calculator Confirmation */
   const handleConfirmWeight = () => {
     if (!weighingProduct) return;
+    if (
+      weighingProduct.openingStock !== null &&
+      weighingProduct.openingStock !== undefined &&
+      weighingProduct.openingStock <= 0
+    ) {
+      playErrorBeep();
+      setLastScannedFeedback({
+        isSuccess: false,
+        text: `"${weighingProduct.name}" is OUT OF STOCK!`
+      });
+      setTimeout(() => setLastScannedFeedback(null), 3500);
+      setWeighingProduct(null);
+      return;
+    }
     const finalQty = Number(weightAmount.toFixed(3));
     const calcPrice = Math.round(weighingProduct.price * finalQty);
     const unitName = weighingProduct.unit || 'kg';
@@ -1173,12 +1252,38 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
     customUnitPrice?: number,
     notes?: string
   ) => {
+    // Prevent adding out-of-stock items
+    const isOut = product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
+    if (isOut && !variantLabel) {
+      playErrorBeep();
+      return;
+    }
+
+    if (variantLabel && product.variants) {
+      const v = product.variants.find((item) => item.label === variantLabel);
+      if (v && v.stock !== undefined && v.stock !== null && v.stock <= 0) {
+        playErrorBeep();
+        return;
+      }
+      if ((!v || v.stock === undefined || v.stock === null) && isOut) {
+        playErrorBeep();
+        return;
+      }
+    }
+
     const unitPrice = customUnitPrice !== undefined ? customUnitPrice : product.price;
     setCart((prev) => {
       const existsIndex = prev.findIndex(
         (item) => item.productId === product.id && item.variantLabel === variantLabel
       );
       if (existsIndex > -1) {
+        const existingQty = prev[existsIndex].quantity;
+        if (!variantLabel && product.openingStock !== undefined && product.openingStock !== null) {
+          if (existingQty + qty > product.openingStock) {
+            playErrorBeep();
+            return prev;
+          }
+        }
         return prev.map((item, idx) =>
           idx === existsIndex ? { ...item, quantity: item.quantity + qty } : item
         );
@@ -1207,15 +1312,26 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
   }, []);
 
   const updateCartQty = React.useCallback((productId: string, delta: number, variantLabel?: string) => {
-    setCart((prev) =>
-      prev.map((item) =>
-        item.productId === productId && item.variantLabel === variantLabel
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
-    );
+    setCart((prev) => {
+      const item = prev.find((i) => i.productId === productId && i.variantLabel === variantLabel);
+      if (!item) return prev;
+      if (delta > 0) {
+        const prod = products.find((p) => p.id === productId);
+        if (prod && prod.openingStock !== null && prod.openingStock !== undefined && !variantLabel) {
+          if (item.quantity + delta > prod.openingStock) {
+            playErrorBeep();
+            return prev;
+          }
+        }
+      }
+      return prev.map((i) =>
+        i.productId === productId && i.variantLabel === variantLabel
+          ? { ...i, quantity: Math.max(1, i.quantity + delta) }
+          : i
+      );
+    });
     playBeep();
-  }, []);
+  }, [products]);
 
   /* Hold / Park Order (Queue Management) */
   const handleParkOrder = () => {
@@ -1485,7 +1601,6 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
   }, [cart, isPending, paymentMode, selectedKhataId, orderType, tableNo, tokenNo, deliveryDetails, module, customerPhone, matchedCustomer]);
 
   const featured = selectedProduct ?? null;
-  const sizes = ['Small', 'Regular', 'Large'];
 
   if (isLoadingProducts && products.length === 0) {
     return <PosCounterSkeleton module={module} />;
@@ -1933,6 +2048,17 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                     );
                     const target = exact || (filteredProducts.length === 1 ? filteredProducts[0] : null);
                     if (target) {
+                      const isTargetOut =
+                        target.openingStock !== null && target.openingStock !== undefined && target.openingStock <= 0;
+                      if (isTargetOut && (!target.variants || target.variants.length === 0)) {
+                        playErrorBeep();
+                        setLastScannedFeedback({
+                          isSuccess: false,
+                          text: `"${target.name}" is OUT OF STOCK! (0 Available)`
+                        });
+                        setTimeout(() => setLastScannedFeedback(null), 3500);
+                        return;
+                      }
                       if (target.variants && target.variants.length > 0) {
                         setVariantPickerProduct(target);
                       } else {
@@ -2133,95 +2259,70 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
               </div>
 
               {/* Product Info & Controls */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: F.textPrimary, lineHeight: 1.2 }}>
+                    <div style={{ fontSize: '20px', fontWeight: 800, color: F.textPrimary, lineHeight: 1.2 }}>
                       {featured.name}
                     </div>
                     <div style={{ fontSize: '13px', color: F.textSecondary, marginTop: '3px' }}>
-                      {featured.category || 'Kitchen Preparation'} • {featured.openingStock ?? 25} in stock
+                      {featured.category || 'Fast Food'} • {featured.openingStock ?? 0} in stock
                     </div>
                   </div>
-                  <div style={{ fontSize: '20px', fontWeight: 800, color: F.accentRed }}>
-                    PKR {((Math.round((featured?.price || 0) * (selectedSize === 0 ? 1 : selectedSize === 1 ? 1.15 : 1.3)) + selectedAddons.length * 40) * selectedQty).toLocaleString()}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: F.accentRed }}>
+                      PKR {((featured.price || 0) * selectedQty).toLocaleString()}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProduct(null)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: F.textMuted,
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '4px',
+                      }}
+                      title="Deselect item"
+                    >
+                      <Dismiss20Regular style={{ width: 18, height: 18 }} />
+                    </button>
                   </div>
                 </div>
 
-                {/* Size Segmented Controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                {/* Real Product Variants (Only if product has actual variants defined in catalog) */}
+                {featured.variants && featured.variants.length > 0 && (
                   <div>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: F.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
-                      Portion Size
+                      Available Options
                     </div>
-                    <div style={{ display: 'flex', backgroundColor: F.bgSubtle, padding: '3px', borderRadius: F.radiusMd, border: `1px solid ${F.border}` }}>
-                      {sizes.map((s, i) => (
-                        <button
-                          key={s}
-                          onClick={() => setSelectedSize(i)}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {featured.variants.map((v: any, i: number) => (
+                        <div
+                          key={v.id || i}
                           style={{
-                            padding: '4px 14px',
+                            padding: '4px 10px',
                             borderRadius: F.radiusSm,
-                            border: 'none',
-                            backgroundColor: selectedSize === i ? F.bgCard : 'transparent',
-                            color: selectedSize === i ? F.textPrimary : F.textSecondary,
-                            fontWeight: selectedSize === i ? 700 : 500,
-                            fontSize: '12.5px',
-                            fontFamily: F.font,
-                            cursor: 'pointer',
-                            boxShadow: selectedSize === i ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                            transition: 'all 0.12s ease',
+                            backgroundColor: F.bgSubtle,
+                            border: `1px solid ${F.border}`,
+                            fontSize: '12px',
+                            color: F.textPrimary,
+                            fontWeight: 600,
                           }}
                         >
-                          {s}
-                        </button>
+                          {v.name || v.label} {v.price ? `(+PKR ${v.price})` : ''}
+                        </div>
                       ))}
                     </div>
                   </div>
-
-                  {/* Addons (Build Your Meal) */}
-                  <div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: F.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
-                      Add-ons & Extras
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      {ADDONS.map((addon, i) => {
-                        const isSelected = selectedAddons.includes(i);
-                        return (
-                          <div
-                            key={i}
-                            onClick={() =>
-                              setSelectedAddons((prev) =>
-                                prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]
-                              )
-                            }
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: F.radiusMd, // 8px radius
-                              backgroundColor: isSelected ? F.accentRedSubtle : F.bgSubtle,
-                              border: `1px solid ${isSelected ? F.accentRed : F.border}`,
-                              color: isSelected ? F.accentRed : F.textSecondary,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              transition: 'all 0.12s ease',
-                            }}
-                          >
-                            {addon.icon}
-                            <span>{addon.label}</span>
-                            {isSelected && <Checkmark20Filled style={{ width: 12, height: 12 }} />}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
+                )}
 
                 {/* Stepper & Add to Order Bar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '2px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '4px' }}>
                   {/* Fluent Stepper */}
                   <div style={{ display: 'flex', alignItems: 'center', backgroundColor: F.bgSubtle, borderRadius: F.radiusMd, border: `1px solid ${F.border}` }}>
                     <button
@@ -2242,41 +2343,59 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   </div>
 
                   {/* Add to Order Button */}
-                  <button
-                    onClick={() => {
-                      if (!featured) return;
-                      const sizeMultiplier = selectedSize === 0 ? 1 : selectedSize === 1 ? 1.15 : 1.3;
-                      const heroPortionPrice = Math.round(featured.price * sizeMultiplier);
-                      const heroAddonsPrice = selectedAddons.length * 40;
-                      const unitPrice = heroPortionPrice + heroAddonsPrice;
-                      const addonLabels = selectedAddons.map((i) => ADDONS[i].label);
-                      const variantLabel = `${sizes[selectedSize]}${addonLabels.length > 0 ? ` • ${addonLabels.join(', ')}` : ''}`;
-
-                      addToCart(featured, selectedQty, variantLabel, unitPrice);
-                      setSelectedQty(1);
-                    }}
-                    style={{
-                      height: '36px',
-                      padding: '0 20px',
-                      borderRadius: F.radiusMd, // 8px subtle corner radius
-                      backgroundColor: isDark ? F.accentRed : '#1A1A1E',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      fontFamily: F.font,
-                      fontWeight: 600,
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'background-color 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isDark ? F.accentRedHover : '#2D2D35')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isDark ? F.accentRed : '#1A1A1E')}
-                  >
-                    <Add16Filled />
-                    <span>Add to Order</span>
-                  </button>
+                  {(() => {
+                    const isFeaturedOut =
+                      featured.openingStock !== null &&
+                      featured.openingStock !== undefined &&
+                      featured.openingStock <= 0;
+                    return (
+                      <button
+                        type="button"
+                        disabled={isFeaturedOut}
+                        onClick={() => {
+                          if (!featured || isFeaturedOut) return;
+                          addToCart(featured, selectedQty);
+                          setSelectedQty(1);
+                        }}
+                        style={{
+                          height: '36px',
+                          padding: '0 20px',
+                          borderRadius: F.radiusMd,
+                          backgroundColor: isFeaturedOut
+                            ? isDark
+                              ? '#2A2A2A'
+                              : '#E2E8F0'
+                            : isDark
+                            ? F.accentRed
+                            : '#1A1A1E',
+                          color: isFeaturedOut ? F.textMuted : '#FFFFFF',
+                          border: 'none',
+                          fontFamily: F.font,
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          cursor: isFeaturedOut ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'background-color 0.15s ease',
+                          opacity: isFeaturedOut ? 0.6 : 1,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isFeaturedOut) {
+                            e.currentTarget.style.backgroundColor = isDark ? F.accentRedHover : '#2D2D35';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isFeaturedOut) {
+                            e.currentTarget.style.backgroundColor = isDark ? F.accentRed : '#1A1A1E';
+                          }
+                        }}
+                      >
+                        <Add16Filled />
+                        <span>{isFeaturedOut ? 'Out of Stock' : 'Add to Order'}</span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -2539,17 +2658,19 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         {/* Docked Panel Header */}
         <div
           style={{
-            height: '56px',
-            padding: '0 18px',
+            height: '52px',
+            padding: '0 12px',
             borderBottom: `1px solid ${F.border}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexShrink: 0,
+            gap: '8px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '15px', fontWeight: 800, color: F.textPrimary, letterSpacing: '-0.2px' }}>
+          {/* Left: Title & Items Count Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flexShrink: 0 }}>
+            <span style={{ fontSize: '14.5px', fontWeight: 800, color: F.textPrimary, letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}>
               My Order
             </span>
             <span
@@ -2558,19 +2679,29 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                 fontWeight: 700,
                 color: F.accentRed,
                 backgroundColor: F.accentRedSubtle,
-                padding: '2px 8px',
+                padding: '2.5px 7px',
                 borderRadius: F.radiusSm,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                display: 'inline-block',
+                lineHeight: 1.2,
               }}
             >
-              {cart.reduce((s, i) => s + i.quantity, 0)} items
+              {cart.reduce((s, i) => s + i.quantity, 0)} {cart.reduce((s, i) => s + i.quantity, 0) === 1 ? 'item' : 'items'}
             </span>
+          </div>
+
+          {/* Right: Action Buttons (Expand, Recall, Hold, Clear) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+            {/* Expand Drawer Button */}
             {cart.length > 0 && (
               <button
                 type="button"
                 onClick={() => setIsCartExpanded(true)}
                 title="Expand cart list with full details (Right drawer view)"
                 style={{
-                  padding: '3px 8px',
+                  height: '29px',
+                  padding: '0 8px',
                   borderRadius: F.radiusSm,
                   backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
                   border: `1px solid ${F.border}`,
@@ -2578,9 +2709,11 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   fontSize: '11px',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                   transition: 'all 0.12s ease',
                 }}
                 onMouseEnter={(e) => {
@@ -2592,13 +2725,11 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   e.currentTarget.style.color = F.textPrimary;
                 }}
               >
-                <ArrowExpand20Regular style={{ width: 13, height: 13, color: F.accentRed }} />
+                <ArrowExpand20Regular style={{ width: 13, height: 13, color: F.accentRed, flexShrink: 0 }} />
                 <span>Expand</span>
               </button>
             )}
-          </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {/* Recall Parked Orders Button */}
             {parkedOrders.length > 0 && (
               <button
@@ -2606,7 +2737,8 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                 onClick={() => setShowParkedModal(true)}
                 title="View held / parked orders"
                 style={{
-                  padding: '4px 8px',
+                  height: '29px',
+                  padding: '0 7px',
                   borderRadius: F.radiusSm,
                   backgroundColor: '#F59E0B',
                   color: '#000000',
@@ -2614,13 +2746,15 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   fontWeight: 800,
                   fontSize: '11px',
                   cursor: 'pointer',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '3px',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                   boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)',
                 }}
               >
-                <Clock20Regular style={{ width: 13, height: 13 }} />
+                <Clock20Regular style={{ width: 13, height: 13, flexShrink: 0 }} />
                 <span>Recall ({parkedOrders.length})</span>
               </button>
             )}
@@ -2632,7 +2766,8 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                 onClick={handleParkOrder}
                 title={module === 'fastfood' ? 'Hold table and send live KOT to Kitchen screen' : 'Hold order without charging to serve next customer'}
                 style={{
-                  padding: '4px 8px',
+                  height: '29px',
+                  padding: '0 8px',
                   borderRadius: F.radiusSm,
                   backgroundColor: module === 'fastfood' ? F.accentRedSubtle : F.bgSubtle,
                   border: `1px solid ${module === 'fastfood' ? F.accentRed : F.border}`,
@@ -2640,17 +2775,20 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   fontWeight: 700,
                   fontSize: '11px',
                   cursor: 'pointer',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                   transition: 'all 0.12s ease',
                 }}
               >
-                <Pause20Regular style={{ width: 13, height: 13 }} />
-                <span>{module === 'fastfood' ? 'Hold & Send KOT' : 'Hold'}</span>
+                <Pause20Regular style={{ width: 13, height: 13, flexShrink: 0 }} />
+                <span>{module === 'fastfood' ? 'Hold / KOT' : 'Hold'}</span>
               </button>
             )}
 
+            {/* Clear Button */}
             {cart.length > 0 && (
               <button
                 type="button"
@@ -2658,14 +2796,21 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   setCart([]);
                   setTenderedAmount('');
                 }}
+                title="Clear order cart"
                 style={{
+                  height: '29px',
+                  padding: '0 5px',
                   fontSize: '11px',
+                  fontWeight: 600,
                   color: F.textMuted,
                   background: 'transparent',
                   border: 'none',
                   cursor: 'pointer',
                   fontFamily: F.font,
-                  padding: '4px',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = F.accentRed)}
                 onMouseLeave={(e) => (e.currentTarget.style.color = F.textMuted)}
@@ -4020,13 +4165,19 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
               {variantPickerProduct.variants?.map((v) => {
                 const finalPrice = v.price !== undefined && v.price > 0 ? v.price : (variantPickerProduct.price + (v.priceDelta || 0));
-                const isVarOut = v.stock !== undefined && v.stock <= 0;
+                const isVarOut =
+                  v.stock !== undefined && v.stock !== null
+                    ? v.stock <= 0
+                    : variantPickerProduct.openingStock !== null &&
+                      variantPickerProduct.openingStock !== undefined &&
+                      variantPickerProduct.openingStock <= 0;
                 return (
                   <button
                     key={v.id}
                     type="button"
                     disabled={isVarOut}
                     onClick={() => {
+                      if (isVarOut) return;
                       addToCart(
                         variantPickerProduct,
                         1,
@@ -4067,9 +4218,9 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                     <span style={{ fontSize: '13px', fontWeight: 800, color: isDark ? '#FF4D64' : F.accentRed }}>
                       PKR {finalPrice.toLocaleString()}
                     </span>
-                    {v.stock !== undefined && (
-                      <span style={{ fontSize: '10px', color: F.textMuted, fontWeight: 600 }}>
-                        {isVarOut ? 'Out of stock' : `${v.stock} left`}
+                    {(v.stock !== undefined || variantPickerProduct.openingStock !== undefined) && (
+                      <span style={{ fontSize: '10px', color: isVarOut ? '#EF4444' : F.textMuted, fontWeight: 600 }}>
+                        {isVarOut ? 'Out of stock' : `${v.stock ?? variantPickerProduct.openingStock} left`}
                       </span>
                     )}
                   </button>

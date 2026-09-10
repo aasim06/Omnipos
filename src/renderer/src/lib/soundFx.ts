@@ -112,3 +112,37 @@ export function playKitchenBell(): void {
   }
 }
 
+/**
+ * Low double-pulse buzz warning tone when an item is out of stock or cannot be scanned
+ */
+export function playErrorBeep(): void {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const buzz = (time: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(160, time);
+      osc.frequency.exponentialRampToValueAtTime(110, time + 0.13);
+
+      gain.gain.setValueAtTime(0.18, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.14);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(time);
+      osc.stop(time + 0.15);
+    };
+
+    buzz(ctx.currentTime);
+    buzz(ctx.currentTime + 0.16);
+  } catch {
+    // Graceful fallback
+  }
+}
+
+

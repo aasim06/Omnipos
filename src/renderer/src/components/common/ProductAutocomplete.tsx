@@ -12,6 +12,7 @@ export interface ProductAutocompleteProps {
   value?: string;
   onChange: (value: string, product?: Product) => void;
   onSelectProduct?: (product: Product) => void;
+  clearOnSelect?: boolean;
   filterModule?: 'fastfood' | 'minimart' | 'all';
   filterCategory?: string;
   filterCategories?: string[];
@@ -158,10 +159,6 @@ const useStyles = makeStyles({
     fontSize: '10.5px',
   },
   variantBadge: {
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-    color: '#E51937',
-    padding: '1px 5px',
-    borderRadius: '4px',
     fontSize: '10.5px',
     fontWeight: 700,
   },
@@ -177,6 +174,7 @@ export function ProductAutocomplete({
   value: controlledValue,
   onChange,
   onSelectProduct,
+  clearOnSelect = false,
   filterModule = 'all',
   filterCategory,
   filterCategories,
@@ -194,6 +192,7 @@ export function ProductAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const [internalValue, setInternalValue] = useState(controlledValue ?? '');
 
+  // Synchronize internal value when controlled value changes externally
   useEffect(() => {
     if (controlledValue !== undefined) {
       setInternalValue(controlledValue);
@@ -202,18 +201,18 @@ export function ProductAutocomplete({
 
   const displayValue = controlledValue !== undefined ? controlledValue : internalValue;
 
-  // Fetch Products via shared query cache
+  // Fetch products Cache-First (<5ms)
   const { data: allProducts = [] } = useQuery<Product[]>({
     queryKey: ['products'],
     queryFn: () => posApi.fetchProducts(),
-    staleTime: 60000,
+    staleTime: 1000 * 60 * 5,
   });
 
-  const isCategoryFiltered = Boolean(filterCategory && filterCategory !== 'all');
-  const isMultipleCategoryFiltered = Boolean(!isCategoryFiltered && filterCategories && filterCategories.length > 0);
+  const isCategoryFiltered = !!filterCategory;
+  const isMultipleCategoryFiltered = !!filterCategories && filterCategories.length > 0;
   const isAnyCategoryFiltered = isCategoryFiltered || isMultipleCategoryFiltered;
 
-  // Filter by module and category if requested
+  // Filter products by Module and Category if specified
   const filteredByModule = allProducts.filter((p) => {
     if (isCategoryFiltered) {
       if ((p.category || '').toLowerCase() !== filterCategory!.toLowerCase()) {
@@ -277,8 +276,13 @@ export function ProductAutocomplete({
   }, []);
 
   const handleSelect = (prod: Product) => {
-    setInternalValue(prod.name);
-    onChange?.(prod.name, prod);
+    if (clearOnSelect) {
+      setInternalValue('');
+      onChange?.('', prod);
+    } else {
+      setInternalValue(prod.name);
+      onChange?.(prod.name, prod);
+    }
     if (onSelectProduct) {
       onSelectProduct(prod);
     }
@@ -306,8 +310,29 @@ export function ProductAutocomplete({
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
+            const rawTerm = (displayValue || '').trim().toLowerCase();
             if (suggestions.length > 0) {
               handleSelect(suggestions[0]);
+            } else if (rawTerm) {
+              // Direct barcode / SKU fallback lookup across all products
+              const match = allProducts.find(
+                (p) =>
+                  (p.barcode && p.barcode.toLowerCase() === rawTerm) ||
+                  (p.skuCode && p.skuCode.toLowerCase() === rawTerm) ||
+                  (p.id && p.id.toLowerCase() === rawTerm) ||
+                  `sku-${p.id.slice(-6)}`.toLowerCase() === rawTerm ||
+                  (p.variants &&
+                    p.variants.some(
+                      (v) =>
+                        (v.skuCode && v.skuCode.toLowerCase() === rawTerm) ||
+                        ((v as any).barcode && (v as any).barcode.toLowerCase() === rawTerm)
+                    )) ||
+                  p.name.toLowerCase() === rawTerm ||
+                  p.name.toLowerCase().includes(rawTerm)
+              );
+              if (match) {
+                handleSelect(match);
+              }
             }
           }
         }}
