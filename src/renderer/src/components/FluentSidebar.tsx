@@ -52,6 +52,9 @@ import {
   Database20Regular,
   ArrowSync20Filled,
   ArrowDownload20Regular,
+  BarcodeScanner20Regular,
+  DocumentBulletList24Regular,
+  DocumentBulletList24Filled,
 } from '@fluentui/react-icons';
 import { posApi } from '@/lib/api';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -1252,8 +1255,16 @@ export function FluentSidebar(): React.JSX.Element {
             { to: '/catalog/fastfood', label: 'Fast Food Menu', moduleKey: 'fastfood' as const, icon: <Food24Regular className={styles.icon15} /> },
             { to: '/catalog/omnimart', label: 'Mart Items', moduleKey: 'omnimart' as const, icon: <BuildingRetail24Regular className={styles.icon15} /> },
             { to: '/catalog/categories', label: 'Categories', icon: <Grid20Regular className={styles.icon15} /> },
+            { to: '/catalog/barcode-labels', label: 'Barcode Stickers', icon: <BarcodeScanner20Regular className={styles.icon15} /> },
             { to: '/catalog/new', label: '+ Add New Item', icon: <Add20Regular className={styles.icon15Red} />, isSpecial: true },
           ],
+        },
+        {
+          to: '/quotations',
+          label: 'Quotations & Estimates',
+          moduleKey: 'catalog' as const,
+          icon: <DocumentBulletList24Regular className={styles.icon19} />,
+          activeIcon: <DocumentBulletList24Filled className={styles.icon19} />,
         },
         {
           isAccordion: true,

@@ -174,7 +174,7 @@ const useStyles = makeStyles({
 
 export function ProductAutocomplete({
   id = 'product-autocomplete',
-  value = '',
+  value: controlledValue,
   onChange,
   onSelectProduct,
   filterModule = 'all',
@@ -192,6 +192,15 @@ export function ProductAutocomplete({
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [internalValue, setInternalValue] = useState(controlledValue ?? '');
+
+  useEffect(() => {
+    if (controlledValue !== undefined) {
+      setInternalValue(controlledValue);
+    }
+  }, [controlledValue]);
+
+  const displayValue = controlledValue !== undefined ? controlledValue : internalValue;
 
   // Fetch Products via shared query cache
   const { data: allProducts = [] } = useQuery<Product[]>({
@@ -237,18 +246,20 @@ export function ProductAutocomplete({
     : (filteredByModule.length > 0 ? filteredByModule : allProducts);
 
   // Filter suggestions by search query (name, SKU barcode, category, variant barcode)
-  const query = (value || '').toLowerCase().trim();
+  const query = (displayValue || '').toLowerCase().trim();
   const suggestions = availableProducts.filter((p) => {
     if (!query) return true;
     return (
       p.name.toLowerCase().includes(query) ||
       (p.skuCode && p.skuCode.toLowerCase().includes(query)) ||
+      (p.barcode && p.barcode.toLowerCase().includes(query)) ||
       (p.category && p.category.toLowerCase().includes(query)) ||
       (p.id && p.id.toLowerCase().includes(query)) ||
       (p.variants &&
         p.variants.some(
           (v) =>
             (v.skuCode && v.skuCode.toLowerCase().includes(query)) ||
+            ((v as any).barcode && (v as any).barcode.toLowerCase().includes(query)) ||
             (v.label && v.label.toLowerCase().includes(query))
         ))
     );
@@ -266,7 +277,8 @@ export function ProductAutocomplete({
   }, []);
 
   const handleSelect = (prod: Product) => {
-    onChange(prod.name, prod);
+    setInternalValue(prod.name);
+    onChange?.(prod.name, prod);
     if (onSelectProduct) {
       onSelectProduct(prod);
     }
@@ -280,13 +292,15 @@ export function ProductAutocomplete({
         label={label}
         labelBg={labelBg}
         required={required}
-        value={value}
+        value={displayValue}
         disabled={disabled}
         placeholder={placeholder}
         autoComplete="off"
         onFocus={() => setIsOpen(true)}
         onChange={(e) => {
-          onChange(e.target.value);
+          const val = e.target.value;
+          setInternalValue(val);
+          onChange?.(val);
           setIsOpen(true);
         }}
         onKeyDown={(e) => {

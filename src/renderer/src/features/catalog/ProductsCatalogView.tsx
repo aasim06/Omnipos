@@ -52,7 +52,7 @@ import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { CustomInput, CustomSelect } from '@/components/ui';
-import { CATEGORY_PROFILES, detectCategoryProfile } from '@/lib/categoryProfiles';
+import { CATEGORY_PROFILES, detectCategoryProfile, ALL_PROFILE_OPTIONS } from '@/lib/categoryProfiles';
 
 const UNIT_OPTIONS = [
   { value: 'PCS', label: 'Piece (PCS)' },
@@ -127,6 +127,20 @@ type ProductFormData = z.infer<typeof productSchema>;
 const categorySchema = z.object({
   name: z.string().min(2, 'Category name must be at least 2 characters'),
   module: z.enum(['fastfood', 'minimart']),
+  profile: z.enum([
+    'footwear',
+    'apparel',
+    'grocery',
+    'cosmetics',
+    'pharmacy',
+    'electronics',
+    'bakery',
+    'food',
+    'hardware',
+    'electric',
+    'cctv',
+    'standard',
+  ]).default('standard'),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -1495,6 +1509,10 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     else if (key === 'categories') navigate('/catalog/categories');
   };
 
+  const { can, businessProfiles = ['standard'] } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
@@ -1525,9 +1543,11 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     resolver: zodResolver(categorySchema) as any,
     defaultValues: {
       name: '',
-      module: 'fastfood',
+      module: hasFastFood ? 'fastfood' : 'minimart',
+      profile: hasFastFood ? 'food' : 'standard',
     },
   });
+  const [isCatCustomName, setIsCatCustomName] = useState(false);
 
   // Watch selected module in product dialog to filter category choices & live preview
   const watchedModule = productForm.watch('module');
@@ -1682,10 +1702,6 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     saveProductMutation.mutate(prod);
   };
 
-  const { can, businessProfiles = ['standard'] } = useLicense();
-  const hasFastFood = can('fastfood');
-  const hasOmnimart = can('omnimart');
-
   const activeRetailProfile = React.useMemo(() => {
     const specific = businessProfiles.find((p) => p !== 'standard' && p !== 'food');
     return specific && CATEGORY_PROFILES[specific] ? CATEGORY_PROFILES[specific] : null;
@@ -1695,16 +1711,16 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
   const activeRetailShort = activeRetailProfile?.shortTag || 'Retail';
 
   const watchedCatModule = categoryForm.watch('module') || (hasFastFood ? 'fastfood' : 'minimart');
-  const catProfileKey = watchedCatModule === 'fastfood' ? 'food' : (activeRetailProfile?.key || 'footwear');
+  const watchedCatProfile = categoryForm.watch('profile') || (watchedCatModule === 'fastfood' ? 'food' : 'standard');
+  const catProfileConfig = CATEGORY_PROFILES[watchedCatProfile as CategoryProfile] || CATEGORY_PROFILES.standard;
 
-  const { data: catBusinessProfile } = useQuery({
-    queryKey: ['business-profile-template', catProfileKey],
-    queryFn: () => posApi.fetchBusinessProfile(catProfileKey),
-  });
+  const catProfileOptions = React.useMemo(() => {
+    return ALL_PROFILE_OPTIONS.filter((opt) => opt.module === watchedCatModule);
+  }, [watchedCatModule]);
 
   const catDefaultOptions = React.useMemo(() => {
-    const backendCategories = catBusinessProfile?.defaultCategories || [];
-    const list = backendCategories.map((c) => c.name);
+    const backendCategories = catProfileConfig.defaultCategories || [];
+    const list = backendCategories;
 
     const existing = new Set(categories.filter((c) => c.module === watchedCatModule).map((c) => c.name.toLowerCase().trim()));
     return list.map((catName) => {
@@ -1715,10 +1731,10 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
         disabled: isAlreadyAdded,
       };
     });
-  }, [catBusinessProfile, catProfileKey, categories, watchedCatModule]);
+  }, [catProfileConfig, categories, watchedCatModule]);
 
   useEffect(() => {
-    if (isCategoryDialogOpen && catDefaultOptions.length > 0) {
+    if (isCategoryDialogOpen && catDefaultOptions.length > 0 && !isCatCustomName) {
       const currentName = categoryForm.getValues('name');
       const currentOpt = catDefaultOptions.find((opt) => opt.value === currentName);
       if (!currentOpt || currentOpt.disabled) {
@@ -1726,10 +1742,10 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
         categoryForm.setValue('name', firstAvail);
       }
     }
-  }, [isCategoryDialogOpen, catDefaultOptions, categoryForm]);
+  }, [isCategoryDialogOpen, catDefaultOptions, categoryForm, isCatCustomName]);
 
   const onCategorySubmit = (data: CategoryFormData) => {
-    const prof = data.module === 'fastfood' ? 'food' : (activeRetailProfile?.key || 'standard');
+    const prof = data.profile || (data.module === 'fastfood' ? 'food' : 'standard');
     const profileConfig = CATEGORY_PROFILES[prof as CategoryProfile] || CATEGORY_PROFILES.standard;
     const cat: Category = {
       id: uid('cat_'),
@@ -2448,8 +2464,8 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                             required
                             value={field.value}
                             options={[
-                              ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
-                              ...(hasOmnimart ? [{ value: 'minimart', label: activeRetailLabel }] : []),
+                              ...(hasFastFood ? [{ value: 'fastfood', label: 'Food' }] : []),
+                              ...(hasOmnimart ? [{ value: 'minimart', label: 'Mart' }] : []),
                             ]}
                             onChange={(val) => {
                               field.onChange(val as ModuleKey);
@@ -2467,7 +2483,11 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                           role="button"
                           tabIndex={0}
                           onClick={() => {
-                            categoryForm.reset({ name: '', module: watchedModule });
+                            categoryForm.reset({
+                              name: '',
+                              module: watchedModule,
+                              profile: watchedModule === 'fastfood' ? 'food' : 'standard',
+                            });
                             setIsCategoryDialogOpen(true);
                           }}
                           className={styles.newCategoryLink}
@@ -2867,22 +2887,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
             {/* Form Fields */}
             <div className={styles.catFieldsCol}>
-
-              <Controller
-                control={categoryForm.control}
-                name="name"
-                render={({ field }) => (
-                  <CustomSelect
-                    label="Select Category"
-                    required
-                    value={field.value}
-                    onChange={field.onChange}
-                    options={catDefaultOptions}
-                    error={categoryForm.formState.errors.name?.message}
-                  />
-                )}
-              />
-
+              {/* 1. Target Store Module */}
               <Controller
                 control={categoryForm.control}
                 name="module"
@@ -2892,13 +2897,166 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                     required
                     value={field.value}
                     options={[
-                      ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
-                      ...(hasOmnimart ? [{ value: 'minimart', label: activeRetailLabel }] : []),
+                      ...(hasFastFood ? [{ value: 'fastfood', label: 'Food' }] : []),
+                      ...(hasOmnimart ? [{ value: 'minimart', label: 'Mart' }] : []),
                     ]}
-                    onChange={(val) => field.onChange(val as ModuleKey)}
+                    onChange={(val) => {
+                      const newMod = val as ModuleKey;
+                      field.onChange(newMod);
+                      if (newMod === 'fastfood') {
+                        categoryForm.setValue('profile', 'food');
+                      } else {
+                        categoryForm.setValue('profile', 'standard');
+                      }
+                    }}
                   />
                 )}
               />
+
+              {/* 2. Industry Profile */}
+              <div>
+                <Controller
+                  control={categoryForm.control}
+                  name="profile"
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="Industry Profile (Size & Unit Presets)"
+                      value={field.value || (watchedCatModule === 'fastfood' ? 'food' : 'standard')}
+                      onChange={(val) => {
+                        const newProf = val as CategoryProfile;
+                        field.onChange(newProf);
+                        if (!isCatCustomName) {
+                          const pConfig = CATEGORY_PROFILES[newProf] || CATEGORY_PROFILES.standard;
+                          const defaults = pConfig.defaultCategories || [];
+                          const existingInMod = new Set(
+                            categories.filter((c) => c.module === categoryForm.getValues('module')).map((c) => c.name.toLowerCase().trim())
+                          );
+                          const firstAvail = defaults.find((n) => !existingInMod.has(n.toLowerCase().trim())) || defaults[0] || '';
+                          if (firstAvail) {
+                            categoryForm.setValue('name', firstAvail);
+                          }
+                        }
+                      }}
+                      options={catProfileOptions.map((opt) => ({
+                        value: opt.value,
+                        label: opt.label,
+                      }))}
+                    />
+                  )}
+                />
+              </div>
+
+              {/* 3. Select Category */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                  <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                    {isCatCustomName ? 'Type any custom category name' : 'Choose preset category or type custom'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCatCustomName(!isCatCustomName);
+                      if (!isCatCustomName) {
+                        categoryForm.setValue('name', '');
+                      } else {
+                        categoryForm.setValue('name', catDefaultOptions[0]?.value || '');
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#E51937',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    {isCatCustomName ? '← Choose from Presets' : '+ Custom Name'}
+                  </button>
+                </div>
+                {isCatCustomName ? (
+                  <Controller
+                    control={categoryForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <CustomInput
+                        label="Category Name"
+                        required
+                        autoFocus
+                        placeholder="e.g. Dvr, Security Cameras, Groceries..."
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        error={categoryForm.formState.errors.name?.message}
+                      />
+                    )}
+                  />
+                ) : (
+                  <Controller
+                    control={categoryForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <CustomSelect
+                        label="Select Category"
+                        required
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={catDefaultOptions}
+                        error={categoryForm.formState.errors.name?.message}
+                      />
+                    )}
+                  />
+                )}
+              </div>
+
+              {/* 4. Sab Se Neechay: Preset Units & Sizes preview */}
+              {catProfileConfig && (
+                <div style={{ padding: '8px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke2}`, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {catProfileConfig.suggestedUnits && catProfileConfig.suggestedUnits.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>Preset Units:</span>
+                      {catProfileConfig.suggestedUnits.map((unit) => (
+                        <span
+                          key={unit}
+                          style={{
+                            fontSize: '10.5px',
+                            fontWeight: 600,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: tokens.colorNeutralBackground1,
+                            border: `1px solid ${tokens.colorNeutralStroke1}`,
+                            color: tokens.colorNeutralForeground1,
+                          }}
+                        >
+                          {unit}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {catProfileConfig.suggestedSizes && catProfileConfig.suggestedSizes.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>Preset Sizes:</span>
+                      {catProfileConfig.suggestedSizes.map((size) => (
+                        <span
+                          key={size}
+                          style={{
+                            fontSize: '10.5px',
+                            fontWeight: 600,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: `${catProfileConfig.accentColor}18`,
+                            border: `1px solid ${catProfileConfig.accentColor}40`,
+                            color: catProfileConfig.accentColor,
+                          }}
+                        >
+                          {size}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Actions */}

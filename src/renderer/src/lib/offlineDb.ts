@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Product, Order, Category, StockMovement, OrderRefund } from '@shared/types';
+import { Product, Order, Category, StockMovement, OrderRefund, Quotation } from '@shared/types';
 
 export interface LocalOrder extends Order {
   synced: 0 | 1;
@@ -66,6 +66,7 @@ export class OmniposDexieDatabase extends Dexie {
   khataTransactions!: Table<LocalKhataTx, string>;
   expenses!: Table<LocalExpense, string>;
   refunds!: Table<OrderRefund, string>;
+  quotations!: Table<Quotation, string>;
   syncQueue!: Table<SyncQueueItem, number>;
 
   constructor() {
@@ -84,6 +85,9 @@ export class OmniposDexieDatabase extends Dexie {
     });
     this.version(3).stores({
       refunds: 'id, orderId, customerName, createdAt, paymentMode',
+    });
+    this.version(4).stores({
+      quotations: 'id, quoteNumber, customerName, module, status, validUntil, createdAt',
     });
     this.on('versionchange', () => {
       this.close();

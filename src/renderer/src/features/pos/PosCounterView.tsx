@@ -23,6 +23,8 @@ import {
   Subtract20Regular,
   Delete20Regular,
   Checkmark20Filled,
+  Checkmark20Regular,
+  Food20Regular,
   Tag20Regular,
   Dismiss16Regular,
   LeafOne20Regular,
@@ -30,6 +32,8 @@ import {
   Star20Regular,
   CheckmarkCircle20Filled,
   Receipt20Regular,
+  Print20Regular,
+  DocumentText20Regular,
   Dismiss20Regular,
   Money20Regular,
   Payment20Regular,
@@ -57,6 +61,7 @@ import {
 } from '@fluentui/react-icons';
 import { posApi, resolveApiUrl } from '@/lib/api';
 import { printKitchenKot } from '@/lib/kotPrinter';
+import { printCustomerReceipt } from '@/lib/receiptPrinter';
 import { Product, CartLine, Order, Category } from '@shared/types';
 import { uid, nowISO } from '@/lib/utils';
 import { useAppTheme } from '@/theme/AppProviders';
@@ -64,6 +69,9 @@ import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { PosCounterSkeleton } from '@/components/skeletons/PageSkeletons';
 import { playBeep, playSuccessChime } from '@/lib/soundFx';
 import { decodeProductVariants } from '@/lib/variants';
+import { A4InvoiceTemplate } from '@/components/print/A4InvoiceTemplate';
+import { storage, KEYS } from '@/lib/storage';
+import { StoreSettings } from '@/features/admin/AdminSettingsView';
 
 /* ─── Fluent UI 2 Desktop Design Tokens (Dynamic Light / Dark) ───── */
 function getTokens(isDark: boolean) {
@@ -691,8 +699,24 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
   const [isSuccess, setIsSuccess] = useState(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showA4Invoice, setShowA4Invoice] = useState(false);
   const [paymentMode, setPaymentMode] = useState<'cash' | 'card' | 'khata'>('cash');
   const [selectedKhataId, setSelectedKhataId] = useState<string>('');
+
+  const storeSettings = React.useMemo(() => {
+    return storage.getItem<StoreSettings>(KEYS.storeSettings, {
+      storeName: module === 'fastfood' ? 'OMNIPOS RESTAURANT' : 'OMNIPOS RETAIL',
+      phone: '+92 300 1234567',
+      address: '',
+      headerNote: 'Order Fresh • Eat Fresh',
+      footerNote: 'Thank you for shopping with us!',
+      paperWidth: '80mm',
+      autoCut: true,
+      drawerKick: true,
+      currency: 'PKR',
+      taxPercent: 0,
+    });
+  }, [module]);
 
   /* Fast Food Specific: Order Type & Routing */
   const [orderType, setOrderType] = useState<FastFoodOrderType>('dine-in');
@@ -952,11 +976,13 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         !q ||
         p.name.toLowerCase().includes(q) ||
         (p.skuCode && p.skuCode.toLowerCase().includes(q)) ||
+        (p.barcode && p.barcode.toLowerCase().includes(q)) ||
         (p.category && p.category.toLowerCase().includes(q)) ||
         (p.variants &&
           p.variants.some(
             (v) =>
               (v.skuCode && v.skuCode.toLowerCase().includes(q)) ||
+              ((v as any).barcode && (v as any).barcode.toLowerCase().includes(q)) ||
               (v.label && v.label.toLowerCase().includes(q))
           ));
       const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
@@ -969,12 +995,10 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
     setSelectedProduct(null);
     setActiveCategory('All');
     setSearchTerm('');
-    if (module === 'minimart') {
-      const timer = setTimeout(() => {
-        scannerInputRef.current?.focus();
-      }, 150);
-      return () => clearTimeout(timer);
-    }
+    const timer = setTimeout(() => {
+      scannerInputRef.current?.focus();
+    }, 150);
+    return () => clearTimeout(timer);
   }, [module]);
 
   // Auto-select first item as hero in Fast Food mode
@@ -1033,8 +1057,13 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
     let matchedVariant: any = null;
     const found = products.find((p) => {
       if (p.skuCode && p.skuCode.toLowerCase() === termLower) return true;
+      if (p.barcode && p.barcode.toLowerCase() === termLower) return true;
       if (p.id.toLowerCase() === termLower) return true;
-      const vMatch = p.variants?.find((v) => v.skuCode && v.skuCode.toLowerCase() === termLower);
+      if (`sku-${p.id.slice(-6)}`.toLowerCase() === termLower) return true;
+      const vMatch = p.variants?.find((v) => 
+        (v.skuCode && v.skuCode.toLowerCase() === termLower) ||
+        ((v as any).barcode && (v as any).barcode.toLowerCase() === termLower)
+      );
       if (vMatch) {
         matchedVariant = vMatch;
         return true;
@@ -1043,6 +1072,8 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
     });
 
     if (found) {
+      setSelectedProduct(found);
+
       if (matchedVariant) {
         const vPrice =
           matchedVariant.price !== undefined && matchedVariant.price > 0
@@ -1055,6 +1086,13 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         });
         setBarcodeInput('');
         setTimeout(() => setLastScannedFeedback(null), 3500);
+        return;
+      }
+
+      if (found.variants && found.variants.length > 0) {
+        setVariantPickerProduct(found);
+        setBarcodeInput('');
+        playBeep();
         return;
       }
 
@@ -1392,18 +1430,6 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         });
       }
       setIsSuccess(true);
-      // Automatically print Kitchen KOT to thermal printer immediately upon order placement
-      if (module === 'fastfood') {
-        const tableOrToken =
-          orderType === 'dine-in'
-            ? `TABLE: ${tableNo}`
-            : orderType === 'takeaway'
-            ? `TOKEN: #${tokenNo}`
-            : 'DELIVERY';
-        void printKitchenKot(savedOrder, {
-          tableOrToken,
-        });
-      }
       setShowReceiptModal(true);
       playSuccessChime();
       setTimeout(() => setIsSuccess(false), 3000);
@@ -1446,8 +1472,8 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         return;
       }
 
-      // If in Mini Mart and user triggers a barcode gun anywhere on the page without focusing first
-      if (module === 'minimart' && !isInput && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      // If user triggers a barcode gun anywhere on the page without focusing first
+      if (!isInput && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
         scannerInputRef.current?.focus();
       }
     };
@@ -1890,7 +1916,32 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search catalog by name or SKU..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const q = searchTerm.trim().toLowerCase();
+                    if (!q) return;
+                    const exact = products.find(
+                      (p) =>
+                        (p.skuCode && p.skuCode.toLowerCase() === q) ||
+                        (p.barcode && p.barcode.toLowerCase() === q) ||
+                        (p.id && p.id.toLowerCase() === q) ||
+                        `sku-${p.id.slice(-6)}`.toLowerCase() === q ||
+                        p.name.toLowerCase() === q
+                    );
+                    const target = exact || (filteredProducts.length === 1 ? filteredProducts[0] : null);
+                    if (target) {
+                      if (target.variants && target.variants.length > 0) {
+                        setVariantPickerProduct(target);
+                      } else {
+                        addToCart(target, 1);
+                        setSelectedProduct(target);
+                      }
+                      setSearchTerm('');
+                    }
+                  }
+                }}
+                placeholder="Search catalog or scan barcode (F2)..."
                 style={{
                   border: 'none',
                   background: 'transparent',
@@ -1914,8 +1965,8 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         {/* Scrollable Content Area */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-          {/* ── High-Speed Barcode / SKU Scanner Bar (Mini Mart Only) ── */}
-          {module === 'minimart' && (
+          {/* ── High-Speed Barcode / SKU Scanner Bar ── */}
+          <div>
             <div
               style={{
                 backgroundColor: F.bgCard,
@@ -2031,7 +2082,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                 </div>
               )}
             </div>
-          )}
+          </div>
 
           {/* ── Fluent Hero Highlight Card (Meal Builder - Fast Food Only) ── */}
           {module === 'fastfood' && featured && (
@@ -4241,102 +4292,312 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         >
           <div
             style={{
-              width: '370px',
+              width: '450px',
+              maxWidth: '92vw',
+              maxHeight: '88vh',
               backgroundColor: F.bgCard,
-              borderRadius: F.radiusMd,
-              boxShadow: F.shadowElevated,
+              borderRadius: '16px',
+              boxShadow: '0 24px 48px rgba(0, 0, 0, 0.28)',
+              border: `1px solid ${F.border}`,
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
+              animation: 'fadeIn 0.18s ease-out',
             }}
           >
-            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${F.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Receipt20Regular style={{ color: F.accentRed }} />
-                <span style={{ fontWeight: 700, fontSize: '14px' }}>Thermal Receipt Preview</span>
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '14px 20px',
+                borderBottom: `1px solid ${F.border}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.015)',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+                    color: F.accentRed,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Receipt20Regular />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '14px', color: F.textPrimary, lineHeight: 1.2 }}>
+                    Receipt & Invoice
+                  </div>
+                  <div style={{ fontSize: '11px', color: F.textMuted }}>
+                    Order #{lastOrder.id.slice(-6).toUpperCase()} • {lastOrder.orderType?.toUpperCase() || 'TAKEAWAY'}
+                  </div>
+                </div>
               </div>
               <button
                 onClick={() => setShowReceiptModal(false)}
-                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: F.textMuted }}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: F.textMuted,
+                  padding: '6px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
                 <Dismiss20Regular />
               </button>
             </div>
 
-            <div style={{ padding: '16px 20px', backgroundColor: isDark ? '#1F1F1F' : '#FAFAFA', fontFamily: 'monospace', fontSize: '12px', lineHeight: 1.5, color: isDark ? '#EDEDED' : '#333' }}>
-              <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px', color: isDark ? '#FFFFFF' : '#111' }}>
-                {module === 'fastfood' ? 'OMNIPOS COUNTER' : 'OMNIPOS SUPERMARKET'}
-              </div>
-              <div style={{ textAlign: 'center', fontSize: '11px', color: isDark ? '#999' : '#666' }}>
-                {module === 'fastfood' ? 'Order Fresh • Eat Fresh' : 'Fresh Daily • Best Wholesale Prices'}
-              </div>
-              <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#999'}` }} />
-              <div>ORDER: #{lastOrder.id.slice(-6).toUpperCase()}</div>
-              <div>DATE: {new Date(lastOrder.createdAt).toLocaleTimeString()}</div>
-              {lastOrder.customerName && (
-                <div style={{ fontWeight: 'bold', color: isDark ? '#FFF' : '#000' }}>
-                  CUSTOMER: {lastOrder.customerName}
+            {/* Thermal Receipt Paper Card Preview */}
+            <div
+              style={{
+                padding: '14px 18px',
+                backgroundColor: isDark ? '#141414' : '#F1F5F9',
+                overflowY: 'auto',
+                flex: 1,
+                minHeight: 0,
+              }}
+            >
+              <div
+                style={{
+                  padding: '14px 16px',
+                  backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                  fontFamily: 'Courier New, Courier, monospace, system-ui',
+                  fontSize: '12px',
+                  lineHeight: 1.45,
+                  color: isDark ? '#EDEDED' : '#1E293B',
+                  borderRadius: '10px',
+                  border: `1px dashed ${isDark ? '#3E3E3E' : '#CBD5E1'}`,
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                }}
+              >
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px', color: isDark ? '#FFFFFF' : '#0F172A' }}>
+                  {module === 'fastfood' ? 'OMNIPOS COUNTER' : 'OMNIPOS SUPERMARKET'}
                 </div>
-              )}
-              <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#999'}` }} />
-              {lastOrder.lines.map((line, idx) => (
-                <div key={`${line.productId}-${idx}`} style={{ marginBottom: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{line.quantity}x {line.name} {line.variantLabel ? `(${line.variantLabel})` : ''}</span>
-                    <span>PKR {(line.unitPrice * line.quantity).toLocaleString()}</span>
-                  </div>
-                  {line.notes && (
-                    <div style={{ fontSize: '10.5px', color: isDark ? '#F59E0B' : '#B45309', paddingLeft: '10px' }}>
-                      * Note: {line.notes}
+                <div style={{ textAlign: 'center', fontSize: '10.5px', color: isDark ? '#999' : '#64748B', marginTop: '1px' }}>
+                  {module === 'fastfood' ? 'Order Fresh • Eat Fresh' : 'Fresh Daily • Best Wholesale Prices'}
+                </div>
+                <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                  <span>ORDER: #{lastOrder.id.slice(-6).toUpperCase()}</span>
+                  <span>{new Date(lastOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <div style={{ fontWeight: 'bold', color: isDark ? '#FFF' : '#0F172A', marginTop: '2px', fontSize: '11.5px' }}>
+                  {lastOrder.orderType === 'dine-in' ? tableNo : `TOKEN: #${tokenNo}`}
+                  {lastOrder.customerName ? ` • ${lastOrder.customerName}` : ''}
+                </div>
+                <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
+                {lastOrder.lines.map((line, idx) => (
+                  <div key={`${line.productId}-${idx}`} style={{ marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 600 }}>{line.quantity}x {line.name} {line.variantLabel ? `(${line.variantLabel})` : ''}</span>
+                      <span style={{ fontWeight: 700 }}>PKR {(line.unitPrice * line.quantity).toLocaleString()}</span>
                     </div>
-                  )}
+                    {line.notes && (
+                      <div style={{ fontSize: '10px', color: '#F59E0B', paddingLeft: '8px' }}>
+                        * {line.notes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: isDark ? '#AAA' : '#64748B' }}>
+                  <span>Total Items:</span>
+                  <span>{lastOrder.lines.reduce((s, l) => s + l.quantity, 0)} units</span>
                 </div>
-              ))}
-              <div style={{ margin: '8px 0', borderBottom: '1px dashed #999' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: isDark ? '#AAA' : '#666' }}>
-                <span>Total Items:</span>
-                <span>{lastOrder.lines.reduce((s, l) => s + l.quantity, 0)} units</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', marginTop: '2px' }}>
-                <span>NET TOTAL:</span>
-                <span>PKR {lastOrder.totalAmount?.toLocaleString()}</span>
-              </div>
-              {paymentMode === 'cash' && typeof tenderedAmount === 'number' && tenderedAmount >= (lastOrder.totalAmount || 0) && (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginTop: '4px' }}>
-                    <span>Cash Tendered:</span>
-                    <span>PKR {tenderedAmount.toLocaleString()}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold', color: isDark ? '#10B981' : '#047857' }}>
-                    <span>Change Due:</span>
-                    <span>PKR {(tenderedAmount - (lastOrder.totalAmount || 0)).toLocaleString()}</span>
-                  </div>
-                </>
-              )}
-              <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '10px', color: '#777' }}>
-                Thank you for shopping with us!
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '14px', marginTop: '4px', color: isDark ? '#FFF' : '#0F172A' }}>
+                  <span>NET TOTAL:</span>
+                  <span style={{ color: F.accentRed }}>PKR {lastOrder.totalAmount?.toLocaleString()}</span>
+                </div>
+                {paymentMode === 'cash' && typeof tenderedAmount === 'number' && tenderedAmount >= (lastOrder.totalAmount || 0) && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginTop: '4px' }}>
+                      <span>Cash Tendered:</span>
+                      <span>PKR {tenderedAmount.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold', color: '#10B981', marginTop: '1px' }}>
+                      <span>Change Due:</span>
+                      <span>PKR {(tenderedAmount - (lastOrder.totalAmount || 0)).toLocaleString()}</span>
+                    </div>
+                  </>
+                )}
+                <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '10px', color: isDark ? '#888' : '#94A3B8' }}>
+                  Thank you for shopping with us!
+                </div>
               </div>
             </div>
 
-            <div style={{ padding: '12px 20px', borderTop: `1px solid ${F.border}`, display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button
-                onClick={() => setShowReceiptModal(false)}
-                style={{ padding: '6px 14px', borderRadius: F.radiusSm, border: `1px solid ${F.border}`, backgroundColor: F.bgCard, cursor: 'pointer', fontFamily: F.font, fontSize: '12px' }}
-              >
-                Close
-              </button>
+            {/* Action Buttons Footer */}
+            <div
+              style={{
+                padding: '14px 18px',
+                borderTop: `1px solid ${F.border}`,
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#FAFAFA',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                flexShrink: 0,
+              }}
+            >
+              {/* Primary Action Button: Print Customer Receipt */}
               <button
                 onClick={() => {
-                  posApi.printReceipt();
+                  const tableOrToken =
+                    lastOrder.orderType === 'dine-in'
+                      ? `TABLE: ${tableNo}`
+                      : lastOrder.orderType === 'takeaway'
+                      ? `TOKEN: #${tokenNo}`
+                      : 'DELIVERY';
+                  void printCustomerReceipt(lastOrder, {
+                    tableOrToken,
+                    storeSettings,
+                    paymentMode,
+                    tenderedAmount: typeof tenderedAmount === 'number' ? tenderedAmount : undefined,
+                  });
                   setShowReceiptModal(false);
                 }}
-                style={{ padding: '6px 16px', borderRadius: F.radiusSm, border: 'none', backgroundColor: F.accentRed, color: '#fff', fontWeight: 600, cursor: 'pointer', fontFamily: F.font, fontSize: '12px' }}
+                style={{
+                  width: '100%',
+                  height: '42px',
+                  borderRadius: '9px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #E51937 0%, #B91C1C 100%)',
+                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: F.font,
+                  fontSize: '13.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(229, 25, 55, 0.32)',
+                  letterSpacing: '0.2px',
+                }}
               >
-                Print Receipt
+                <Print20Regular style={{ width: 19, height: 19 }} />
+                <span>Print Thermal Receipt (Customer)</span>
               </button>
+
+              {/* Secondary Actions Row */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: module === 'fastfood' ? '1fr 1fr auto' : '1fr auto',
+                  gap: '8px',
+                  alignItems: 'center',
+                }}
+              >
+                {module === 'fastfood' && (
+                  <button
+                    onClick={() => {
+                      const tableOrToken =
+                        lastOrder.orderType === 'dine-in'
+                          ? `TABLE: ${tableNo}`
+                          : lastOrder.orderType === 'takeaway'
+                          ? `TOKEN: #${tokenNo}`
+                          : 'DELIVERY';
+                      void printKitchenKot(lastOrder, {
+                        tableOrToken,
+                        storeName: storeSettings.storeName,
+                      });
+                    }}
+                    style={{
+                      height: '36px',
+                      borderRadius: '8px',
+                      border: isDark ? '1px solid #7C2D12' : '1px solid #FED7AA',
+                      backgroundColor: isDark ? '#27170E' : '#FFF7ED',
+                      color: isDark ? '#FB923C' : '#C2410C',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: F.font,
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                    }}
+                    title="Print ticket for Kitchen / Chef only"
+                  >
+                    <Food20Regular style={{ width: 17, height: 17 }} />
+                    <span>Print KOT</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setShowA4Invoice(true);
+                  }}
+                  style={{
+                    height: '36px',
+                    borderRadius: '8px',
+                    border: isDark ? '1px solid #0369A1' : '1px solid #BAE6FD',
+                    backgroundColor: isDark ? '#082F49' : '#F0F9FF',
+                    color: isDark ? '#38BDF8' : '#0284C7',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: F.font,
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                  }}
+                  title="Print commercial full page A4 invoice"
+                >
+                  <DocumentText20Regular style={{ width: 16, height: 16 }} />
+                  <span>A4 Invoice</span>
+                </button>
+
+                <button
+                  onClick={() => setShowReceiptModal(false)}
+                  style={{
+                    padding: '0 16px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    border: `1px solid ${F.border}`,
+                    backgroundColor: isDark ? '#262626' : '#FFFFFF',
+                    color: F.textPrimary,
+                    cursor: 'pointer',
+                    fontFamily: F.font,
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <Checkmark20Regular style={{ width: 15, height: 15 }} />
+                  <span>Done</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Modal: Commercial A4 Invoice Template ── */}
+      {showA4Invoice && lastOrder && (
+        <A4InvoiceTemplate
+          order={lastOrder}
+          paymentMode={paymentMode}
+          tenderedAmount={typeof tenderedAmount === 'number' ? tenderedAmount : undefined}
+          onClose={() => setShowA4Invoice(false)}
+        />
       )}
 
       {/* ── Modal: Loose / Weight Scale Calculator ── */}

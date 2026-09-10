@@ -1336,6 +1336,7 @@ export function StockInView(): React.JSX.Element {
       hardware: 'Sanitary, Hardware & Paint',
       electric: 'Electrical Store & Lighting',
       electronics: 'Electronics & Mobile',
+      cctv: 'CCTV & Surveillance',
       stationery: 'Books & Stationery',
       toys: 'Baby & Kids Toys',
       jewellery: 'Jewellery & Watches',

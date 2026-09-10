@@ -1,7 +1,8 @@
-import { Product, Category, Order, StockMovement, CategoryProfile, ModuleKey, ProductVariant, OrderRefund, ReturnedLineItem } from './types';
+import { Product, Category, Order, StockMovement, CategoryProfile, ModuleKey, ProductVariant, OrderRefund, ReturnedLineItem, Quotation } from './types';
 import { offlineDb, LocalOrder, LocalCustomerKhata, LocalKhataTx, LocalExpense } from './offlineDb';
 import { syncEngine } from './syncEngine';
 import { KEYS, storage } from './storage';
+import { uid } from './utils';
 import { decodeProductVariants, encodeProductVariants, setLocalVariantRegistry } from './variants';
 import {
   CATEGORY_PROFILES,
@@ -133,33 +134,7 @@ export const posApi = {
       }
     }
 
-    // 3. Purge any lingering legacy demo items from offlineDb and localStorage
-    const isLegacyDemo = (p: Product) => {
-      const id = p.id || '';
-      if (id.startsWith('p_mm_') || id.startsWith('p_ff_') || id.startsWith('prod_ff_') || id.startsWith('prod_mm_')) return true;
-      const n = (p.name || '').toLowerCase();
-      return (
-        n.includes('barbie doll') ||
-        n.includes('cooking oil (refill') ||
-        n.includes('farm fresh red onion') ||
-        n.includes('fresh milk (1 liter)') ||
-        n.includes('oil filter premium') ||
-        n.includes('potato chips (family') ||
-        n.includes('shopping bags') ||
-        n.includes('super basmati rice (loose)') ||
-        n.includes('cotton casual t-shirt') ||
-        n.includes('crispy chicken burger') ||
-        n.includes('zinger burger') ||
-        n.includes('tikka pizza')
-      );
-    };
 
-    if (localProducts.some(isLegacyDemo)) {
-      const demoIds = localProducts.filter(isLegacyDemo).map((p) => p.id);
-      void offlineDb.products.bulkDelete(demoIds);
-      localProducts = localProducts.filter((p) => !isLegacyDemo(p));
-      storage.setList(KEYS.products, localProducts);
-    }
 
     // Background sync helper: update cache without stalling the UI
     const syncRemote = async () => {
@@ -224,7 +199,7 @@ export const posApi = {
       return localProducts;
     }
 
-    // Only if absolutely NO local products exist (first run on clean machine), await network
+    // Only if absolutely NO local products exist (first run or after purge), await network
     await syncRemote();
     try {
       const freshDexie = await offlineDb.products.toArray();
@@ -234,7 +209,115 @@ export const posApi = {
       }
     } catch {}
 
-    return [];
+    // Starter catalog products if database is empty
+    const starterProducts: Product[] = [
+      {
+        id: 'prod_ff_zinger_1',
+        module: 'fastfood',
+        name: 'Zinger Burger',
+        category: 'Fast Food',
+        price: 300,
+        costPrice: 200,
+        unit: 'PCS',
+        skuCode: '35548549',
+        barcode: '35548549',
+        openingStock: 100,
+        itemRole: 'food_menu',
+        isKitchenRouted: true,
+        pricingType: 'fixed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'prod_ff_fries_1',
+        module: 'fastfood',
+        name: 'Crispy Fries (Large)',
+        category: 'Sides',
+        price: 180,
+        costPrice: 90,
+        unit: 'PCS',
+        skuCode: '35548550',
+        barcode: '35548550',
+        openingStock: 80,
+        itemRole: 'food_menu',
+        isKitchenRouted: true,
+        pricingType: 'fixed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'prod_ff_pizza_1',
+        module: 'fastfood',
+        name: 'Chicken Tikka Pizza',
+        category: 'Fast Food',
+        price: 850,
+        costPrice: 500,
+        unit: 'PCS',
+        skuCode: '35548551',
+        barcode: '35548551',
+        openingStock: 40,
+        itemRole: 'food_menu',
+        isKitchenRouted: true,
+        pricingType: 'fixed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'prod_mm_milk_1',
+        module: 'minimart',
+        name: 'Fresh Milk (1 Liter)',
+        category: 'Dairy',
+        price: 220,
+        costPrice: 190,
+        unit: 'PACK',
+        skuCode: '89640001',
+        barcode: '89640001',
+        openingStock: 50,
+        itemRole: 'retail_product',
+        pricingType: 'fixed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'prod_mm_rice_1',
+        module: 'minimart',
+        name: 'Super Basmati Rice (1 KG)',
+        category: 'Grocery',
+        price: 340,
+        costPrice: 280,
+        unit: 'KG',
+        skuCode: '89640002',
+        barcode: '89640002',
+        openingStock: 120,
+        itemRole: 'retail_product',
+        pricingType: 'fixed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'prod_mm_oil_1',
+        module: 'minimart',
+        name: 'Cooking Oil (1 Liter Refill)',
+        category: 'Grocery',
+        price: 510,
+        costPrice: 460,
+        unit: 'LTR',
+        skuCode: '89640003',
+        barcode: '89640003',
+        openingStock: 60,
+        itemRole: 'retail_product',
+        pricingType: 'fixed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    try {
+      await offlineDb.products.bulkPut(starterProducts);
+      storage.setList(KEYS.products, starterProducts);
+    } catch {}
+
+    return module ? starterProducts.filter((p) => p.module === module) : starterProducts;
   },
 
   async saveProduct(product: Product): Promise<Product> {
@@ -333,34 +416,34 @@ export const posApi = {
       } catch {}
     }
 
-    // Purge legacy demo categories from offlineDb and localStorage
-    const isLegacyDemoCat = (c: Category) => {
-      const id = c.id || '';
-      if (id.startsWith('cat_mm_') || id.startsWith('cat_ff_')) return true;
-      const n = (c.name || '').toLowerCase();
-      return (
-        n === 'cosmetics & skincare' ||
-        n === "men's garments" ||
-        n === 'footwear & shoes' ||
-        n === 'toys & kids' ||
-        n === 'paints & wall primer' ||
-        n === 'sanitary & taps' ||
-        n === 'hardware & iron' ||
-        n === 'general store' ||
-        n === 'toys' ||
-        n === 'grocery' ||
-        n === 'vegetables' ||
-        n === 'dairy' ||
-        n === 'automotive' ||
-        n === 'snacks' ||
-        n === 'general'
-      );
-    };
 
-    if (localCats.some(isLegacyDemoCat)) {
-      const demoCatIds = localCats.filter(isLegacyDemoCat).map((c) => c.id);
-      void offlineDb.categories.bulkDelete(demoCatIds);
-      localCats = localCats.filter((c) => !isLegacyDemoCat(c));
+
+    // Auto-correct any non-shoe categories (like DVR / CCTV) that may have been saved with footwear profile
+    let hasUpdatedCats = false;
+    localCats = localCats.map((c) => {
+      const n = (c.name || '').toLowerCase().trim();
+      if (c.profile === 'footwear' && /(dvr|cctv|camera|nvr)/i.test(n)) {
+        hasUpdatedCats = true;
+        return {
+          ...c,
+          profile: 'cctv' as CategoryProfile,
+          suggestedSizes: [],
+          suggestedUnits: ['PCS', 'SET', 'BOX', 'COIL', 'METER'],
+        };
+      }
+      if (c.profile === 'footwear' && /(cable|wire|screen|tv|monitor|laptop|computer|electronics|grocery|general|mobile|phone|food)/i.test(n)) {
+        hasUpdatedCats = true;
+        return {
+          ...c,
+          profile: 'standard' as CategoryProfile,
+          suggestedSizes: [],
+          suggestedUnits: ['PCS', 'BOX', 'PACK'],
+        };
+      }
+      return c;
+    });
+    if (hasUpdatedCats) {
+      void offlineDb.categories.bulkPut(localCats);
       storage.setList(KEYS.categories, localCats);
     }
 
@@ -410,7 +493,21 @@ export const posApi = {
       }
     } catch {}
 
-    return [];
+    const starterCategories: Category[] = [
+      { id: 'cat_ff_1', name: 'Fast Food', module: 'fastfood', profile: 'food', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'cat_ff_2', name: 'Sides', module: 'fastfood', profile: 'food', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'cat_ff_3', name: 'Beverages', module: 'fastfood', profile: 'food', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'cat_mm_1', name: 'Grocery', module: 'minimart', profile: 'standard', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'cat_mm_2', name: 'Dairy', module: 'minimart', profile: 'standard', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'cat_mm_3', name: 'General Store', module: 'minimart', profile: 'standard', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    ];
+
+    try {
+      await offlineDb.categories.bulkPut(starterCategories);
+      storage.setList(KEYS.categories, starterCategories);
+    } catch {}
+
+    return module ? starterCategories.filter((c) => !c.module || c.module === module) : starterCategories;
   },
 
   async saveCategory(cat: Category): Promise<Category> {
@@ -1457,6 +1554,74 @@ export const posApi = {
   },
 
   /**
+   * Quotation / Estimate operations
+   */
+  async fetchQuotations(): Promise<Quotation[]> {
+    try {
+      const items = await offlineDb.quotations.toArray();
+      if (items && items.length > 0) {
+        return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
+    } catch {
+      /* fallback */
+    }
+    const local = storage.getList<Quotation>(KEYS.quotations);
+    return local.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  async saveQuotation(quote: Quotation): Promise<Quotation> {
+    try {
+      await offlineDb.quotations.put(quote);
+    } catch {}
+    const list = storage.getList<Quotation>(KEYS.quotations);
+    const idx = list.findIndex((q) => q.id === quote.id);
+    if (idx >= 0) {
+      list[idx] = quote;
+    } else {
+      list.unshift(quote);
+    }
+    storage.setList(KEYS.quotations, list);
+    return quote;
+  },
+
+  async deleteQuotation(id: string): Promise<boolean> {
+    try {
+      await offlineDb.quotations.delete(id);
+    } catch {}
+    const list = storage.getList<Quotation>(KEYS.quotations).filter((q) => q.id !== id);
+    storage.setList(KEYS.quotations, list);
+    return true;
+  },
+
+  async convertQuotationToOrder(quoteId: string): Promise<{ order: Order; quotation: Quotation }> {
+    const quotes = await this.fetchQuotations();
+    const quote = quotes.find((q) => q.id === quoteId);
+    if (!quote) throw new Error('Quotation not found');
+
+    const newOrder: Order = {
+      id: uid('ord_'),
+      module: quote.module,
+      lines: quote.lines,
+      discountPercent: quote.discountPercent,
+      customerName: quote.customerName,
+      orderType: 'takeaway',
+      stage: 'paid',
+      totalAmount: quote.totalAmount,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const savedOrder = await this.saveOrder(newOrder);
+
+    quote.status = 'converted';
+    quote.convertedOrderId = savedOrder.id;
+    quote.updatedAt = new Date().toISOString();
+    await this.saveQuotation(quote);
+
+    return { order: savedOrder, quotation: quote };
+  },
+
+  /**
    * Database Backup & Recovery operations
    */
   async getBackupStatus(): Promise<{ dbPath: string; dbSize: number; lastBackup?: string | null; lastBackupPath?: string | null; lastBackupSize?: number | null; isElectron: boolean }> {
@@ -1489,6 +1654,7 @@ export const posApi = {
         categories: await offlineDb.categories.toArray(),
         orders: await offlineDb.orders.toArray(),
         refunds: await offlineDb.refunds.toArray(),
+        quotations: await offlineDb.quotations.toArray(),
         khatas: await offlineDb.khatas.toArray(),
         khataTransactions: await offlineDb.khataTransactions.toArray(),
         expenses: await offlineDb.expenses.toArray(),

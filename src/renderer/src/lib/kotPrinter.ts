@@ -48,16 +48,22 @@ export function generateKotHtml(order: Order, options?: KotPrintOptions): string
       <style>
         @page {
           margin: 0;
-          size: 80mm auto;
+          size: auto;
         }
-        body {
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        html, body {
           font-family: 'Courier New', Courier, monospace, system-ui;
-          width: 78mm;
-          margin: 0 auto;
-          padding: 8px 6px 20px;
+          width: 66mm;
+          max-width: 66mm;
+          margin: 0;
+          padding: 3mm 2mm 8mm 1mm;
           color: #000;
           background: #fff;
-          box-sizing: border-box;
+          overflow-x: hidden;
         }
         .header {
           text-align: center;

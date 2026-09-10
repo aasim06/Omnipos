@@ -17,6 +17,8 @@ import { AdminSettingsView } from '@/features/admin/AdminSettingsView';
 import { ProductsCatalogView } from '@/features/catalog/ProductsCatalogView';
 import { CategoriesView } from '@/features/catalog/CategoriesView';
 import { AddProductView } from '@/features/catalog/AddProductView';
+import { BarcodeLabelGeneratorView } from '@/features/catalog/BarcodeLabelGeneratorView';
+import { QuotationsView } from '@/features/quotations/QuotationsView';
 import { CustomersView } from '@/features/customers/CustomersView';
 import { LoginView } from '@/features/auth/LoginView';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
@@ -412,6 +414,22 @@ export default function App(): React.JSX.Element {
               element={
                 <RouteAccessGate moduleKey="catalog">
                   <AddProductView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/catalog/barcode-labels"
+              element={
+                <RouteAccessGate moduleKey="catalog">
+                  <BarcodeLabelGeneratorView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/quotations"
+              element={
+                <RouteAccessGate moduleKey="catalog">
+                  <QuotationsView />
                 </RouteAccessGate>
               }
             />

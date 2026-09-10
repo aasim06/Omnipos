@@ -76,6 +76,7 @@ export const ALL_VALID_PROFILES: CategoryProfile[] = [
   'food',
   'hardware',
   'electric',
+  'cctv',
 ];
 
 export function normalizeBusinessProfiles(

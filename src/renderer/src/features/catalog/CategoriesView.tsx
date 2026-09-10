@@ -32,6 +32,7 @@ import {
   Utensils,
   Wrench,
   Zap,
+  Camera,
   Package,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -60,6 +61,7 @@ const categorySchema = z.object({
     'food',
     'hardware',
     'electric',
+    'cctv',
     'standard',
   ]).default('standard'),
 });
@@ -498,17 +500,18 @@ interface ProfileOption {
 }
 
 const ALL_PROFILE_OPTIONS: ProfileOption[] = [
-  { value: 'footwear', label: 'Footwear & Shoes Store (Sizes 38-45, PAIR)', module: 'minimart' },
-  { value: 'apparel', label: 'Garments, Clothing & Boutique (XS-3XL, SUIT, METER, GAZ)', module: 'minimart' },
+  { value: 'standard', label: 'Standard Retail (General Packaged Goods)', module: 'minimart' },
+  { value: 'cctv', label: 'CCTV, Security & Surveillance (DVR, NVR, Cameras, Channels)', module: 'minimart' },
   { value: 'grocery', label: 'Grocery, Supermarket & Mini Mart (Barcode, KG, Gram, Liter)', module: 'minimart' },
+  { value: 'apparel', label: 'Garments, Clothing & Boutique (XS-3XL, SUIT, METER, GAZ)', module: 'minimart' },
+  { value: 'footwear', label: 'Footwear & Shoes Store (Sizes 38-45, PAIR)', module: 'minimart' },
   { value: 'cosmetics', label: 'Cosmetics & Beauty Store (Shades, Volumes 50-500ml)', module: 'minimart' },
   { value: 'pharmacy', label: 'Pharmacy & Medical Store (Strip, Box, Tablets, Syrups)', module: 'minimart' },
   { value: 'electronics', label: 'Mobile, Electronics & Accessories (IMEI, Serial, Warranty)', module: 'minimart' },
   { value: 'bakery', label: 'Bakery & Sweets / Confectionery (KG, Gram, Box, Fresh)', module: 'minimart' },
-  { value: 'food', label: 'Fast Food, Cafe & Restaurant (Portions: S, M, L, Family, KDS)', module: 'fastfood' },
   { value: 'hardware', label: 'Hardware, Sanitary & Paint Store (Meters, Feet, KG, Gallon, Tools)', module: 'minimart' },
   { value: 'electric', label: 'Electrical Store & Lighting (Cables, Switches, LED, Breakers)', module: 'minimart' },
-  { value: 'standard', label: 'Standard Retail (General Packaged Goods)', module: 'minimart' },
+  { value: 'food', label: 'Fast Food, Cafe & Restaurant (Portions: S, M, L, Family, KDS)', module: 'fastfood' },
 ];
 
 function renderProfileIcon(iconName: string, size = 18, color?: string) {
@@ -524,6 +527,7 @@ function renderProfileIcon(iconName: string, size = 18, color?: string) {
     case 'Utensils': return <Utensils {...props} />;
     case 'Wrench': return <Wrench {...props} />;
     case 'Zap': return <Zap {...props} />;
+    case 'Camera': return <Camera {...props} />;
     default: return <Package {...props} />;
   }
 }
@@ -536,6 +540,7 @@ export function CategoriesView(): React.JSX.Element {
   const hasOmnimart = can('omnimart');
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCustomName, setIsCustomName] = useState(false);
   const [targetModule, setTargetModule] = useState<ModuleKey>(hasFastFood ? 'fastfood' : 'minimart');
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
@@ -553,16 +558,20 @@ export function CategoriesView(): React.JSX.Element {
     defaultValues: {
       name: '',
       module: hasFastFood ? 'fastfood' : 'minimart',
+      profile: hasFastFood ? 'food' : 'standard',
     },
   });
 
   const createCategoryMutation = useMutation({
     mutationFn: async (data: CategoryFormData) => {
+      const pConfig = CATEGORY_PROFILES[data.profile] || CATEGORY_PROFILES.standard;
       const newCat: Category = {
         id: uid('cat_'),
         module: data.module,
         name: data.name.trim(),
         profile: data.profile,
+        suggestedSizes: pConfig.suggestedSizes,
+        suggestedUnits: pConfig.suggestedUnits,
       };
       return await posApi.saveCategory(newCat);
     },
@@ -570,6 +579,7 @@ export function CategoriesView(): React.JSX.Element {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setIsDialogOpen(false);
       categoryForm.reset();
+      setIsCustomName(false);
     },
   });
 
@@ -580,39 +590,27 @@ export function CategoriesView(): React.JSX.Element {
     },
   });
 
-  // Filtered by active license business profile(s)
-  const allowedProfiles = React.useMemo<ProfileOption[]>(() => {
-    const valid = ALL_PROFILE_OPTIONS.filter((opt: ProfileOption) => businessProfiles.includes(opt.value));
-    return valid.length > 0 ? valid : ALL_PROFILE_OPTIONS;
-  }, [businessProfiles]);
-
-  const watchedModule = categoryForm.watch('module');
+  const watchedCategoryModule = categoryForm.watch('module') || targetModule;
 
   // Profile options matching the current store module (fastfood vs minimart)
   const filteredProfileOptions = React.useMemo<ProfileOption[]>(() => {
-    const forModule = allowedProfiles.filter((opt: ProfileOption) => opt.module === watchedModule);
-    return forModule.length > 0 ? forModule : allowedProfiles;
-  }, [allowedProfiles, watchedModule]);
+    return ALL_PROFILE_OPTIONS.filter((opt: ProfileOption) => opt.module === watchedCategoryModule);
+  }, [watchedCategoryModule]);
 
-  const activeRetailProfile = React.useMemo(() => {
-    const specific = businessProfiles.find((p) => p !== 'standard' && p !== 'food');
-    return specific && CATEGORY_PROFILES[specific] ? CATEGORY_PROFILES[specific] : null;
-  }, [businessProfiles]);
+  const watchedCategoryProfile = categoryForm.watch('profile') || (watchedCategoryModule === 'fastfood' ? 'food' : 'standard');
+  const currentProfileConfig = CATEGORY_PROFILES[watchedCategoryProfile as CategoryProfile] || CATEGORY_PROFILES.standard;
 
-  const activeRetailLabel = activeRetailProfile?.label || 'Retail Store';
-  const activeRetailShort = activeRetailProfile?.shortTag || 'Retail';
-
-  const moduleOptions = React.useMemo(() => [
-    ...(hasFastFood ? [{ value: 'fastfood', label: 'Fast Food Menu' }] : []),
-    ...(hasOmnimart ? [{ value: 'minimart', label: activeRetailLabel }] : []),
-  ], [hasFastFood, hasOmnimart, activeRetailLabel]);
-
-  const isSingleBusinessProfile = businessProfiles.length === 1;
-  const isProfileLocked = isSingleBusinessProfile || filteredProfileOptions.length === 1;
-
-
-  const watchedCategoryModule = categoryForm.watch('module') || targetModule;
-  const watchedCategoryProfile = categoryForm.watch('profile') || (watchedCategoryModule === 'fastfood' ? 'food' : (activeRetailProfile?.key || 'standard'));
+  // Target Store Module options - strictly Food and Mart only
+  const moduleOptions = React.useMemo(() => {
+    const opts = [
+      ...(hasFastFood ? [{ value: 'fastfood', label: 'Food' }] : []),
+      ...(hasOmnimart ? [{ value: 'minimart', label: 'Mart' }] : []),
+    ];
+    return opts.length > 0 ? opts : [
+      { value: 'fastfood', label: 'Food' },
+      { value: 'minimart', label: 'Mart' },
+    ];
+  }, [hasFastFood, hasOmnimart]);
 
   const existingCategoryNames = React.useMemo(() => {
     return new Set(categories.filter((c) => c.module === watchedCategoryModule).map((c) => c.name.toLowerCase().trim()));
@@ -639,28 +637,13 @@ export function CategoriesView(): React.JSX.Element {
   }, [defaultTemplates, watchedCategoryProfile, existingCategoryNames]);
 
   const handleOpenDialog = (module?: ModuleKey) => {
-    let selectedModule: ModuleKey = module || (hasFastFood ? 'fastfood' : 'minimart');
-    let selectedProfile: CategoryProfile = 'standard';
-
-    if (isSingleBusinessProfile) {
-      const single = businessProfiles[0];
-      selectedProfile = single;
-      selectedModule = single === 'food' ? 'fastfood' : 'minimart';
-    } else {
-      const optionsForModule = allowedProfiles.filter((opt) => opt.module === selectedModule);
-      if (optionsForModule.length > 0) {
-        selectedProfile = optionsForModule[0].value;
-      } else {
-        selectedProfile = allowedProfiles[0]?.value || (selectedModule === 'fastfood' ? 'food' : 'standard');
-      }
-    }
+    const selectedModule: ModuleKey = module || (hasFastFood ? 'fastfood' : 'minimart');
+    const selectedProfile: CategoryProfile = selectedModule === 'fastfood' ? 'food' : 'standard';
 
     setTargetModule(selectedModule);
+    setIsCustomName(false);
 
-    const activeKey = (selectedProfile in CATEGORY_PROFILES)
-      ? selectedProfile
-      : (selectedModule === 'fastfood' ? 'food' : 'standard');
-    const config = CATEGORY_PROFILES[activeKey] || CATEGORY_PROFILES.standard;
+    const config = CATEGORY_PROFILES[selectedProfile] || CATEGORY_PROFILES.standard;
     const catList = config.defaultCategories || [];
     const existingInMod = new Set(categories.filter((c) => c.module === selectedModule).map((c) => c.name.toLowerCase().trim()));
     const firstAvailable = catList.find((name) => !existingInMod.has(name.toLowerCase().trim())) || catList[0] || '';
@@ -674,7 +657,7 @@ export function CategoriesView(): React.JSX.Element {
   };
 
   useEffect(() => {
-    if (isDialogOpen && defaultCategoryOptions.length > 0) {
+    if (isDialogOpen && defaultCategoryOptions.length > 0 && !isCustomName) {
       const currentName = categoryForm.getValues('name');
       const currentOpt = defaultCategoryOptions.find((opt) => opt.value === currentName);
       if (!currentOpt || currentOpt.disabled) {
@@ -682,7 +665,7 @@ export function CategoriesView(): React.JSX.Element {
         categoryForm.setValue('name', firstAvail);
       }
     }
-  }, [isDialogOpen, defaultCategoryOptions, categoryForm]);
+  }, [isDialogOpen, defaultCategoryOptions, categoryForm, isCustomName]);
 
   const onCategorySubmit = (data: CategoryFormData) => {
     createCategoryMutation.mutate(data);
@@ -797,14 +780,14 @@ export function CategoriesView(): React.JSX.Element {
         <div className={`${styles.sectionBox} ${styles.sectionBoxSpaced}`}>
           <div className={styles.sectionTitle}>
             <BuildingRetail24Regular className={styles.sectionIconRed} />
-            <span>{activeRetailShort} Categories ({omnimartCategories.length})</span>
+            <span>Mart Categories ({omnimartCategories.length})</span>
             <Button
               size="small"
               appearance="subtle"
               className={styles.sectionAddBtn}
               onClick={() => handleOpenDialog('minimart')}
             >
-              + Add {activeRetailShort} Category
+              + Add Mart Category
             </Button>
           </div>
           <div className={styles.categoryGrid}>
@@ -864,8 +847,6 @@ export function CategoriesView(): React.JSX.Element {
         </div>
       )}
 
-
-
       {/* ── Create Category Dialog ─────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
         <DialogSurface className={styles.dialogSurface}>
@@ -879,7 +860,7 @@ export function CategoriesView(): React.JSX.Element {
                 <div>
                   <div className={styles.dialogTitleText}>Create New Category</div>
                   <div className={styles.dialogSubtitleText}>
-                    Configure classification &amp; presets for {targetModule === 'fastfood' ? 'Fast Food Menu' : activeRetailLabel}
+                    Configure classification &amp; presets for {targetModule === 'fastfood' ? 'Food' : 'Mart'}
                   </div>
                 </div>
               </div>
@@ -895,45 +876,31 @@ export function CategoriesView(): React.JSX.Element {
 
             {/* Form Fields with Floating Notch Labels */}
             <div className={styles.dialogFieldsContainer}>
+              {/* 1. Target Store Module */}
               <Controller
                 control={categoryForm.control}
-                name="name"
+                name="module"
                 render={({ field }) => (
                   <CustomSelect
-                    label="Select Category"
+                    label="Target Store Module"
                     required
                     value={field.value}
-                    onChange={(val) => field.onChange(val)}
-                    options={defaultCategoryOptions}
-                    error={categoryForm.formState.errors.name?.message}
+                    options={moduleOptions}
+                    onChange={(val) => {
+                      const newMod = val as ModuleKey;
+                      field.onChange(newMod);
+                      setTargetModule(newMod);
+                      if (newMod === 'fastfood') {
+                        categoryForm.setValue('profile', 'food');
+                      } else {
+                        categoryForm.setValue('profile', 'standard');
+                      }
+                    }}
                   />
                 )}
               />
 
-              {!isSingleBusinessProfile && moduleOptions.length > 1 && (
-                <Controller
-                  control={categoryForm.control}
-                  name="module"
-                  render={({ field }) => (
-                    <CustomSelect
-                      label="Target Store Module"
-                      required
-                      value={field.value}
-                      onChange={(val) => {
-                        const newMod = val as ModuleKey;
-                        field.onChange(newMod);
-                        setTargetModule(newMod);
-                        const forNewMod = allowedProfiles.filter((opt) => opt.module === newMod);
-                        if (forNewMod.length > 0) {
-                          categoryForm.setValue('profile', forNewMod[0].value);
-                        }
-                      }}
-                      options={moduleOptions}
-                    />
-                  )}
-                />
-              )}
-
+              {/* 2. Industry Profile */}
               <div>
                 <Controller
                   control={categoryForm.control}
@@ -941,9 +908,22 @@ export function CategoriesView(): React.JSX.Element {
                   render={({ field }) => (
                     <CustomSelect
                       label="Industry Profile (Size & Unit Presets)"
-                      value={field.value || filteredProfileOptions[0]?.value || 'standard'}
-                      disabled={isProfileLocked}
-                      onChange={(val) => field.onChange(val as CategoryProfile)}
+                      value={field.value || (watchedCategoryModule === 'fastfood' ? 'food' : 'standard')}
+                      onChange={(val) => {
+                        const newProf = val as CategoryProfile;
+                        field.onChange(newProf);
+                        if (!isCustomName) {
+                          const pConfig = CATEGORY_PROFILES[newProf] || CATEGORY_PROFILES.standard;
+                          const defaults = pConfig.defaultCategories || [];
+                          const existingInMod = new Set(
+                            categories.filter((c) => c.module === categoryForm.getValues('module')).map((c) => c.name.toLowerCase().trim())
+                          );
+                          const firstAvail = defaults.find((n) => !existingInMod.has(n.toLowerCase().trim())) || defaults[0] || '';
+                          if (firstAvail) {
+                            categoryForm.setValue('name', firstAvail);
+                          }
+                        }
+                      }}
                       options={filteredProfileOptions.map((opt) => ({
                         value: opt.value,
                         label: opt.label,
@@ -951,22 +931,119 @@ export function CategoriesView(): React.JSX.Element {
                     />
                   )}
                 />
-                <Caption1
-                  className={mergeClasses(
-                    styles.hintCaption,
-                    styles.hintCaptionRow,
-                    isProfileLocked && styles.hintCaptionLocked
-                  )}
-                >
-                  {isProfileLocked ? (
-                    <>
-                      <LockClosed16Regular style={{ width: 14, height: 14, display: 'inline-block', verticalAlign: 'middle' }} /> Auto-selected & locked to your license business profile ({CATEGORY_PROFILES[categoryForm.watch('profile') || filteredProfileOptions[0]?.value || 'standard']?.shortTag})
-                    </>
-                  ) : (
-                    'Industry presets filtered according to your active business license key.'
-                  )}
-                </Caption1>
               </div>
+
+              {/* 3. Select Category */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                  <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                    {isCustomName ? 'Type any custom category name' : 'Choose preset category or type custom'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomName(!isCustomName);
+                      if (!isCustomName) {
+                        categoryForm.setValue('name', '');
+                      } else {
+                        categoryForm.setValue('name', defaultCategoryOptions[0]?.value || '');
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#E51937',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    {isCustomName ? '← Choose from Presets' : '+ Custom Name'}
+                  </button>
+                </div>
+                {isCustomName ? (
+                  <Controller
+                    control={categoryForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <CustomInput
+                        label="Category Name"
+                        required
+                        autoFocus
+                        placeholder="e.g. Formal Shoes, Burgers..."
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        error={categoryForm.formState.errors.name?.message}
+                      />
+                    )}
+                  />
+                ) : (
+                  <Controller
+                    control={categoryForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <CustomSelect
+                        label="Select Category"
+                        required
+                        value={field.value}
+                        onChange={(val) => field.onChange(val)}
+                        options={defaultCategoryOptions}
+                        error={categoryForm.formState.errors.name?.message}
+                      />
+                    )}
+                  />
+                )}
+              </div>
+
+              {/* 4. Sab Se Neechay: Preset Units & Sizes preview */}
+              {currentProfileConfig && (
+                <div style={{ padding: '8px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke2}`, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {currentProfileConfig.suggestedUnits && currentProfileConfig.suggestedUnits.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>Preset Units:</span>
+                      {currentProfileConfig.suggestedUnits.map((unit) => (
+                        <span
+                          key={unit}
+                          style={{
+                            fontSize: '10.5px',
+                            fontWeight: 600,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: tokens.colorNeutralBackground1,
+                            border: `1px solid ${tokens.colorNeutralStroke1}`,
+                            color: tokens.colorNeutralForeground1,
+                          }}
+                        >
+                          {unit}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {currentProfileConfig.suggestedSizes && currentProfileConfig.suggestedSizes.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>Preset Sizes:</span>
+                      {currentProfileConfig.suggestedSizes.map((size) => (
+                        <span
+                          key={size}
+                          style={{
+                            fontSize: '10.5px',
+                            fontWeight: 600,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: `${currentProfileConfig.accentColor}18`,
+                            border: `1px solid ${currentProfileConfig.accentColor}40`,
+                            color: currentProfileConfig.accentColor,
+                          }}
+                        >
+                          {size}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Modal Actions */}

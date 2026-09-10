@@ -229,6 +229,43 @@ export const CATEGORY_PROFILES: Record<CategoryProfile, CategoryProfileConfig> =
       'Extension Boards & Power Strips',
     ],
   },
+  cctv: {
+    key: 'cctv',
+    label: 'CCTV, Security & Surveillance (DVR, NVR, Cameras)',
+    shortTag: 'CCTV & Security',
+    description: 'CCTV Cameras, DVR, NVR, Hard Drives, Power Supplies, BNC Connectors, and Cable Coils',
+    icon: 'Camera',
+    defaultItemRole: 'retail_product',
+    isKitchenRouted: false,
+    suggestedSizes: [
+      '4 Channel',
+      '8 Channel',
+      '16 Channel',
+      '32 Channel',
+      '2 MP (1080p)',
+      '4 MP (2K)',
+      '5 MP',
+      '8 MP (4K)',
+      '1 TB',
+      '2 TB',
+      '4 TB',
+      '6 TB',
+      'Coil (90m)',
+      'Coil (305m)',
+    ],
+    suggestedUnits: ['PCS', 'SET', 'BOX', 'COIL', 'METER', 'FEET', 'ROLL', 'PACK'],
+    allowDecimals: false,
+    accentColor: '#0284C7',
+    defaultCategories: [
+      'DVR & NVR Recorders',
+      'CCTV Cameras (Bullet / Dome / IP)',
+      'Surveillance Hard Drives & Storage',
+      'Power Supply & Camera Adapters',
+      'Cat6 / Coaxial Cable Coils',
+      'BNC Connectors, Video Baluns & DC Jacks',
+      'Security Alarms & Smart Intercoms',
+    ],
+  },
   standard: {
     key: 'standard',
     label: 'Standard Retail (General / Mart)',
@@ -250,11 +287,28 @@ export const CATEGORY_PROFILES: Record<CategoryProfile, CategoryProfileConfig> =
  * Intelligently matches category keywords to the proper industry vertical.
  */
 export function detectCategoryProfile(categoryName: string, explicitProfile?: CategoryProfile): CategoryProfile {
+  const name = (categoryName || '').toLowerCase().trim();
+
   if (explicitProfile && explicitProfile !== 'standard') {
+    if (explicitProfile === 'footwear') {
+      if (/(dvr|cctv|camera|nvr|surveillance)/i.test(name)) {
+        return 'cctv';
+      }
+      if (/(cable|wire|screen|tv|monitor|laptop|computer|electronics|grocery|general|mobile|phone|food)/i.test(name)) {
+        return 'standard';
+      }
+    }
     return explicitProfile;
   }
 
-  const name = categoryName.toLowerCase().trim();
+  // CCTV / DVR / Security Surveillance keywords
+  if (
+    /(cctv|dvr|nvr|camera|surveillance|bullet|dome|ptz|hikvision|dahua|coaxial|balun|intercom|video recorder)/i.test(
+      name
+    )
+  ) {
+    return 'cctv';
+  }
 
   // 1. Footwear / Shoes keywords
   if (
@@ -943,5 +997,98 @@ export function getItemTypesForCategory(categoryName: string, profile: CategoryP
     ];
   }
 
+  // 11. CCTV, DVR & Security Surveillance
+  if (profile === 'cctv' || /cctv|dvr|nvr|camera|surveillance|security|hikvision|dahua/i.test(cat)) {
+    return [
+      {
+        id: 'cctv_recorders',
+        name: 'DVR & NVR Recorders',
+        shortLabel: 'DVR / NVR',
+        iconName: 'Video',
+        suggestedUnits: ['PCS', 'SET', 'BOX'],
+        defaultUnit: 'PCS',
+        recommendedPricingType: 'fixed',
+        placeholderName: 'e.g. Hikvision 8-Channel AcuSense DVR / Dahua 16-Channel NVR 4K',
+        keywordMatch: /(dvr|nvr|recorder|xvr)/i,
+      },
+      {
+        id: 'cctv_cameras',
+        name: 'CCTV Cameras (Bullet / Dome / IP)',
+        shortLabel: 'Cameras',
+        iconName: 'Camera',
+        suggestedUnits: ['PCS', 'SET', 'BOX'],
+        defaultUnit: 'PCS',
+        recommendedPricingType: 'fixed',
+        placeholderName: 'e.g. 2MP Full Color Bullet Camera / 5MP Audio Dome IP Camera',
+        keywordMatch: /(camera|cam|bullet|dome|ptz|ip camera)/i,
+      },
+      {
+        id: 'cctv_storage',
+        name: 'Surveillance Hard Drives & Storage',
+        shortLabel: 'Hard Drives',
+        iconName: 'HardDrive',
+        suggestedUnits: ['PCS', 'BOX'],
+        defaultUnit: 'PCS',
+        recommendedPricingType: 'fixed',
+        placeholderName: 'e.g. WD Purple 2TB Surveillance HDD / Seagate SkyHawk 4TB',
+        keywordMatch: /(hard|hdd|storage|drive|purple|skyhawk|tb)/i,
+      },
+      {
+        id: 'cctv_cables',
+        name: 'Cables & Wire Coils (Cat6 / Coaxial)',
+        shortLabel: 'Cables / Coils',
+        iconName: 'Ruler',
+        suggestedUnits: ['COIL', 'ROLL', 'METER', 'FEET', 'PCS'],
+        defaultUnit: 'COIL',
+        recommendedPricingType: 'fixed',
+        placeholderName: 'e.g. Cat6 UTP 305m Full Copper Coil / RG59 Coaxial Cable + Power',
+        keywordMatch: /(cable|wire|coil|cat6|rg59|coaxial)/i,
+      },
+      {
+        id: 'cctv_power',
+        name: 'Power Supplies & Adapters',
+        shortLabel: 'Power Supplies',
+        iconName: 'Zap',
+        suggestedUnits: ['PCS', 'BOX', 'PACK'],
+        defaultUnit: 'PCS',
+        recommendedPricingType: 'fixed',
+        placeholderName: 'e.g. 12V 10A Central Power Box (8 Ch) / 12V 2A Single Adapter',
+        keywordMatch: /(power|supply|adapter|supply box)/i,
+      },
+      {
+        id: 'cctv_acc',
+        name: 'BNC, DC Connectors & Video Baluns',
+        shortLabel: 'Connectors & Baluns',
+        iconName: 'Package',
+        suggestedUnits: ['PCS', 'PACK', 'PAIR', 'BOX', 'DOZEN'],
+        defaultUnit: 'PCS',
+        recommendedPricingType: 'fixed',
+        placeholderName: 'e.g. BNC Pure Copper Connector / Video Balun HD 5MP Pair / DC Male Pin',
+        keywordMatch: /(bnc|balun|connector|jack|dc pin)/i,
+      },
+    ];
+  }
+
   return [];
 }
+
+export interface ProfileOption {
+  value: CategoryProfile;
+  label: string;
+  module: ModuleKey;
+}
+
+export const ALL_PROFILE_OPTIONS: ProfileOption[] = [
+  { value: 'standard', label: 'Standard Retail (General Packaged Goods)', module: 'minimart' },
+  { value: 'cctv', label: 'CCTV, Security & Surveillance (DVR, NVR, Cameras, Channels)', module: 'minimart' },
+  { value: 'grocery', label: 'Grocery, Supermarket & Mini Mart (Barcode, KG, Gram, Liter)', module: 'minimart' },
+  { value: 'apparel', label: 'Garments, Clothing & Boutique (XS-3XL, SUIT, METER, GAZ)', module: 'minimart' },
+  { value: 'footwear', label: 'Footwear & Shoes Store (Sizes 38-45, PAIR)', module: 'minimart' },
+  { value: 'cosmetics', label: 'Cosmetics & Beauty Store (Shades, Volumes 50-500ml)', module: 'minimart' },
+  { value: 'pharmacy', label: 'Pharmacy & Medical Store (Strip, Box, Tablets, Syrups)', module: 'minimart' },
+  { value: 'electronics', label: 'Mobile, Electronics & Accessories (IMEI, Serial, Warranty)', module: 'minimart' },
+  { value: 'bakery', label: 'Bakery & Sweets / Confectionery (KG, Gram, Box, Fresh)', module: 'minimart' },
+  { value: 'hardware', label: 'Hardware, Sanitary & Paint Store (Meters, Feet, KG, Gallon, Tools)', module: 'minimart' },
+  { value: 'electric', label: 'Electrical Store & Lighting (Cables, Switches, LED, Breakers)', module: 'minimart' },
+  { value: 'food', label: 'Fast Food, Cafe & Restaurant (Portions: S, M, L, Family, KDS)', module: 'fastfood' },
+];

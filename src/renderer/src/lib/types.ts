@@ -87,6 +87,28 @@ export interface OrderRefund {
   createdAt: string;
 }
 
+export interface Quotation {
+  id: string;
+  quoteNumber: string;
+  module: ModuleKey;
+  customerName: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  lines: CartLine[];
+  subtotal: number;
+  discountPercent: number;
+  discountAmount: number;
+  taxAmount?: number;
+  totalAmount: number;
+  validUntil: string;
+  notes?: string;
+  terms?: string;
+  status: 'draft' | 'sent' | 'converted' | 'expired';
+  convertedOrderId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type StockMovementType = "in" | "out";
 
 export interface StockMovement {
@@ -116,6 +138,7 @@ export type CategoryProfile =
   | 'food'
   | 'hardware'
   | 'electric'
+  | 'cctv'
   | 'standard';
 
 export interface Category {

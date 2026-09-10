@@ -46,5 +46,6 @@ export const KEYS = {
   categories: "pos.categories",
   orders: "pos.orders",
   stockMovements: "pos.stockMovements",
+  quotations: "pos.quotations",
   storeSettings: "pos.storeSettings",
 } as const;
