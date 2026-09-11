@@ -160,9 +160,12 @@ export const useAdminSettingsStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
   },
   cardHeaderBetween: {
+    display: 'flex',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
+    width: '100%',
     gap: '12px',
+    marginBottom: '10px',
   },
   cardIconBox: {
     width: '36px',

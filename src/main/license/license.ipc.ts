@@ -2,6 +2,7 @@ import { app, ipcMain } from 'electron';
 import { join } from 'node:path';
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { disconnectPrisma, initializeDatabase } from '../database/client';
 import os from 'node:os';
 import nodeMachineId from 'node-machine-id';
 
@@ -465,6 +466,13 @@ export function registerLicenseIpc(): void {
 
         if (data.modules) {
           saveModulesCache(formattedKey, normalizeModulesPayload(data.modules), data.businessProfiles);
+        }
+
+        try {
+          await disconnectPrisma();
+          await initializeDatabase();
+        } catch {
+          /* ignore db init error */
         }
 
         return {

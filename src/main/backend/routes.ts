@@ -2,7 +2,11 @@ import { Express, Request, Response } from 'express';
 import { getPrisma } from '../database/client';
 
 export function registerRoutes(app: Express): void {
-  const db = getPrisma();
+  const db = new Proxy({} as any, {
+    get(_target, prop) {
+      return (getPrisma() as any)[prop];
+    },
+  });
 
   // ── Products ──
   app.get('/api/products', async (req: Request, res: Response) => {

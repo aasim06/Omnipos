@@ -97,3 +97,36 @@ export class OmniposDexieDatabase extends Dexie {
 }
 
 export const offlineDb = new OmniposDexieDatabase();
+
+export async function clearAllLocalData(): Promise<void> {
+  try {
+    await Promise.all([
+      offlineDb.products.clear(),
+      offlineDb.categories.clear(),
+      offlineDb.orders.clear(),
+      offlineDb.stockMovements.clear(),
+      offlineDb.khatas.clear(),
+      offlineDb.khataTransactions.clear(),
+      offlineDb.expenses.clear(),
+      offlineDb.refunds.clear(),
+      offlineDb.quotations.clear(),
+      offlineDb.syncQueue.clear(),
+    ]);
+  } catch (err) {
+    console.warn('[OfflineDB] Clear error:', err);
+  }
+
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.removeItem('pos.products');
+      window.localStorage.removeItem('pos.categories');
+      window.localStorage.removeItem('pos.orders');
+      window.localStorage.removeItem('pos.stockMovements');
+      window.localStorage.removeItem('pos.quotations');
+      window.localStorage.removeItem('omnipos_active_schema');
+      window.localStorage.removeItem('omnipos_cached_modules');
+    } catch (err) {
+      console.warn('[LocalStorage] Clear error:', err);
+    }
+  }
+}

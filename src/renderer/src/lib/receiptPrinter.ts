@@ -59,7 +59,7 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
 
   const totalQty = (order.lines || []).reduce((sum, l) => sum + (l.quantity || 1), 0);
   const totalAmount = order.totalAmount || 0;
-  const paymentMode = (options?.paymentMode || order.paymentMethod || 'Cash').toUpperCase();
+  const paymentMode = (options?.paymentMode || (order as any).paymentMethod || 'Cash').toUpperCase();
   const tendered = options?.tenderedAmount;
   const changeDue = tendered !== undefined && tendered >= totalAmount ? tendered - totalAmount : 0;
 

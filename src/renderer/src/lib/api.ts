@@ -14,6 +14,11 @@ import {
 let cachedApiUrl: string | null = null;
 let cachedTenantMeta: { key?: string; schemaId?: string } | null = null;
 
+export function resetTenantMeta(): void {
+  cachedTenantMeta = null;
+  cachedApiUrl = null;
+}
+
 export async function getTenantHeaders(): Promise<Record<string, string>> {
   if (cachedTenantMeta?.schemaId || cachedTenantMeta?.key) {
     return {
@@ -209,115 +214,7 @@ export const posApi = {
       }
     } catch {}
 
-    // Starter catalog products if database is empty
-    const starterProducts: Product[] = [
-      {
-        id: 'prod_ff_zinger_1',
-        module: 'fastfood',
-        name: 'Zinger Burger',
-        category: 'Fast Food',
-        price: 300,
-        costPrice: 200,
-        unit: 'PCS',
-        skuCode: '35548549',
-        barcode: '35548549',
-        openingStock: 100,
-        itemRole: 'food_menu',
-        isKitchenRouted: true,
-        pricingType: 'fixed',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'prod_ff_fries_1',
-        module: 'fastfood',
-        name: 'Crispy Fries (Large)',
-        category: 'Sides',
-        price: 180,
-        costPrice: 90,
-        unit: 'PCS',
-        skuCode: '35548550',
-        barcode: '35548550',
-        openingStock: 80,
-        itemRole: 'food_menu',
-        isKitchenRouted: true,
-        pricingType: 'fixed',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'prod_ff_pizza_1',
-        module: 'fastfood',
-        name: 'Chicken Tikka Pizza',
-        category: 'Fast Food',
-        price: 850,
-        costPrice: 500,
-        unit: 'PCS',
-        skuCode: '35548551',
-        barcode: '35548551',
-        openingStock: 40,
-        itemRole: 'food_menu',
-        isKitchenRouted: true,
-        pricingType: 'fixed',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'prod_mm_milk_1',
-        module: 'minimart',
-        name: 'Fresh Milk (1 Liter)',
-        category: 'Dairy',
-        price: 220,
-        costPrice: 190,
-        unit: 'PACK',
-        skuCode: '89640001',
-        barcode: '89640001',
-        openingStock: 50,
-        itemRole: 'retail_product',
-        pricingType: 'fixed',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'prod_mm_rice_1',
-        module: 'minimart',
-        name: 'Super Basmati Rice (1 KG)',
-        category: 'Grocery',
-        price: 340,
-        costPrice: 280,
-        unit: 'KG',
-        skuCode: '89640002',
-        barcode: '89640002',
-        openingStock: 120,
-        itemRole: 'retail_product',
-        pricingType: 'fixed',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'prod_mm_oil_1',
-        module: 'minimart',
-        name: 'Cooking Oil (1 Liter Refill)',
-        category: 'Grocery',
-        price: 510,
-        costPrice: 460,
-        unit: 'LTR',
-        skuCode: '89640003',
-        barcode: '89640003',
-        openingStock: 60,
-        itemRole: 'retail_product',
-        pricingType: 'fixed',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-
-    try {
-      await offlineDb.products.bulkPut(starterProducts);
-      storage.setList(KEYS.products, starterProducts);
-    } catch {}
-
-    return module ? starterProducts.filter((p) => p.module === module) : starterProducts;
+    return [];
   },
 
   async saveProduct(product: Product): Promise<Product> {
@@ -493,21 +390,7 @@ export const posApi = {
       }
     } catch {}
 
-    const starterCategories: Category[] = [
-      { id: 'cat_ff_1', name: 'Fast Food', module: 'fastfood', profile: 'food', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-      { id: 'cat_ff_2', name: 'Sides', module: 'fastfood', profile: 'food', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-      { id: 'cat_ff_3', name: 'Beverages', module: 'fastfood', profile: 'food', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-      { id: 'cat_mm_1', name: 'Grocery', module: 'minimart', profile: 'standard', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-      { id: 'cat_mm_2', name: 'Dairy', module: 'minimart', profile: 'standard', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-      { id: 'cat_mm_3', name: 'General Store', module: 'minimart', profile: 'standard', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    ];
-
-    try {
-      await offlineDb.categories.bulkPut(starterCategories);
-      storage.setList(KEYS.categories, starterCategories);
-    } catch {}
-
-    return module ? starterCategories.filter((c) => !c.module || c.module === module) : starterCategories;
+    return [];
   },
 
   async saveCategory(cat: Category): Promise<Category> {

@@ -13,6 +13,8 @@ function formatSuffix(raw: string): string {
 }
 
 import { getOrCreateBrowserHwid, getBrowserDeviceName, getWebLicenseApiBase } from '@/lib/webLicense';
+import { clearAllLocalData } from '@/lib/offlineDb';
+import { resetTenantMeta } from '@/lib/api';
 import { userStorage } from './userStorage';
 import { makeStyles, mergeClasses } from '@fluentui/react-components';
 
@@ -263,6 +265,11 @@ export function LicensePage({ onActivated }: { onActivated: () => void }): React
       if (window.posApi?.license?.activate) {
         const result = await window.posApi.license.activate(fullKey);
         if (result.ok) {
+          const prevKey = localStorage.getItem('omnipos_active_key');
+          if (prevKey !== fullKey) {
+            await clearAllLocalData();
+            resetTenantMeta();
+          }
           localStorage.setItem('omnipos_active_key', fullKey);
           if ((result as any).businessProfiles) {
             localStorage.setItem('omnipos_business_profiles', JSON.stringify((result as any).businessProfiles));
@@ -286,6 +293,11 @@ export function LicensePage({ onActivated }: { onActivated: () => void }): React
 
         const data = await res.json();
         if (data.ok) {
+          const prevKey = localStorage.getItem('omnipos_active_key');
+          if (prevKey !== fullKey) {
+            await clearAllLocalData();
+            resetTenantMeta();
+          }
           localStorage.setItem('omnipos_active_key', fullKey);
           if (data.schemaId) {
             localStorage.setItem('omnipos_active_schema', data.schemaId);

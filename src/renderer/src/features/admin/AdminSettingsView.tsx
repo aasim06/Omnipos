@@ -50,6 +50,7 @@ import {
   DocumentTableSearch20Regular,
 } from '@fluentui/react-icons';
 import { posApi } from '@/lib/api';
+import { clearAllLocalData } from '@/lib/offlineDb';
 import { storage, KEYS } from '@/lib/storage';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import {
@@ -198,9 +199,10 @@ export function AdminSettingsView(): React.JSX.Element {
           text: res.message || 'Database restored successfully! Please restart or reload the app.',
         });
         await refreshBackupStatus();
+        await clearAllLocalData();
         setTimeout(() => {
           window.location.reload();
-        }, 2000);
+        }, 1500);
       } else if (!res.cancelled) {
         setBackupMsg({ type: 'error', text: res.error || 'Failed to restore database.' });
       }
@@ -958,7 +960,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   1-Click SQLite Database Backup (.db)
                 </Body1>
                 <Caption1 className={styles.mutedTextLineHeight}>
-                  Creates a clean, 100% full snapshot of your active SQLite database file including all sales invoices, products, stock levels, khata ledgers, and settings.
+                  Creates a clean, 100% full snapshot of your active SQLite database file (.db) including all product photos/images (embedded Base64), sales invoices, catalog, stock levels, khata ledgers, and settings.
                 </Caption1>
               </div>
 

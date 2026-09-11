@@ -3,7 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import { join } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 
-function getSavedLicenseKey(): string | null {
+import { createHash } from 'node:crypto';
+
+export function getSavedLicenseKey(): string | null {
   try {
     const file = join(app.getPath('userData'), 'license.dat');
     if (existsSync(file)) {
@@ -21,9 +23,14 @@ function getSavedLicenseKey(): string | null {
   return null;
 }
 
-export function getPosDbPath(): string {
+export function getPosDbPath(licenseKey?: string): string {
   const userData = app.getPath('userData');
-  return join(userData, 'pos.db');
+  const key = licenseKey || getSavedLicenseKey();
+  if (key) {
+    const hash = createHash('sha256').update(key.trim().toUpperCase()).digest('hex').slice(0, 16);
+    return join(userData, `pos_lic_${hash}.db`);
+  }
+  return join(userData, 'pos_default.db');
 }
 
 let prisma: PrismaClient | undefined;
@@ -37,10 +44,12 @@ export function getPrisma(): PrismaClient {
       void prisma.$disconnect();
     } catch { /* ignore */ }
     prisma = undefined;
+    isInitialized = false;
   }
 
   if (!prisma) {
     currentDbPath = targetDbPath;
+    isInitialized = false;
     prisma = new PrismaClient({
       datasources: {
         db: { url: `file:${targetDbPath.replaceAll('\\', '/')}` },
@@ -55,6 +64,7 @@ export async function disconnectPrisma(): Promise<void> {
   if (prisma) {
     await prisma.$disconnect();
     prisma = undefined;
+    isInitialized = false;
   }
 }
 
