@@ -17,6 +17,7 @@ const useStyles = makeStyles({
   },
 });
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AppNotificationProvider } from '../context/AppNotificationContext';
 
 // Microsoft Fluent 2 Red Brand Accent (#E51937)
 const fluentRedBrand: BrandVariants = {
@@ -102,12 +103,15 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export const useAppTheme = () => useContext(ThemeContext);
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5,
+      staleTime: 0,
+      gcTime: 1000 * 60 * 30,
       retry: 1,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
+      refetchOnMount: 'always',
+      refetchOnReconnect: true,
       networkMode: 'always',
     },
     mutations: {
@@ -115,6 +119,30 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Global Realtime Listeners for instant cross-view revalidation
+if (typeof window !== 'undefined') {
+  window.addEventListener('pos_khata_updated', () => {
+    queryClient.invalidateQueries({ queryKey: ['khatas'] });
+    queryClient.refetchQueries({ queryKey: ['khatas'] });
+  });
+  window.addEventListener('pos_orders_updated', () => {
+    queryClient.invalidateQueries({ queryKey: ['orders'] });
+    queryClient.invalidateQueries({ queryKey: ['all-orders-directory'] });
+    queryClient.refetchQueries({ queryKey: ['all-orders-directory'] });
+    queryClient.refetchQueries({ queryKey: ['orders'] });
+  });
+  window.addEventListener('pos_inventory_updated', () => {
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['categories'] });
+    queryClient.refetchQueries({ queryKey: ['products'] });
+    queryClient.refetchQueries({ queryKey: ['categories'] });
+  });
+  window.addEventListener('pos_quotations_updated', () => {
+    queryClient.invalidateQueries({ queryKey: ['quotations'] });
+    queryClient.refetchQueries({ queryKey: ['quotations'] });
+  });
+}
 
 export function AppProviders({ children }: PropsWithChildren): React.JSX.Element {
   const styles = useStyles();
@@ -145,7 +173,7 @@ export function AppProviders({ children }: PropsWithChildren): React.JSX.Element
     <QueryClientProvider client={queryClient}>
       <ThemeContext.Provider value={{ mode, toggleTheme }}>
         <FluentProvider theme={currentTheme} className={styles.rootProvider}>
-          {children}
+          <AppNotificationProvider>{children}</AppNotificationProvider>
         </FluentProvider>
       </ThemeContext.Provider>
     </QueryClientProvider>

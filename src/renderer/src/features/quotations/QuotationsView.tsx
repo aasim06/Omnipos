@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   makeStyles,
+  mergeClasses,
   tokens,
   Button,
   Subtitle1,
@@ -34,198 +35,15 @@ import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { QuotationPrintTemplate } from '@/components/print/QuotationPrintTemplate';
+import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
 
-const useStyles = makeStyles({
-  container: {
-    padding: '24px',
-    height: '100%',
-    boxSizing: 'border-box',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    overflowY: 'auto',
-  },
-  pageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: '16px',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke2,
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-  },
-  iconBox: {
-    width: '46px',
-    height: '46px',
-    borderRadius: '12px',
-    backgroundColor: 'rgba(229, 25, 55, 0.08)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#E51937',
-  },
-  kpiGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '14px',
-  },
-  kpiCard: {
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: '12px',
-    padding: '16px 18px',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: tokens.colorNeutralStroke2,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-    boxShadow: tokens.shadow2,
-  },
-  kpiTitle: {
-    fontSize: '11.5px',
-    fontWeight: 600,
-    color: tokens.colorNeutralForeground3,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  kpiValue: {
-    fontSize: '22px',
-    fontWeight: 800,
-    color: tokens.colorNeutralForeground1,
-  },
-  kpiSub: {
-    fontSize: '11px',
-    color: tokens.colorNeutralForeground4,
-  },
-  filterBar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
-    flexWrap: 'wrap',
-  },
-  searchBox: {
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: tokens.colorNeutralStroke2,
-    borderRadius: '8px',
-    padding: '0 12px',
-    height: '38px',
-    flex: '1',
-    maxWidth: '380px',
-  },
-  searchInput: {
-    border: 'none',
-    outline: 'none',
-    backgroundColor: 'transparent',
-    fontSize: '13px',
-    color: tokens.colorNeutralForeground1,
-    marginLeft: '8px',
-    width: '100%',
-  },
-  statusTabs: {
-    display: 'flex',
-    gap: '6px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    padding: '4px',
-    borderRadius: '8px',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: tokens.colorNeutralStroke2,
-  },
-  statusTab: {
-    border: 'none',
-    backgroundColor: 'transparent',
-    padding: '5px 12px',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    color: tokens.colorNeutralForeground3,
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground2,
-    },
-  },
-  statusTabActive: {
-    backgroundColor: '#E51937',
-    color: '#FFFFFF',
-    ':hover': {
-      backgroundColor: '#C4122C',
-    },
-  },
-  tableCard: {
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: '12px',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: tokens.colorNeutralStroke2,
-    overflow: 'hidden',
-    boxShadow: tokens.shadow2,
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    textAlign: 'left',
-  },
-  th: {
-    backgroundColor: tokens.colorNeutralBackground3,
-    padding: '12px 16px',
-    fontSize: '11.5px',
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground2,
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke2,
-  },
-  td: {
-    padding: '14px 16px',
-    fontSize: '12.5px',
-    color: tokens.colorNeutralForeground1,
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke2,
-  },
-  tr: {
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground2,
-    },
-  },
-  actionBtn: {
-    border: 'none',
-    backgroundColor: 'transparent',
-    cursor: 'pointer',
-    padding: '6px',
-    borderRadius: '6px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground3,
-    },
-  },
-  dialogSurface: {
-    maxWidth: '850px',
-    width: '100%',
-    borderRadius: '14px',
-    padding: '24px',
-    maxHeight: '92vh',
-    overflowY: 'auto',
-  },
-});
+import { useQuotationsStyles, useStyles } from './quotations.styles';
 
 export function QuotationsView(): React.JSX.Element {
-  const styles = useStyles();
+  const styles = useQuotationsStyles();
   const queryClient = useQueryClient();
+  const { notifySuccess, notifyWarning, notifyError } = useAppToast();
+  const confirmModal = useConfirmDialog();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'draft' | 'sent' | 'converted' | 'expired'>('all');
@@ -276,25 +94,50 @@ export function QuotationsView(): React.JSX.Element {
   // Mutations
   const saveQuotationMutation = useMutation({
     mutationFn: (quote: Quotation) => posApi.saveQuotation(quote),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      await queryClient.refetchQueries({ queryKey: ['quotations'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pos_quotations_updated'));
+      }
       setIsDialogOpen(false);
+      notifySuccess('Quotation saved successfully');
+    },
+    onError: (err: any) => {
+      notifyError(err.message || 'Failed to save quotation');
     },
   });
 
   const deleteQuotationMutation = useMutation({
     mutationFn: (id: string) => posApi.deleteQuotation(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      await queryClient.refetchQueries({ queryKey: ['quotations'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pos_quotations_updated'));
+      }
+      notifySuccess('Quotation deleted successfully');
+    },
+    onError: (err: any) => {
+      notifyError(err.message || 'Failed to delete quotation');
     },
   });
 
   const convertToOrderMutation = useMutation({
     mutationFn: (id: string) => posApi.convertQuotationToOrder(id),
-    onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      alert(`Success! Quotation converted to Order #${res.order.id}. Stock updated.`);
+    onSuccess: async (res) => {
+      await queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      await queryClient.refetchQueries({ queryKey: ['quotations'] });
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.refetchQueries({ queryKey: ['orders'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pos_quotations_updated'));
+        window.dispatchEvent(new CustomEvent('pos_orders_updated'));
+      }
+      notifySuccess(`Success! Quotation converted to Order #${res.order.id}. Stock updated.`);
+    },
+    onError: (err: any) => {
+      notifyError(err.message || 'Failed to convert quotation to order');
     },
   });
 
@@ -477,11 +320,11 @@ export function QuotationsView(): React.JSX.Element {
   // Submit quotation form
   const handleSaveQuotation = (status: 'draft' | 'sent' = 'draft') => {
     if (!customerName.trim()) {
-      alert('Please enter a customer name for the quotation.');
+      notifyWarning('Please enter a customer name for the quotation.');
       return;
     }
     if (lines.length === 0) {
-      alert('Please add at least one line item to the quotation.');
+      notifyWarning('Please add at least one line item to the quotation.');
       return;
     }
 
@@ -544,9 +387,9 @@ export function QuotationsView(): React.JSX.Element {
             <DocumentBulletList24Regular />
           </div>
           <div>
-            <Subtitle1 style={{ fontWeight: 800 }}>Quotations & Price Estimates</Subtitle1>
+            <Subtitle1 className={styles.titleBold}>Quotations & Price Estimates</Subtitle1>
             <div>
-              <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
+              <Caption1 className={styles.captionMuted}>
                 Generate estimates, print formal A4 quotes, and convert to sale with 1-click
               </Caption1>
             </div>
@@ -557,12 +400,7 @@ export function QuotationsView(): React.JSX.Element {
           appearance="primary"
           icon={<Add20Regular />}
           onClick={openNewQuotationModal}
-          style={{
-            backgroundColor: '#E51937',
-            color: '#FFFFFF',
-            fontWeight: 700,
-            borderRadius: '8px',
-          }}
+          className={styles.btnPrimaryRed}
         >
           + Create Quotation
         </Button>
@@ -572,7 +410,7 @@ export function QuotationsView(): React.JSX.Element {
       <div className={styles.kpiGrid}>
         <div className={styles.kpiCard}>
           <div className={styles.kpiTitle}>
-            <DocumentBulletList20Filled style={{ color: '#0284C7' }} /> Total Estimates
+            <DocumentBulletList20Filled className={styles.iconSky} /> Total Estimates
           </div>
           <div className={styles.kpiValue}>{kpiStats.totalCount}</div>
           <div className={styles.kpiSub}>Total Pipeline: {formatPKR(kpiStats.totalValue)}</div>
@@ -580,7 +418,7 @@ export function QuotationsView(): React.JSX.Element {
 
         <div className={styles.kpiCard}>
           <div className={styles.kpiTitle}>
-            <Timer20Regular style={{ color: '#F59E0B' }} /> Pending Quotes
+            <Timer20Regular className={styles.iconAmber} /> Pending Quotes
           </div>
           <div className={styles.kpiValue}>{kpiStats.pending}</div>
           <div className={styles.kpiSub}>Awaiting client confirmation</div>
@@ -588,9 +426,9 @@ export function QuotationsView(): React.JSX.Element {
 
         <div className={styles.kpiCard}>
           <div className={styles.kpiTitle}>
-            <CheckmarkCircle20Regular style={{ color: '#10B981' }} /> Converted to Sales
+            <CheckmarkCircle20Regular className={styles.iconEmerald} /> Converted to Sales
           </div>
-          <div className={styles.kpiValue} style={{ color: '#10B981' }}>
+          <div className={mergeClasses(styles.kpiValue, styles.kpiValueEmerald)}>
             {kpiStats.converted}
           </div>
           <div className={styles.kpiSub}>{kpiStats.conversionRate}% conversion rate</div>
@@ -598,9 +436,9 @@ export function QuotationsView(): React.JSX.Element {
 
         <div className={styles.kpiCard}>
           <div className={styles.kpiTitle}>
-            <Money20Regular style={{ color: '#E51937' }} /> Pipeline Value
+            <Money20Regular className={styles.iconRed} /> Pipeline Value
           </div>
-          <div className={styles.kpiValue} style={{ color: '#E51937' }}>
+          <div className={mergeClasses(styles.kpiValue, styles.kpiValueRed)}>
             {formatPKR(kpiStats.totalValue)}
           </div>
           <div className={styles.kpiSub}>Estimated gross potential</div>
@@ -610,7 +448,7 @@ export function QuotationsView(): React.JSX.Element {
       {/* ── Filter & Search Bar ── */}
       <div className={styles.filterBar}>
         <div className={styles.searchBox}>
-          <Search20Regular style={{ color: tokens.colorNeutralForeground4 }} />
+          <Search20Regular className={styles.iconMuted} />
           <input
             type="text"
             className={styles.searchInput}
@@ -643,13 +481,13 @@ export function QuotationsView(): React.JSX.Element {
               <th className={styles.th}>Customer</th>
               <th className={styles.th}>Date & Validity</th>
               <th className={styles.th}>Items Overview</th>
-              <th className={styles.th} style={{ textAlign: 'right' }}>
+              <th className={mergeClasses(styles.th, styles.thRight)}>
                 Total (PKR)
               </th>
-              <th className={styles.th} style={{ textAlign: 'center' }}>
+              <th className={mergeClasses(styles.th, styles.thCenter)}>
                 Status
               </th>
-              <th className={styles.th} style={{ textAlign: 'right' }}>
+              <th className={mergeClasses(styles.th, styles.thRight)}>
                 Actions
               </th>
             </tr>
@@ -657,18 +495,18 @@ export function QuotationsView(): React.JSX.Element {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+                <td colSpan={7} className={styles.loadingTd}>
                   Loading quotations...
                 </td>
               </tr>
             ) : filteredQuotations.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: '40px', textAlign: 'center' }}>
-                  <DocumentBulletList24Regular style={{ fontSize: '36px', color: tokens.colorNeutralForeground4, marginBottom: '8px' }} />
-                  <div style={{ fontWeight: 700, fontSize: '14px', color: tokens.colorNeutralForeground2 }}>
+                <td colSpan={7} className={styles.emptyTd}>
+                  <DocumentBulletList24Regular className={styles.emptyIcon} />
+                  <div className={styles.emptyTitle}>
                     No quotations found
                   </div>
-                  <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground4, marginTop: '2px' }}>
+                  <div className={styles.emptySub}>
                     Click "+ Create Quotation" above to prepare your first client price estimate
                   </div>
                 </td>
@@ -690,16 +528,16 @@ export function QuotationsView(): React.JSX.Element {
                 return (
                   <tr key={quote.id} className={styles.tr}>
                     <td className={styles.td}>
-                      <span style={{ fontWeight: 800, color: '#E51937' }}>{quote.quoteNumber}</span>
-                      <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground4 }}>
+                      <span className={styles.quoteNumberText}>{quote.quoteNumber}</span>
+                      <div className={styles.moduleMuted}>
                         {quote.module === 'fastfood' ? 'Food Menu' : 'Mart / Retail'}
                       </div>
                     </td>
 
                     <td className={styles.td}>
-                      <div style={{ fontWeight: 700 }}>{quote.customerName}</div>
+                      <div className={styles.customerNameBold}>{quote.customerName}</div>
                       {quote.customerPhone && (
-                        <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                        <div className={styles.customerPhoneMuted}>
                           {quote.customerPhone}
                         </div>
                       )}
@@ -707,50 +545,37 @@ export function QuotationsView(): React.JSX.Element {
 
                     <td className={styles.td}>
                       <div>{created}</div>
-                      <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
-                        Valid Till: <span style={{ fontWeight: 600 }}>{valid}</span>
+                      <div className={styles.validityText}>
+                        Valid Till: <span className={styles.fontSemiBold}>{valid}</span>
                       </div>
                     </td>
 
                     <td className={styles.td}>
-                      <div style={{ fontWeight: 600 }}>{quote.lines.length} Item(s)</div>
-                      <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground4, maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div className={styles.fontSemiBold}>{quote.lines.length} Item(s)</div>
+                      <div className={styles.lineOverviewText}>
                         {quote.lines.map((l) => `${l.quantity}x ${l.name}`).join(', ')}
                       </div>
                     </td>
 
-                    <td className={styles.td} style={{ textAlign: 'right', fontWeight: 800, fontSize: '13px' }}>
+                    <td className={mergeClasses(styles.td, styles.totalPriceCell)}>
                       {formatPKR(quote.totalAmount)}
                     </td>
 
-                    <td className={styles.td} style={{ textAlign: 'center' }}>
+                    <td className={mergeClasses(styles.td, styles.thCenter)}>
                       <span
-                        style={{
-                          fontSize: '11px',
-                          padding: '3px 10px',
-                          borderRadius: '999px',
-                          fontWeight: 700,
-                          backgroundColor:
-                            quote.status === 'converted'
-                              ? 'rgba(16, 185, 129, 0.12)'
-                              : quote.status === 'sent'
-                              ? 'rgba(2, 132, 199, 0.12)'
-                              : 'rgba(245, 158, 11, 0.12)',
-                          color:
-                            quote.status === 'converted'
-                              ? '#059669'
-                              : quote.status === 'sent'
-                              ? '#0284C7'
-                              : '#D97706',
-                          textTransform: 'uppercase',
-                        }}
+                        className={mergeClasses(
+                          styles.statusPill,
+                          quote.status === 'converted' && styles.statusConverted,
+                          quote.status === 'sent' && styles.statusSent,
+                          quote.status !== 'converted' && quote.status !== 'sent' && styles.statusPending
+                        )}
                       >
                         {quote.status}
                       </span>
                     </td>
 
-                    <td className={styles.td} style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px' }}>
+                    <td className={mergeClasses(styles.td, styles.thRight)}>
+                      <div className={styles.actionGroup}>
                         {/* Print Button */}
                         <button
                           type="button"
@@ -758,7 +583,7 @@ export function QuotationsView(): React.JSX.Element {
                           title="Print A4 Quotation"
                           onClick={() => setPrintingQuotation(quote)}
                         >
-                          <Print20Regular style={{ color: '#0284C7' }} />
+                          <Print20Regular className={styles.printIcon} />
                         </button>
 
                         {/* Convert to Sale Button */}
@@ -767,13 +592,18 @@ export function QuotationsView(): React.JSX.Element {
                             type="button"
                             className={styles.actionBtn}
                             title="Convert to Sale Bill"
-                            onClick={() => {
-                              if (confirm(`Convert ${quote.quoteNumber} directly into a confirmed POS Sale?`)) {
+                            onClick={async () => {
+                              const ok = await confirmModal({
+                                title: 'Convert to POS Sale',
+                                message: `Convert quotation ${quote.quoteNumber} directly into a confirmed POS Sale? Stock will be deducted immediately.`,
+                                confirmLabel: 'Convert to Sale',
+                              });
+                              if (ok) {
                                 convertToOrderMutation.mutate(quote.id);
                               }
                             }}
                           >
-                            <CheckmarkCircle20Regular style={{ color: '#10B981' }} />
+                            <CheckmarkCircle20Regular className={styles.convertIcon} />
                           </button>
                         )}
 
@@ -784,7 +614,7 @@ export function QuotationsView(): React.JSX.Element {
                           title="Edit Quotation"
                           onClick={() => openEditModal(quote)}
                         >
-                          <Edit20Regular style={{ color: tokens.colorNeutralForeground3 }} />
+                          <Edit20Regular className={styles.editIcon} />
                         </button>
 
                         {/* Delete Button */}
@@ -792,13 +622,19 @@ export function QuotationsView(): React.JSX.Element {
                           type="button"
                           className={styles.actionBtn}
                           title="Delete"
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to delete ${quote.quoteNumber}?`)) {
+                          onClick={async () => {
+                            const ok = await confirmModal({
+                              title: 'Delete Quotation',
+                              message: `Are you sure you want to delete quotation ${quote.quoteNumber}? This action cannot be undone.`,
+                              confirmLabel: 'Delete Quotation',
+                              intent: 'danger',
+                            });
+                            if (ok) {
                               deleteQuotationMutation.mutate(quote.id);
                             }
                           }}
                         >
-                          <Delete20Regular style={{ color: '#EF4444' }} />
+                          <Delete20Regular className={styles.deleteIcon} />
                         </button>
                       </div>
                     </td>
@@ -813,27 +649,16 @@ export function QuotationsView(): React.JSX.Element {
       {/* ── Dialog: Create / Edit Quotation Modal ── */}
       <Dialog open={isDialogOpen} onOpenChange={(_, d) => setIsDialogOpen(d.open)}>
         <DialogSurface className={styles.dialogSurface}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  backgroundColor: 'rgba(229, 25, 55, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#E51937',
-                }}
-              >
+          <div className={styles.dialogHeader}>
+            <div className={styles.dialogHeaderLeft}>
+              <div className={styles.dialogHeaderIconBox}>
                 <DocumentBulletList24Regular />
               </div>
               <div>
-                <div style={{ fontSize: '17px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                <div className={styles.dialogTitleText}>
                   {editingQuotation ? `Edit Quotation (${editingQuotation.quoteNumber})` : 'Create New Price Estimate'}
                 </div>
-                <div style={{ fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                <div className={styles.dialogSubText}>
                   Prepare itemized commercial quotation for client
                 </div>
               </div>
@@ -848,7 +673,7 @@ export function QuotationsView(): React.JSX.Element {
           </div>
 
           {/* Form Top Section: Customer & Meta */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+          <div className={styles.dialogFormGrid}>
             <CustomInput
               label="Customer / Company Name"
               required
@@ -898,20 +723,20 @@ export function QuotationsView(): React.JSX.Element {
           </div>
 
           {/* Item Picker & Line Items Header */}
-          <div style={{ borderTop: `1px solid ${tokens.colorNeutralStroke2}`, paddingTop: '16px', marginBottom: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <div style={{ fontWeight: 800, fontSize: '13.5px', color: tokens.colorNeutralForeground1 }}>
+          <div className={styles.itemsSection}>
+            <div className={styles.itemsHeaderRow}>
+              <div className={styles.itemsSectionTitle}>
                 Quotation Line Items ({lines.length})
               </div>
-              <Button size="small" appearance="subtle" onClick={addCustomLine} style={{ color: '#E51937', fontWeight: 700 }}>
+              <Button size="small" appearance="subtle" onClick={addCustomLine} className={styles.addCustomBtn}>
                 + Add Custom Service / Job
               </Button>
             </div>
 
             {/* Rapid Search from Catalog with Barcode Gun support */}
-            <div style={{ marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ flex: 1 }}>
+            <div className={styles.searchScannerContainer}>
+              <div className={styles.searchScannerRow}>
+                <div className={styles.flex1}>
                   <ProductAutocomplete
                     placeholder="Search catalog by product name, SKU or barcode to add to quotation..."
                     onSelectProduct={addProductToLines}
@@ -921,22 +746,10 @@ export function QuotationsView(): React.JSX.Element {
                   />
                 </div>
                 <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: tokens.colorNeutralBackground3,
-                    border: `1px solid ${tokens.colorNeutralStroke2}`,
-                    fontSize: '11px',
-                    color: tokens.colorNeutralForeground3,
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                  }}
+                  className={styles.scannerBadge}
                   title="Barcode gun is active. You can scan barcodes directly anytime."
                 >
-                  <BarcodeScanner20Regular style={{ width: 16, height: 16, color: '#E51937' }} />
+                  <BarcodeScanner20Regular className={styles.scannerIcon} />
                   <span>Scanner Gun Ready</span>
                 </div>
               </div>
@@ -944,23 +757,15 @@ export function QuotationsView(): React.JSX.Element {
               {/* Barcode Scanner Feedback Toast */}
               {barcodeToast && (
                 <div
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    backgroundColor: barcodeToast.isSuccess ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                    border: `1px solid ${barcodeToast.isSuccess ? '#10B981' : '#EF4444'}`,
-                    color: barcodeToast.isSuccess ? '#059669' : '#DC2626',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
+                  className={mergeClasses(
+                    styles.scannerToast,
+                    barcodeToast.isSuccess ? styles.scannerToastSuccess : styles.scannerToastError
+                  )}
                 >
                   {barcodeToast.isSuccess ? (
-                    <CheckmarkCircle20Regular style={{ width: 16, height: 16 }} />
+                    <CheckmarkCircle20Regular className={styles.scannerToastIcon} />
                   ) : (
-                    <Dismiss16Regular style={{ width: 16, height: 16 }} />
+                    <Dismiss16Regular className={styles.scannerToastIcon} />
                   )}
                   <span>{barcodeToast.text}</span>
                 </div>
@@ -968,105 +773,71 @@ export function QuotationsView(): React.JSX.Element {
             </div>
 
             {/* Line Items Table */}
-            <div style={{ border: `1px solid ${tokens.colorNeutralStroke2}`, borderRadius: '8px', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <div className={styles.lineItemsTableWrap}>
+              <table className={styles.lineItemsTable}>
                 <thead>
-                  <tr style={{ backgroundColor: tokens.colorNeutralBackground3, color: tokens.colorNeutralForeground2 }}>
-                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Item Name</th>
-                    <th style={{ padding: '8px 8px', textAlign: 'left', width: '130px' }}>Spec / Unit</th>
-                    <th style={{ padding: '8px 8px', textAlign: 'center', width: '80px' }}>Qty</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right', width: '120px' }}>Unit Rate</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right', width: '120px' }}>Line Total</th>
-                    <th style={{ padding: '8px 6px', textAlign: 'center', width: '40px' }} />
+                  <tr className={styles.lineItemsTheadTr}>
+                    <th className={styles.thItemName}>Item Name</th>
+                    <th className={styles.thSpecUnit}>Spec / Unit</th>
+                    <th className={styles.thQty}>Qty</th>
+                    <th className={styles.thRate}>Unit Rate</th>
+                    <th className={styles.thLineTotal}>Line Total</th>
+                    <th className={styles.thDeleteCol} />
                   </tr>
                 </thead>
                 <tbody>
                   {lines.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: tokens.colorNeutralForeground4 }}>
+                      <td colSpan={6} className={styles.emptyLinesTd}>
                         Search and select products above, or click "+ Add Custom Service" to build quote
                       </td>
                     </tr>
                   ) : (
                     lines.map((line, idx) => (
-                      <tr key={`${line.productId}_${idx}`} style={{ borderBottom: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                        <td style={{ padding: '6px 12px' }}>
+                      <tr key={`${line.productId}_${idx}`} className={styles.lineItemTr}>
+                        <td className={styles.tdItemName}>
                           <input
                             type="text"
                             value={line.name}
                             onChange={(e) => updateLineName(idx, e.target.value)}
-                            style={{
-                              width: '100%',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              border: `1px solid ${tokens.colorNeutralStroke1}`,
-                              fontSize: '12px',
-                            }}
+                            className={styles.inputItemName}
                           />
                         </td>
-                        <td style={{ padding: '6px 8px' }}>
+                        <td className={styles.tdSpecUnit}>
                           <input
                             type="text"
                             placeholder="e.g. 4ch / PCS"
                             value={line.variantLabel || ''}
                             onChange={(e) => updateLineVariant(idx, e.target.value)}
-                            style={{
-                              width: '100%',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              border: `1px solid ${tokens.colorNeutralStroke1}`,
-                              fontSize: '12px',
-                            }}
+                            className={styles.inputSpecUnit}
                           />
                         </td>
-                        <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                        <td className={styles.tdQty}>
                           <input
                             type="number"
                             min="1"
                             value={line.quantity}
                             onChange={(e) => updateLineQty(idx, parseInt(e.target.value) || 1)}
-                            style={{
-                              width: '60px',
-                              padding: '4px 6px',
-                              borderRadius: '4px',
-                              border: `1px solid ${tokens.colorNeutralStroke1}`,
-                              textAlign: 'center',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                            }}
+                            className={styles.inputQty}
                           />
                         </td>
-                        <td style={{ padding: '6px 12px', textAlign: 'right' }}>
+                        <td className={styles.tdRate}>
                           <input
                             type="number"
                             min="0"
                             value={line.unitPrice}
                             onChange={(e) => updateLinePrice(idx, parseFloat(e.target.value) || 0)}
-                            style={{
-                              width: '100px',
-                              padding: '4px 6px',
-                              borderRadius: '4px',
-                              border: `1px solid ${tokens.colorNeutralStroke1}`,
-                              textAlign: 'right',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                            }}
+                            className={styles.inputRate}
                           />
                         </td>
-                        <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 800, color: '#E51937' }}>
+                        <td className={styles.tdLineTotal}>
                           {formatPKR(line.quantity * line.unitPrice)}
                         </td>
-                        <td style={{ padding: '6px 6px', textAlign: 'center' }}>
+                        <td className={styles.tdDeleteCol}>
                           <button
                             type="button"
                             onClick={() => removeLine(idx)}
-                            style={{
-                              border: 'none',
-                              background: 'none',
-                              color: '#EF4444',
-                              cursor: 'pointer',
-                              padding: '4px',
-                            }}
+                            className={styles.deleteLineBtn}
                           >
                             <Delete20Regular />
                           </button>
@@ -1080,88 +851,45 @@ export function QuotationsView(): React.JSX.Element {
           </div>
 
           {/* Bottom Totals Bar */}
-          <div
-            style={{
-              backgroundColor: tokens.colorNeutralBackground2,
-              borderRadius: '10px',
-              padding: '14px 18px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: '20px',
-              marginBottom: '18px',
-            }}
-          >
+          <div className={styles.bottomTotalsBar}>
             {/* Notes & Terms input */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className={styles.notesCol}>
               <input
                 type="text"
                 placeholder="Client Note (e.g. Includes 1-year CCTV onsite service warranty)"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '6px',
-                  border: `1px solid ${tokens.colorNeutralStroke1}`,
-                  fontSize: '11.5px',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                }}
+                className={styles.noteInput}
               />
               <input
                 type="text"
                 placeholder="Payment terms & conditions..."
                 value={terms}
                 onChange={(e) => setTerms(e.target.value)}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '6px',
-                  border: `1px solid ${tokens.colorNeutralStroke1}`,
-                  fontSize: '11.5px',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                }}
+                className={styles.noteInput}
               />
             </div>
 
             {/* Calculations Box */}
-            <div style={{ width: '260px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'right' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                <span style={{ color: tokens.colorNeutralForeground3 }}>Subtotal:</span>
-                <span style={{ fontWeight: 700 }}>{formatPKR(subtotal)}</span>
+            <div className={styles.calcBox}>
+              <div className={styles.calcRow}>
+                <span className={styles.colorMuted3}>Subtotal:</span>
+                <span className={styles.fontSemiBold}>{formatPKR(subtotal)}</span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                <span style={{ color: tokens.colorNeutralForeground3 }}>Discount %:</span>
+              <div className={styles.calcRowCenter}>
+                <span className={styles.colorMuted3}>Discount %:</span>
                 <input
                   type="number"
                   min="0"
                   max="100"
                   value={discountPercent}
                   onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-                  style={{
-                    width: '60px',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    border: `1px solid ${tokens.colorNeutralStroke1}`,
-                    textAlign: 'right',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                  }}
+                  className={styles.discountInput}
                 />
               </div>
 
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  paddingTop: '6px',
-                  borderTop: `1.5px solid ${tokens.colorNeutralStroke2}`,
-                  fontSize: '15px',
-                  fontWeight: 900,
-                  color: '#E51937',
-                }}
-              >
+              <div className={styles.grandTotalRow}>
                 <span>GRAND TOTAL:</span>
                 <span>{formatPKR(totalAmount)}</span>
               </div>
@@ -1169,7 +897,7 @@ export function QuotationsView(): React.JSX.Element {
           </div>
 
           {/* Modal Actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <div className={styles.dialogActionsRow}>
             <Button appearance="subtle" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
@@ -1184,7 +912,7 @@ export function QuotationsView(): React.JSX.Element {
               appearance="primary"
               onClick={() => handleSaveQuotation('sent')}
               disabled={saveQuotationMutation.isPending}
-              style={{ backgroundColor: '#E51937', color: '#FFFFFF', fontWeight: 700 }}
+              className={styles.btnSaveFinalize}
             >
               Save & Finalize Quote
             </Button>

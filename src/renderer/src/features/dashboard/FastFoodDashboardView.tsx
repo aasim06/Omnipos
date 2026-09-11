@@ -21,15 +21,18 @@ import {
   Ribbon20Filled,
   Trophy20Filled,
 } from '@fluentui/react-icons';
+import { mergeClasses } from '@fluentui/react-components';
 import { useAppTheme } from '@/theme/AppProviders';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { offlineDb, LocalOrder } from '@/lib/offlineDb';
 import { Product } from '@/lib/types';
+import { useFastFoodDashboardStyles } from './fastFoodDashboard.styles';
 
 type DashboardTab = 'fastfood' | 'minimart';
 type DateRange = 'today' | 'week' | 'month';
 
 export function FastFoodDashboardView(): React.JSX.Element {
+  const styles = useFastFoodDashboardStyles();
   const { mode } = useAppTheme();
   const isDark = mode === 'dark';
   const navigate = useNavigate();
@@ -327,107 +330,54 @@ export function FastFoodDashboardView(): React.JSX.Element {
   }, [metrics]);
 
   return (
-    <div
-      style={{
-        padding: '24px 32px',
-        backgroundColor: T.bg,
-        minHeight: '100%',
-        boxSizing: 'border-box',
-        color: T.textPrimary,
-        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '24px',
-        overflowY: 'auto',
-      }}
-    >
+    <div className={mergeClasses(styles.root, isDark ? styles.rootDark : styles.rootLight)}>
       {/* ══════════════════════════════════════════════════════════════════════
           TOP HEADER & MODULE SWITCHER TABS
       ══════════════════════════════════════════════════════════════════════ */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '16px',
-          paddingBottom: '16px',
-          borderBottom: `1px solid ${T.cardBorder}`,
-        }}
-      >
+      <div className={mergeClasses(styles.header, isDark ? styles.headerDark : styles.headerLight)}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, letterSpacing: '-0.02em' }}>
+          <div className={styles.headerTitleRow}>
+            <h1 className={styles.headerTitle}>
               Sales & Activity Dashboard
             </h1>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '3px 10px',
-                borderRadius: '20px',
-                backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                color: T.green,
-                fontSize: '11px',
-                fontWeight: 800,
-              }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: T.green, boxShadow: `0 0 8px ${T.green}` }} />
+            <div className={styles.liveBadge}>
+              <span className={styles.liveBadgeDot} />
               <span>LIVE • OFFLINE-FIRST</span>
             </div>
           </div>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: T.textSecondary }}>
+          <p className={mergeClasses(styles.headerSub, isDark ? styles.headerSubDark : styles.headerSubLight)}>
             Live sales, orders count, and kitchen cooking time
           </p>
         </div>
 
         {/* ── Top Dual Tabs: Fast Food vs Mini Mart (License-Filtered) ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className={styles.headerRightActions}>
           {(hasFastFood || hasOmnimart) && (
             hasFastFood && hasOmnimart ? (
-              <div
-                style={{
-                  display: 'flex',
-                  backgroundColor: isDark ? '#1C1F26' : '#E2E8F0',
-                  padding: '4px',
-                  borderRadius: '10px',
-                  border: `1px solid ${T.cardBorder}`,
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
-              >
+              <div className={mergeClasses(styles.tabSwitcher, isDark ? styles.tabSwitcherDark : styles.tabSwitcherLight)}>
                 <button
                   type="button"
                   onClick={() => setActiveTab('fastfood')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 18px',
-                    borderRadius: '7px',
-                    border: 'none',
-                    backgroundColor: activeTab === 'fastfood' ? T.red : 'transparent',
-                    color: activeTab === 'fastfood' ? '#FFFFFF' : T.textSecondary,
-                    fontWeight: 800,
-                    fontSize: '13px',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    cursor: 'pointer',
-                    boxShadow: activeTab === 'fastfood' ? `0 4px 14px ${T.redGlow}` : 'none',
-                    transition: 'all 0.2s ease',
-                  }}
+                  className={mergeClasses(
+                    styles.tabBtn,
+                    activeTab === 'fastfood'
+                      ? styles.tabBtnFastFoodActive
+                      : isDark
+                      ? styles.tabBtnInactiveDark
+                      : styles.tabBtnInactiveLight
+                  )}
                 >
-                  <Food24Regular style={{ width: 16, height: 16 }} />
+                  <Food24Regular className={styles.icon16} />
                   <span>Fast Food Restaurant</span>
                   <span
-                    style={{
-                      fontSize: '10px',
-                      padding: '1px 6px',
-                      borderRadius: '10px',
-                      backgroundColor: activeTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : isDark ? '#2D3139' : '#CBD5E1',
-                      color: activeTab === 'fastfood' ? '#FFFFFF' : T.textPrimary,
-                      fontWeight: 800,
-                    }}
+                    className={mergeClasses(
+                      styles.tabCountBadge,
+                      activeTab === 'fastfood'
+                        ? styles.tabCountBadgeActive
+                        : isDark
+                        ? styles.tabCountBadgeInactiveDark
+                        : styles.tabCountBadgeInactiveLight
+                    )}
                   >
                     {activeTab === 'fastfood' ? metrics.totalOrders : 'POS'}
                   </span>
@@ -436,75 +386,49 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={() => setActiveTab('minimart')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 18px',
-                    borderRadius: '7px',
-                    border: 'none',
-                    backgroundColor: activeTab === 'minimart' ? '#2563EB' : 'transparent',
-                    color: activeTab === 'minimart' ? '#FFFFFF' : T.textSecondary,
-                    fontWeight: 800,
-                    fontSize: '13px',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    cursor: 'pointer',
-                    boxShadow: activeTab === 'minimart' ? '0 4px 14px rgba(37, 99, 235, 0.4)' : 'none',
-                    transition: 'all 0.2s ease',
-                  }}
+                  className={mergeClasses(
+                    styles.tabBtn,
+                    activeTab === 'minimart'
+                      ? styles.tabBtnMiniMartActive
+                      : isDark
+                      ? styles.tabBtnInactiveDark
+                      : styles.tabBtnInactiveLight
+                  )}
                 >
-                  <BuildingShop24Regular style={{ width: 16, height: 16 }} />
+                  <BuildingShop24Regular className={styles.icon16} />
                   <span>Mini Mart Retail</span>
                 </button>
               </div>
             ) : (
               <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  backgroundColor: hasFastFood ? 'rgba(229, 25, 55, 0.1)' : 'rgba(37, 99, 235, 0.1)',
-                  border: `1px solid ${hasFastFood ? 'rgba(229, 25, 55, 0.25)' : 'rgba(37, 99, 235, 0.25)'}`,
-                  color: hasFastFood ? T.red : '#2563EB',
-                  fontWeight: 800,
-                  fontSize: '13px',
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
+                className={mergeClasses(
+                  styles.singleModuleBadge,
+                  hasFastFood ? styles.singleModuleBadgeFastFood : styles.singleModuleBadgeMiniMart
+                )}
               >
-                {hasFastFood ? <Food24Regular style={{ width: 16, height: 16 }} /> : <BuildingShop24Regular style={{ width: 16, height: 16 }} />}
+                {hasFastFood ? <Food24Regular className={styles.icon16} /> : <BuildingShop24Regular className={styles.icon16} />}
                 <span>{hasFastFood ? 'Fast Food Restaurant' : 'Mini Mart Retail'}</span>
               </div>
             )
           )}
 
           {/* Date range filter */}
-          <div
-            style={{
-              display: 'flex',
-              backgroundColor: T.cardBg,
-              padding: '3px',
-              borderRadius: '8px',
-              border: `1px solid ${T.cardBorder}`,
-            }}
-          >
+          <div className={mergeClasses(styles.dateFilterGroup, isDark ? styles.dateFilterGroupDark : styles.dateFilterGroupLight)}>
             {(['today', 'week', 'month'] as DateRange[]).map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={() => setDateRange(r)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: dateRange === r ? (isDark ? '#27272A' : '#E2E8F0') : 'transparent',
-                  color: dateRange === r ? T.textPrimary : T.textMuted,
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  textTransform: 'capitalize',
-                }}
+                className={mergeClasses(
+                  styles.dateBtn,
+                  dateRange === r
+                    ? isDark
+                      ? styles.dateBtnActiveDark
+                      : styles.dateBtnActiveLight
+                    : isDark
+                    ? styles.dateBtnInactiveDark
+                    : styles.dateBtnInactiveLight
+                )}
               >
                 {r === 'today' ? 'Today' : r === 'week' ? '7 Days' : 'Month'}
               </button>
@@ -515,20 +439,9 @@ export function FastFoodDashboardView(): React.JSX.Element {
             type="button"
             title="Refresh"
             onClick={loadData}
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              border: `1px solid ${T.cardBorder}`,
-              backgroundColor: T.cardBg,
-              color: T.textSecondary,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
+            className={mergeClasses(styles.refreshBtn, isDark ? styles.refreshBtnDark : styles.refreshBtnLight)}
           >
-            <ArrowClockwise20Regular style={{ width: 16, height: 16 }} />
+            <ArrowClockwise20Regular className={styles.icon16} />
           </button>
         </div>
       </div>
@@ -536,138 +449,92 @@ export function FastFoodDashboardView(): React.JSX.Element {
       {/* ══════════════════════════════════════════════════════════════════════
           4 HERO KPI METRIC CARDS (Laser Top Border & Glow)
       ══════════════════════════════════════════════════════════════════════ */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-          gap: '16px',
-        }}
-      >
+      <div className={styles.kpiGrid}>
         {/* Card 1: Gross Sales */}
-        <div
-          style={{
-            backgroundColor: T.cardBg,
-            borderRadius: '12px',
-            border: `1px solid ${T.cardBorder}`,
-            padding: '20px',
-            position: 'relative',
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}
-        >
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', backgroundColor: T.red, boxShadow: `0 0 10px ${T.red}` }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className={mergeClasses(styles.kpiCard, isDark ? styles.cardDark : styles.cardLight)}>
+          <div className={styles.laserRed} />
+          <div className={styles.kpiHeader}>
+            <span className={mergeClasses(styles.kpiTitle, isDark ? styles.textMutedDark : styles.textMutedLight)}>
               {activeTab === 'fastfood' ? 'Food Revenue' : 'Retail Sales'} ({dateRange})
             </span>
-            <div style={{ width: 36, height: 36, borderRadius: '8px', backgroundColor: 'rgba(229, 25, 55, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.red }}>
-              <Money24Filled style={{ width: 20, height: 20 }} />
+            <div className={styles.kpiIconRed}>
+              <Money24Filled className={styles.icon20} />
             </div>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 900, color: T.textPrimary, marginTop: '12px', letterSpacing: '-0.02em' }}>
+          <div className={mergeClasses(styles.kpiValue, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
             PKR {metrics.totalRevenue.toLocaleString()}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '11.5px', color: T.green }}>
-            <ArrowTrending24Filled style={{ width: 14, height: 14 }} />
-            <span style={{ fontWeight: 800 }}>+18.4%</span>
-            <span style={{ color: T.textMuted }}>vs previous period</span>
+          <div className={styles.kpiTrendRow}>
+            <ArrowTrending24Filled className={styles.icon14} />
+            <span className={styles.trendGreen}>+18.4%</span>
+            <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>vs previous period</span>
           </div>
         </div>
 
         {/* Card 2: Total Orders */}
-        <div
-          style={{
-            backgroundColor: T.cardBg,
-            borderRadius: '12px',
-            border: `1px solid ${T.cardBorder}`,
-            padding: '20px',
-            position: 'relative',
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}
-        >
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', backgroundColor: T.blue, boxShadow: `0 0 10px ${T.blue}` }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className={mergeClasses(styles.kpiCard, isDark ? styles.cardDark : styles.cardLight)}>
+          <div className={styles.laserBlue} />
+          <div className={styles.kpiHeader}>
+            <span className={mergeClasses(styles.kpiTitle, isDark ? styles.textMutedDark : styles.textMutedLight)}>
               Total Orders Billed
             </span>
-            <div style={{ width: 36, height: 36, borderRadius: '8px', backgroundColor: 'rgba(59, 130, 246, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.blue }}>
-              <Receipt24Filled style={{ width: 20, height: 20 }} />
+            <div className={styles.kpiIconBlue}>
+              <Receipt24Filled className={styles.icon20} />
             </div>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 900, color: T.textPrimary, marginTop: '12px', letterSpacing: '-0.02em' }}>
-            {metrics.totalOrders} <span style={{ fontSize: '14px', fontWeight: 600, color: T.textMuted }}>orders</span>
+          <div className={mergeClasses(styles.kpiValue, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
+            {metrics.totalOrders} <span className={mergeClasses(styles.kpiUnit, isDark ? styles.textMutedDark : styles.textMutedLight)}>orders</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '11.5px' }}>
-            <span style={{ color: T.green, fontWeight: 700 }}>● {metrics.completedCount} Served</span>
+          <div className={styles.kpiDotRow}>
+            <span className={styles.dotGreen}>● {metrics.completedCount} Served</span>
             {activeTab === 'fastfood' && (
-              <span style={{ color: T.amber, fontWeight: 700 }}>● {metrics.inKitchenCount} Cooking</span>
+              <span className={styles.dotAmber}>● {metrics.inKitchenCount} Cooking</span>
             )}
           </div>
         </div>
 
         {/* Card 3: Kitchen Velocity / Checkout Speed */}
-        <div
-          style={{
-            backgroundColor: T.cardBg,
-            borderRadius: '12px',
-            border: `1px solid ${T.cardBorder}`,
-            padding: '20px',
-            position: 'relative',
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}
-        >
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', backgroundColor: T.amber, boxShadow: `0 0 10px ${T.amber}` }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className={mergeClasses(styles.kpiCard, isDark ? styles.cardDark : styles.cardLight)}>
+          <div className={styles.laserAmber} />
+          <div className={styles.kpiHeader}>
+            <span className={mergeClasses(styles.kpiTitle, isDark ? styles.textMutedDark : styles.textMutedLight)}>
               {activeTab === 'fastfood' && hasKitchen ? 'Avg Kitchen Prep Speed' : 'Avg Checkout Speed'}
             </span>
-            <div style={{ width: 36, height: 36, borderRadius: '8px', backgroundColor: 'rgba(245, 158, 11, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.amber }}>
-              <Timer24Regular style={{ width: 20, height: 20 }} />
+            <div className={styles.kpiIconAmber}>
+              <Timer24Regular className={styles.icon20} />
             </div>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 900, color: T.textPrimary, marginTop: '12px', letterSpacing: '-0.02em' }}>
+          <div className={mergeClasses(styles.kpiValue, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
             {activeTab === 'fastfood' && hasKitchen ? `${metrics.avgPrepMinutes} ` : '1.2 '}
-            <span style={{ fontSize: '14px', fontWeight: 600, color: T.textMuted }}>
+            <span className={mergeClasses(styles.kpiUnit, isDark ? styles.textMutedDark : styles.textMutedLight)}>
               Minutes / Ticket
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '11.5px', color: T.amber }}>
-            {activeTab === 'fastfood' && hasKitchen ? <Fire20Filled style={{ width: 14, height: 14, color: '#EF4444' }} /> : <Sparkle20Filled style={{ width: 14, height: 14 }} />}
-            <span style={{ fontWeight: 800 }}>
+          <div className={mergeClasses(styles.kpiTrendRow, styles.trendAmber)}>
+            {activeTab === 'fastfood' && hasKitchen ? <Fire20Filled className={mergeClasses(styles.icon14, styles.colorRed)} /> : <Sparkle20Filled className={styles.icon14} />}
+            <span className={styles.fw800}>
               {activeTab === 'fastfood' && hasKitchen ? '94% under 15m target' : 'Fast Checkout Speed'}
             </span>
           </div>
         </div>
 
         {/* Card 4: Average Order Value */}
-        <div
-          style={{
-            backgroundColor: T.cardBg,
-            borderRadius: '12px',
-            border: `1px solid ${T.cardBorder}`,
-            padding: '20px',
-            position: 'relative',
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}
-        >
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', backgroundColor: T.green, boxShadow: `0 0 10px ${T.green}` }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className={mergeClasses(styles.kpiCard, isDark ? styles.cardDark : styles.cardLight)}>
+          <div className={styles.laserGreen} />
+          <div className={styles.kpiHeader}>
+            <span className={mergeClasses(styles.kpiTitle, isDark ? styles.textMutedDark : styles.textMutedLight)}>
               Average Ticket (AOV)
             </span>
-            <div style={{ width: 36, height: 36, borderRadius: '8px', backgroundColor: 'rgba(16, 185, 129, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.green }}>
-              <Sparkle20Filled style={{ width: 20, height: 20 }} />
+            <div className={styles.kpiIconGreen}>
+              <Sparkle20Filled className={styles.icon20} />
             </div>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 900, color: T.textPrimary, marginTop: '12px', letterSpacing: '-0.02em' }}>
+          <div className={mergeClasses(styles.kpiValue, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
             PKR {metrics.aov.toLocaleString()}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '11.5px', color: T.textSecondary }}>
-            <span>Basket Size:</span>
-            <span style={{ fontWeight: 800, color: T.textPrimary }}>
+          <div className={styles.kpiTrendRow}>
+            <span className={isDark ? styles.textSecondaryDark : styles.textSecondaryLight}>Basket Size:</span>
+            <span className={mergeClasses(styles.fw800, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
               {activeTab === 'fastfood' ? '2.4 items/ticket' : '3.8 items'}
             </span>
           </div>
@@ -677,68 +544,36 @@ export function FastFoodDashboardView(): React.JSX.Element {
       {/* ══════════════════════════════════════════════════════════════════════
           MAIN CHARTS ROW (Curved Spline Hourly Rush Graph + Donut Ring)
       ══════════════════════════════════════════════════════════════════════ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+      <div className={styles.chartsGrid}>
         {/* ── Left Chart: Professional Hourly Column Bar Chart ── */}
-        <div
-          style={{
-            backgroundColor: T.cardBg,
-            borderRadius: '14px',
-            border: `1px solid ${T.cardBorder}`,
-            padding: '22px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            position: 'relative',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '12px',
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-            }}
-          >
+        <div className={mergeClasses(styles.columnChartCard, isDark ? styles.cardDark : styles.cardLight)}>
+          <div className={styles.chartHeader}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, fontFamily: 'inherit' }}>
+              <div className={styles.chartTitleGroup}>
+                <h3 className={styles.chartTitle}>
                   {activeTab === 'fastfood' ? 'Hourly Orders & Sales' : 'Hourly Retail Breakdown'}
                 </h3>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-                    color: T.red,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <DataHistogram24Regular style={{ width: 14, height: 14 }} />
+                <span className={styles.telemetryTag}>
+                  <DataHistogram24Regular className={styles.icon14} />
                   <span>Hourly Telemetry</span>
                 </span>
               </div>
-              <p style={{ margin: '4px 0 0', fontSize: '12px', color: T.textSecondary }}>
+              <p className={mergeClasses(styles.chartSub, isDark ? styles.textSecondaryDark : styles.textSecondaryLight)}>
                 Bar height shows total orders • Click any column to view exact order tickets
               </p>
             </div>
 
             {/* Quick Live Actions & Peak indicators */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div className={styles.peakTagsRow}>
               {/* Peak indicator tags */}
               {activeTab === 'fastfood' && hasFastFood && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', backgroundColor: isDark ? '#27272A' : '#F1F5F9', color: T.amber, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <WeatherSunny20Regular style={{ width: 13, height: 13 }} />
+                <div className={styles.peakTagsRow}>
+                  <span className={isDark ? styles.peakTagLunchDark : styles.peakTagLunchLight}>
+                    <WeatherSunny20Regular className={styles.icon13} />
                     <span>Lunch (1 - 3 PM)</span>
                   </span>
-                  <span style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', backgroundColor: isDark ? '#27272A' : '#F1F5F9', color: T.red, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <WeatherMoon20Regular style={{ width: 13, height: 13 }} />
+                  <span className={isDark ? styles.peakTagDinnerDark : styles.peakTagDinnerLight}>
+                    <WeatherMoon20Regular className={styles.icon13} />
                     <span>Dinner (8 - 11 PM)</span>
                   </span>
                 </div>
@@ -747,10 +582,10 @@ export function FastFoodDashboardView(): React.JSX.Element {
           </div>
 
           {/* SVG Canvas for Professional Column Chart */}
-          <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
+          <div className={styles.chartSvgWrap}>
             <svg
               viewBox={`0 0 ${columnChart.width} ${columnChart.height}`}
-              style={{ width: '100%', height: '240px', display: 'block' }}
+              className={styles.chartSvg}
             >
               <defs>
                 {/* Standard Laser Red Bar Gradient */}
@@ -799,7 +634,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                     x={columnChart.padLeft - 8}
                     y={tick.y + 3.5}
                     textAnchor="end"
-                    fill={T.textMuted}
+                    fill={isDark ? '#64748B' : '#94A3B8'}
                     fontSize="9.5"
                     fontWeight="600"
                   >
@@ -814,7 +649,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 return (
                   <g
                     key={col.hour}
-                    style={{ cursor: 'pointer' }}
+                    className={styles.columnGroup}
                     onClick={() => setSelectedHourDetails(col)}
                     onMouseEnter={() => setHoveredHour(col.hour)}
                     onMouseLeave={() => setHoveredHour(null)}
@@ -827,7 +662,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                       height={columnChart.chartH}
                       rx="6"
                       fill={isHovered ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)') : 'transparent'}
-                      style={{ transition: 'fill 0.15s ease' }}
+                      className={styles.columnTrack}
                     />
 
                     {/* Active Column Bar */}
@@ -840,14 +675,14 @@ export function FastFoodDashboardView(): React.JSX.Element {
                           height={col.barH}
                           rx="5"
                           fill={isHovered ? 'url(#hoverBarGrad)' : col.isPeak ? 'url(#peakRushGrad)' : 'url(#laserBarGrad)'}
-                          style={{
-                            filter: isHovered
-                              ? `drop-shadow(0 0 12px ${T.red})`
+                          className={styles.columnBar}
+                          filter={
+                            isHovered
+                              ? 'drop-shadow(0 0 12px #E51937)'
                               : col.isPeak
-                              ? `drop-shadow(0 0 8px ${T.redGlow})`
-                              : `drop-shadow(0 2px 6px rgba(229, 25, 55, 0.3))`,
-                            transition: 'all 0.15s ease',
-                          }}
+                              ? 'drop-shadow(0 0 8px rgba(229, 25, 55, 0.35))'
+                              : 'drop-shadow(0 2px 6px rgba(229, 25, 55, 0.3))'
+                          }
                         />
 
                         {/* Top Glowing Edge Cap (Pill) */}
@@ -866,7 +701,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                           x={col.xCenter}
                           y={col.barY - 6}
                           textAnchor="middle"
-                          fill={isHovered ? '#FFFFFF' : col.isPeak ? '#F59E0B' : T.textSecondary}
+                          fill={isHovered ? '#FFFFFF' : col.isPeak ? '#F59E0B' : (isDark ? '#94A3B8' : '#64748B')}
                           fontSize="10.5"
                           fontWeight={isHovered || col.isPeak ? 900 : 700}
                         >
@@ -881,7 +716,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                         cx={col.xCenter}
                         cy={columnChart.padTop + columnChart.chartH - 2}
                         r="2"
-                        fill={T.textMuted}
+                        fill={isDark ? '#64748B' : '#94A3B8'}
                       />
                     )}
 
@@ -890,7 +725,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                       x={col.xCenter}
                       y={columnChart.height - 12}
                       textAnchor="middle"
-                      fill={isHovered ? T.textPrimary : col.isCurrentHour ? T.green : col.isPeak ? T.red : T.textMuted}
+                      fill={isHovered ? (isDark ? '#FFFFFF' : '#0F172A') : col.isCurrentHour ? '#10B981' : col.isPeak ? '#E51937' : (isDark ? '#64748B' : '#94A3B8')}
                       fontSize="10"
                       fontWeight={isHovered || col.isPeak || col.isCurrentHour ? 800 : 600}
                     >
@@ -903,8 +738,8 @@ export function FastFoodDashboardView(): React.JSX.Element {
                         cx={col.xCenter}
                         cy={columnChart.height - 4}
                         r="2.5"
-                        fill={T.green}
-                        style={{ filter: `drop-shadow(0 0 4px ${T.green})` }}
+                        fill="#10B981"
+                        className={styles.currentHourDot}
                       />
                     )}
 
@@ -914,7 +749,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                         cx={col.xCenter}
                         cy={columnChart.height - 4}
                         r="2"
-                        fill={col.hour >= 20 ? T.red : T.amber}
+                        fill={col.hour >= 20 ? '#E51937' : '#F59E0B'}
                       />
                     )}
                   </g>
@@ -931,54 +766,48 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 const aov = col.orders > 0 ? Math.round(col.revenue / col.orders) : 0;
                 return (
                   <div
-                    style={{
-                      position: 'absolute',
-                      left: `${(leftPos / columnChart.width) * 100}%`,
-                      top: '10px',
-                      backgroundColor: isDark ? 'rgba(20, 22, 27, 0.96)' : 'rgba(255, 255, 255, 0.96)',
-                      backdropFilter: 'blur(14px)',
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      border: `1.5px solid ${col.isPeak ? T.red : 'rgba(255,255,255,0.18)'}`,
-                      boxShadow: `0 10px 28px rgba(0,0,0,0.45), 0 0 14px ${T.redGlow}`,
-                      pointerEvents: 'none',
-                      zIndex: 20,
-                      minWidth: '150px',
+                    className={mergeClasses(
+                      styles.chartTooltip,
+                      isDark ? styles.chartTooltipDark : styles.chartTooltipLight,
+                      col.isPeak ? styles.tooltipBorderPeak : styles.tooltipBorderNormal
+                    )}
+                    ref={(el) => {
+                      if (el) el.style.left = `${(leftPos / columnChart.width) * 100}%`;
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: T.textSecondary }}>
+                    <div className={styles.tooltipHeader}>
+                      <span className={mergeClasses(styles.tooltipLabel, isDark ? styles.textSecondaryDark : styles.textSecondaryLight)}>
                         {col.label} Slot
                       </span>
                       {col.isPeak && (
-                        <span style={{ fontSize: '10px', fontWeight: 800, color: col.hour >= 20 ? T.red : T.amber, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <span className={col.hour >= 20 ? styles.tooltipPeakTagDinner : styles.tooltipPeakTagLunch}>
                           {col.hour >= 20 ? (
                             <>
-                              <WeatherMoon20Regular style={{ width: 12, height: 12 }} />
+                              <WeatherMoon20Regular className={styles.icon12} />
                               <span>Dinner</span>
                             </>
                           ) : (
                             <>
-                              <WeatherSunny20Regular style={{ width: 12, height: 12 }} />
+                              <WeatherSunny20Regular className={styles.icon12} />
                               <span>Lunch</span>
                             </>
                           )}
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '17px', fontWeight: 900, color: T.textPrimary, marginTop: '3px' }}>
+                    <div className={mergeClasses(styles.tooltipOrders, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
                       {col.orders} Orders
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', fontSize: '11.5px' }}>
-                      <span style={{ color: T.textMuted }}>Sales:</span>
-                      <span style={{ fontWeight: 800, color: T.green }}>
+                    <div className={styles.tooltipSalesRow}>
+                      <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>Sales:</span>
+                      <span className={mergeClasses(styles.fw800, styles.colorGreen)}>
                         PKR {col.revenue.toLocaleString()}
                       </span>
                     </div>
                     {col.orders > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px', fontSize: '11px' }}>
-                        <span style={{ color: T.textMuted }}>Avg Ticket:</span>
-                        <span style={{ fontWeight: 700, color: T.textPrimary }}>
+                      <div className={styles.tooltipAvgRow}>
+                        <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>Avg Ticket:</span>
+                        <span className={mergeClasses(styles.fw700, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
                           PKR {aov.toLocaleString()}
                         </span>
                       </div>
@@ -991,31 +820,21 @@ export function FastFoodDashboardView(): React.JSX.Element {
         </div>
 
         {/* ── Right Chart: Order Type Distribution Donut Ring ── */}
-        <div
-          style={{
-            backgroundColor: T.cardBg,
-            borderRadius: '14px',
-            border: `1px solid ${T.cardBorder}`,
-            padding: '22px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-          }}
-        >
+        <div className={mergeClasses(styles.donutCard, isDark ? styles.cardDark : styles.cardLight)}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>
+            <div className={styles.chartTitleGroup}>
+              <h3 className={styles.chartTitle}>
                 {activeTab === 'fastfood' ? 'Order Types Breakdown' : 'Payment Methods'}
               </h3>
             </div>
-            <p style={{ margin: '4px 0 0', fontSize: '12px', color: T.textSecondary }}>
+            <p className={mergeClasses(styles.chartSub, isDark ? styles.textSecondaryDark : styles.textSecondaryLight)}>
               Dine-In, Takeaway, and Delivery orders
             </p>
           </div>
 
           {/* SVG Circular Donut Chart */}
-          <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '14px 0' }}>
-            <svg width="180" height="180" viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
+          <div className={styles.donutSvgWrap}>
+            <svg width="180" height="180" viewBox="0 0 180 180" className={styles.donutSvg}>
               {/* Background Track */}
               <circle cx="90" cy="90" r="70" fill="none" stroke={isDark ? '#27272A' : '#E2E8F0'} strokeWidth="18" />
 
@@ -1025,12 +844,12 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 cy="90"
                 r="70"
                 fill="none"
-                stroke={T.red}
+                stroke="#E51937"
                 strokeWidth="18"
                 strokeDasharray={`${donutData.stroke1} ${donutData.C}`}
                 strokeDashoffset={donutData.offset1}
                 strokeLinecap="round"
-                style={{ filter: `drop-shadow(0 0 8px ${T.redGlow})` }}
+                className={styles.donutSegmentDineIn}
               />
 
               {/* Segment 2: Takeaway (Amber) */}
@@ -1039,7 +858,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 cy="90"
                 r="70"
                 fill="none"
-                stroke={T.amber}
+                stroke="#F59E0B"
                 strokeWidth="18"
                 strokeDasharray={`${donutData.stroke2} ${donutData.C}`}
                 strokeDashoffset={donutData.offset2}
@@ -1052,7 +871,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 cy="90"
                 r="70"
                 fill="none"
-                stroke={T.green}
+                stroke="#10B981"
                 strokeWidth="18"
                 strokeDasharray={`${donutData.stroke3} ${donutData.C}`}
                 strokeDashoffset={donutData.offset3}
@@ -1061,57 +880,48 @@ export function FastFoodDashboardView(): React.JSX.Element {
             </svg>
 
             {/* Center Label */}
-            <div
-              style={{
-                position: 'absolute',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textAlign: 'center',
-              }}
-            >
-              <span style={{ fontSize: '24px', fontWeight: 900, color: T.textPrimary, lineHeight: 1 }}>
+            <div className={styles.donutCenter}>
+              <span className={mergeClasses(styles.donutCenterCount, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
                 {metrics.totalOrders}
               </span>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: T.textMuted, marginTop: '2px' }}>
+              <span className={mergeClasses(styles.donutCenterLabel, isDark ? styles.textMutedDark : styles.textMutedLight)}>
                 Total Tickets
               </span>
             </div>
           </div>
 
           {/* Legends */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: T.red, boxShadow: `0 0 6px ${T.red}` }} />
-                <span style={{ fontWeight: 700 }}>Dine-In</span>
+          <div className={styles.donutLegendList}>
+            <div className={styles.donutLegendRow}>
+              <div className={styles.donutLegendLeft}>
+                <span className={styles.donutLegendDotRed} />
+                <span className={styles.fw700}>Dine-In</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 800 }}>{metrics.dineInCount}</span>
-                <span style={{ color: T.textMuted }}>({donutData.dineInPct}%)</span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: T.amber, boxShadow: `0 0 6px ${T.amber}` }} />
-                <span style={{ fontWeight: 700 }}>Takeaway</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 800 }}>{metrics.takeawayCount}</span>
-                <span style={{ color: T.textMuted }}>({donutData.takeawayPct}%)</span>
+              <div className={styles.donutLegendRight}>
+                <span className={styles.fw800}>{metrics.dineInCount}</span>
+                <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>({donutData.dineInPct}%)</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: T.green, boxShadow: `0 0 6px ${T.green}` }} />
-                <span style={{ fontWeight: 700 }}>Online Delivery</span>
+            <div className={styles.donutLegendRow}>
+              <div className={styles.donutLegendLeft}>
+                <span className={styles.donutLegendDotAmber} />
+                <span className={styles.fw700}>Takeaway</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 800 }}>{metrics.deliveryCount}</span>
-                <span style={{ color: T.textMuted }}>({donutData.deliveryPct}%)</span>
+              <div className={styles.donutLegendRight}>
+                <span className={styles.fw800}>{metrics.takeawayCount}</span>
+                <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>({donutData.takeawayPct}%)</span>
+              </div>
+            </div>
+
+            <div className={styles.donutLegendRow}>
+              <div className={styles.donutLegendLeft}>
+                <span className={styles.donutLegendDotGreen} />
+                <span className={styles.fw700}>Online Delivery</span>
+              </div>
+              <div className={styles.donutLegendRight}>
+                <span className={styles.fw800}>{metrics.deliveryCount}</span>
+                <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>({donutData.deliveryPct}%)</span>
               </div>
             </div>
           </div>
@@ -1121,34 +931,15 @@ export function FastFoodDashboardView(): React.JSX.Element {
       {/* ══════════════════════════════════════════════════════════════════════
           LOWER SECTION: LIVE KITCHEN PIPELINE & TOP SELLERS LEADERBOARD
       ══════════════════════════════════════════════════════════════════════ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>
+      <div className={styles.lowerGrid}>
         {/* ── Live Kitchen Display Status / KOT Pipeline ── */}
-        <div
-          style={{
-            backgroundColor: T.cardBg,
-            borderRadius: '14px',
-            border: `1px solid ${T.cardBorder}`,
-            padding: '22px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>
+        <div className={mergeClasses(styles.kitchenCard, isDark ? styles.cardDark : styles.cardLight)}>
+          <div className={styles.kitchenHeader}>
+            <div className={styles.kitchenTitleGroup}>
+              <h3 className={styles.kitchenTitle}>
                 Live Kitchen Orders (KOT)
               </h3>
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  padding: '2px 8px',
-                  borderRadius: '10px',
-                  backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                  color: T.amber,
-                }}
-              >
+              <span className={styles.kitchenInKitchenBadge}>
                 {metrics.inKitchenCount} In Kitchen
               </span>
             </div>
@@ -1156,105 +947,61 @@ export function FastFoodDashboardView(): React.JSX.Element {
             <button
               type="button"
               onClick={() => navigate('/kitchen')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: isDark ? '#27272A' : '#F1F5F9',
-                color: T.textPrimary,
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
+              className={mergeClasses(styles.openKitchenBtn, isDark ? styles.openKitchenBtnDark : styles.openKitchenBtnLight)}
             >
               <span>Open Kitchen</span>
-              <Open20Regular style={{ width: 14, height: 14 }} />
+              <Open20Regular className={styles.icon14} />
             </button>
           </div>
 
           {/* Pipeline stages */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          <div className={styles.pipelineStagesGrid}>
             {/* Stage 1: Received / Queued */}
-            <div
-              style={{
-                backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC',
-                borderRadius: '10px',
-                padding: '12px',
-                border: `1px solid ${T.cardBorder}`,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: T.blue, fontSize: '12px', fontWeight: 800 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: T.blue }} />
+            <div className={mergeClasses(styles.stageCard, isDark ? styles.stageCard1Dark : styles.stageCard1Light)}>
+              <div className={mergeClasses(styles.stageHeader, styles.stageHeaderBlue)}>
+                <span className={styles.stageDotBlue} />
                 <span>Queued (KOT)</span>
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 900, marginTop: '8px' }}>
+              <div className={styles.stageCount}>
                 {Math.max(1, Math.floor(metrics.inKitchenCount / 2))}
               </div>
-              <span style={{ fontSize: '11px', color: T.textMuted }}>Avg wait: 2 mins</span>
+              <span className={mergeClasses(styles.stageSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>Avg wait: 2 mins</span>
             </div>
 
             {/* Stage 2: Cooking on Grill / Fryer */}
-            <div
-              style={{
-                backgroundColor: isDark ? 'rgba(245, 158, 11, 0.05)' : '#FFFBEB',
-                borderRadius: '10px',
-                padding: '12px',
-                border: '1px solid rgba(245, 158, 11, 0.25)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: T.amber, fontSize: '12px', fontWeight: 800 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: T.amber }} />
+            <div className={mergeClasses(styles.stageCard, isDark ? styles.stageCard2Dark : styles.stageCard2Light)}>
+              <div className={mergeClasses(styles.stageHeader, styles.stageHeaderAmber)}>
+                <span className={styles.stageDotAmber} />
                 <span>Cooking / Grill</span>
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: T.amber, marginTop: '8px' }}>
+              <div className={mergeClasses(styles.stageCount, styles.stageCountAmber)}>
                 {metrics.inKitchenCount}
               </div>
-              <span style={{ fontSize: '11px', color: T.textMuted }}>Avg prep: 8.5 mins</span>
+              <span className={mergeClasses(styles.stageSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>Avg prep: 8.5 mins</span>
             </div>
 
             {/* Stage 3: Ready for Pickup */}
-            <div
-              style={{
-                backgroundColor: isDark ? 'rgba(16, 185, 129, 0.05)' : '#F0FDF4',
-                borderRadius: '10px',
-                padding: '12px',
-                border: '1px solid rgba(16, 185, 129, 0.25)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: T.green, fontSize: '12px', fontWeight: 800 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: T.green }} />
+            <div className={mergeClasses(styles.stageCard, isDark ? styles.stageCard3Dark : styles.stageCard3Light)}>
+              <div className={mergeClasses(styles.stageHeader, styles.stageHeaderGreen)}>
+                <span className={styles.stageDotGreen} />
                 <span>Ready to Serve</span>
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: T.green, marginTop: '8px' }}>
+              <div className={mergeClasses(styles.stageCount, styles.stageCountGreen)}>
                 {metrics.readyCount || 2}
               </div>
-              <span style={{ fontSize: '11px', color: T.textMuted }}>Tokens on counter</span>
+              <span className={mergeClasses(styles.stageSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>Tokens on counter</span>
             </div>
           </div>
 
           {/* Quick Critical Ingredient Inventory Notice */}
-          <div
-            style={{
-              marginTop: '4px',
-              padding: '12px 14px',
-              borderRadius: '8px',
-              backgroundColor: isDark ? 'rgba(229, 25, 55, 0.06)' : '#FFF1F2',
-              border: '1px solid rgba(229, 25, 55, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <AlertUrgent20Filled style={{ color: T.red, width: 18, height: 18 }} />
+          <div className={mergeClasses(styles.noticeBanner, isDark ? styles.noticeBannerDark : styles.noticeBannerLight)}>
+            <div className={styles.noticeLeft}>
+              <AlertUrgent20Filled className={styles.noticeIcon} />
               <div>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: T.textPrimary }}>
+                <div className={mergeClasses(styles.noticeTitle, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
                   Kitchen Prep Inventory Notice
                 </div>
-                <div style={{ fontSize: '11px', color: T.textMuted }}>
+                <div className={mergeClasses(styles.noticeSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>
                   Burger Buns (35 left) • Cooking Oil (Sufficient) • Mozzarella Cheese (Good)
                 </div>
               </div>
@@ -1262,16 +1009,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
             <button
               type="button"
               onClick={() => navigate('/inventory/dashboard')}
-              style={{
-                padding: '5px 10px',
-                borderRadius: '5px',
-                border: `1px solid ${T.red}`,
-                backgroundColor: 'transparent',
-                color: T.red,
-                fontSize: '11px',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
+              className={styles.restockBtn}
             >
               Restock Hub
             </button>
@@ -1279,112 +1017,79 @@ export function FastFoodDashboardView(): React.JSX.Element {
         </div>
 
         {/* ── Top 5 Bestsellers Podium / Ranking ── */}
-        <div
-          style={{
-            backgroundColor: T.cardBg,
-            borderRadius: '14px',
-            border: `1px solid ${T.cardBorder}`,
-            padding: '22px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className={mergeClasses(styles.leaderboardCard, isDark ? styles.cardDark : styles.cardLight)}>
+          <div className={styles.leaderboardHeader}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>
+              <h3 className={styles.leaderboardTitle}>
                 {activeTab === 'fastfood' ? 'Top 5 Best Selling Items' : 'Top 5 Selling Products'}
               </h3>
-              <p style={{ margin: '2px 0 0', fontSize: '12px', color: T.textSecondary }}>
+              <p className={mergeClasses(styles.leaderboardSub, isDark ? styles.textSecondaryDark : styles.textSecondaryLight)}>
                 Most ordered items
               </p>
             </div>
             <button
               type="button"
               onClick={() => navigate(activeTab === 'fastfood' ? '/pos/fastfood' : '/pos/omnimart')}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: T.red,
-                color: '#FFFFFF',
-                fontSize: '11.5px',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
+              className={styles.openPosBtn}
             >
               Open POS
             </button>
           </div>
 
           {/* Ranked items list */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className={styles.rankedList}>
             {metrics.topItems.map((item, idx) => {
               const maxQty = metrics.topItems[0]?.qty || 1;
               const barWidth = Math.round((item.qty / maxQty) * 100);
-              const rankColor = idx === 0 ? '#F59E0B' : idx === 1 ? '#94A3B8' : idx === 2 ? '#B45309' : T.textMuted;
 
               return (
                 <div
                   key={item.name}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC',
-                    border: `1px solid ${T.cardBorder}`,
-                  }}
+                  className={mergeClasses(styles.rankedItem, isDark ? styles.rankedItemDark : styles.rankedItemLight)}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className={styles.rankedItemRow}>
+                    <div className={styles.rankedItemLeft}>
                       <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          minWidth: '22px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '2px',
-                          color: rankColor,
-                        }}
+                        className={mergeClasses(
+                          styles.rankBadge,
+                          idx === 0 ? styles.rankGold : idx === 1 ? styles.rankSilver : idx === 2 ? styles.rankBronze : isDark ? styles.textMutedDark : styles.textMutedLight
+                        )}
                       >
-                        {idx === 0 && <Trophy20Filled style={{ width: 13, height: 13, color: '#F59E0B' }} />}
-                        {idx === 1 && <Ribbon20Filled style={{ width: 13, height: 13, color: '#94A3B8' }} />}
-                        {idx === 2 && <Ribbon20Filled style={{ width: 13, height: 13, color: '#B45309' }} />}
+                        {idx === 0 && <Trophy20Filled className={mergeClasses(styles.icon13, styles.rankGold)} />}
+                        {idx === 1 && <Ribbon20Filled className={mergeClasses(styles.icon13, styles.rankSilver)} />}
+                        {idx === 2 && <Ribbon20Filled className={mergeClasses(styles.icon13, styles.rankBronze)} />}
                         #{idx + 1}
                       </span>
                       {item.img && (
                         <img
                           src={item.img}
                           alt={item.name}
-                          style={{ width: 26, height: 26, borderRadius: '5px', objectFit: 'cover' }}
+                          className={styles.rankedItemImg}
                         />
                       )}
-                      <span style={{ fontSize: '12.5px', fontWeight: 800, color: T.textPrimary }}>
+                      <span className={mergeClasses(styles.rankedItemName, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
                         {item.name}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 800, color: T.textPrimary }}>
+                    <div className={styles.rankedItemRight}>
+                      <span className={mergeClasses(styles.rankedItemQty, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
                         {item.qty} sold
                       </span>
-                      <span style={{ fontSize: '11px', color: T.green, fontWeight: 700 }}>
+                      <span className={styles.rankedItemRev}>
                         PKR {item.revenue.toLocaleString()}
                       </span>
                     </div>
                   </div>
 
                   {/* Gradient progress meter */}
-                  <div style={{ width: '100%', height: '4px', borderRadius: '2px', backgroundColor: isDark ? '#27272A' : '#E2E8F0', overflow: 'hidden' }}>
+                  <div className={mergeClasses(styles.meterTrack, isDark ? styles.meterTrackDark : styles.meterTrackLight)}>
                     <div
-                      style={{
-                        width: `${barWidth}%`,
-                        height: '100%',
-                        borderRadius: '2px',
-                        backgroundColor: idx === 0 ? T.red : idx === 1 ? T.amber : T.blue,
-                        transition: 'width 0.4s ease',
+                      className={mergeClasses(
+                        styles.meterBar,
+                        idx === 0 ? styles.meterBarRed : idx === 1 ? styles.meterBarAmber : styles.meterBarBlue
+                      )}
+                      ref={(el) => {
+                        if (el) el.style.width = `${barWidth}%`;
                       }}
                     />
                   </div>
@@ -1398,78 +1103,43 @@ export function FastFoodDashboardView(): React.JSX.Element {
       {/* ── Modal: Detailed Order Tickets Breakdown for Clicked Hour ── */}
       {selectedHourDetails && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px',
-          }}
+          className={styles.modalOverlay}
           onClick={() => setSelectedHourDetails(null)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: T.cardBg,
-              borderRadius: '14px',
-              border: `1px solid ${T.cardBorder}`,
-              width: '100%',
-              maxWidth: '560px',
-              maxHeight: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
-              overflow: 'hidden',
-            }}
+            className={mergeClasses(styles.modalContent, isDark ? styles.cardDark : styles.cardLight)}
           >
             {/* Modal Header */}
-            <div
-              style={{
-                padding: '16px 20px',
-                borderBottom: `1px solid ${T.cardBorder}`,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
+            <div className={mergeClasses(styles.modalHeader, isDark ? styles.modalHeaderDark : styles.modalHeaderLight)}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: T.textPrimary }}>
+                <div className={styles.modalTitleGroup}>
+                  <h3 className={mergeClasses(styles.modalTitle, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
                     {selectedHourDetails.label} Orders Breakdown
                   </h3>
                   {selectedHourDetails.isCurrentHour && (
-                    <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '10px', backgroundColor: T.green, color: '#FFF', fontWeight: 800 }}>
+                    <span className={styles.currentHourPill}>
                       CURRENT HOUR
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: '12px', color: T.textSecondary, marginTop: '2px' }}>
-                  {selectedHourDetails.orders} Orders • Total Sales: <strong style={{ color: T.green }}>PKR {selectedHourDetails.revenue.toLocaleString()}</strong>
+                <div className={mergeClasses(styles.modalSub, isDark ? styles.textSecondaryDark : styles.textSecondaryLight)}>
+                  {selectedHourDetails.orders} Orders • Total Sales: <strong className={styles.colorGreen}>PKR {selectedHourDetails.revenue.toLocaleString()}</strong>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedHourDetails(null)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: T.textSecondary,
-                  cursor: 'pointer',
-                  padding: '4px',
-                }}
+                className={mergeClasses(styles.closeBtn, isDark ? styles.textSecondaryDark : styles.textSecondaryLight)}
               >
-                <Dismiss20Regular style={{ width: 18, height: 18 }} />
+                <Dismiss20Regular className={styles.icon18} />
               </button>
             </div>
 
             {/* Modal Order Tickets List */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className={styles.modalBody}>
               {selectedHourDetails.hourOrders.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '30px 0', color: T.textMuted, fontSize: '13px' }}>
+                <div className={mergeClasses(styles.emptyOrders, isDark ? styles.textMutedDark : styles.textMutedLight)}>
                   No orders recorded during this hour.
                 </div>
               ) : (
@@ -1479,40 +1149,32 @@ export function FastFoodDashboardView(): React.JSX.Element {
                   return (
                     <div
                       key={ord.id}
-                      style={{
-                        padding: '12px 14px',
-                        borderRadius: '8px',
-                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
-                        border: `1px solid ${T.cardBorder}`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px',
-                      }}
+                      className={mergeClasses(styles.orderTicket, isDark ? styles.orderTicketDark : styles.orderTicketLight)}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 800, color: T.textPrimary }}>
+                      <div className={styles.orderTicketHeader}>
+                        <div className={styles.chartTitleGroup}>
+                          <span className={mergeClasses(styles.orderTicketId, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
                             #{ord.id.slice(-6).toUpperCase()}
                           </span>
-                          <span style={{ fontSize: '11px', textTransform: 'uppercase', padding: '1px 6px', borderRadius: '4px', backgroundColor: isDark ? '#27272A' : '#E2E8F0', color: T.textSecondary, fontWeight: 700 }}>
+                          <span className={mergeClasses(styles.orderTypeTag, isDark ? styles.orderTypeTagDark : styles.orderTypeTagLight)}>
                             {ord.orderType || 'takeaway'}
                           </span>
                           {ord.tokenNo && (
-                            <span style={{ fontSize: '11px', color: T.amber, fontWeight: 800 }}>
+                            <span className={styles.tokenTag}>
                               Token #{ord.tokenNo}
                             </span>
                           )}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '11.5px', color: T.textMuted }}>{timeStr}</span>
-                          <span style={{ fontSize: '13px', fontWeight: 900, color: T.green }}>
+                        <div className={styles.chartTitleGroup}>
+                          <span className={mergeClasses(styles.ticketTime, isDark ? styles.textMutedDark : styles.textMutedLight)}>{timeStr}</span>
+                          <span className={styles.ticketTotal}>
                             PKR {ordTotal.toLocaleString()}
                           </span>
                         </div>
                       </div>
 
                       {/* Items summary */}
-                      <div style={{ fontSize: '11.5px', color: T.textSecondary }}>
+                      <div className={mergeClasses(styles.ticketItems, isDark ? styles.textSecondaryDark : styles.textSecondaryLight)}>
                         {ord.lines.map((l) => `${l.quantity}x ${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ''}`).join(', ')}
                       </div>
                     </div>

@@ -34,6 +34,7 @@ import { posApi } from '@/lib/api';
 import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { useAppToast } from '../../context/AppNotificationContext';
 
 const EXPENSE_CATEGORY_OPTIONS = [
   { value: 'Petty Cash', label: 'Tea / Refreshments / Cleaning' },
@@ -69,330 +70,7 @@ const drawerActionSchema = z.object({
 
 type DrawerActionFormData = z.infer<typeof drawerActionSchema>;
 
-const useStyles = makeStyles({
-  container: {
-    padding: '28px 32px',
-    height: '100%',
-    boxSizing: 'border-box',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    backgroundColor: tokens.colorNeutralBackground2, // Mica light theme tint
-    overflowY: 'auto',
-  },
-  pageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingBottom: '20px',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke1,
-  },
-  metricsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '16px',
-  },
-  metricCard: {
-    padding: '16px 20px',
-    borderRadius: tokens.borderRadiusMedium, // 8px
-    backgroundColor: tokens.colorNeutralBackground1, // White container
-    boxShadow: tokens.shadow4,
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
-    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-  },
-  actionGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '16px',
-  },
-  actionCard: {
-    padding: '20px',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: tokens.shadow4,
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
-    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-  },
-  historyCard: {
-    borderRadius: tokens.borderRadiusMedium,
-    padding: '20px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: tokens.shadow4,
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
-    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-  },
-  expenseRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '12px 16px',
-    borderRadius: tokens.borderRadiusSmall,
-    backgroundColor: tokens.colorNeutralBackground3,
-    marginBottom: '8px',
-  },
-  headerTitleCol: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  headerTitle: {
-    fontWeight: 700,
-    fontSize: '20px',
-    color: tokens.colorNeutralForeground1,
-    margin: 0,
-    display: 'block',
-  },
-  headerSubtitle: {
-    color: tokens.colorNeutralForeground2,
-    margin: 0,
-    display: 'block',
-    fontSize: '13px',
-  },
-  tabListContainer: {
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke1,
-    paddingBottom: '4px',
-    marginBottom: '8px',
-  },
-  kpiLabel: {
-    color: tokens.colorNeutralForeground2,
-    display: 'block',
-    fontWeight: 600,
-  },
-  kpiValueDanger: {
-    fontSize: '26px',
-    fontWeight: 800,
-    color: '#D13438',
-    marginTop: '6px',
-    display: 'block',
-  },
-  kpiValueDefault: {
-    fontSize: '22px',
-    fontWeight: 800,
-    marginTop: '6px',
-    display: 'block',
-    color: tokens.colorNeutralForeground1,
-  },
-  kpiValueDefaultLg: {
-    fontSize: '26px',
-    fontWeight: 800,
-    color: tokens.colorNeutralForeground1,
-    marginTop: '6px',
-    display: 'block',
-  },
-  kpiValueBrand: {
-    fontSize: '26px',
-    fontWeight: 800,
-    marginTop: '6px',
-    color: '#0078D4',
-    display: 'block',
-  },
-  kpiValueSuccess: {
-    fontSize: '26px',
-    fontWeight: 800,
-    marginTop: '6px',
-    color: '#107C41',
-    display: 'block',
-  },
-  actionContent: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '12px',
-  },
-  actionTextCol: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-  },
-  actionTitle: {
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-  },
-  actionSubtitle: {
-    color: tokens.colorNeutralForeground2,
-    display: 'block',
-    fontSize: '12px',
-  },
-  actionIconReceipt: {
-    width: '28px',
-    height: '28px',
-    color: '#0078D4',
-    flexShrink: 0,
-    marginTop: '2px',
-  },
-  actionIconCashOut: {
-    width: '28px',
-    height: '28px',
-    color: '#107C41',
-    flexShrink: 0,
-    marginTop: '2px',
-  },
-  actionIconUpload: {
-    width: '28px',
-    height: '28px',
-    color: '#107C41',
-    flexShrink: 0,
-    marginTop: '2px',
-  },
-  actionIconLock: {
-    width: '28px',
-    height: '28px',
-    color: '#F7630C',
-    flexShrink: 0,
-    marginTop: '2px',
-  },
-  btnRecordExpense: {
-    backgroundColor: '#E51937',
-    color: '#FFFFFF',
-    borderRadius: '8px',
-    fontWeight: 700,
-    padding: '9px 18px',
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-    border: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-  },
-  btnDrawerCashOut: {
-    backgroundColor: tokens.colorNeutralBackground1,
-    color: tokens.colorNeutralForeground1,
-    borderRadius: '8px',
-    fontWeight: 700,
-    padding: '8px 18px',
-    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-  },
-  btnCashIn: {
-    backgroundColor: '#107C41',
-    borderRadius: tokens.borderRadiusMedium,
-  },
-  btnCloseDrawer: {
-    backgroundColor: '#E51937',
-    borderRadius: tokens.borderRadiusMedium,
-  },
-  historyTitleBox: {
-    marginBottom: '16px',
-  },
-  historyTitle: {
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-  },
-  emptyHistoryText: {
-    color: tokens.colorNeutralForeground3,
-    textAlign: 'center',
-    padding: '32px',
-    display: 'block',
-  },
-  expenseMetaCol: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-  },
-  expenseCategoryRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  expenseCategoryText: {
-    fontWeight: 600,
-    color: tokens.colorNeutralForeground1,
-  },
-  expenseDateCaption: {
-    color: tokens.colorNeutralForeground2,
-    display: 'block',
-  },
-  expenseAmountRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  expenseAmountText: {
-    fontWeight: 700,
-    color: '#D13438',
-  },
-  dialogSurfaceExpense: {
-    borderRadius: tokens.borderRadiusLarge,
-    maxWidth: '500px',
-    width: '100%',
-    overflowX: 'hidden',
-  },
-  dialogSurfaceDrawer: {
-    borderRadius: tokens.borderRadiusLarge,
-    maxWidth: '460px',
-    width: '100%',
-    overflowX: 'hidden',
-  },
-  dialogBodyNoOverflow: {
-    overflowX: 'hidden',
-  },
-  dialogContentScroll: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '14px',
-    marginTop: '14px',
-    overflowX: 'hidden',
-    overflowY: 'auto',
-  },
-  dialogActionsRow: {
-    marginTop: '24px',
-    display: 'flex',
-    gap: '10px',
-    justifyContent: 'flex-end',
-  },
-  dialogCancelBtn: {
-    borderRadius: '8px',
-    fontWeight: 600,
-    padding: '8px 18px',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    whiteSpace: 'nowrap',
-  },
-  dialogSubmitExpenseBtn: {
-    backgroundColor: '#E51937',
-    color: '#FFFFFF',
-    borderRadius: '8px',
-    fontWeight: 700,
-    padding: '9px 22px',
-    minWidth: '140px',
-    whiteSpace: 'nowrap',
-    border: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-  },
-  dialogSubmitCashInBtn: {
-    backgroundColor: '#107C41',
-    color: '#FFFFFF',
-    borderRadius: '8px',
-    fontWeight: 700,
-    padding: '9px 22px',
-    minWidth: '140px',
-    whiteSpace: 'nowrap',
-    border: 'none',
-    boxShadow: '0 2px 8px rgba(16, 124, 65, 0.25)',
-  },
-});
+import { useExpensesStyles, useStyles } from './expenses.styles';
 
 interface ExpenseRecord {
   id: string;
@@ -415,8 +93,9 @@ interface CashDrawer {
 }
 
 export function ExpensesView(): React.JSX.Element {
-  const styles = useStyles();
+  const styles = useExpensesStyles();
   const queryClient = useQueryClient();
+  const { notifySuccess, notifyError } = useAppToast();
   const [activeTab, setActiveTab] = useState<'expenses' | 'drawer'>('expenses');
 
   // Dialog States
@@ -466,11 +145,17 @@ export function ExpensesView(): React.JSX.Element {
     mutationFn: async (data: ExpenseFormData) => {
       await posApi.saveExpense(data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      queryClient.invalidateQueries({ queryKey: ['cash-drawer'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      await queryClient.refetchQueries({ queryKey: ['expenses'] });
+      await queryClient.invalidateQueries({ queryKey: ['cash-drawer'] });
+      await queryClient.refetchQueries({ queryKey: ['cash-drawer'] });
       setIsAddExpenseOpen(false);
       expenseForm.reset();
+      notifySuccess('Expense recorded successfully');
+    },
+    onError: (err: any) => {
+      notifyError(err.message || 'Failed to record expense');
     },
   });
 
@@ -483,10 +168,15 @@ export function ExpensesView(): React.JSX.Element {
         notes: data.notes,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-drawer'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['cash-drawer'] });
+      await queryClient.refetchQueries({ queryKey: ['cash-drawer'] });
       setIsCashDrawerActionOpen(false);
       drawerForm.reset();
+      notifySuccess('Cash drawer updated successfully');
+    },
+    onError: (err: any) => {
+      notifyError(err.message || 'Failed to update cash drawer');
     },
   });
 

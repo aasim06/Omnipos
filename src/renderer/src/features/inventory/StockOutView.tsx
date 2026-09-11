@@ -43,6 +43,7 @@ import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
+import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
 
 const STOCK_OUT_REASONS = [
   { value: 'Kitchen Usage', label: 'Kitchen Usage / Consumption' },
@@ -77,679 +78,13 @@ const editOutSchema = z.object({
 
 type EditOutFormData = z.infer<typeof editOutSchema>;
 
-const useStyles = makeStyles({
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    width: '100%',
-  },
-  card: {
-    padding: '20px 24px',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: tokens.shadow4,
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
-    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  cardTitle: {
-    fontSize: '14px',
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-    letterSpacing: '-0.2px',
-  },
-  row1: {
-    display: 'grid',
-    gridTemplateColumns: '1.2fr 1fr 1.8fr',
-    gap: '16px',
-    '@media (max-width: 900px)': {
-      gridTemplateColumns: '1fr',
-    },
-  },
-  categoryBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    fontSize: '11px',
-    color: tokens.colorNeutralForeground3,
-    backgroundColor: tokens.colorNeutralBackground3,
-    padding: '2px 7px',
-    borderRadius: '4px',
-    width: 'fit-content',
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
-  row2: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1.1fr 1.5fr 1.2fr 1.6fr',
-    gap: '14px',
-    alignItems: 'flex-end',
-    '@media (max-width: 1024px)': {
-      gridTemplateColumns: '1fr 1fr',
-    },
-  },
-  fieldLabel: {
-    fontSize: '11px',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.6px',
-    color: tokens.colorNeutralForeground2,
-    marginBottom: '6px',
-    display: 'block',
-  },
-  lineTotalBox: {
-    height: '36px',
-    display: 'flex',
-    alignItems: 'center',
-    padding: '0 14px',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: 'rgba(209, 52, 56, 0.12)',
-    border: '1.5px solid rgba(209, 52, 56, 0.35)',
-    boxSizing: 'border-box',
-  },
-  lineTotalValue: {
-    fontSize: '14px',
-    fontWeight: 800,
-    color: '#D13438',
-  },
-  saveBtn: {
-    height: '36px',
-    backgroundColor: '#D13438',
-    color: '#FFFFFF',
-    borderRadius: tokens.borderRadiusMedium,
-    fontWeight: 700,
-    fontSize: '13px',
-    border: 'none',
-    boxShadow: '0 2px 6px rgba(209, 52, 56, 0.3)',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '6px',
-    whiteSpace: 'nowrap',
-    ':hover': {
-      backgroundColor: '#B1282C',
-    },
-  },
-  filterBar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
-    flexWrap: 'wrap',
-  },
-  tableWrapper: {
-    overflowX: 'auto',
-    width: '100%',
-    borderRadius: tokens.borderRadiusSmall,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    textAlign: 'left',
-    fontSize: '12px',
-  },
-  th: {
-    padding: '12px 14px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    color: tokens.colorNeutralForeground2,
-    fontSize: '11px',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.6px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    whiteSpace: 'nowrap',
-  },
-  td: {
-    padding: '12px 14px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    color: tokens.colorNeutralForeground1,
-    fontSize: '12.5px',
-    verticalAlign: 'middle',
-  },
-  tableRow: {
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground3,
-    },
-  },
-
-  /* Right-Side Slide-Over Drawer */
-  drawerOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    backdropFilter: 'blur(3px)',
-    zIndex: 1000,
-    display: 'flex',
-    justifyContent: 'flex-end',
-  },
-  drawerPanel: {
-    width: '460px',
-    maxWidth: '92vw',
-    height: '100%',
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderLeftWidth: '1px',
-    borderLeftStyle: 'solid',
-    borderLeftColor: tokens.colorNeutralStroke1,
-    boxShadow: tokens.shadow64,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    boxSizing: 'border-box',
-    animationName: {
-      from: { transform: 'translateX(100%)' },
-      to: { transform: 'translateX(0)' },
-    },
-    animationDuration: '0.2s',
-    animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-  },
-  drawerHeader: {
-    padding: '20px 24px',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke1,
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: tokens.colorNeutralBackground3,
-  },
-  drawerBody: {
-    padding: '24px',
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-    flex: 1,
-  },
-  drawerFooter: {
-    padding: '16px 24px',
-    borderTopWidth: '1px',
-    borderTopStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1,
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '10px',
-    backgroundColor: tokens.colorNeutralBackground3,
-  },
-  formColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '14px',
-  },
-  wFull: {
-    width: '100%',
-  },
-  icon18: {
-    width: '18px',
-    height: '18px',
-  },
-  icon16: {
-    width: '16px',
-    height: '16px',
-  },
-  iconPrint: {
-    color: '#0078D4',
-    width: '16px',
-    height: '16px',
-  },
-  iconRed: {
-    color: '#D13438',
-    width: '16px',
-    height: '16px',
-  },
-  searchContainer: {
-    minWidth: '280px',
-    maxWidth: '420px',
-    width: '100%',
-  },
-  totalRecords: {
-    color: tokens.colorNeutralForeground3,
-    fontWeight: 600,
-  },
-  thCheck: {
-    width: '36px',
-    textAlign: 'center',
-  },
-  thCenter: {
-    textAlign: 'center',
-  },
-  thRight: {
-    textAlign: 'right',
-  },
-  thActions: {
-    textAlign: 'center',
-    minWidth: '100px',
-  },
-  tdEmpty: {
-    padding: '36px',
-    textAlign: 'center',
-    color: tokens.colorNeutralForeground3,
-  },
-  tdCenter: {
-    textAlign: 'center',
-  },
-  tdRight: {
-    textAlign: 'right',
-  },
-  tdRightBold: {
-    textAlign: 'right',
-    fontWeight: 600,
-  },
-  tdRightLoss: {
-    textAlign: 'right',
-    fontWeight: 700,
-    color: '#D13438',
-  },
-  productNameText: {
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-  },
-  badgeBold: {
-    fontWeight: 700,
-  },
-  reasonText: {
-    color: tokens.colorNeutralForeground1,
-    fontWeight: 500,
-  },
-  dateText: {
-    color: tokens.colorNeutralForeground2,
-    fontSize: '12px',
-  },
-  actionGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '6px',
-  },
-  actionBtnPrint: {
-    width: '30px',
-    height: '30px',
-    minWidth: '30px',
-    padding: 0,
-    borderRadius: '6px',
-    backgroundColor: 'rgba(0, 120, 212, 0.12)',
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(0, 120, 212, 0.25)', borderBottomColor: 'rgba(0, 120, 212, 0.25)',
-    borderLeftColor: 'rgba(0, 120, 212, 0.25)', borderRightColor: 'rgba(0, 120, 212, 0.25)',
-  },
-  actionBtnEdit: {
-    width: '30px',
-    height: '30px',
-    minWidth: '30px',
-    padding: 0,
-    borderRadius: '6px',
-    backgroundColor: 'rgba(209, 52, 56, 0.12)',
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(209, 52, 56, 0.25)', borderBottomColor: 'rgba(209, 52, 56, 0.25)',
-    borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
-  },
-  actionBtnDelete: {
-    width: '30px',
-    height: '30px',
-    minWidth: '30px',
-    padding: 0,
-    borderRadius: '6px',
-    backgroundColor: 'rgba(209, 52, 56, 0.12)',
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(209, 52, 56, 0.25)', borderBottomColor: 'rgba(209, 52, 56, 0.25)',
-    borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
-  },
-  drawerHeaderLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  drawerHeaderIconBadge: {
-    backgroundColor: 'rgba(209, 52, 56, 0.12)',
-    color: '#D13438',
-    padding: '8px',
-    borderRadius: '8px',
-    display: 'inline-flex',
-  },
-  drawerTitle: {
-    fontWeight: 800,
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-  },
-  drawerSubtitle: {
-    color: tokens.colorNeutralForeground3,
-  },
-  iconBtn28: {
-    minWidth: '28px',
-    width: '28px',
-    height: '28px',
-    padding: 0,
-  },
-  iconBtn32: {
-    minWidth: '32px',
-    width: '32px',
-    height: '32px',
-    padding: 0,
-  },
-  grid2Col: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '12px',
-  },
-  btnRounded: {
-    borderRadius: '8px',
-  },
-  drawerSubmitBtn: {
-    backgroundColor: '#D13438',
-    color: '#FFFFFF',
-    borderRadius: '8px',
-    fontWeight: 700,
-    border: 'none',
-  },
-  dialogSurface: {
-    borderRadius: '12px',
-    width: '480px',
-    maxWidth: '94vw',
-    padding: '22px',
-    boxSizing: 'border-box',
-  },
-  dialogHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '14px',
-  },
-  dialogTitle: {
-    fontWeight: 800,
-    color: tokens.colorNeutralForeground1,
-    margin: 0,
-    fontSize: '17px',
-  },
-  voucherContainer: {
-    backgroundColor: '#FFFFFF',
-    color: '#000000',
-    padding: '18px 20px',
-    borderRadius: '8px',
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'dashed', borderBottomStyle: 'dashed',
-    borderLeftStyle: 'dashed', borderRightStyle: 'dashed',
-    borderTopColor: '#777', borderBottomColor: '#777',
-    borderLeftColor: '#777', borderRightColor: '#777',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-    fontFamily: 'monospace',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-  },
-  voucherHeader: {
-    textAlign: 'center',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'dashed',
-    borderBottomColor: '#999',
-    paddingBottom: '8px',
-  },
-  voucherHeaderTitle: {
-    fontWeight: 800,
-    fontSize: '15px',
-  },
-  voucherHeaderSubtitle: {
-    fontSize: '11px',
-    color: '#555',
-  },
-  voucherHeaderRef: {
-    fontSize: '10px',
-    color: '#777',
-    marginTop: '2px',
-  },
-  voucherSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-    fontSize: '12px',
-  },
-  voucherRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-  },
-  voucherLabel: {
-    color: '#555',
-  },
-  voucherReasonVal: {
-    fontWeight: 700,
-    color: '#D13438',
-  },
-  voucherTableSection: {
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderTopStyle: 'dashed', borderBottomStyle: 'dashed',
-    borderTopColor: '#999', borderBottomColor: '#999',
-    padding: '8px 0',
-    fontSize: '12px',
-  },
-  voucherTableTitleRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontWeight: 800,
-  },
-  voucherTableRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginTop: '4px',
-  },
-  voucherDeductedVal: {
-    fontWeight: 800,
-    color: '#D13438',
-  },
-  voucherTotalRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '14px',
-    fontWeight: 800,
-    color: '#D13438',
-  },
-  voucherRemarks: {
-    fontSize: '10px',
-    color: '#555',
-    borderTopWidth: '1px',
-    borderTopStyle: 'dotted',
-    borderTopColor: '#ccc',
-    paddingTop: '6px',
-  },
-  voucherSignatures: {
-    marginTop: '14px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '10px',
-    color: '#777',
-  },
-  dialogFooter: {
-    marginTop: '20px',
-    display: 'flex',
-    gap: '12px',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  dialogCloseBtn: {
-    height: '38px',
-    padding: '0 20px',
-    borderRadius: '8px',
-    fontWeight: 600,
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
-    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    backgroundColor: tokens.colorNeutralBackground3,
-    color: tokens.colorNeutralForeground1,
-    cursor: 'pointer',
-  },
-  dialogPrintBtn: {
-    height: '38px',
-    padding: '0 22px',
-    backgroundColor: '#0078D4',
-    color: '#FFFFFF',
-    fontWeight: 700,
-    borderRadius: '8px',
-    border: 'none',
-    whiteSpace: 'nowrap',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-    cursor: 'pointer',
-    boxShadow: '0 2px 8px rgba(0, 120, 212, 0.35)',
-  },
-  scopeRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: '10px',
-  },
-  scopeLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  scopeLabel: {
-    fontSize: '11px',
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground3,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  scopeTabList: {
-    display: 'inline-flex',
-    backgroundColor: tokens.colorNeutralBackground3,
-    padding: '3px',
-    borderRadius: '8px',
-    gap: '3px',
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
-    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
-  },
-  scopeBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '5px 12px',
-    borderRadius: '6px',
-    borderTopStyle: 'none', borderBottomStyle: 'none',
-    borderLeftStyle: 'none', borderRightStyle: 'none',
-    fontFamily: 'inherit',
-    cursor: 'pointer',
-    fontSize: '12px',
-    fontWeight: 500,
-    color: tokens.colorNeutralForeground2,
-    backgroundColor: 'transparent',
-    transitionProperty: 'all',
-    transitionDuration: '0.12s',
-    transitionTimingFunction: 'ease',
-  },
-  scopeBtnActive: {
-    backgroundColor: '#E51937',
-    color: '#FFFFFF',
-    fontWeight: 700,
-  },
-  scopeBtnBadge: {
-    fontSize: '10px',
-    padding: '1px 5px',
-    borderRadius: '8px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    fontWeight: 700,
-  },
-  scopeBtnBadgeActive: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  scopeSingleChip: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '5px',
-    fontSize: '12px',
-    fontWeight: 600,
-    color: tokens.colorNeutralForeground1,
-    padding: '4px 10px',
-    borderRadius: '6px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
-    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
-  },
-  icon14Red: {
-    width: '14px',
-    height: '14px',
-    color: '#E51937',
-  },
-  icon14Blue: {
-    width: '14px',
-    height: '14px',
-    color: '#2563EB',
-  },
-  icon14Neutral: {
-    width: '14px',
-    height: '14px',
-  },
-  icon12Red: {
-    width: '12px',
-    height: '12px',
-    color: '#E51937',
-  },
-  historyHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: '12px',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke2,
-    paddingBottom: '10px',
-  },
-  minWidth220: {
-    minWidth: '220px',
-  },
-  filterActionsRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  deleteDangerBtn: {
-    backgroundColor: '#D13438',
-    color: '#FFFFFF',
-    fontWeight: 600,
-  },
-  productCellStack: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-});
+import { useStockOutStyles, useStyles } from './stockOut.styles';
 
 export function StockOutView(): React.JSX.Element {
-  const styles = useStyles();
+  const styles = useStockOutStyles();
   const queryClient = useQueryClient();
+  const { notifySuccess, notifyError } = useAppToast();
+  const confirmModal = useConfirmDialog();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -841,9 +176,15 @@ export function StockOutView(): React.JSX.Element {
         referenceInvoice: data.note || '',
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      await queryClient.refetchQueries({ queryKey: ['stock-movements'] });
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
+      await queryClient.refetchQueries({ queryKey: ['products'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
+      }
+      notifySuccess('Stock deduction recorded successfully');
       form.reset({
         module: form.getValues('module') || 'fastfood',
         selectedProductId: '',
@@ -853,6 +194,9 @@ export function StockOutView(): React.JSX.Element {
         unitCost: 0,
         note: '',
       });
+    },
+    onError: (err: any) => {
+      notifyError(err.message || 'Failed to save stock deduction');
     },
   });
 
@@ -867,11 +211,20 @@ export function StockOutView(): React.JSX.Element {
         note: data.note || '',
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      await queryClient.refetchQueries({ queryKey: ['stock-movements'] });
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
+      await queryClient.refetchQueries({ queryKey: ['products'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
+      }
       setIsDrawerOpen(false);
       setEditingMovement(null);
+      notifySuccess('Stock deduction updated successfully');
+    },
+    onError: (err: any) => {
+      notifyError(err.message || 'Failed to update stock deduction');
     },
   });
 
@@ -880,10 +233,19 @@ export function StockOutView(): React.JSX.Element {
     mutationFn: async (id: string) => {
       await posApi.deleteStockMovement(id);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      await queryClient.refetchQueries({ queryKey: ['stock-movements'] });
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
+      await queryClient.refetchQueries({ queryKey: ['products'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
+      }
       setSelectedIds([]);
+      notifySuccess('Stock deduction record deleted successfully');
+    },
+    onError: (err: any) => {
+      notifyError(err.message || 'Failed to delete record');
     },
   });
 
@@ -917,15 +279,27 @@ export function StockOutView(): React.JSX.Element {
     window.print();
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this stock out deduction record?')) {
+  const handleDelete = async (id: string) => {
+    const ok = await confirmModal({
+      title: 'Delete Stock Out Entry',
+      message: 'Are you sure you want to delete this stock out deduction record? Stock counts will adjust accordingly.',
+      confirmLabel: 'Delete Record',
+      intent: 'danger',
+    });
+    if (ok) {
       deleteMutation.mutate(id);
     }
   };
 
   const handleBatchDelete = async () => {
     if (selectedIds.length === 0) return;
-    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} selected stock out records?`)) {
+    const ok = await confirmModal({
+      title: 'Delete Selected Records',
+      message: `Are you sure you want to delete ${selectedIds.length} selected stock out records?`,
+      confirmLabel: 'Delete Selected',
+      intent: 'danger',
+    });
+    if (ok) {
       for (const id of selectedIds) {
         await deleteMutation.mutateAsync(id);
       }
@@ -993,7 +367,8 @@ export function StockOutView(): React.JSX.Element {
   return (
     <div className={styles.container}>
       {/* ── CARD 1: Record Stock Out (Damage / Waste / Usage) ── */}
-      <div className={styles.        <div className={styles.scopeRow}>
+      <div className={styles.card}>
+        <div className={styles.scopeRow}>
           <span className={styles.cardTitle}>Record Stock Out (Damage / Waste / Usage)</span>
 
           {/* Department / Branch Switcher for Stock Out */}
@@ -1038,7 +413,7 @@ export function StockOutView(): React.JSX.Element {
               </span>
             </div>
           )}
-        </div>  </div>
+        </div>
 
         <form onSubmit={form.handleSubmit(onSave)} className={styles.formColumn}>
           {/* Row 1: Reason, Category & Product Select */}
@@ -1182,7 +557,8 @@ export function StockOutView(): React.JSX.Element {
       </div>
 
       {/* ── CARD 2: Stock Out (Deduction Logs) ── */}
-      <div className=        <div className={styles.historyHeader}>
+      <div className={styles.card}>
+        <div className={styles.historyHeader}>
           <span className={styles.cardTitle}>Stock Out (Deduction Logs)</span>
 
           {/* Module Filter Tabs */}
@@ -1230,7 +606,6 @@ export function StockOutView(): React.JSX.Element {
               </span>
             </div>
           )}
-        </div>
         </div>
 
         <div className={styles.filterBar}>

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { CartLine, OrderStage } from "@/lib/types";
 import { formatPKR } from "@/lib/utils";
+import { useAppToast } from "../../context/AppNotificationContext";
 
 interface CartProps {
   accent: "fastfood" | "minimart";
@@ -42,6 +43,7 @@ export function Cart({
   onClear,
   onAdvance,
 }: CartProps) {
+  const { notifyInfo } = useAppToast();
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "credit">("cash");
   const [customerName, setCustomerName] = useState("");
 
@@ -242,7 +244,7 @@ export function Cart({
                 localStorage.setItem("pos_held_orders", JSON.stringify(heldList));
               }
               onClear();
-              alert(`Order held on pause! Cart cleared for next customer.`);
+              notifyInfo(`Order held on pause! Cart cleared for next customer.`);
             }}
             className="py-2.5 px-3 rounded-md bg-[#d97706]/20 hover:bg-[#d97706]/35 border border-[#d97706]/40 text-amber-400 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >

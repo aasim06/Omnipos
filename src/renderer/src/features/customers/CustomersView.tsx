@@ -40,250 +40,9 @@ import { Order, OrderRefund, ReturnedLineItem } from '@shared/types';
 import { formatPKR, uid } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { offlineDb, LocalCustomerKhata } from '@/lib/offlineDb';
+import { useAppToast } from '../../context/AppNotificationContext';
 
-const useStyles = makeStyles({
-  container: {
-    padding: '24px 28px',
-    height: '100%',
-    boxSizing: 'border-box',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    overflowY: 'auto',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: '12px',
-  },
-  headerLeft: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-  },
-  title: {
-    fontSize: '22px',
-    fontWeight: 800,
-    color: tokens.colorNeutralForeground1,
-  },
-  subtitle: {
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground3,
-  },
-  headerActions: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  primaryBtn: {
-    backgroundColor: '#E51937',
-    color: '#FFFFFF',
-    fontWeight: 700,
-    border: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
-    ':hover': {
-      backgroundColor: '#be123c',
-      color: '#FFFFFF',
-    },
-  },
-  refundHeaderBtn: {
-    backgroundColor: '#2563EB',
-    color: '#FFFFFF',
-    fontWeight: 700,
-    border: 'none',
-    boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)',
-    ':hover': {
-      backgroundColor: '#1d4ed8',
-      color: '#FFFFFF',
-    },
-  },
-
-  // Stats Grid
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '14px',
-  },
-  statCard: {
-    padding: '16px 20px',
-    borderRadius: '10px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-    boxShadow: tokens.shadow2,
-  },
-  statIconBox: {
-    width: '42px',
-    height: '42px',
-    borderRadius: '10px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  statContent: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  statValue: {
-    fontSize: '20px',
-    fontWeight: 800,
-    color: tokens.colorNeutralForeground1,
-  },
-  statLabel: {
-    fontSize: '11.5px',
-    color: tokens.colorNeutralForeground3,
-    fontWeight: 600,
-  },
-
-  // Card Panel
-  card: {
-    padding: '20px 24px',
-    borderRadius: '12px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    boxShadow: tokens.shadow2,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  filterBar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: '12px',
-  },
-  searchBox: {
-    width: '360px',
-    '@media (max-width: 600px)': {
-      width: '100%',
-    },
-  },
-
-  // Table
-  tableContainer: {
-    width: '100%',
-    overflowX: 'auto',
-    borderRadius: '8px',
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    textAlign: 'left',
-    fontSize: '13px',
-  },
-  th: {
-    padding: '12px 16px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    color: tokens.colorNeutralForeground2,
-    fontWeight: 700,
-    fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
-  td: {
-    padding: '12px 16px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke3}`,
-    color: tokens.colorNeutralForeground1,
-    verticalAlign: 'middle',
-  },
-  tr: {
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground2,
-    },
-  },
-
-  // Action Buttons in Table
-  actionGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  actionBtn: {
-    width: '30px',
-    height: '30px',
-    borderRadius: '6px',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground1,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    color: tokens.colorNeutralForeground2,
-    transition: 'all 0.15s ease',
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground3,
-      color: tokens.colorNeutralForeground1,
-    },
-  },
-  refundActionBtn: {
-    width: '30px',
-    height: '30px',
-    borderRadius: '6px',
-    border: '1px solid rgba(37, 99, 235, 0.3)',
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    color: '#2563EB',
-    transition: 'all 0.15s ease',
-    ':hover': {
-      backgroundColor: '#2563EB',
-      color: '#FFFFFF',
-    },
-  },
-
-  // Modal / Dialog Details
-  dialogSurface: {
-    maxWidth: '720px',
-    width: '100%',
-  },
-  orderItemRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '10px 14px',
-    borderRadius: '8px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    marginBottom: '8px',
-    gap: '12px',
-  },
-  qtyStepper: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  stepperBtn: {
-    width: '28px',
-    height: '28px',
-    borderRadius: '6px',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground1,
-    cursor: 'pointer',
-    fontWeight: 700,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperInput: {
-    width: '44px',
-    textAlign: 'center',
-    height: '28px',
-    borderRadius: '6px',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    fontWeight: 700,
-  },
-});
+import { useCustomersStyles, useStyles } from './customers.styles';
 
 const newCustomerSchema = z.object({
   name: z.string().min(2, 'Customer Name is required'),
@@ -306,8 +65,9 @@ type NewCustomerFormData = {
 };
 
 export function CustomersView(): React.JSX.Element {
-  const styles = useStyles();
+  const styles = useCustomersStyles();
   const queryClient = useQueryClient();
+  const { notifySuccess, notifyWarning, notifyError } = useAppToast();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'customers' | 'refunds'>('customers');
@@ -328,7 +88,7 @@ export function CustomersView(): React.JSX.Element {
 
   // Queries
   const { data: customerKhatas = [], refetch: refetchKhatas } = useQuery({
-    queryKey: ['customer-khatas-directory'],
+    queryKey: ['khatas'],
     queryFn: async () => {
       try {
         return await posApi.fetchKhatas();
@@ -336,6 +96,8 @@ export function CustomersView(): React.JSX.Element {
         return await offlineDb.khatas.toArray();
       }
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: orders = [], refetch: refetchOrders } = useQuery({
@@ -347,6 +109,8 @@ export function CustomersView(): React.JSX.Element {
         return await offlineDb.orders.toArray();
       }
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: refunds = [], refetch: refetchRefunds } = useQuery({
@@ -358,7 +122,26 @@ export function CustomersView(): React.JSX.Element {
         return await offlineDb.refunds.toArray();
       }
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
+
+  // Listen for instant cross-tab / cross-component updates
+  React.useEffect(() => {
+    const handleKhataUpdate = () => {
+      refetchKhatas();
+    };
+    const handleOrdersUpdate = () => {
+      refetchOrders();
+      refetchRefunds();
+    };
+    window.addEventListener('pos_khata_updated', handleKhataUpdate);
+    window.addEventListener('pos_orders_updated', handleOrdersUpdate);
+    return () => {
+      window.removeEventListener('pos_khata_updated', handleKhataUpdate);
+      window.removeEventListener('pos_orders_updated', handleOrdersUpdate);
+    };
+  }, [refetchKhatas, refetchOrders, refetchRefunds]);
 
   // Aggregated Customer Directory
   const aggregatedCustomers = useMemo(() => {
@@ -460,20 +243,24 @@ export function CustomersView(): React.JSX.Element {
   const onSaveNewCustomer = async (data: NewCustomerFormData) => {
     try {
       const isCredit = data.accountType === 'credit' || data.accountType === 'wholesale';
+      const customerType = data.accountType === 'wholesale' ? 'wholesale' : 'retail';
       await posApi.saveKhata({
         name: data.name,
         phone: data.phone,
         address: data.address,
-        customerType: data.accountType || 'regular',
+        customerType: customerType,
         currentDebt: isCredit ? Number(data.openingDebt || 0) : 0,
         creditLimit: isCredit ? Number(data.creditLimit || 50000) : 0,
         note: data.note,
       });
+      await queryClient.invalidateQueries({ queryKey: ['khatas'] });
+      await queryClient.refetchQueries({ queryKey: ['khatas'] });
       await refetchKhatas();
       setIsAddCustomerOpen(false);
       customerForm.reset();
+      notifySuccess('Customer profile created successfully');
     } catch (err: any) {
-      alert(err.message || 'Failed to create customer');
+      notifyError(err.message || 'Failed to create customer');
     }
   };
 
@@ -504,7 +291,7 @@ export function CustomersView(): React.JSX.Element {
   const handleProcessRefund = async () => {
     if (!selectedOrderForRefund) return;
     if (calculatedRefundTotal <= 0) {
-      alert('Please select at least 1 item quantity to return/refund.');
+      notifyWarning('Please select at least 1 item quantity to return/refund.');
       return;
     }
 
@@ -536,7 +323,9 @@ export function CustomersView(): React.JSX.Element {
       // Refetch
       await Promise.all([refetchOrders(), refetchRefunds(), refetchKhatas()]);
       queryClient.invalidateQueries({ queryKey: ['analytics-report'] });
+      queryClient.refetchQueries({ queryKey: ['analytics-report'] });
 
+      notifySuccess(`Refund of ${formatPKR(calculatedRefundTotal)} processed successfully! Stock replenished.`);
       setRefundSuccessMsg(`Refund of ${formatPKR(calculatedRefundTotal)} processed successfully! Stock has been replenished and sales adjusted.`);
       setTimeout(() => {
         setRefundSuccessMsg(null);
@@ -544,7 +333,7 @@ export function CustomersView(): React.JSX.Element {
         setSelectedOrderForRefund(null);
       }, 2200);
     } catch (err: any) {
-      alert(err.message || 'Failed to process refund');
+      notifyError(err.message || 'Failed to process refund');
     } finally {
       setIsProcessingRefund(false);
     }
@@ -567,8 +356,8 @@ export function CustomersView(): React.JSX.Element {
       {/* ── Page Header ── */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <PeopleCommunity24Regular style={{ color: '#E51937', width: 28, height: 28 }} />
+          <div className={styles.headerLeftRow}>
+            <PeopleCommunity24Regular className={styles.headerIconRed} />
             <span className={styles.title}>Customers &amp; Sales Returns</span>
           </div>
           <span className={styles.subtitle}>
@@ -601,8 +390,8 @@ export function CustomersView(): React.JSX.Element {
       {/* ── Stat Cards ── */}
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
-          <div className={styles.statIconBox} style={{ backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937' }}>
-            <PeopleCommunity24Regular style={{ width: 22, height: 22 }} />
+          <div className={mergeClasses(styles.statIconBox, styles.statIconBoxRed)}>
+            <PeopleCommunity24Regular className={styles.icon22} />
           </div>
           <div className={styles.statContent}>
             <span className={styles.statValue}>{totalCustomerCount}</span>
@@ -611,8 +400,8 @@ export function CustomersView(): React.JSX.Element {
         </div>
 
         <div className={styles.statCard}>
-          <div className={styles.statIconBox} style={{ backgroundColor: 'rgba(217, 119, 6, 0.12)', color: '#D97706' }}>
-            <Money20Regular style={{ width: 22, height: 22 }} />
+          <div className={mergeClasses(styles.statIconBox, styles.statIconBoxAmber)}>
+            <Money20Regular className={styles.icon22} />
           </div>
           <div className={styles.statContent}>
             <span className={styles.statValue}>{formatPKR(totalKhataDebt)}</span>
@@ -621,8 +410,8 @@ export function CustomersView(): React.JSX.Element {
         </div>
 
         <div className={styles.statCard}>
-          <div className={styles.statIconBox} style={{ backgroundColor: 'rgba(37, 99, 235, 0.12)', color: '#2563EB' }}>
-            <ArrowCounterclockwise20Regular style={{ width: 22, height: 22 }} />
+          <div className={mergeClasses(styles.statIconBox, styles.statIconBoxBlue)}>
+            <ArrowCounterclockwise20Regular className={styles.icon22} />
           </div>
           <div className={styles.statContent}>
             <span className={styles.statValue}>{formatPKR(totalRefundAmount)}</span>
@@ -632,46 +421,28 @@ export function CustomersView(): React.JSX.Element {
       </div>
 
       {/* ── Tabs: Customers List vs Refunds History ── */}
-      <div style={{ display: 'flex', gap: '10px', borderBottom: `1px solid ${tokens.colorNeutralStroke2}`, paddingBottom: '8px' }}>
+      <div className={styles.viewTabRow}>
         <button
           type="button"
           onClick={() => setActiveTab('customers')}
-          style={{
-            padding: '8px 18px',
-            borderRadius: '6px',
-            fontWeight: 700,
-            fontSize: '13px',
-            cursor: 'pointer',
-            border: activeTab === 'customers' ? '2px solid #E51937' : `1px solid ${tokens.colorNeutralStroke2}`,
-            backgroundColor: activeTab === 'customers' ? 'rgba(229, 25, 55, 0.1)' : 'transparent',
-            color: activeTab === 'customers' ? '#E51937' : tokens.colorNeutralForeground2,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
+          className={mergeClasses(
+            styles.viewTabBtn,
+            activeTab === 'customers' && styles.viewTabBtnActiveCustomers
+          )}
         >
-          <PeopleCommunity24Regular style={{ width: 16, height: 16 }} />
+          <PeopleCommunity24Regular className={styles.icon16} />
           <span>Customers Directory ({filteredCustomers.length})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('refunds')}
-          style={{
-            padding: '8px 18px',
-            borderRadius: '6px',
-            fontWeight: 700,
-            fontSize: '13px',
-            cursor: 'pointer',
-            border: activeTab === 'refunds' ? '2px solid #2563EB' : `1px solid ${tokens.colorNeutralStroke2}`,
-            backgroundColor: activeTab === 'refunds' ? 'rgba(37, 99, 235, 0.1)' : 'transparent',
-            color: activeTab === 'refunds' ? '#2563EB' : tokens.colorNeutralForeground2,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
+          className={mergeClasses(
+            styles.viewTabBtn,
+            activeTab === 'refunds' && styles.viewTabBtnActiveRefunds
+          )}
         >
-          <ArrowCounterclockwise20Regular style={{ width: 16, height: 16 }} />
+          <ArrowCounterclockwise20Regular className={styles.icon16} />
           <span>Sales Returns / Refunds Log ({refunds.length})</span>
         </button>
       </div>
@@ -688,7 +459,7 @@ export function CustomersView(): React.JSX.Element {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3, fontWeight: 600 }}>
+            <div className={styles.showingCountText}>
               Showing {filteredCustomers.length} registered customers
             </div>
           </div>
@@ -704,13 +475,13 @@ export function CustomersView(): React.JSX.Element {
                   <th className={styles.th}>Total Invoices</th>
                   <th className={styles.th}>Total Spent</th>
                   <th className={styles.th}>Khata Balance</th>
-                  <th className={styles.th} style={{ textAlign: 'right' }}>Actions</th>
+                  <th className={mergeClasses(styles.th, styles.thRight)}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+                    <td colSpan={8} className={styles.emptyTableTd}>
                       No customers found matching &quot;{searchQuery}&quot;. Click &quot;+ Add New Customer&quot; above to register.
                     </td>
                   </tr>
@@ -718,25 +489,25 @@ export function CustomersView(): React.JSX.Element {
                   filteredCustomers.map((cust) => (
                     <tr key={cust.id} className={styles.tr}>
                       <td className={styles.td}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: tokens.colorNeutralBackground3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '11px' }}>
+                        <div className={styles.customerNameCell}>
+                          <div className={styles.customerAvatar}>
                             {cust.name.slice(0, 2).toUpperCase()}
                           </div>
-                          <span style={{ fontWeight: 700 }}>{cust.name}</span>
+                          <span className={styles.customerNameBold}>{cust.name}</span>
                         </div>
                       </td>
                       <td className={styles.td}>
                         {cust.phone ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: tokens.colorNeutralForeground2 }}>
-                            <Call20Regular style={{ width: 13, height: 13 }} />
+                          <span className={styles.phoneCell}>
+                            <Call20Regular className={styles.icon13} />
                             {cust.phone}
                           </span>
                         ) : (
-                          <span style={{ color: tokens.colorNeutralForeground4 }}>None</span>
+                          <span className={styles.mutedNone}>None</span>
                         )}
                       </td>
                       <td className={styles.td}>
-                        <span style={{ color: tokens.colorNeutralForeground2 }}>{cust.address || '—'}</span>
+                        <span className={styles.mutedText}>{cust.address || '—'}</span>
                       </td>
                       <td className={styles.td}>
                         {cust.accountType === 'credit' ? (
@@ -750,20 +521,20 @@ export function CustomersView(): React.JSX.Element {
                         )}
                       </td>
                       <td className={styles.td}>
-                        <span style={{ fontWeight: 600 }}>{cust.totalOrders} Invoices</span>
+                        <span className={styles.weight600}>{cust.totalOrders} Invoices</span>
                       </td>
                       <td className={styles.td}>
-                        <span style={{ fontWeight: 700, color: '#0078D4' }}>{formatPKR(cust.totalSpent)}</span>
+                        <span className={styles.blueSpentText}>{formatPKR(cust.totalSpent)}</span>
                       </td>
                       <td className={styles.td}>
                         {cust.khataDebt > 0 ? (
-                          <span style={{ fontWeight: 700, color: '#D97706' }}>{formatPKR(cust.khataDebt)} (Udhaar)</span>
+                          <span className={styles.amberDebtText}>{formatPKR(cust.khataDebt)} (Udhaar)</span>
                         ) : (
-                          <span style={{ color: '#107C41', fontWeight: 600 }}>0 PKR</span>
+                          <span className={styles.greenZeroText}>0 PKR</span>
                         )}
                       </td>
-                      <td className={styles.td} style={{ textAlign: 'right' }}>
-                        <div className={styles.actionGroup} style={{ justifyContent: 'flex-end' }}>
+                      <td className={mergeClasses(styles.td, styles.thRight)}>
+                        <div className={mergeClasses(styles.actionGroup, styles.actionGroupRight)}>
                           <button
                             type="button"
                             className={styles.refundActionBtn}
@@ -773,7 +544,7 @@ export function CustomersView(): React.JSX.Element {
                               setIsRefundModalOpen(true);
                             }}
                           >
-                            <ArrowCounterclockwise20Regular style={{ width: 15, height: 15 }} />
+                            <ArrowCounterclockwise20Regular className={styles.icon15} />
                           </button>
                         </div>
                       </td>
@@ -790,10 +561,10 @@ export function CustomersView(): React.JSX.Element {
       {activeTab === 'refunds' && (
         <div className={styles.card}>
           <div className={styles.filterBar}>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: tokens.colorNeutralForeground1 }}>
+            <div className={styles.tableSubtitle}>
               Processed Returns &amp; Restocked Inventory Logs
             </div>
-            <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+            <div className={styles.tableSubCount}>
               Total {refunds.length} Refund Records
             </div>
           </div>
@@ -808,13 +579,13 @@ export function CustomersView(): React.JSX.Element {
                   <th className={styles.th}>Returned Items</th>
                   <th className={styles.th}>Reason</th>
                   <th className={styles.th}>Payment Mode</th>
-                  <th className={styles.th} style={{ textAlign: 'right' }}>Refund Amount</th>
+                  <th className={mergeClasses(styles.th, styles.thRight)}>Refund Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {refunds.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: '36px', textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
+                    <td colSpan={7} className={styles.emptyTableTd}>
                       No returns or refunds processed yet. Click &quot;Process Refund / Return&quot; above to handle returns.
                     </td>
                   </tr>
@@ -828,20 +599,20 @@ export function CustomersView(): React.JSX.Element {
                     return (
                       <tr key={ref.id} className={styles.tr}>
                         <td className={styles.td}>
-                          <span style={{ fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
+                          <span className={styles.dateText}>
                             {new Date(ref.createdAt).toLocaleString()}
                           </span>
                         </td>
                         <td className={styles.td}>
-                          <span style={{ fontWeight: 700, color: '#2563EB' }}>#{ref.orderId}</span>
+                          <span className={styles.orderIdBlue}>#{ref.orderId}</span>
                         </td>
                         <td className={styles.td}>
-                          <span style={{ fontWeight: 600 }}>{ref.customerName || 'Walk-In Customer'}</span>
+                          <span className={styles.weight600}>{ref.customerName || 'Walk-In Customer'}</span>
                         </td>
                         <td className={styles.td}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div className={styles.itemsCol}>
                             {parsedItems.map((it, idx) => (
-                              <span key={idx} style={{ fontSize: '11.5px', color: tokens.colorNeutralForeground1 }}>
+                              <span key={idx} className={styles.itemLineText}>
                                 &bull; {it.name} {it.variantLabel ? `(${it.variantLabel})` : ''} &times; <strong>{it.quantity}</strong> (Restocked)
                               </span>
                             ))}
@@ -855,8 +626,8 @@ export function CustomersView(): React.JSX.Element {
                             {String(ref.paymentMode).toUpperCase()}
                           </Badge>
                         </td>
-                        <td className={styles.td} style={{ textAlign: 'right' }}>
-                          <span style={{ fontWeight: 800, color: '#D13438', fontSize: '14px' }}>
+                        <td className={mergeClasses(styles.td, styles.thRight)}>
+                          <span className={styles.refundAmountDanger}>
                             -{formatPKR(ref.refundAmount)}
                           </span>
                         </td>
@@ -873,10 +644,10 @@ export function CustomersView(): React.JSX.Element {
       {/* ── DIALOG 1: ADD NEW CUSTOMER ── */}
       {isAddCustomerOpen && (
         <Dialog open={isAddCustomerOpen} onOpenChange={(_, data) => setIsAddCustomerOpen(data.open)}>
-          <DialogSurface style={{ maxWidth: '480px' }}>
+          <DialogSurface className={styles.dialogSurface480}>
             <DialogTitle>Add New Customer Profile</DialogTitle>
             <form onSubmit={customerForm.handleSubmit(onSaveNewCustomer)}>
-              <DialogBody style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+              <DialogBody className={styles.dialogBodyCol14}>
                 <Controller
                   name="name"
                   control={customerForm.control}
@@ -937,7 +708,7 @@ export function CustomersView(): React.JSX.Element {
                 />
 
                 {customerForm.watch('accountType') === 'credit' || customerForm.watch('accountType') === 'wholesale' ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className={styles.grid2Col}>
                     <Controller
                       name="openingDebt"
                       control={customerForm.control}
@@ -967,12 +738,12 @@ export function CustomersView(): React.JSX.Element {
                     />
                   </div>
                 ) : (
-                  <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: tokens.colorNeutralBackground3, fontSize: '11.5px', color: tokens.colorNeutralForeground2 }}>
+                  <div className={styles.regularNoticeBox}>
                     Cash / Regular customer: Purchases are paid on the spot. No Khata (udhaar) balance is tracked.
                   </div>
                 )}
               </DialogBody>
-              <DialogActions style={{ marginTop: '20px' }}>
+              <DialogActions className={styles.dialogActionsTop20}>
                 <Button appearance="secondary" onClick={() => setIsAddCustomerOpen(false)}>
                   Cancel
                 </Button>
@@ -989,14 +760,14 @@ export function CustomersView(): React.JSX.Element {
       {isRefundModalOpen && (
         <Dialog open={isRefundModalOpen} onOpenChange={(_, data) => setIsRefundModalOpen(data.open)}>
           <DialogSurface className={styles.dialogSurface}>
-            <DialogTitle style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ArrowCounterclockwise20Regular style={{ color: '#2563EB' }} />
+            <DialogTitle className={styles.dialogTitleRow}>
+              <ArrowCounterclockwise20Regular className={styles.blueIcon} />
               <span>Process Sales Return / Customer Refund</span>
             </DialogTitle>
 
-            <DialogBody style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px' }}>
+            <DialogBody className={styles.dialogBodyCol16}>
               {refundSuccessMsg && (
-                <div style={{ padding: '12px 16px', borderRadius: '8px', backgroundColor: 'rgba(16, 124, 65, 0.12)', color: '#107C41', fontWeight: 700, border: '1px solid rgba(16, 124, 65, 0.3)' }}>
+                <div className={styles.refundSuccessMsgBox}>
                   {refundSuccessMsg}
                 </div>
               )}
@@ -1004,7 +775,7 @@ export function CustomersView(): React.JSX.Element {
               {/* Step 1: Search and Select Order if not selected */}
               {!selectedOrderForRefund ? (
                 <div>
-                  <div style={{ marginBottom: '8px', fontSize: '12px', fontWeight: 700, color: tokens.colorNeutralForeground2 }}>
+                  <div className={styles.stepHeading}>
                     STEP 1: Search Bill / Invoice by Order ID or Customer Name
                   </div>
                   <CustomInput
@@ -1014,9 +785,9 @@ export function CustomersView(): React.JSX.Element {
                     onChange={(e) => setRefundSearchQuery(e.target.value)}
                   />
 
-                  <div style={{ marginTop: '12px', maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className={styles.orderScrollList}>
                     {eligibleOrdersForRefund.length === 0 ? (
-                      <div style={{ padding: '20px', textAlign: 'center', color: tokens.colorNeutralForeground3, fontSize: '12px' }}>
+                      <div className={styles.emptyOrdersBox}>
                         No orders found matching &quot;{refundSearchQuery}&quot;
                       </div>
                     ) : (
@@ -1024,37 +795,27 @@ export function CustomersView(): React.JSX.Element {
                         <div
                           key={ord.id}
                           onClick={() => handleSelectOrderForRefund(ord)}
-                          style={{
-                            padding: '12px 16px',
-                            borderRadius: '8px',
-                            border: `1px solid ${tokens.colorNeutralStroke2}`,
-                            backgroundColor: tokens.colorNeutralBackground1,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            transition: 'all 0.15s ease',
-                          }}
+                          className={styles.orderSelectCard}
                         >
                           <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontWeight: 800, color: '#2563EB', fontSize: '13px' }}>#{ord.id}</span>
+                            <div className={styles.orderCardHeader}>
+                              <span className={styles.orderIdTitle}>#{ord.id}</span>
                               <Badge appearance="tint" color="informative">{String(ord.module).toUpperCase()}</Badge>
                               {ord.stage === 'refunded' && <Badge appearance="filled" color="danger">Fully Refunded</Badge>}
                             </div>
-                            <div style={{ fontSize: '12px', color: tokens.colorNeutralForeground2, marginTop: '2px' }}>
+                            <div className={styles.orderMetaSub}>
                               Customer: <strong>{ord.customerName || 'Walk-In'}</strong> &bull; {new Date(ord.createdAt).toLocaleDateString()}
                             </div>
-                            <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                            <div className={styles.orderLinesSub}>
                               {(ord.lines || []).map((l: any) => `${l.name} (x${l.quantity})`).join(', ')}
                             </div>
                           </div>
 
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '14px', fontWeight: 800, color: tokens.colorNeutralForeground1, display: 'block' }}>
+                          <div className={styles.textRight}>
+                            <span className={styles.orderTotalBold}>
                               {formatPKR(ord.totalAmount || 0)}
                             </span>
-                            <Button size="small" appearance="outline" style={{ marginTop: '4px' }}>
+                            <Button size="small" appearance="outline" className={styles.marginTop4}>
                               Select for Refund &rarr;
                             </Button>
                           </div>
@@ -1066,27 +827,27 @@ export function CustomersView(): React.JSX.Element {
               ) : (
                 /* Step 2: Line Item Selection & Return Amount */
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: '8px', backgroundColor: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.2)', marginBottom: '14px' }}>
+                  <div className={styles.selectedOrderBanner}>
                     <div>
-                      <span style={{ fontWeight: 800, color: '#2563EB' }}>Invoice #{selectedOrderForRefund.id}</span>
-                      <span style={{ fontSize: '12px', color: tokens.colorNeutralForeground2, marginLeft: '8px' }}>
+                      <span className={styles.orderIdTitle}>Invoice #{selectedOrderForRefund.id}</span>
+                      <span className={styles.orderCustomerMeta}>
                         Customer: <strong>{selectedOrderForRefund.customerName || 'Walk-In'}</strong>
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setSelectedOrderForRefund(null)}
-                      style={{ fontSize: '11px', color: '#E51937', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                      className={styles.changeOrderBtn}
                     >
                       Change Order
                     </button>
                   </div>
 
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: tokens.colorNeutralForeground2, marginBottom: '8px' }}>
+                  <div className={styles.step2Heading}>
                     STEP 2: Select Items and Quantity to Return:
                   </div>
 
-                  <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                  <div className={styles.itemsScrollBox}>
                     {(selectedOrderForRefund.lines || []).map((line, idx) => {
                       const key = `${line.productId || line.name}_${idx}`;
                       const currentReturnQty = returnQuantities[key] || 0;
@@ -1094,17 +855,17 @@ export function CustomersView(): React.JSX.Element {
 
                       return (
                         <div key={key} className={styles.orderItemRow}>
-                          <div style={{ flex: 1 }}>
-                            <span style={{ fontWeight: 700, fontSize: '13px', display: 'block' }}>
+                          <div className={styles.flex1}>
+                            <span className={styles.itemName13}>
                               {line.name} {line.variantLabel ? `(${line.variantLabel})` : ''}
                             </span>
-                            <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                            <span className={styles.itemMeta11}>
                               Sold Rate: {formatPKR(line.unitPrice)} | Bought Qty: {maxQty}
                             </span>
                           </div>
 
                           <div className={styles.qtyStepper}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground3 }}>Return Qty:</span>
+                            <span className={styles.stepperLabel}>Return Qty:</span>
                             <button
                               type="button"
                               className={styles.stepperBtn}
@@ -1142,8 +903,8 @@ export function CustomersView(): React.JSX.Element {
                             </button>
                           </div>
 
-                          <div style={{ minWidth: '90px', textAlign: 'right' }}>
-                            <span style={{ fontWeight: 700, color: currentReturnQty > 0 ? '#D13438' : tokens.colorNeutralForeground3 }}>
+                          <div className={styles.returnItemCostCol}>
+                            <span className={currentReturnQty > 0 ? styles.returnCostActive : styles.returnCostInactive}>
                               {formatPKR(currentReturnQty * Number(line.unitPrice || 0))}
                             </span>
                           </div>
@@ -1153,7 +914,7 @@ export function CustomersView(): React.JSX.Element {
                   </div>
 
                   {/* Return Reason & Payment Mode */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px', marginTop: '12px' }}>
+                  <div className={styles.reasonGrid}>
                     <CustomSelect
                       label="Return Reason"
                       value={refundReason}
@@ -1180,17 +941,17 @@ export function CustomersView(): React.JSX.Element {
                   </div>
 
                   {/* Summary Banner */}
-                  <div style={{ padding: '12px 16px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Box20Regular style={{ color: '#107C41' }} />
-                      <span style={{ fontSize: '11.5px', color: tokens.colorNeutralForeground2 }}>
+                  <div className={styles.summaryBanner}>
+                    <div className={styles.summaryLeft}>
+                      <Box20Regular className={styles.greenIcon} />
+                      <span className={styles.summaryNoticeText}>
                         All selected items will be <strong>automatically added back into stock</strong>!
                       </span>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, display: 'block' }}>Total Refund Amount:</span>
-                      <span style={{ fontSize: '18px', fontWeight: 800, color: '#D13438' }}>
+                    <div className={styles.textRight}>
+                      <span className={styles.totalRefundLabel}>Total Refund Amount:</span>
+                      <span className={styles.totalRefundVal}>
                         {formatPKR(calculatedRefundTotal)}
                       </span>
                     </div>
@@ -1199,7 +960,7 @@ export function CustomersView(): React.JSX.Element {
               )}
             </DialogBody>
 
-            <DialogActions style={{ marginTop: '16px' }}>
+            <DialogActions className={styles.dialogActionsTop16}>
               <Button appearance="secondary" onClick={() => setIsRefundModalOpen(false)}>
                 Close
               </Button>

@@ -1092,3 +1092,17 @@ export const ALL_PROFILE_OPTIONS: ProfileOption[] = [
   { value: 'electric', label: 'Electrical Store & Lighting (Cables, Switches, LED, Breakers)', module: 'minimart' },
   { value: 'food', label: 'Fast Food, Cafe & Restaurant (Portions: S, M, L, Family, KDS)', module: 'fastfood' },
 ];
+
+export function getFilteredProfileOptions(
+  module: ModuleKey,
+  businessProfiles?: CategoryProfile[]
+): ProfileOption[] {
+  return ALL_PROFILE_OPTIONS.filter((opt) => {
+    if (opt.module !== module) return false;
+    if (businessProfiles && businessProfiles.length > 0) {
+      return businessProfiles.includes(opt.value);
+    }
+    return true;
+  });
+}
+

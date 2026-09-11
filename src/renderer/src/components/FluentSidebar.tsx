@@ -1848,10 +1848,11 @@ export function FluentSidebar(): React.JSX.Element {
       </Dialog>
 
       {/* ── Collapsed Flyout Submenu Portal (Zero-Blink Pure React Portal) ── */}
-      {flyout &&
-        createPortal(
+      {flyout && (() => {
+        const flyoutPositionStyle: React.CSSProperties = { top: `${flyout.top}px`, left: `${flyout.left}px` };
+        return createPortal(
           <div
-            style={{ top: `${flyout.top}px`, left: `${flyout.left}px` }}
+            style={flyoutPositionStyle}
             onMouseEnter={() => {
               if (flyoutTimerRef.current) clearTimeout(flyoutTimerRef.current);
             }}
@@ -1900,7 +1901,8 @@ export function FluentSidebar(): React.JSX.Element {
             </div>
           </div>,
           document.body
-        )}
+        );
+      })()}
     </nav>
   );
 }

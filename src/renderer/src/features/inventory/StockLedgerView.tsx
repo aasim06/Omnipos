@@ -30,6 +30,7 @@ import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
+import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
 
 const TIME_FILTER_OPTIONS = [
   { value: 'all', label: 'All Dates' },
@@ -38,220 +39,12 @@ const TIME_FILTER_OPTIONS = [
   { value: 'month', label: 'This Month' },
 ];
 
-const useStyles = makeStyles({
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-  },
-  metricsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '16px',
-  },
-  metricCard: {
-    padding: '18px 20px',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: tokens.shadow4,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  card: {
-    borderRadius: tokens.borderRadiusMedium,
-    padding: '22px 24px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: tokens.shadow4,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  filterBar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
-    flexWrap: 'wrap',
-    marginBottom: '16px',
-  },
-  tableWrapper: {
-    overflowX: 'auto',
-    width: '100%',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    textAlign: 'left',
-  },
-  th: {
-    padding: '12px 14px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    color: tokens.colorNeutralForeground2,
-    fontSize: '12px',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  td: {
-    padding: '13px 14px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    fontSize: '13px',
-    color: tokens.colorNeutralForeground1,
-  },
-  tableRow: {
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground3,
-    },
-  },
-  kpiLabel: {
-    color: tokens.colorNeutralForeground2,
-    fontWeight: 600,
-  },
-  kpiValueDefault: {
-    fontSize: '26px',
-    fontWeight: 800,
-    marginTop: '6px',
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-  },
-  kpiValueSuccess: {
-    fontSize: '26px',
-    fontWeight: 800,
-    marginTop: '6px',
-    color: '#107C41',
-    display: 'block',
-  },
-  kpiValueDanger: {
-    fontSize: '26px',
-    fontWeight: 800,
-    marginTop: '6px',
-    color: '#D13438',
-    display: 'block',
-  },
-  kpiValueBrand: {
-    fontSize: '26px',
-    fontWeight: 800,
-    marginTop: '6px',
-    color: '#0078D4',
-    display: 'block',
-  },
-  kpiSubtext: {
-    color: tokens.colorNeutralForeground3,
-    marginTop: '4px',
-    display: 'block',
-  },
-  filterLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  filterIcon: {
-    color: '#E51937',
-  },
-  filterTitle: {
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-  },
-  filterBadge: {
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-    color: '#E51937',
-  },
-  filterRight: {
-    display: 'flex',
-    gap: '10px',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  searchBox: {
-    minWidth: '240px',
-  },
-  timeSelectBox: {
-    minWidth: '140px',
-  },
-  printBtn: {
-    backgroundColor: '#E51937',
-    color: '#ffffff',
-    fontWeight: 600,
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-    borderRadius: '6px',
-  },
-  thRight: {
-    textAlign: 'right',
-  },
-  thCenter: {
-    textAlign: 'center',
-  },
-  emptyTd: {
-    padding: '40px',
-    textAlign: 'center',
-    color: tokens.colorNeutralForeground3,
-  },
-  dateBold: {
-    fontWeight: 600,
-  },
-  mutedCaption: {
-    color: tokens.colorNeutralForeground3,
-    display: 'block',
-  },
-  badgeBold: {
-    fontWeight: 700,
-  },
-  productName: {
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-  },
-  reasonText: {
-    fontSize: '13px',
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-  },
-  tdRight: {
-    textAlign: 'right',
-    fontWeight: 600,
-  },
-  tdCenter: {
-    textAlign: 'center',
-  },
-  qtyIn: {
-    fontWeight: 800,
-    color: '#107C41',
-    fontSize: '14px',
-  },
-  qtyOut: {
-    fontWeight: 800,
-    color: '#D13438',
-    fontSize: '14px',
-  },
-  impactValIn: {
-    textAlign: 'right',
-    fontWeight: 700,
-    color: '#107C41',
-  },
-  impactValOut: {
-    textAlign: 'right',
-    fontWeight: 700,
-    color: '#D13438',
-  },
-  actionBtnDelete: {
-    width: '30px',
-    height: '30px',
-    minWidth: '30px',
-    padding: 0,
-    borderRadius: '6px',
-    backgroundColor: 'rgba(209, 52, 56, 0.12)',
-    borderTopWidth: '1px', borderBottomWidth: '1px',
-    borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(209, 52, 56, 0.25)', borderBottomColor: 'rgba(209, 52, 56, 0.25)',
-    borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
-  },
-  iconDelete: {
-    color: '#D13438',
-  },
-});
+import { useStockLedgerStyles, useStyles } from './stockLedger.styles';
 
 export function StockLedgerView(): React.JSX.Element {
-  const styles = useStyles();
+  const styles = useStockLedgerStyles();
+  const { notifySuccess, notifyError } = useAppToast();
+  const confirmModal = useConfirmDialog();
   const [searchQuery, setSearchQuery] = useState('');
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
@@ -276,14 +69,29 @@ export function StockLedgerView(): React.JSX.Element {
     mutationFn: async (id: string) => {
       await posApi.deleteStockMovement(id);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      await queryClient.refetchQueries({ queryKey: ['stock-movements'] });
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
+      await queryClient.refetchQueries({ queryKey: ['products'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
+      }
+      notifySuccess('Stock ledger entry deleted successfully');
+    },
+    onError: (err: any) => {
+      notifyError(err.message || 'Failed to delete ledger entry');
     },
   });
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this stock ledger entry?')) {
+  const handleDelete = async (id: string) => {
+    const ok = await confirmModal({
+      title: 'Delete Ledger Entry',
+      message: 'Are you sure you want to delete this stock ledger entry? Stock movements history will be altered.',
+      confirmLabel: 'Delete Entry',
+      intent: 'danger',
+    });
+    if (ok) {
       deleteMutation.mutate(id);
     }
   };
@@ -681,45 +489,20 @@ export function StockLedgerView(): React.JSX.Element {
       {/* ── Table Card ── */}
       <div className={styles.card}>
         {/* Department / Scope Tabs */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '10px',
-            paddingBottom: '12px',
-            marginBottom: '14px',
-            borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div className={styles.scopeRow}>
+          <div className={styles.scopeLeft}>
+            <span className={styles.scopeLabel}>
               Ledger Scope:
             </span>
             {hasFastFood && hasOmnimart ? (
-              <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+              <div className={styles.scopeTabList}>
                 <button
                   type="button"
                   onClick={() => setDepartmentTab('all')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '5px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    backgroundColor: departmentTab === 'all' ? '#E51937' : 'transparent',
-                    color: departmentTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                    fontWeight: departmentTab === 'all' ? 700 : 500,
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                    transition: 'all 0.12s ease',
-                  }}
+                  className={mergeClasses(styles.scopeBtn, departmentTab === 'all' && styles.scopeBtnActive)}
                 >
                   <span>All Movements</span>
-                  <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  <span className={mergeClasses(styles.scopeBtnBadge, departmentTab === 'all' && styles.scopeBtnBadgeActive)}>
                     {movements.length}
                   </span>
                 </button>
@@ -727,25 +510,11 @@ export function StockLedgerView(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={() => setDepartmentTab('fastfood')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '5px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    backgroundColor: departmentTab === 'fastfood' ? '#E51937' : 'transparent',
-                    color: departmentTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                    fontWeight: departmentTab === 'fastfood' ? 700 : 500,
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                    transition: 'all 0.12s ease',
-                  }}
+                  className={mergeClasses(styles.scopeBtn, departmentTab === 'fastfood' && styles.scopeBtnActive)}
                 >
-                  <Food24Regular style={{ width: 14, height: 14 }} />
-                  <span>Kitchen & Fast Food</span>
-                  <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  <Food24Regular className={styles.icon14Neutral} />
+                  <span>Kitchen &amp; Fast Food</span>
+                  <span className={mergeClasses(styles.scopeBtnBadge, departmentTab === 'fastfood' && styles.scopeBtnBadgeActive)}>
                     {movements.filter((m) => m.module === 'fastfood').length}
                   </span>
                 </button>
@@ -753,34 +522,20 @@ export function StockLedgerView(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={() => setDepartmentTab('minimart')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '5px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    backgroundColor: departmentTab === 'minimart' ? '#E51937' : 'transparent',
-                    color: departmentTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                    fontWeight: departmentTab === 'minimart' ? 700 : 500,
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                    transition: 'all 0.12s ease',
-                  }}
+                  className={mergeClasses(styles.scopeBtn, departmentTab === 'minimart' && styles.scopeBtnActive)}
                 >
-                  <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                  <ShoppingBag24Regular className={styles.icon14Neutral} />
                   <span>Retail Mini Mart</span>
-                  <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: departmentTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                  <span className={mergeClasses(styles.scopeBtnBadge, departmentTab === 'minimart' && styles.scopeBtnBadgeActive)}>
                     {movements.filter((m) => m.module !== 'fastfood').length}
                   </span>
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}`, fontSize: '12px', fontWeight: 600 }}>
-                {hasFastFood ? <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />}
+              <div className={styles.scopeSingleChip}>
+                {hasFastFood ? <Food24Regular className={styles.icon14Red} /> : <ShoppingBag24Regular className={styles.icon14Blue} />}
                 <span>{hasFastFood ? 'Kitchen & Fast Food Ledger' : 'Retail Mini Mart Ledger'}</span>
-                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                <span className={styles.scopeBtnBadge}>
                   {filteredMovements.length}
                 </span>
               </div>

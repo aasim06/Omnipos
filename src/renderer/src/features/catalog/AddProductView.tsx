@@ -37,6 +37,7 @@ import { posApi } from '@/lib/api';
 import { Product, Category, ModuleKey, ProductVariant } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
+import { useAppToast } from '../../context/AppNotificationContext';
 import {
   CATEGORY_PROFILES,
   detectCategoryProfile,
@@ -48,7 +49,9 @@ import {
   ItemTypeOption,
   isSanitaryCategory,
   ALL_PROFILE_OPTIONS,
+  getFilteredProfileOptions,
 } from '@/lib/categoryProfiles';
+import { UNIT_OPTIONS } from '@/lib/units';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import {
@@ -417,57 +420,7 @@ export const PRICING_TYPES_MINIMART = ALL_RETAIL_PRICING_TYPES;
 
 export const PRICING_TYPES = PRICING_TYPES_FASTFOOD;
 
-const UNIT_OPTIONS = [
-  { value: 'PCS', label: 'Piece (PCS)' },
-  { value: 'SET', label: 'Set (SET)' },
-  { value: 'PAIR', label: 'Pair (PAIR)' },
-  { value: 'FEET', label: 'Feet (ft)' },
-  { value: 'LENGTH', label: 'Pipe Length (10ft / 13ft Length)' },
-  { value: 'RFT', label: 'Running Feet (RFT)' },
-  { value: 'METER', label: 'Meter (m)' },
-  { value: 'INCH', label: 'Inch (in)' },
-  { value: 'ROLL', label: 'Roll (Teflon / Tape / Pipe / Wire)' },
-  { value: 'TUBE', label: 'Tube (Cream / Ointment / Sealant)' },
-  { value: 'PACK', label: 'Pack' },
-  { value: 'BOX', label: 'Box' },
-  { value: 'CARTON', label: 'Carton / Peti (CTN)' },
-  { value: 'DOZEN', label: 'Dozen (Darjan)' },
-  { value: 'COIL', label: 'Coil / Bundle' },
-  { value: 'SHEET', label: 'Sheet' },
-  { value: 'BAG', label: 'Bag / Bori' },
-  { value: 'KG', label: 'Kilogram (KG)' },
-  { value: 'Gram', label: 'Gram (g)' },
-  { value: 'Liter', label: 'Liter (L)' },
-  { value: 'ML', label: 'Milliliter (ml)' },
-  { value: 'POUND', label: 'Pound / Lbs (Cakes)' },
-  { value: 'GALLON', label: 'Gallon' },
-  { value: 'QUARTER', label: 'Quarter (1L)' },
-  { value: 'BALTI', label: 'Bucket / Balti (16L)' },
-  { value: 'SUIT', label: 'Suit (SUIT)' },
-  { value: 'GAZ', label: 'Gaz / Yard' },
-  { value: 'THAN', label: 'Than / Fabric Bolt (Cloth)' },
-  { value: 'DABBA', label: 'Box / Pack (Dabba)' },
-  { value: 'TRAY', label: 'Tray (Eggs / Sweets)' },
-  { value: 'STRIP', label: 'Strip (Tablets)' },
-  { value: 'TABLET', label: 'Tablet' },
-  { value: 'CAPSULE', label: 'Capsule' },
-  { value: 'SYRUP', label: 'Syrup Bottle' },
-  { value: 'BOTTLE', label: 'Bottle' },
-  { value: 'JAR', label: 'Jar (Honey / Jam / Cream)' },
-  { value: 'TIN', label: 'Tin / Can' },
-  { value: 'CAN', label: 'Can (Beverage / Food)' },
-  { value: 'SACHET', label: 'Sachet / Pouch' },
-  { value: 'VIAL', label: 'Vial (Injection)' },
-  { value: 'AMPOULE', label: 'Ampoule' },
-  { value: 'KIT', label: 'Kit / Combo' },
-  { value: 'BUNDLE', label: 'Bundle' },
-  { value: 'PORTION', label: 'Portion' },
-  { value: 'PLATE', label: 'Plate' },
-  { value: 'SERVING', label: 'Serving' },
-  { value: 'DEAL', label: 'Deal / Combo' },
-  { value: 'CUP', label: 'Cup' },
-  { value: 'GLASS', label: 'Glass' },
-];
+
 
 const productSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters'),
@@ -507,774 +460,19 @@ const categorySchema = z.object({
 });
 type CategoryFormData = z.infer<typeof categorySchema>;
 
-const useStyles = makeStyles({
-  container: {
-    padding: '20px 24px',
-    height: '100%',
-    boxSizing: 'border-box',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    overflowY: 'auto',
-    overflowX: 'hidden',
-  },
-  pageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: '16px',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke1,
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  headerBackBtn: {
-    borderRadius: '8px',
-  },
-  headerTitle: {
-    fontWeight: 800,
-    fontSize: '20px',
-    color: tokens.colorNeutralForeground1,
-    margin: 0,
-  },
-  headerSubtitle: {
-    color: tokens.colorNeutralForeground2,
-    marginTop: '2px',
-    display: 'block',
-  },
-  headerActions: {
-    display: 'flex',
-    gap: '10px',
-  },
-  btnCancel: {
-    borderRadius: '8px',
-    fontWeight: 600,
-  },
-  btnPrimarySave: {
-    backgroundColor: '#E51937',
-    color: '#ffffff',
-    borderRadius: '8px',
-    fontWeight: 600,
-    ':hover': {
-      backgroundColor: '#be123c',
-    },
-  },
-  formGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 340px',
-    gap: '24px',
-    alignItems: 'stretch',
-  },
-  cardSurface: {
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: tokens.borderRadiusMedium,
-    boxShadow: tokens.shadow4,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '18px',
-  },
-  cardSurfaceRight: {
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: tokens.borderRadiusMedium,
-    boxShadow: tokens.shadow4,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '18px',
-    height: '100%',
-    boxSizing: 'border-box',
-  },
-  twoColGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '16px',
-  },
-  threeColGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '16px',
-  },
-  fieldLabel: {
-    fontWeight: 600,
-    display: 'block',
-    marginBottom: '6px',
-  },
-  fieldHeaderRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '6px',
-  },
-  linkBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#E51937',
-    fontSize: '11px',
-    fontWeight: 700,
-    cursor: 'pointer',
-    padding: '0 2px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '2px',
-  },
-  newCategoryLink: {
-    fontSize: '12px',
-    color: '#E51937',
-    fontWeight: 700,
-    cursor: 'pointer',
-  },
-  fullWidth: {
-    width: '100%',
-  },
-  errorCaption: {
-    color: tokens.colorPaletteRedForeground1,
-    marginTop: '4px',
-    display: 'block',
-  },
-  descTextarea: {
-    width: '100%',
-    minHeight: '70px',
-  },
-
-  // Presets Bar
-  presetsBar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '10px 14px',
-    borderRadius: '8px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    marginTop: '2px',
-    marginBottom: '6px',
-  },
-  presetsTitle: {
-    fontSize: '11.5px',
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground2,
-    whiteSpace: 'nowrap',
-  },
-  presetsWrap: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '6px',
-  },
-  presetChip: {
-    fontSize: '11px',
-    padding: '4px 10px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
-  },
-
-  // Pricing Type Section
-  pricingTypeSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    marginTop: '4px',
-    marginBottom: '6px',
-  },
-  pricingTypeLabel: {
-    fontSize: '12px',
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground2,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  pricingTypeRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-    alignItems: 'center',
-  },
-  pricingTypeBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '7px',
-    padding: '7px 14px',
-    borderRadius: '8px',
-    fontSize: '12.5px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    boxSizing: 'border-box',
-    border: `1.5px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground1,
-    color: tokens.colorNeutralForeground2,
-    outline: 'none',
-    transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground3,
-      color: tokens.colorNeutralForeground1,
-    },
-  },
-  pricingTypeBtnActive: {
-    backgroundColor: '#E51937',
-    color: '#FFFFFF !important',
-    fontWeight: 700,
-    borderTopColor: '#E51937',
-    borderBottomColor: '#E51937',
-    borderLeftColor: '#E51937',
-    borderRightColor: '#E51937',
-    borderTopWidth: '1.5px',
-    borderBottomWidth: '1.5px',
-    borderLeftWidth: '1.5px',
-    borderRightWidth: '1.5px',
-    borderTopStyle: 'solid',
-    borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid',
-    borderRightStyle: 'solid',
-    boxShadow: '0 2px 10px rgba(229, 25, 55, 0.35)',
-    ':hover': {
-      backgroundColor: '#be123c',
-      color: '#FFFFFF !important',
-    },
-  },
-  pricingTypeDesc: {
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground3,
-    fontWeight: 500,
-    marginTop: '2px',
-  },
-
-  // Variants Section
-  variantSectionBox: {
-    padding: '16px',
-    borderRadius: '10px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  variantHeaderRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  variantHeaderLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  variantProfileTag: {
-    fontSize: '10px',
-    fontWeight: 800,
-    padding: '2px 7px',
-    borderRadius: '4px',
-  },
-  variantHeaderLabel: {
-    fontWeight: 700,
-    fontSize: '13.5px',
-  },
-  variantCustomBtn: {
-    fontSize: '11.5px',
-    fontWeight: 600,
-  },
-  variantChipsCaption: {
-    color: tokens.colorNeutralForeground3,
-    display: 'block',
-    marginBottom: '6px',
-  },
-  variantChipsWrap: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '6px',
-  },
-  variantChipBtn: {
-    padding: '4px 12px',
-    borderRadius: '6px',
-    fontSize: '12px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    transition: 'all 0.15s ease',
-  },
-  variantTableContainer: {
-    marginTop: '4px',
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-    paddingTop: '10px',
-  },
-  variantTableHeaderRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '8px',
-  },
-  variantTableCaption: {
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground2,
-  },
-  variantColumnHeaderRow: {
-    display: 'grid',
-    gridTemplateColumns: '85px 95px 120px 1fr 32px',
-    gap: '8px',
-    alignItems: 'center',
-    padding: '4px 8px',
-    fontSize: '11px',
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground3,
-    textTransform: 'uppercase',
-    letterSpacing: '0.4px',
-    marginBottom: '2px',
-  },
-  variantRowsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-  variantRowItem: {
-    display: 'grid',
-    gridTemplateColumns: '85px 95px 120px 1fr 32px',
-    gap: '8px',
-    alignItems: 'center',
-    padding: '6px 8px',
-    borderRadius: '6px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  variantRowLabel: {
-    fontWeight: 800,
-    fontSize: '12.5px',
-  },
-  variantDeleteBtn: {
-    color: '#D13438',
-  },
-
-  // Media / Right Column
-  mediaHeaderTitle: {
-    fontWeight: 700,
-    fontSize: '13.5px',
-    color: tokens.colorNeutralForeground1,
-    marginBottom: '4px',
-  },
-  mediaHeaderSubtitle: {
-    color: tokens.colorNeutralForeground2,
-    display: 'block',
-    marginBottom: '10px',
-  },
-  imageDropzone: {
-    border: `2px dashed ${tokens.colorNeutralStroke1}`,
-    borderRadius: '8px',
-    padding: '16px',
-    textAlign: 'center',
-    backgroundColor: tokens.colorNeutralBackground2,
-    cursor: 'pointer',
-    position: 'relative',
-  },
-  imageDropzoneIcon: {
-    width: '28px',
-    height: '28px',
-    color: tokens.colorNeutralForeground3,
-    margin: '0 auto 6px',
-  },
-  imageDropzoneText: {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#E51937',
-  },
-  imageDropzoneCaption: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: '11px',
-  },
-  urlInputContainer: {
-    marginTop: '10px',
-  },
-  previewSection: {
-    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
-    paddingTop: '14px',
-  },
-  previewTitle: {
-    fontSize: '11.5px',
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground2,
-    textTransform: 'uppercase',
-    marginBottom: '8px',
-  },
-  previewCard: {
-    width: '100%',
-    height: '190px',
-    borderRadius: '8px',
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground1,
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    boxShadow: tokens.shadow4,
-  },
-  previewImageWrap: {
-    height: '114px',
-    width: '100%',
-    position: 'relative',
-    backgroundColor: tokens.colorNeutralBackground3,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewImg: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  previewNoPhotoBox: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '4px',
-    color: tokens.colorNeutralForeground4,
-  },
-  previewBadge: {
-    position: 'absolute',
-    top: '6px',
-    right: '6px',
-    padding: '2px 6px',
-    borderRadius: '4px',
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    color: '#ffffff',
-    fontSize: '10px',
-    fontWeight: 700,
-  },
-  previewDetailsWrap: {
-    height: '76px',
-    padding: '6px 10px',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-  },
-  previewProductTitle: {
-    fontSize: '12px',
-    fontWeight: 800,
-    color: tokens.colorNeutralForeground1,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  previewVariantsRow: {
-    display: 'flex',
-    gap: '3px',
-    marginTop: '2px',
-    overflow: 'hidden',
-  },
-  previewVariantBadge: {
-    fontSize: '8.5px',
-    fontWeight: 800,
-    padding: '0 4px',
-    borderRadius: '3px',
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-    color: '#E51937',
-    border: '1px solid rgba(229, 25, 55, 0.25)',
-  },
-  previewMoreVariantsText: {
-    fontSize: '8.5px',
-    color: tokens.colorNeutralForeground3,
-  },
-  previewCategoryText: {
-    fontSize: '10.5px',
-    color: tokens.colorNeutralForeground3,
-  },
-  previewBottomRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  previewPriceText: {
-    fontSize: '13px',
-    fontWeight: 800,
-    color: '#E51937',
-  },
-  previewModuleText: {
-    fontSize: '10.5px',
-    fontWeight: 600,
-    color: tokens.colorNeutralForeground3,
-  },
-  proTipBox: {
-    marginTop: 'auto',
-    padding: '12px 14px',
-    borderRadius: '8px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  proTipTitle: {
-    fontSize: '11px',
-    fontWeight: 800,
-    color: tokens.colorNeutralForeground1,
-    letterSpacing: '0.04em',
-    textTransform: 'uppercase',
-  },
-  proTipCaption: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: '11px',
-    lineHeight: '1.4',
-  },
-
-  // Modal Dialog
-  dialogSurface: {
-    maxWidth: '460px',
-    width: '92vw',
-    borderRadius: '16px',
-    padding: '24px',
-    boxSizing: 'border-box',
-    backgroundColor: tokens.colorNeutralBackground1,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    boxShadow: '0 24px 64px rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  dialogForm: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '18px',
-    width: '100%',
-  },
-  dialogHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: '14px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    width: '100%',
-  },
-  dialogHeaderLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  dialogIconBox: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '10px',
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#E51937',
-  },
-  dialogTitleText: {
-    fontSize: '17px',
-    fontWeight: 800,
-    color: tokens.colorNeutralForeground1,
-  },
-  dialogSubtitleText: {
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground3,
-  },
-  dialogFieldsContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '14px',
-    width: '100%',
-  },
-  dialogActionsRow: {
-    display: 'flex',
-    gap: '10px',
-    justifyContent: 'flex-end',
-    marginTop: '6px',
-    paddingTop: '14px',
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-    width: '100%',
-  },
-  dialogCancelBtn: {
-    borderRadius: '8px',
-    fontWeight: 600,
-  },
-  dialogSaveBtn: {
-    backgroundColor: '#E51937',
-    color: '#ffffff',
-    borderRadius: '8px',
-    fontWeight: 700,
-    padding: '0 20px',
-    ':hover': {
-      backgroundColor: '#be123c',
-    },
-  },
-
-  /* ── Layout & Typography Helpers ── */
-  colEnd: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-end',
-  },
-  flexEndRow: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    marginBottom: '6px',
-  },
-  requiredStar: {
-    color: '#E51937',
-    fontWeight: 800,
-  },
-  flexShrink0: {
-    flexShrink: 0,
-  },
-  hiddenInput: {
-    display: 'none',
-  },
-  noPhotoIcon: {
-    width: '28px',
-    height: '28px',
-  },
-  noPhotoText: {
-    fontSize: '11px',
-  },
-  tag20Icon: {
-    width: '20px',
-    height: '20px',
-  },
-  strongForeground: {
-    color: tokens.colorNeutralForeground1,
-  },
-
-  /* ── Industry Profile Classes ── */
-  presetChipSelectedFood: {
-    fontWeight: 800,
-    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderRightColor: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.15)',
-    color: '#E51937',
-  },
-  presetChipSelectedApparel: {
-    fontWeight: 800,
-    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#8b5cf6', borderBottomColor: '#8b5cf6', borderLeftColor: '#8b5cf6', borderRightColor: '#8b5cf6',
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-    color: '#8b5cf6',
-  },
-  presetChipSelectedFootwear: {
-    fontWeight: 800,
-    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#3b82f6', borderBottomColor: '#3b82f6', borderLeftColor: '#3b82f6', borderRightColor: '#3b82f6',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    color: '#3b82f6',
-  },
-  presetChipSelectedHardware: {
-    fontWeight: 800,
-    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#f59e0b', borderBottomColor: '#f59e0b', borderLeftColor: '#f59e0b', borderRightColor: '#f59e0b',
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    color: '#f59e0b',
-  },
-  presetChipSelectedStandard: {
-    fontWeight: 800,
-    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#64748b', borderBottomColor: '#64748b', borderLeftColor: '#64748b', borderRightColor: '#64748b',
-    backgroundColor: 'rgba(100, 116, 139, 0.15)',
-    color: '#64748b',
-  },
-  variantSectionActiveFood: {
-    borderTopColor: 'rgba(229, 25, 55, 0.3)', borderBottomColor: 'rgba(229, 25, 55, 0.3)', borderLeftColor: 'rgba(229, 25, 55, 0.3)', borderRightColor: 'rgba(229, 25, 55, 0.3)',
-    backgroundColor: 'rgba(229, 25, 55, 0.04)',
-  },
-  variantSectionActiveApparel: {
-    borderTopColor: 'rgba(139, 92, 246, 0.3)', borderBottomColor: 'rgba(139, 92, 246, 0.3)', borderLeftColor: 'rgba(139, 92, 246, 0.3)', borderRightColor: 'rgba(139, 92, 246, 0.3)',
-    backgroundColor: 'rgba(139, 92, 246, 0.04)',
-  },
-  variantSectionActiveFootwear: {
-    borderTopColor: 'rgba(59, 130, 246, 0.3)', borderBottomColor: 'rgba(59, 130, 246, 0.3)', borderLeftColor: 'rgba(59, 130, 246, 0.3)', borderRightColor: 'rgba(59, 130, 246, 0.3)',
-    backgroundColor: 'rgba(59, 130, 246, 0.04)',
-  },
-  variantSectionActiveHardware: {
-    borderTopColor: 'rgba(245, 158, 11, 0.3)', borderBottomColor: 'rgba(245, 158, 11, 0.3)', borderLeftColor: 'rgba(245, 158, 11, 0.3)', borderRightColor: 'rgba(245, 158, 11, 0.3)',
-    backgroundColor: 'rgba(245, 158, 11, 0.04)',
-  },
-  variantSectionActiveStandard: {
-    borderTopColor: 'rgba(100, 116, 139, 0.3)', borderBottomColor: 'rgba(100, 116, 139, 0.3)', borderLeftColor: 'rgba(100, 116, 139, 0.3)', borderRightColor: 'rgba(100, 116, 139, 0.3)',
-    backgroundColor: 'rgba(100, 116, 139, 0.04)',
-  },
-  profileTagFood: {
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-    color: '#E51937',
-    borderTopColor: 'rgba(229, 25, 55, 0.25)', borderBottomColor: 'rgba(229, 25, 55, 0.25)', borderLeftColor: 'rgba(229, 25, 55, 0.25)', borderRightColor: 'rgba(229, 25, 55, 0.25)',
-  },
-  profileTagApparel: {
-    backgroundColor: 'rgba(139, 92, 246, 0.12)',
-    color: '#8b5cf6',
-    borderTopColor: 'rgba(139, 92, 246, 0.25)', borderBottomColor: 'rgba(139, 92, 246, 0.25)', borderLeftColor: 'rgba(139, 92, 246, 0.25)', borderRightColor: 'rgba(139, 92, 246, 0.25)',
-  },
-  profileTagFootwear: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
-    color: '#3b82f6',
-    borderTopColor: 'rgba(59, 130, 246, 0.25)', borderBottomColor: 'rgba(59, 130, 246, 0.25)', borderLeftColor: 'rgba(59, 130, 246, 0.25)', borderRightColor: 'rgba(59, 130, 246, 0.25)',
-  },
-  profileTagHardware: {
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    color: '#f59e0b',
-    borderTopColor: 'rgba(245, 158, 11, 0.25)', borderBottomColor: 'rgba(245, 158, 11, 0.25)', borderLeftColor: 'rgba(245, 158, 11, 0.25)', borderRightColor: 'rgba(245, 158, 11, 0.25)',
-  },
-  profileTagStandard: {
-    backgroundColor: 'rgba(100, 116, 139, 0.12)',
-    color: '#64748b',
-    borderTopColor: 'rgba(100, 116, 139, 0.25)', borderBottomColor: 'rgba(100, 116, 139, 0.25)', borderLeftColor: 'rgba(100, 116, 139, 0.25)', borderRightColor: 'rgba(100, 116, 139, 0.25)',
-  },
-  textAccentFood: { color: '#E51937' },
-  textAccentApparel: { color: '#8b5cf6' },
-  textAccentFootwear: { color: '#3b82f6' },
-  textAccentHardware: { color: '#f59e0b' },
-  textAccentStandard: { color: '#64748b' },
-  sizeChipSelectedFood: {
-    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderRightColor: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.15)',
-    color: '#E51937',
-    fontWeight: 800,
-  },
-  sizeChipSelectedApparel: {
-    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#8b5cf6', borderBottomColor: '#8b5cf6', borderLeftColor: '#8b5cf6', borderRightColor: '#8b5cf6',
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-    color: '#8b5cf6',
-    fontWeight: 800,
-  },
-  sizeChipSelectedFootwear: {
-    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#3b82f6', borderBottomColor: '#3b82f6', borderLeftColor: '#3b82f6', borderRightColor: '#3b82f6',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    color: '#3b82f6',
-    fontWeight: 800,
-  },
-  sizeChipSelectedHardware: {
-    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#f59e0b', borderBottomColor: '#f59e0b', borderLeftColor: '#f59e0b', borderRightColor: '#f59e0b',
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    color: '#f59e0b',
-    fontWeight: 800,
-  },
-  sizeChipSelectedStandard: {
-    borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#64748b', borderBottomColor: '#64748b', borderLeftColor: '#64748b', borderRightColor: '#64748b',
-    backgroundColor: 'rgba(100, 116, 139, 0.15)',
-    color: '#64748b',
-    fontWeight: 800,
-  },
-});
+import { useAddProductStyles, useStyles } from './addProduct.styles';
 
 export function AddProductView(): React.JSX.Element {
-  const styles = useStyles();
+  const styles = useAddProductStyles();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const { notifySuccess, notifyWarning, notifyError } = useAppToast();
 
-  const { can, businessProfiles = ['standard'] } = useLicense();
+  const { can, businessProfiles = ['standard', 'food'], refreshModules } = useLicense();
+  React.useEffect(() => {
+    void refreshModules();
+  }, [refreshModules]);
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
 
@@ -1518,11 +716,12 @@ export function AddProductView(): React.JSX.Element {
   const mainCategoryOptions = React.useMemo(() => {
     const moduleCats = categories.filter((c) => c.module === watchedModule);
     if (watchedModule === 'fastfood') {
-      return [
-        { value: 'all', label: `All Kitchen Categories (${moduleCats.length})` },
-        { value: 'food', label: 'Fast Food & Pizzas' },
-        { value: 'standard', label: 'General Food Items' },
-      ];
+      const opts = [{ value: 'all', label: `All Kitchen Categories (${moduleCats.length})` }];
+      if (!businessProfiles || businessProfiles.length === 0 || businessProfiles.includes('food')) {
+        opts.push({ value: 'food', label: 'Fast Food & Pizzas' });
+      }
+      opts.push({ value: 'standard', label: 'General Food Items' });
+      return opts;
     }
 
     const retailProfileLabels: Record<string, string> = {
@@ -1543,10 +742,19 @@ export function AddProductView(): React.JSX.Element {
       standard: 'General Retail',
     };
 
+    // Filter available retail profiles strictly according to businessProfiles licensed from backend
+    const allowedProfiles = new Set<string>(
+      getFilteredProfileOptions('minimart', businessProfiles).map((p) => p.value)
+    );
+
     const presentProfiles = new Set<string>();
     moduleCats.forEach((c) => {
       const prof = detectCategoryProfile(c.name, c.profile);
-      if (prof && prof !== 'food') presentProfiles.add(prof);
+      if (prof && prof !== 'food') {
+        if (allowedProfiles.size === 0 || allowedProfiles.has(prof)) {
+          presentProfiles.add(prof);
+        }
+      }
     });
 
     const opts = [{ value: 'all', label: `All Retail Categories (${moduleCats.length})` }];
@@ -1558,13 +766,17 @@ export function AddProductView(): React.JSX.Element {
     });
 
     Object.entries(retailProfileLabels).forEach(([profKey, label]) => {
-      if (!presentProfiles.has(profKey) && profKey !== 'standard') {
+      if (
+        !presentProfiles.has(profKey) &&
+        profKey !== 'standard' &&
+        (allowedProfiles.size === 0 || allowedProfiles.has(profKey))
+      ) {
         opts.push({ value: profKey, label });
       }
     });
 
     return opts;
-  }, [categories, watchedModule]);
+  }, [categories, watchedModule, businessProfiles]);
 
   const filteredCategories = React.useMemo(() => {
     const moduleCats = categories.filter((c) => c.module === watchedModule);
@@ -2757,85 +1969,85 @@ export function AddProductView(): React.JSX.Element {
   const saveProductMutation = useMutation({
     mutationFn: async (data: ProductFormData) => {
       if (pricingType === 'smlxl' && variants.length === 0) {
-        alert('Please enter a price for at least one pizza size (Small, Medium, Large, XL).');
+        notifyWarning('Please enter a price for at least one pizza size (Small, Medium, Large, XL).');
         throw new Error('No pizza size price entered');
       }
       if (pricingType === 'retail_garments' && variants.length === 0) {
-        alert('Please enter a price for at least one garment size (XS, S, M, L, XL, etc.).');
+        notifyWarning('Please enter a price for at least one garment size (XS, S, M, L, XL, etc.).');
         throw new Error('No garment size price entered');
       }
       if (pricingType === 'retail_shoes') {
         if (variants.length === 0) {
-          alert('Please select at least one shoe size for this article.');
+          notifyWarning('Please select at least one shoe size for this article.');
           throw new Error('No shoe size selected');
         }
         if (!data.price || data.price <= 0) {
-          alert('Please enter a retail selling price for this shoe article.');
+          notifyWarning('Please enter a retail selling price for this shoe article.');
           throw new Error('No retail price entered');
         }
       }
       if (pricingType === 'retail_sanitary_sizes' && variants.length === 0) {
-        alert('Please enter a price for at least one pipe or fitting size (1/2" to 4").');
+        notifyWarning('Please enter a price for at least one pipe or fitting size (1/2" to 4").');
         throw new Error('No sanitary size price entered');
       }
       if (pricingType === 'retail_pipe_lengths' && variants.length === 0) {
-        alert('Please enter a price for at least one pipe length or per foot.');
+        notifyWarning('Please enter a price for at least one pipe length or per foot.');
         throw new Error('No pipe length price entered');
       }
       if (pricingType === 'retail_bath_sets' && variants.length === 0) {
-        alert('Please enter a price for at least one shower / tap set option.');
+        notifyWarning('Please enter a price for at least one shower / tap set option.');
         throw new Error('No bath set price entered');
       }
       if (pricingType === 'retail_paint' && variants.length === 0) {
-        alert('Please enter a price for at least one paint container size (Quarter, Gallon, Balti).');
+        notifyWarning('Please enter a price for at least one paint container size (Quarter, Gallon, Balti).');
         throw new Error('No paint container price entered');
       }
       if (pricingType === 'retail_wire' && variants.length === 0) {
-        alert('Please enter a price for at least one wire gauge or coil.');
+        notifyWarning('Please enter a price for at least one wire gauge or coil.');
         throw new Error('No wire gauge price entered');
       }
       if (pricingType === 'retail_wattage' && variants.length === 0) {
-        alert('Please enter a price for at least one wattage variant.');
+        notifyWarning('Please enter a price for at least one wattage variant.');
         throw new Error('No wattage price entered');
       }
       if (pricingType === 'retail_pharma_strip' && variants.length === 0) {
-        alert('Please enter a price for Strip or Box.');
+        notifyWarning('Please enter a price for Strip or Box.');
         throw new Error('No pharma strip price entered');
       }
       if (pricingType === 'retail_pharma_syrup' && variants.length === 0) {
-        alert('Please enter a price for syrup bottle volume.');
+        notifyWarning('Please enter a price for syrup bottle volume.');
         throw new Error('No syrup price entered');
       }
       if (pricingType === 'retail_storage' && variants.length === 0) {
-        alert('Please enter a price for at least one storage variant (64GB - 512GB).');
+        notifyWarning('Please enter a price for at least one storage variant (64GB - 512GB).');
         throw new Error('No storage price entered');
       }
       if (pricingType === 'retail_bakery' && variants.length === 0) {
-        alert('Please enter a price for at least one sweet box size (250g - 2 KG).');
+        notifyWarning('Please enter a price for at least one sweet box size (250g - 2 KG).');
         throw new Error('No bakery box price entered');
       }
       if (pricingType === 'retail_packs' && variants.length === 0) {
-        alert('Please enter a price for Single piece or Carton.');
+        notifyWarning('Please enter a price for Single piece or Carton.');
         throw new Error('No pack price entered');
       }
       if (pricingType === 'retail_shades' && variants.length === 0) {
-        alert('Please enter a price for at least one shade or color.');
+        notifyWarning('Please enter a price for at least one shade or color.');
         throw new Error('No shade price entered');
       }
       if (pricingType === 'retail_volumes' && variants.length === 0) {
-        alert('Please enter a price for at least one pack or bottle volume.');
+        notifyWarning('Please enter a price for at least one pack or bottle volume.');
         throw new Error('No volume price entered');
       }
       if (pricingType === 'halffull' && variants.length === 0) {
-        alert('Please enter a price for Half or Full portion.');
+        notifyWarning('Please enter a price for Half or Full portion.');
         throw new Error('No portion price entered');
       }
       if (pricingType === 'drinks' && variants.length === 0) {
-        alert('Please enter a price for at least one drink size.');
+        notifyWarning('Please enter a price for at least one drink size.');
         throw new Error('No drink size price entered');
       }
       if (pricingType === 'water' && variants.length === 0) {
-        alert('Please enter a price for at least one water bottle size.');
+        notifyWarning('Please enter a price for at least one water bottle size.');
         throw new Error('No water bottle price entered');
       }
 
@@ -2889,8 +2101,8 @@ export function AddProductView(): React.JSX.Element {
   const addCatProfileConfig = CATEGORY_PROFILES[watchedCatProfile as CategoryProfile] || CATEGORY_PROFILES.standard;
 
   const addCatProfileOptions = React.useMemo(() => {
-    return ALL_PROFILE_OPTIONS.filter((opt) => opt.module === watchedCatModule);
-  }, [watchedCatModule]);
+    return getFilteredProfileOptions(watchedCatModule, businessProfiles);
+  }, [watchedCatModule, businessProfiles]);
 
   const addCatDefaultOptions = React.useMemo(() => {
     const backendCategories = addCatProfileConfig.defaultCategories || [];
@@ -2951,7 +2163,7 @@ export function AddProductView(): React.JSX.Element {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image exceeds 5MB limit. Please choose a smaller image.');
+      notifyWarning('Image exceeds 5MB limit. Please choose a smaller image.');
       return;
     }
 
@@ -3016,50 +2228,21 @@ export function AddProductView(): React.JSX.Element {
       </div>
 
       {/* ── Main Form Layout ──────────────────────────────────── */}
-      <form onSubmit={productForm.handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <form onSubmit={productForm.handleSubmit(onSubmit)} className={styles.apStyle_1}>
         {/* ── Visual Department Selection Cards (Super Easy for Any User) ── */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            backgroundColor: tokens.colorNeutralBackground1,
-            padding: '16px 20px',
-            borderRadius: tokens.borderRadiusMedium,
-            border: `1px solid ${tokens.colorNeutralStroke1}`,
-            boxShadow: tokens.shadow2,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+        <div className={styles.apRemCard1}>
+          <div className={styles.apStyle_3}>
             <div>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <span className={styles.apStyle_4}>
                 Department Selection:
               </span>
-              <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: tokens.colorNeutralForeground1, fontWeight: 600 }}>
+              <p className={styles.apStyle_5}>
                 Select department for this product:
               </p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div className={styles.apStyle_6}>
               <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  padding: '4px 12px',
-                  borderRadius: '12px',
-                  backgroundColor:
-                    activeDepartmentTab === 'fastfood'
-                      ? 'rgba(229, 25, 55, 0.12)'
-                      : 'rgba(2, 132, 199, 0.12)',
-                  color:
-                    activeDepartmentTab === 'fastfood'
-                      ? '#E51937'
-                      : '#0284C7',
-                  border: `1px solid ${
-                    activeDepartmentTab === 'fastfood'
-                      ? 'rgba(229, 25, 55, 0.25)'
-                      : 'rgba(2, 132, 199, 0.25)'
-                  }`,
-                }}
+                className={activeDepartmentTab === 'fastfood' ? styles.apDeptBadgeFastFood : styles.apDeptBadgeMinimart}
               >
                 {activeDepartmentTab === 'fastfood'
                   ? '● Active: Fast Food & Kitchen Menu'
@@ -3070,7 +2253,7 @@ export function AddProductView(): React.JSX.Element {
 
           {/* Department Selection Cards (Shown only when multiple modules exist) */}
           {hasFastFood && hasOmnimart ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+            <div className={styles.apStyle_8}>
               {/* Fast Food Card */}
               <button
                 type="button"
@@ -3087,47 +2270,23 @@ export function AddProductView(): React.JSX.Element {
                     handlePricingTypeSelect('fixed');
                   }
                 }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  padding: '14px 18px',
-                  borderRadius: '10px',
-                  boxSizing: 'border-box',
-                  border: `2px solid ${activeDepartmentTab === 'fastfood' ? '#E51937' : tokens.colorNeutralStroke2}`,
-                  backgroundColor: activeDepartmentTab === 'fastfood' ? 'rgba(229, 25, 55, 0.09)' : tokens.colorNeutralBackground2,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
-                  boxShadow: activeDepartmentTab === 'fastfood' ? '0 4px 14px rgba(229, 25, 55, 0.18)' : 'none',
-                }}
+                className={mergeClasses(styles.apDeptCardBase, activeDepartmentTab === 'fastfood' ? styles.apDeptCardFastFoodActive : styles.apDeptCardFastFoodInactive)}
               >
                 <div
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '10px',
-                    backgroundColor: activeDepartmentTab === 'fastfood' ? '#E51937' : tokens.colorNeutralBackground3,
-                    color: activeDepartmentTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: activeDepartmentTab === 'fastfood' ? '0 2px 8px rgba(229, 25, 55, 0.35)' : 'none',
-                  }}
+                  className={mergeClasses(styles.apDeptIconBase, activeDepartmentTab === 'fastfood' ? styles.apDeptIconFastFoodActive : styles.apDeptIconFastFoodInactive)}
                 >
-                  <Food24Regular style={{ width: 24, height: 24 }} />
+                  <Food24Regular className={styles.apStyle_11} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 800, fontSize: '14px', color: activeDepartmentTab === 'fastfood' ? '#E51937' : tokens.colorNeutralForeground1 }}>
+                <div className={styles.apStyle_12}>
+                  <div className={styles.apStyle_13}>
+                    <span className={mergeClasses(styles.apDeptTextTitleBase, activeDepartmentTab === 'fastfood' ? styles.apDeptTextTitleFastFoodActive : styles.apDeptTextTitleInactive)}>
                       Fast Food & Kitchen Menu
                     </span>
                     {activeDepartmentTab === 'fastfood' && (
-                      <CheckmarkCircle20Filled style={{ color: '#E51937', width: 18, height: 18 }} />
+                      <CheckmarkCircle20Filled className={styles.apStyle_15} />
                     )}
                   </div>
-                  <span style={{ display: 'block', fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
+                  <span className={styles.apStyle_16}>
                     Burgers, Pizzas, Deals, Karahi &bull; Kitchen KOT screen dispatch
                   </span>
                 </div>
@@ -3150,47 +2309,23 @@ export function AddProductView(): React.JSX.Element {
                     handlePricingTypeSelect('fixed');
                   }
                 }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  padding: '14px 18px',
-                  borderRadius: '10px',
-                  boxSizing: 'border-box',
-                  border: `2px solid ${activeDepartmentTab === 'minimart' ? '#0284C7' : tokens.colorNeutralStroke2}`,
-                  backgroundColor: activeDepartmentTab === 'minimart' ? 'rgba(2, 132, 199, 0.09)' : tokens.colorNeutralBackground2,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
-                  boxShadow: activeDepartmentTab === 'minimart' ? '0 4px 14px rgba(2, 132, 199, 0.20)' : 'none',
-                }}
+                className={mergeClasses(styles.apDeptCardBase, activeDepartmentTab === 'minimart' ? styles.apDeptCardMinimartActive : styles.apDeptCardMinimartInactive)}
               >
                 <div
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '10px',
-                    backgroundColor: activeDepartmentTab === 'minimart' ? '#0284C7' : tokens.colorNeutralBackground3,
-                    color: activeDepartmentTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: activeDepartmentTab === 'minimart' ? '0 2px 8px rgba(2, 132, 199, 0.35)' : 'none',
-                  }}
+                  className={mergeClasses(styles.apDeptIconBase, activeDepartmentTab === 'minimart' ? styles.apDeptIconMinimartActive : styles.apDeptIconMinimartInactive)}
                 >
-                  <ShoppingBag24Regular style={{ width: 24, height: 24 }} />
+                  <ShoppingBag24Regular className={styles.apStyle_11} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 800, fontSize: '14px', color: activeDepartmentTab === 'minimart' ? '#0284C7' : tokens.colorNeutralForeground1 }}>
+                <div className={styles.apStyle_12}>
+                  <div className={styles.apStyle_13}>
+                    <span className={mergeClasses(styles.apDeptTextTitleBase, activeDepartmentTab === 'minimart' ? styles.apDeptTextTitleMinimartActive : styles.apDeptTextTitleInactive)}>
                       Retail Mini Mart
                     </span>
                     {activeDepartmentTab === 'minimart' && (
-                      <CheckmarkCircle20Filled style={{ color: '#0284C7', width: 18, height: 18 }} />
+                      <CheckmarkCircle20Filled className={styles.apStyle_20} />
                     )}
                   </div>
-                  <span style={{ display: 'block', fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
+                  <span className={styles.apStyle_16}>
                     Supermarket, Footwear, Garments, Sanitary & Retail Inventory
                   </span>
                 </div>
@@ -3198,38 +2333,20 @@ export function AddProductView(): React.JSX.Element {
             </div>
           ) : (
             <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                backgroundColor: tokens.colorNeutralBackground2,
-                border: `1px solid ${tokens.colorNeutralStroke2}`,
-              }}
+              className={styles.apRemCard2}
             >
               {hasFastFood ? (
                 <>
                   <div
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '8px',
-                      backgroundColor: '#E51937',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
+                    className={styles.apRemIconRed36}
                   >
-                    <Food24Regular style={{ width: 20, height: 20 }} />
+                    <Food24Regular className={styles.apStyle_23} />
                   </div>
                   <div>
-                    <span style={{ fontWeight: 700, fontSize: '13.5px', color: tokens.colorNeutralForeground1 }}>
+                    <span className={styles.apStyle_24}>
                       Fast Food & Kitchen Catalog
                     </span>
-                    <span style={{ display: 'block', fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
+                    <span className={styles.apStyle_16}>
                       Products created here are routed to kitchen KDS screens and POS food counter
                     </span>
                   </div>
@@ -3237,25 +2354,15 @@ export function AddProductView(): React.JSX.Element {
               ) : (
                 <>
                   <div
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '8px',
-                      backgroundColor: '#0284C7',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
+                    className={styles.apRemIconBlue36}
                   >
-                    <ShoppingBag24Regular style={{ width: 20, height: 20 }} />
+                    <ShoppingBag24Regular className={styles.apStyle_23} />
                   </div>
                   <div>
-                    <span style={{ fontWeight: 700, fontSize: '13.5px', color: tokens.colorNeutralForeground1 }}>
+                    <span className={styles.apStyle_24}>
                       Retail Mini Mart Catalog
                     </span>
-                    <span style={{ display: 'block', fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
+                    <span className={styles.apStyle_16}>
                       Supermarket, Footwear, Garments, Sanitary & Retail Inventory
                     </span>
                   </div>
@@ -3337,20 +2444,14 @@ export function AddProductView(): React.JSX.Element {
             {/* ── Sub-Category / Specific Item Type Chips ── */}
             {availableItemTypes.length > 0 && (
               <div
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: '10px',
-                  backgroundColor: tokens.colorNeutralBackground2,
-                  border: `1px solid ${selectedItemTypeId ? `${profileConfig.accentColor || '#0284C7'}60` : tokens.colorNeutralStroke2}`,
-                  transition: 'all 0.2s ease',
-                }}
+                className={styles.apAccentWrapCard} ref={(el) => { if (el && selectedItemTypeId) el.style.borderColor = `${profileConfig.accentColor || '#0284C7'}60`; }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                <div className={styles.apStyle_27}>
+                  <div className={styles.apStyle_28}>
+                    <span className={styles.apStyle_29}>
                       Specific Item Type / Sub-Category:
                     </span>
-                    <span style={{ fontSize: '11px', fontWeight: 500, color: tokens.colorNeutralForeground3 }}>
+                    <span className={styles.apStyle_30}>
                       (Item select karein taake unit aur pricing type is item k hisaab se set ho)
                     </span>
                   </div>
@@ -3361,18 +2462,18 @@ export function AddProductView(): React.JSX.Element {
                         setSelectedItemTypeId('');
                         productForm.setValue('unit', profileConfig.suggestedUnits[0] || 'PCS');
                       }}
-                      style={{ fontSize: '11px', fontWeight: 600, color: '#E51937', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                      className={styles.apStyle_31}
                     >
                       Clear Filter
                     </button>
                   )}
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <div className={styles.apStyle_32}>
                   {availableItemTypes.map((itemType) => {
                     const isSelected = selectedItemTypeId === itemType.id;
                     const accent = profileConfig.accentColor || '#0284C7';
                     const renderItemTypeIcon = (iconName?: string) => {
-                      const iconStyle = { width: 14, height: 14, flexShrink: 0, color: isSelected ? accent : 'inherit' };
+                      const iconStyle = { width: '14px', height: '14px', flexShrink: 0, color: isSelected ? accent : 'inherit' };
                       switch (iconName) {
                         case 'Droplets': return <Droplets style={iconStyle} />;
                         case 'Ruler': return <Ruler style={iconStyle} />;
@@ -3396,29 +2497,14 @@ export function AddProductView(): React.JSX.Element {
                         key={itemType.id}
                         type="button"
                         onClick={() => handleSelectItemType(itemType)}
-                        style={{
-                          padding: '6px 14px',
-                          borderRadius: '20px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          boxSizing: 'border-box',
-                          border: `1.5px solid ${isSelected ? accent : tokens.colorNeutralStroke1}`,
-                          backgroundColor: isSelected ? `${accent}22` : tokens.colorNeutralBackground1,
-                          color: isSelected ? accent : tokens.colorNeutralForeground1,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
-                          boxShadow: isSelected ? `0 2px 8px ${accent}35` : 'none',
-                        }}
+                        className={mergeClasses(styles.apAccentPillBase, isSelected ? undefined : styles.apAccentPillInactive)} ref={(el) => { if (el && isSelected) { el.style.borderColor = accent; el.style.backgroundColor = `${accent}22`; el.style.color = accent; el.style.boxShadow = `0 2px 8px ${accent}35`; } }}
                       >
                         {isSelected ? (
-                          <Checkmark16Filled style={{ width: 14, height: 14, color: accent, flexShrink: 0 }} />
+                          <Checkmark16Filled className={styles.icon14} ref={(el) => { if (el) (el as unknown as HTMLElement).style.color = accent; }} />
                         ) : (
                           renderItemTypeIcon(itemType.iconName)
                         )}
-                        <span style={{ color: isSelected ? accent : tokens.colorNeutralForeground1 }}>{itemType.name}</span>
+                        <span ref={(el) => { if (el && isSelected) el.style.color = accent; }}>{itemType.name}</span>
                       </button>
                     );
                   })}
@@ -3467,11 +2553,11 @@ export function AddProductView(): React.JSX.Element {
 
             {/* ── Pricing Type Selector (Matching Reference Design) ── */}
             <div className={styles.pricingTypeSection}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label className={styles.pricingTypeLabel} style={{ marginBottom: 0 }}>
+              <div className={styles.apStyle_36}>
+                <label className={mergeClasses(styles.pricingTypeLabel, styles.apStyle_37)}>
                   Pricing Type <span className={styles.requiredStar}>*</span>
                   {watchedModule !== 'fastfood' && (
-                    <span style={{ marginLeft: '8px', fontSize: '11px', color: isSanitaryCategory(watchedCategory || '') ? '#0284C7' : profileConfig.accentColor, fontWeight: 700 }}>
+                    <span className={styles.apSanitaryLink} ref={(el) => { if (el) el.style.color = isSanitaryCategory(watchedCategory || '') ? '#0284C7' : profileConfig.accentColor; }}>
                       ({isSanitaryCategory(watchedCategory || '') ? 'Sanitary & Pipes' : profileConfig.shortTag} Recommended)
                     </span>
                   )}
@@ -3495,17 +2581,10 @@ export function AddProductView(): React.JSX.Element {
                       key={pt.id}
                       type="button"
                       onClick={() => handlePricingTypeSelect(pt.id)}
-                      className={mergeClasses(styles.pricingTypeBtn, isSelected && styles.pricingTypeBtnActive)}
-                      style={{
-                        backgroundColor: isSelected ? '#E51937' : undefined,
-                        color: isSelected ? '#FFFFFF' : undefined,
-                        borderColor: isSelected ? '#E51937' : undefined,
-                        borderWidth: '1.5px',
-                        boxSizing: 'border-box',
-                      }}
+                      className={mergeClasses(styles.pricingTypeBtn, isSelected && styles.pricingTypeBtnActive, isSelected && styles.apBtnSelectActive)}
                     >
-                      <Icon size={14} className={styles.flexShrink0} style={{ color: isSelected ? '#FFFFFF' : undefined, stroke: isSelected ? '#FFFFFF' : undefined }} />
-                      <span style={{ color: isSelected ? '#FFFFFF' : undefined }}>{displayLabel}</span>
+                      <Icon size={14} className={mergeClasses(styles.flexShrink0, isSelected && styles.apBtnSelectStrokeWhite)} />
+                      <span className={isSelected ? styles.apBtnSelectTextWhite : undefined}>{displayLabel}</span>
                     </button>
                   );
                 })}
@@ -3522,13 +2601,13 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 1. Dedicated S / M / L / XL Pizza Size Pricing (Fast Food) ── */}
               {pricingType === 'smlxl' && (
-                <div style={{ marginTop: '16px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: tokens.colorNeutralForeground1, marginBottom: '8px' }}>
+                <div className={styles.apStyle_42}>
+                  <div className={styles.apStyle_43}>
                     Pizza Size Pricing (PKR)
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                  <div className={styles.apStyle_44}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         Small (S)
                       </label>
                       <CustomInput
@@ -3539,7 +2618,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         Medium (M)
                       </label>
                       <CustomInput
@@ -3550,7 +2629,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         Large (L)
                       </label>
                       <CustomInput
@@ -3561,7 +2640,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         X-Large (XL)
                       </label>
                       <CustomInput
@@ -3572,7 +2651,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                   </div>
-                  <div style={{ fontSize: '11.5px', color: tokens.colorNeutralForeground3, marginTop: '8px' }}>
+                  <div className={styles.apStyle_46}>
                     Leave empty to exclude that size option
                   </div>
                 </div>
@@ -3580,23 +2659,23 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 2. Dedicated Retail Garment Sizes: S, M, L, XL ── */}
               {pricingType === 'retail_garments' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_48}>
+                    <div className={styles.apStyle_28}>
                       <Shirt size={18} color="#E51937" />
                       <div>
-                        <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        <span className={styles.apStyle_49}>
                           Garment Sizes (S, M, L, XL)
                         </span>
-                        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        <p className={styles.apStyle_50}>
                           Enter pricing for stitched kurtas, suits, shirts, or trousers
                         </p>
                       </div>
                     </div>
 
                     {/* Quick Same Price tool */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>
+                    <div className={styles.apStyle_6}>
+                      <span className={styles.apStyle_51}>
                         Same price for all:
                       </span>
                       <input
@@ -3604,7 +2683,7 @@ export function AddProductView(): React.JSX.Element {
                         placeholder="e.g. 2450"
                         value={bulkGarmentPrice}
                         onChange={(e) => setBulkGarmentPrice(e.target.value)}
-                        style={{ width: '90px', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${tokens.colorNeutralStroke1}`, fontSize: '12px' }}
+                        className={styles.apStyle_52}
                       />
                       <button
                         type="button"
@@ -3615,16 +2694,16 @@ export function AddProductView(): React.JSX.Element {
                             rebuildVariantsFromGarmentSizes(updated);
                           }
                         }}
-                        style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#E51937', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                        className={styles.apStyle_53}
                       >
                         Apply to All
                       </button>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                  <div className={styles.apStyle_54}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Size S (Small)
                       </label>
                       <CustomInput
@@ -3635,7 +2714,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Size M (Medium)
                       </label>
                       <CustomInput
@@ -3646,7 +2725,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Size L (Large)
                       </label>
                       <CustomInput
@@ -3657,7 +2736,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Size XL (Extra Large)
                       </label>
                       <CustomInput
@@ -3679,63 +2758,30 @@ export function AddProductView(): React.JSX.Element {
 
                 return (
                   <div
-                    style={{
-                      marginTop: '16px',
-                      padding: '16px 18px',
-                      borderRadius: '12px',
-                      backgroundColor: tokens.colorNeutralBackground2,
-                      border: `1px solid ${tokens.colorNeutralStroke1}`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '14px',
-                    }}
+                    className={styles.apRemSectionCard16}
                   >
                     {/* Header: Title, Category Match Notice & Unified Article Price */}
                     <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '10px',
-                        paddingBottom: '12px',
-                        borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-                      }}
+                      className={styles.apRemSectionHeaderRow}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div className={styles.apStyle_58}>
                         <div
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '8px',
-                            backgroundColor: 'rgba(229, 25, 55, 0.15)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
+                          className={styles.apRemBadgeRedGlow36}
                         >
                           <Footprints size={20} color="#E51937" />
                         </div>
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                          <div className={styles.apStyle_28}>
+                            <span className={styles.apStyle_60}>
                               Footwear Article Sizes
                             </span>
                             <span
-                              style={{
-                                fontSize: '10.5px',
-                                fontWeight: 700,
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(229, 25, 55, 0.12)',
-                                color: '#E51937',
-                                border: '1px solid rgba(229, 25, 55, 0.3)',
-                              }}
+                              className={styles.apRemPillRedBorder}
                             >
                               {watchedCategory || 'Kids Footwear'}
                             </span>
                           </div>
-                          <p style={{ margin: '3px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                          <p className={styles.apStyle_62}>
                             Select available sizes in this article. In shoe retail, all sizes share one unified retail price.
                           </p>
                         </div>
@@ -3743,21 +2789,13 @@ export function AddProductView(): React.JSX.Element {
 
                       {/* Unified Selling Price Display & Quick Edit */}
                       <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          backgroundColor: tokens.colorNeutralBackground3,
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          border: `1px solid ${tokens.colorNeutralStroke1}`,
-                        }}
+                        className={styles.apRemRowStroke1}
                       >
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '10.5px', fontWeight: 600, color: tokens.colorNeutralForeground3 }}>
+                        <div className={styles.apStyle_64}>
+                          <div className={styles.apStyle_65}>
                             Unified Selling Price:
                           </div>
-                          <div style={{ fontSize: '14px', fontWeight: 800, color: activePriceNum > 0 ? '#10b981' : '#f59e0b' }}>
+                          <div className={activePriceNum > 0 ? styles.apPriceNumGreen : styles.apPriceNumAmber}>
                             {activePriceNum > 0 ? formatPKR(activePriceNum) : 'Price Not Set'}
                           </div>
                         </div>
@@ -3770,56 +2808,29 @@ export function AddProductView(): React.JSX.Element {
                             productForm.setValue('price', Number(val));
                             productForm.clearErrors('price');
                           }}
-                          style={{
-                            width: '105px',
-                            padding: '6px 10px',
-                            borderRadius: '6px',
-                            border: `1px solid ${tokens.colorNeutralStroke1}`,
-                            backgroundColor: tokens.colorNeutralBackground1,
-                            color: tokens.colorNeutralForeground1,
-                            fontSize: '12px',
-                            fontWeight: 700,
-                          }}
+                          className={styles.apRemInput105}
                         />
                       </div>
                     </div>
 
                     {/* Preset Switcher (Category-filtered: Kids Footwear only shows Kids/Baby/Youth; Men's only shows Men's) */}
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '11.5px', fontWeight: 700, color: tokens.colorNeutralForeground2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <div className={styles.apStyle_36}>
+                        <span className={styles.apStyle_68}>
                           {availablePresets.length > 1 ? 'Category Size Ranges:' : `Standard Range: ${currentPreset.name} (${currentPreset.rangeText})`}
                         </span>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className={styles.apStyle_69}>
                           <button
                             type="button"
                             onClick={() => handleSelectAllShoeSizesInPreset(currentPreset.sizes)}
-                            style={{
-                              padding: '3px 9px',
-                              borderRadius: '6px',
-                              border: '1px solid rgba(229, 25, 55, 0.4)',
-                              backgroundColor: 'rgba(229, 25, 55, 0.1)',
-                              color: '#E51937',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
+                            className={styles.apRemBtnRedOutline}
                           >
                             Select All ({currentPreset.rangeText})
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeselectShoePreset(currentPreset.sizes)}
-                            style={{
-                              padding: '3px 9px',
-                              borderRadius: '6px',
-                              border: `1px solid ${tokens.colorNeutralStroke1}`,
-                              backgroundColor: tokens.colorNeutralBackground3,
-                              color: tokens.colorNeutralForeground2,
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                            }}
+                            className={styles.apRemBtnNeutralOutline}
                           >
                             Deselect Range
                           </button>
@@ -3827,7 +2838,7 @@ export function AddProductView(): React.JSX.Element {
                       </div>
 
                       {availablePresets.length > 1 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        <div className={styles.apStyle_32}>
                           {availablePresets.map((preset) => {
                             const isActive = activeShoePresetId === preset.id;
                             return (
@@ -3839,32 +2850,11 @@ export function AddProductView(): React.JSX.Element {
                                   setSelectedShoeSizes(preset.sizes);
                                   rebuildVariantsFromShoeSelection(preset.sizes);
                                 }}
-                                style={{
-                                  padding: '6px 14px',
-                                  borderRadius: '8px',
-                                  boxSizing: 'border-box',
-                                  border: `1.5px solid ${isActive ? '#E51937' : tokens.colorNeutralStroke1}`,
-                                  backgroundColor: isActive ? 'rgba(229, 25, 55, 0.15)' : tokens.colorNeutralBackground3,
-                                  color: isActive ? '#fff' : tokens.colorNeutralForeground2,
-                                  fontWeight: 600,
-                                  fontSize: '12px',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
-                                }}
+                                className={mergeClasses(styles.apChipBase, isActive ? styles.apChipActive : styles.apChipInactive)}
                               >
                                 <span>{preset.name}</span>
                                 <span
-                                  style={{
-                                    fontSize: '10.5px',
-                                    padding: '1px 5px',
-                                    borderRadius: '4px',
-                                    backgroundColor: isActive ? '#E51937' : 'rgba(255, 255, 255, 0.08)',
-                                    color: '#fff',
-                                    fontWeight: 700,
-                                  }}
+                                  className={isActive ? styles.apChipBadgeActive : styles.apChipBadgeInactive}
                                 >
                                   {preset.badge}
                                 </span>
@@ -3877,16 +2867,12 @@ export function AddProductView(): React.JSX.Element {
 
                     {/* Interactive Size Chips Grid */}
                     <div>
-                      <div style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground3, marginBottom: '8px' }}>
+                      <div className={styles.apStyle_74}>
                         Click to toggle sizes available for this article:
                       </div>
 
                       <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fill, minmax(95px, 1fr))',
-                          gap: '8px',
-                        }}
+                        className={styles.apRemGridAutoFill}
                       >
                         {currentPreset.sizes.map((sizeStr) => {
                           const isSelected = selectedShoeSizes.includes(sizeStr);
@@ -3895,30 +2881,14 @@ export function AddProductView(): React.JSX.Element {
                               key={sizeStr}
                               type="button"
                               onClick={() => handleToggleShoeSize(sizeStr)}
-                              style={{
-                                padding: '8px 10px',
-                                borderRadius: '8px',
-                                boxSizing: 'border-box',
-                                border: `1.5px solid ${isSelected ? '#E51937' : tokens.colorNeutralStroke1}`,
-                                backgroundColor: isSelected ? 'rgba(229, 25, 55, 0.14)' : tokens.colorNeutralBackground3,
-                                color: isSelected ? '#fff' : tokens.colorNeutralForeground2,
-                                display: 'flex',
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                cursor: 'pointer',
-                                transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
-                                boxShadow: isSelected ? '0 0 10px rgba(229, 25, 55, 0.25)' : 'none',
-                                whiteSpace: 'nowrap',
-                              }}
+                              className={mergeClasses(styles.apGridChipBase, isSelected ? styles.apGridChipActive : styles.apGridChipInactive)}
                             >
                               {isSelected ? (
-                                <Checkmark16Filled style={{ color: '#E51937', fontSize: '14px', flexShrink: 0 }} />
+                                <Checkmark16Filled className={styles.apStyle_77} />
                               ) : (
-                                <span style={{ width: '12px', height: '12px', borderRadius: '50%', border: `1px solid ${tokens.colorNeutralStroke1}`, display: 'inline-block', flexShrink: 0 }} />
+                                <span className={styles.apStyle_78} />
                               )}
-                              <span style={{ fontSize: '13px', fontWeight: 700 }}>
+                              <span className={styles.apStyle_79}>
                                 {sizeStr} Size
                               </span>
                             </button>
@@ -3927,8 +2897,8 @@ export function AddProductView(): React.JSX.Element {
                       </div>
 
                       {/* Custom Size Addition */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-                        <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                      <div className={styles.apStyle_80}>
+                        <span className={styles.apStyle_81}>
                           Custom Size:
                         </span>
                         <input
@@ -3942,27 +2912,12 @@ export function AddProductView(): React.JSX.Element {
                               handleAddCustomShoeSize();
                             }
                           }}
-                          style={{
-                            width: '100px',
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            border: `1px solid ${tokens.colorNeutralStroke1}`,
-                            fontSize: '11.5px',
-                          }}
+                          className={styles.apRemInput100}
                         />
                         <button
                           type="button"
                           onClick={handleAddCustomShoeSize}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '6px',
-                            border: `1px solid ${tokens.colorNeutralStroke1}`,
-                            backgroundColor: tokens.colorNeutralBackground3,
-                            color: tokens.colorNeutralForeground1,
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
+                          className={styles.apRemBtnNeutralSolid}
                         >
                           + Add Size
                         </button>
@@ -3971,29 +2926,19 @@ export function AddProductView(): React.JSX.Element {
 
                     {/* Article Summary Bar */}
                     <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '8px',
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        backgroundColor: 'rgba(229, 25, 55, 0.08)',
-                        border: '1px solid rgba(229, 25, 55, 0.25)',
-                      }}
+                      className={styles.apRemBoxRedTranslucent}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      <div className={styles.apStyle_85}>
+                        <span className={styles.apStyle_29}>
                           Article Summary:
                         </span>
-                        <span style={{ fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
+                        <span className={styles.apStyle_86}>
                           <strong>{selectedShoeSizes.length}</strong> Sizes Selected ({selectedShoeSizes.join(', ') || 'None'})
                         </span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                        <span style={{ fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
-                          Article Price: <strong style={{ color: '#10b981' }}>{activePriceNum > 0 ? formatPKR(activePriceNum) : 'Not Set'}</strong>
+                      <div className={styles.apStyle_87}>
+                        <span className={styles.apStyle_86}>
+                          Article Price: <strong className={styles.apStyle_88}>{activePriceNum > 0 ? formatPKR(activePriceNum) : 'Not Set'}</strong>
                         </span>
                       </div>
                     </div>
@@ -4003,21 +2948,21 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 4. Dedicated Retail Shades & Colors ── */}
               {pricingType === 'retail_shades' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_89}>
                     <Palette size={18} color="#E51937" />
                     <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      <span className={styles.apStyle_49}>
                         Color Shades (#01, #08, #14, #22)
                       </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                      <p className={styles.apStyle_50}>
                         Enter pricing for nail polish or lipstick shades
                       </p>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                  <div className={styles.apStyle_54}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         #01 Red
                       </label>
                       <CustomInput
@@ -4028,7 +2973,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         #08 Nude
                       </label>
                       <CustomInput
@@ -4039,7 +2984,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         #14 Maroon
                       </label>
                       <CustomInput
@@ -4050,7 +2995,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         #22 Gold
                       </label>
                       <CustomInput
@@ -4066,21 +3011,21 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 5. Dedicated Retail Volumes & Packs ── */}
               {pricingType === 'retail_volumes' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_89}>
                     <Package size={18} color="#E51937" />
                     <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      <span className={styles.apStyle_49}>
                         Pack & Bottle Volumes (125ml, 250ml, 400ml)
                       </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                      <p className={styles.apStyle_50}>
                         Enter pricing for lotion, shampoo, or powder sizes
                       </p>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  <div className={styles.apStyle_90}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         125ml / 100g (Small)
                       </label>
                       <CustomInput
@@ -4091,7 +3036,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         250ml / 200g (Medium)
                       </label>
                       <CustomInput
@@ -4102,7 +3047,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         400ml / Family Pack (Large)
                       </label>
                       <CustomInput
@@ -4118,23 +3063,23 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 6a. Dedicated Sanitary Pipe & Fitting Diameters (1/2" to 4") ── */}
               {pricingType === 'retail_sanitary_sizes' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_48}>
+                    <div className={styles.apStyle_28}>
                       <Droplets size={18} color="#0284C7" />
                       <div>
-                        <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        <span className={styles.apStyle_49}>
                           Pipe & Fitting Sizes Matrix (1/2" to 4" / 20mm to 110mm)
                         </span>
-                        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        <p className={styles.apStyle_50}>
                           PPRC, UPVC, CPVC pipes, elbows, tees, sockets, unions & valves pricing
                         </p>
                       </div>
                     </div>
 
                     {/* Quick Auto Multiplier */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>
+                    <div className={styles.apStyle_6}>
+                      <span className={styles.apStyle_51}>
                         1/2" Base Price:
                       </span>
                       <input
@@ -4142,7 +3087,7 @@ export function AddProductView(): React.JSX.Element {
                         placeholder="e.g. 150"
                         value={bulkSanitaryPrice}
                         onChange={(e) => setBulkSanitaryPrice(e.target.value)}
-                        style={{ width: '90px', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${tokens.colorNeutralStroke1}`, fontSize: '12px' }}
+                        className={styles.apStyle_52}
                       />
                       <button
                         type="button"
@@ -4163,16 +3108,16 @@ export function AddProductView(): React.JSX.Element {
                             rebuildVariantsFromSanitarySizes(updated);
                           }
                         }}
-                        style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#0284C7', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                        className={styles.apStyle_91}
                       >
                         Auto Multipliers
                       </button>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                  <div className={styles.apStyle_54}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         1/2" (20mm)
                       </label>
                       <CustomInput
@@ -4183,7 +3128,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         3/4" (25mm)
                       </label>
                       <CustomInput
@@ -4194,7 +3139,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         1" (32mm)
                       </label>
                       <CustomInput
@@ -4205,7 +3150,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         1.25" / Sawa Inch (40mm)
                       </label>
                       <CustomInput
@@ -4216,7 +3161,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         1.5" / Dhed Inch (50mm)
                       </label>
                       <CustomInput
@@ -4227,7 +3172,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         2" / Do Inch (63mm)
                       </label>
                       <CustomInput
@@ -4238,7 +3183,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         3" (90mm)
                       </label>
                       <CustomInput
@@ -4249,7 +3194,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         4" (110mm)
                       </label>
                       <CustomInput
@@ -4265,23 +3210,23 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 6b. Dedicated Sanitary Pipe Lengths (Per Foot / 10ft / 13ft / 20ft) ── */}
               {pricingType === 'retail_pipe_lengths' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_48}>
+                    <div className={styles.apStyle_28}>
                       <Ruler size={18} color="#0284C7" />
                       <div>
-                        <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        <span className={styles.apStyle_49}>
                           Pipe Lengths & Running Foot (FT / 10ft / 13ft / 20ft)
                         </span>
-                        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        <p className={styles.apStyle_50}>
                           Pipes sold per running foot or standard full length pipes (PPRC standard length is 13ft / 4m)
                         </p>
                       </div>
                     </div>
 
                     {/* Quick Auto Lengths */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>
+                    <div className={styles.apStyle_6}>
+                      <span className={styles.apStyle_51}>
                         Per Foot Price:
                       </span>
                       <input
@@ -4289,7 +3234,7 @@ export function AddProductView(): React.JSX.Element {
                         placeholder="e.g. 80"
                         value={bulkPipeFootPrice}
                         onChange={(e) => setBulkPipeFootPrice(e.target.value)}
-                        style={{ width: '90px', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${tokens.colorNeutralStroke1}`, fontSize: '12px' }}
+                        className={styles.apStyle_52}
                       />
                       <button
                         type="button"
@@ -4306,16 +3251,16 @@ export function AddProductView(): React.JSX.Element {
                             rebuildVariantsFromPipeLengthSizes(updated);
                           }
                         }}
-                        style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#0284C7', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                        className={styles.apStyle_91}
                       >
                         Auto Fill Lengths
                       </button>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                  <div className={styles.apStyle_44}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Per Foot (1 FT)
                       </label>
                       <CustomInput
@@ -4326,7 +3271,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         10 Feet Length (Standard)
                       </label>
                       <CustomInput
@@ -4337,7 +3282,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         13 Feet Length (Standard PPRC)
                       </label>
                       <CustomInput
@@ -4348,7 +3293,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         20 Feet Length
                       </label>
                       <CustomInput
@@ -4364,22 +3309,22 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 6c. Dedicated Showers & Taps Sets (Single Toti vs Complete Set) ── */}
               {pricingType === 'retail_bath_sets' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_89}>
                     <Sparkles size={18} color="#0284C7" />
                     <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      <span className={styles.apStyle_49}>
                         Showers & Taps Sets (Single Toti vs Complete Bathroom Set)
                       </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                      <p className={styles.apStyle_50}>
                         Enter individual pricing for bib cocks, muslim shower, shower head, or complete master bathroom set
                       </p>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                  <div className={styles.apStyle_44}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Single Piece (Toti / Bib Cock)
                       </label>
                       <CustomInput
@@ -4390,7 +3335,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Muslim Shower Only
                       </label>
                       <CustomInput
@@ -4401,7 +3346,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Shower Head & Arm
                       </label>
                       <CustomInput
@@ -4412,7 +3357,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Complete Bath Set (Taps+Mixer+Shower)
                       </label>
                       <CustomInput
@@ -4428,23 +3373,23 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 6. Dedicated Hardware Paint Containers (Quarter, Gallon, Balti) ── */}
               {pricingType === 'retail_paint' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_48}>
+                    <div className={styles.apStyle_28}>
                       <Wrench size={18} color="#D97706" />
                       <div>
-                        <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        <span className={styles.apStyle_49}>
                           Paint Container Volumes (Quarter 1L, Gallon 4L, Balti 16L)
                         </span>
-                        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        <p className={styles.apStyle_50}>
                           Enter pricing for paint tins, emulsions, distempers or coatings
                         </p>
                       </div>
                     </div>
 
                     {/* Quick Same Price tool */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>
+                    <div className={styles.apStyle_6}>
+                      <span className={styles.apStyle_51}>
                         Quarter Base Price:
                       </span>
                       <input
@@ -4452,7 +3397,7 @@ export function AddProductView(): React.JSX.Element {
                         placeholder="e.g. 950"
                         value={bulkPaintPrice}
                         onChange={(e) => setBulkPaintPrice(e.target.value)}
-                        style={{ width: '90px', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${tokens.colorNeutralStroke1}`, fontSize: '12px' }}
+                        className={styles.apStyle_52}
                       />
                       <button
                         type="button"
@@ -4468,16 +3413,16 @@ export function AddProductView(): React.JSX.Element {
                             rebuildVariantsFromPaintSizes(updated);
                           }
                         }}
-                        style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#D97706', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                        className={styles.apStyle_92}
                       >
                         Auto Fill Matrix
                       </button>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  <div className={styles.apStyle_90}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Quarter (1 Liter Tin)
                       </label>
                       <CustomInput
@@ -4488,7 +3433,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Gallon (4 Liters Tin)
                       </label>
                       <CustomInput
@@ -4499,7 +3444,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Balti / Bucket (16 Liters Drum)
                       </label>
                       <CustomInput
@@ -4515,22 +3460,22 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 7. Dedicated Electrical Wire Gauges & Coils ── */}
               {pricingType === 'retail_wire' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_48}>
+                    <div className={styles.apStyle_28}>
                       <Zap size={18} color="#EAB308" />
                       <div>
-                        <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                        <span className={styles.apStyle_49}>
                           Wire Gauge & Coil Sizes (1.5mm, 2.5mm, 7/29, 7/36, Coil 90m)
                         </span>
-                        <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                        <p className={styles.apStyle_50}>
                           Enter pricing for copper cables and coil bundles
                         </p>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2 }}>
+                    <div className={styles.apStyle_6}>
+                      <span className={styles.apStyle_51}>
                         Same Rate:
                       </span>
                       <input
@@ -4538,7 +3483,7 @@ export function AddProductView(): React.JSX.Element {
                         placeholder="e.g. 450"
                         value={bulkWirePrice}
                         onChange={(e) => setBulkWirePrice(e.target.value)}
-                        style={{ width: '90px', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${tokens.colorNeutralStroke1}`, fontSize: '12px' }}
+                        className={styles.apStyle_52}
                       />
                       <button
                         type="button"
@@ -4555,16 +3500,16 @@ export function AddProductView(): React.JSX.Element {
                             rebuildVariantsFromWireSizes(updated);
                           }
                         }}
-                        style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: '#EAB308', color: '#000', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                        className={styles.apStyle_93}
                       >
                         Auto Fill
                       </button>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                  <div className={styles.apStyle_94}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         1.5mm Cable
                       </label>
                       <CustomInput
@@ -4575,7 +3520,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         2.5mm Cable
                       </label>
                       <CustomInput
@@ -4586,7 +3531,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         7/29 Wire
                       </label>
                       <CustomInput
@@ -4597,7 +3542,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         7/36 Wire
                       </label>
                       <CustomInput
@@ -4608,7 +3553,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Coil (90m Roll)
                       </label>
                       <CustomInput
@@ -4624,22 +3569,22 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 8. Dedicated LED Wattage Variants ── */}
               {pricingType === 'retail_wattage' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_89}>
                     <Zap size={18} color="#EAB308" />
                     <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      <span className={styles.apStyle_49}>
                         LED Bulb / Panel Wattages (5W, 12W, 18W, 24W)
                       </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                      <p className={styles.apStyle_50}>
                         Enter pricing for bulbs and ceiling lights by wattage
                       </p>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                  <div className={styles.apStyle_54}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         5 Watt
                       </label>
                       <CustomInput
@@ -4650,7 +3595,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         12 Watt
                       </label>
                       <CustomInput
@@ -4661,7 +3606,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         18 Watt
                       </label>
                       <CustomInput
@@ -4672,7 +3617,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         24 Watt
                       </label>
                       <CustomInput
@@ -4688,22 +3633,22 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 9. Dedicated Pharmacy Strip & Box ── */}
               {pricingType === 'retail_pharma_strip' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_89}>
                     <HeartPulse size={18} color="#0284C7" />
                     <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      <span className={styles.apStyle_49}>
                         Medicine Strip & Full Box
                       </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                      <p className={styles.apStyle_50}>
                         Enter pricing for single blister strip and complete box pack
                       </p>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                  <div className={styles.apStyle_95}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Strip (10 Tablets)
                       </label>
                       <CustomInput
@@ -4714,7 +3659,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Full Box (100 Tablets)
                       </label>
                       <CustomInput
@@ -4730,22 +3675,22 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 10. Dedicated Pharmacy Syrup Volumes ── */}
               {pricingType === 'retail_pharma_syrup' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_89}>
                     <Package size={18} color="#0284C7" />
                     <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      <span className={styles.apStyle_49}>
                         Syrup & Suspension Bottles (60ml, 120ml)
                       </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                      <p className={styles.apStyle_50}>
                         Enter pricing for pediatric and standard syrup bottles
                       </p>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                  <div className={styles.apStyle_95}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         60ml Bottle
                       </label>
                       <CustomInput
@@ -4756,7 +3701,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         120ml Bottle
                       </label>
                       <CustomInput
@@ -4772,22 +3717,22 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 11. Dedicated Electronics Storage Variants ── */}
               {pricingType === 'retail_storage' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_89}>
                     <Smartphone size={18} color="#3B82F6" />
                     <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      <span className={styles.apStyle_49}>
                         Internal Storage (64GB, 128GB, 256GB, 512GB)
                       </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                      <p className={styles.apStyle_50}>
                         Enter pricing for smartphones, tablets or memory devices
                       </p>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                  <div className={styles.apStyle_54}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         64GB
                       </label>
                       <CustomInput
@@ -4798,7 +3743,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         128GB
                       </label>
                       <CustomInput
@@ -4809,7 +3754,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         256GB
                       </label>
                       <CustomInput
@@ -4820,7 +3765,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         512GB
                       </label>
                       <CustomInput
@@ -4836,22 +3781,22 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 12. Dedicated Bakery Sweets Box ── */}
               {pricingType === 'retail_bakery' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_89}>
                     <Cake size={18} color="#F59E0B" />
                     <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      <span className={styles.apStyle_49}>
                         Sweets / Mithai Packing Box (250g, 500g, 1 KG, 2 KG)
                       </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                      <p className={styles.apStyle_50}>
                         Enter packing rates for traditional sweets and confectionery
                       </p>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                  <div className={styles.apStyle_54}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         250g Box
                       </label>
                       <CustomInput
@@ -4862,7 +3807,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         500g Box (Half KG)
                       </label>
                       <CustomInput
@@ -4873,7 +3818,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         1 KG Box
                       </label>
                       <CustomInput
@@ -4884,7 +3829,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         2 KG Family Box
                       </label>
                       <CustomInput
@@ -4900,22 +3845,22 @@ export function AddProductView(): React.JSX.Element {
 
               {/* ── 13. Dedicated Single vs Carton Packs ── */}
               {pricingType === 'retail_packs' && (
-                <div style={{ marginTop: '16px', padding: '14px', borderRadius: '10px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <div className={styles.apStyle_47}>
+                  <div className={styles.apStyle_89}>
                     <Boxes size={18} color="#059669" />
                     <div>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: tokens.colorNeutralForeground1 }}>
+                      <span className={styles.apStyle_49}>
                         Single Piece vs Wholesale Carton / Box
                       </span>
-                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: tokens.colorNeutralForeground3 }}>
+                      <p className={styles.apStyle_50}>
                         Enter individual retail price and whole carton wholesale price
                       </p>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                  <div className={styles.apStyle_95}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Single Piece (Retail)
                       </label>
                       <CustomInput
@@ -4926,7 +3871,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_55}>
                         Full Carton / Box (Wholesale)
                       </label>
                       <CustomInput
@@ -4943,13 +3888,13 @@ export function AddProductView(): React.JSX.Element {
 
               {/* Dedicated Half / Full Portion Size Pricing */}
               {pricingType === 'halffull' && (
-                <div style={{ marginTop: '16px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: tokens.colorNeutralForeground1, marginBottom: '8px' }}>
+                <div className={styles.apStyle_42}>
+                  <div className={styles.apStyle_43}>
                     Portion Size Pricing (PKR)
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                  <div className={styles.apStyle_96}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         Half Portion
                       </label>
                       <CustomInput
@@ -4960,7 +3905,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         Full Portion
                       </label>
                       <CustomInput
@@ -4976,14 +3921,14 @@ export function AddProductView(): React.JSX.Element {
 
               {/* Dedicated Cold Drink Sizes (Can, 500ml, 1L, 1.5L) */}
               {pricingType === 'drinks' && (
-                <div style={{ marginTop: '16px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: tokens.colorNeutralForeground1, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <DrinkToGo20Regular style={{ width: 16, height: 16, color: '#E51937' }} />
+                <div className={styles.apStyle_42}>
+                  <div className={styles.apStyle_97}>
+                    <DrinkToGo20Regular className={styles.apStyle_98} />
                     <span>Cold Drink Size Pricing (PKR)</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                  <div className={styles.apStyle_44}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         Tin Pack (Can 250ml)
                       </label>
                       <CustomInput
@@ -4994,7 +3939,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         Half Liter (500ml)
                       </label>
                       <CustomInput
@@ -5005,7 +3950,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         1.0 Liter
                       </label>
                       <CustomInput
@@ -5016,7 +3961,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         1.5 Liter (Jumbo)
                       </label>
                       <CustomInput
@@ -5032,14 +3977,14 @@ export function AddProductView(): React.JSX.Element {
 
               {/* Dedicated Mineral Water Sizes (Small, Large) */}
               {pricingType === 'water' && (
-                <div style={{ marginTop: '16px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: tokens.colorNeutralForeground1, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Drop20Regular style={{ width: 16, height: 16, color: '#0284C7' }} />
+                <div className={styles.apStyle_42}>
+                  <div className={styles.apStyle_97}>
+                    <Drop20Regular className={styles.apStyle_99} />
                     <span>Mineral Water Size Pricing (PKR)</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                  <div className={styles.apStyle_96}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         Small Bottle (500ml)
                       </label>
                       <CustomInput
@@ -5050,7 +3995,7 @@ export function AddProductView(): React.JSX.Element {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: tokens.colorNeutralForeground2 }}>
+                      <label className={styles.apStyle_45}>
                         Large Bottle (1.5L)
                       </label>
                       <CustomInput
@@ -5120,13 +4065,13 @@ export function AddProductView(): React.JSX.Element {
                             onChange={() => {}}
                             error={productForm.formState.errors.openingStock?.message}
                           />
-                          <div style={{ marginTop: '4px', fontSize: '11px', color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              <Package style={{ width: 13, height: 13 }} />
+                          <div className={styles.apStyle_100}>
+                            <span className={styles.apStyle_101}>
+                              <Package className={styles.apStyle_102} />
                               Initial stock: <strong>0</strong> (Add via Stock In)
                             </span>
                             {watchedCategory && (
-                              <span style={{ color: '#2563EB', fontWeight: 600 }}>
+                              <span className={styles.apStyle_103}>
                                 Category &quot;{watchedCategory}&quot;: {categoryStockInfo.totalStock} in stock ({categoryStockInfo.count} items)
                               </span>
                             )}
@@ -5140,22 +4085,11 @@ export function AddProductView(): React.JSX.Element {
                 {/* Helpful Banner for Rupees Budget Calculation Mode */}
                 {(pricingType === 'perkg' || pricingType === 'amountse') && (
                   <div
-                    style={{
-                      marginTop: '4px',
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      backgroundColor: 'rgba(229, 25, 55, 0.08)',
-                      border: '1px solid rgba(229, 25, 55, 0.25)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      fontSize: '12.5px',
-                      color: tokens.colorNeutralForeground1,
-                    }}
+                    className={styles.apRemSaleNoticeBox}
                   >
-                    <Scales20Regular style={{ width: 22, height: 22, color: '#E51937', flexShrink: 0 }} />
+                    <Scales20Regular className={styles.apStyle_105} />
                     <div>
-                      <b style={{ color: '#E51937' }}>Rupees Sale (Budget Mode Active):</b> Cashier can enter exact Rupee amount (e.g. Rs 50 or Rs 100) on the POS Counter card, and the system will automatically calculate the weight.
+                      <b className={styles.apStyle_106}>Rupees Sale (Budget Mode Active):</b> Cashier can enter exact Rupee amount (e.g. Rs 50 or Rs 100) on the POS Counter card, and the system will automatically calculate the weight.
                     </div>
                   </div>
                 )}
@@ -5198,13 +4132,13 @@ export function AddProductView(): React.JSX.Element {
                           onChange={() => {}}
                           error={productForm.formState.errors.openingStock?.message}
                         />
-                          <div style={{ marginTop: '4px', fontSize: '11px', color: tokens.colorNeutralForeground3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              <Package style={{ width: 13, height: 13 }} />
+                          <div className={styles.apStyle_100}>
+                            <span className={styles.apStyle_101}>
+                              <Package className={styles.apStyle_102} />
                               Initial stock: <strong>0</strong> (Add via Stock In)
                             </span>
                           {watchedCategory && (
-                            <span style={{ color: '#2563EB', fontWeight: 600 }}>
+                            <span className={styles.apStyle_103}>
                               Category &quot;{watchedCategory}&quot;: {categoryStockInfo.totalStock} in stock ({categoryStockInfo.count} items)
                             </span>
                           )}
@@ -5263,10 +4197,9 @@ export function AddProductView(): React.JSX.Element {
                             type="button"
                             onClick={() => productForm.setValue('skuCode', generateRandomSku())}
                             title="Generate automatic random barcode"
-                            className={styles.linkBtn}
-                            style={{ fontWeight: 800, color: '#E51937', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            className={mergeClasses(styles.linkBtn, styles.apStyle_107)}
                           >
-                            <Flash20Regular style={{ width: 14, height: 14 }} />
+                            <Flash20Regular className={styles.apStyle_108} />
                             <span>Auto Barcode</span>
                           </button>
                         }
@@ -5335,15 +4268,7 @@ export function AddProductView(): React.JSX.Element {
                           key={u}
                           type="button"
                           onClick={() => productForm.setValue('unit', u)}
-                          className={styles.presetChip}
-                          style={{
-                            boxSizing: 'border-box',
-                            fontWeight: 600,
-                            border: `1.5px solid ${isSelected ? profileConfig.accentColor : tokens.colorNeutralStroke1}`,
-                            backgroundColor: isSelected ? `${profileConfig.accentColor}25` : tokens.colorNeutralBackground1,
-                            color: isSelected ? profileConfig.accentColor : tokens.colorNeutralForeground2,
-                            transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
-                          }}
+                          className={mergeClasses(styles.presetChip, styles.apAccentBoxBase, isSelected ? undefined : styles.apAccentBoxInactive)} ref={(el) => { if (el && isSelected) { el.style.borderColor = profileConfig.accentColor; el.style.backgroundColor = `${profileConfig.accentColor}25`; el.style.color = profileConfig.accentColor; } }}
                         >
                           {u}
                         </button>
@@ -5357,21 +4282,12 @@ export function AddProductView(): React.JSX.Element {
             {/* ── Custom Product Variants & Size Matrix Section (Only when Custom Variants is selected) ── */}
             {pricingType === 'custom' && (
               <div
-                className={styles.variantSectionBox}
-                style={{
-                  border: `1px solid ${hasVariants || profileConfig.suggestedSizes.length > 0 ? `${profileConfig.accentColor}44` : tokens.colorNeutralStroke1}`,
-                  backgroundColor: hasVariants || profileConfig.suggestedSizes.length > 0 ? `${profileConfig.accentColor}08` : tokens.colorNeutralBackground3,
-                }}
+                className={mergeClasses(styles.variantSectionBox, styles.apAccentWrapCard)} ref={(el) => { if (el && (hasVariants || profileConfig.suggestedSizes.length > 0)) { el.style.borderColor = `${profileConfig.accentColor}44`; el.style.backgroundColor = `${profileConfig.accentColor}08`; } }}
               >
                 <div className={styles.variantHeaderRow}>
                   <div className={styles.variantHeaderLeft}>
                     <span
-                      className={styles.variantProfileTag}
-                      style={{
-                        backgroundColor: `${profileConfig.accentColor}22`,
-                        color: profileConfig.accentColor,
-                        border: `1px solid ${profileConfig.accentColor}44`,
-                      }}
+                      className={mergeClasses(styles.variantProfileTag, styles.apCategoryBadgeBase)} ref={(el) => { if (el) { el.style.backgroundColor = `${profileConfig.accentColor}22`; el.style.color = profileConfig.accentColor; el.style.borderColor = `${profileConfig.accentColor}44`; } }}
                     >
                       {profileConfig.shortTag}
                     </span>
@@ -5386,7 +4302,7 @@ export function AddProductView(): React.JSX.Element {
                     icon={<Add20Regular />}
                     onClick={handleAddCustomVariant}
                     className={styles.variantCustomBtn}
-                    style={{ color: profileConfig.accentColor }}
+                    ref={(el) => { if (el) el.style.color = profileConfig.accentColor; }}
                   >
                     + Custom Variant
                   </Button>
@@ -5406,18 +4322,10 @@ export function AddProductView(): React.JSX.Element {
                             key={size}
                             type="button"
                             onClick={() => handleToggleSize(size)}
-                            className={styles.variantChipBtn}
-                            style={{
-                              boxSizing: 'border-box',
-                              border: `1.5px solid ${isSelected ? profileConfig.accentColor : tokens.colorNeutralStroke1}`,
-                              backgroundColor: isSelected ? `${profileConfig.accentColor}22` : tokens.colorNeutralBackground1,
-                              color: isSelected ? profileConfig.accentColor : tokens.colorNeutralForeground1,
-                              fontWeight: 600,
-                              transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
-                            }}
+                            className={mergeClasses(styles.variantChipBtn, styles.apAccentBoxBase, isSelected ? undefined : styles.apAccentBoxInactive)} ref={(el) => { if (el && isSelected) { el.style.borderColor = profileConfig.accentColor; el.style.backgroundColor = `${profileConfig.accentColor}22`; el.style.color = profileConfig.accentColor; } }}
                           >
                             <span>{size}</span>
-                            {isSelected && <Checkmark16Filled style={{ width: 12, height: 12 }} />}
+                            {isSelected && <Checkmark16Filled className={styles.apStyle_114} />}
                           </button>
                         );
                       })}
@@ -5431,7 +4339,7 @@ export function AddProductView(): React.JSX.Element {
                     <div className={styles.variantTableHeaderRow}>
                       <Caption1 className={styles.variantTableCaption}>
                         Configured Variants ({variants.length}) — Total Variant Stock:{' '}
-                        <strong style={{ color: tokens.colorNeutralForeground1 }}>
+                        <strong className={styles.apStyle_115}>
                           {variants.reduce((sum, v) => sum + (v.stock || 0), 0)} {watchedUnit || 'PCS'}
                         </strong>
                       </Caption1>
@@ -5457,7 +4365,7 @@ export function AddProductView(): React.JSX.Element {
 
                         return (
                           <div key={v.id} className={styles.variantRowItem}>
-                            <div className={styles.variantRowLabel} style={{ color: profileConfig.accentColor }}>
+                            <div className={styles.variantRowLabel} ref={(el) => { if (el) el.style.color = profileConfig.accentColor; }}>
                               {v.label}
                             </div>
 
@@ -5587,33 +4495,25 @@ export function AddProductView(): React.JSX.Element {
                 </div>
 
                 {/* 4 Parts Details (90px) */}
-                <div className={styles.previewDetailsWrap} style={{ height: 'auto', minHeight: '80px', padding: '8px 10px' }}>
+                <div className={mergeClasses(styles.previewDetailsWrap, styles.apStyle_116)}>
                   <div>
                     <div className={styles.previewProductTitle}>
                       {watchedName || 'Product Title'}
                     </div>
-                    <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                    <div className={styles.apStyle_117}>
                       {productForm.watch('description') || watchedCategory || 'Item description'}
                     </div>
 
                     {/* Segmented Size Badges */}
                     {variants.length > 0 && (
-                      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(variants.length, 4)}, 1fr)`, border: `1px solid ${tokens.colorNeutralStroke1}`, borderRadius: '4px', overflow: 'hidden', marginTop: '5px' }}>
+                      <div className={styles.apPreviewTabHeader} ref={(el) => { if (el) el.style.gridTemplateColumns = `repeat(${Math.min(variants.length, 4)}, 1fr)`; }}>
                         {variants.slice(0, 4).map((v, idx) => (
                           <div
                             key={v.id}
-                            style={{
-                              padding: '2px 1px',
-                              textAlign: 'center',
-                              backgroundColor: idx === 0 ? '#E51937' : 'transparent',
-                              color: idx === 0 ? '#FFFFFF' : tokens.colorNeutralForeground3,
-                              fontSize: '8.5px',
-                              fontWeight: 700,
-                              lineHeight: 1.1,
-                            }}
+                            className={idx === 0 ? styles.apPreviewTabFirst : styles.apPreviewTabOther}
                           >
                             <div>{v.label}</div>
-                            <div style={{ fontSize: '7.5px', opacity: 0.85 }}>{v.price ? v.price : '—'}</div>
+                            <div className={styles.apStyle_120}>{v.price ? v.price : '—'}</div>
                           </div>
                         ))}
                       </div>
@@ -5621,20 +4521,20 @@ export function AddProductView(): React.JSX.Element {
 
                     {/* Rupees / Amount Quick Strip Preview for Weighed Items */}
                     {variants.length === 0 && (pricingType === 'perkg' || pricingType === 'amountse') && (
-                      <div style={{ marginTop: '5px', padding: '4px', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: '4px', border: `1px solid ${tokens.colorNeutralStroke1}` }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2px' }}>
+                      <div className={styles.apStyle_121}>
+                        <div className={styles.apStyle_122}>
                           {[50, 100, 250].map((rs) => (
-                            <div key={rs} style={{ textAlign: 'center', padding: '1px 0', fontSize: '7.5px', fontWeight: 700, color: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.1)', borderRadius: '2px' }}>
+                            <div key={rs} className={styles.apStyle_123}>
                               Rs.{rs}
                             </div>
                           ))}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginTop: '3px' }}>
-                          <span style={{ fontSize: '7.5px', fontWeight: 800, color: '#E51937' }}>Rs.</span>
-                          <div style={{ flex: 1, height: '14px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '2px', fontSize: '7.5px', padding: '0 3px', display: 'flex', alignItems: 'center', color: tokens.colorNeutralForeground3 }}>
+                        <div className={styles.apStyle_124}>
+                          <span className={styles.apStyle_125}>Rs.</span>
+                          <div className={styles.apStyle_126}>
                             70
                           </div>
-                          <div style={{ backgroundColor: '#E51937', color: '#fff', fontSize: '7px', fontWeight: 700, padding: '1px 3px', borderRadius: '2px' }}>
+                          <div className={styles.apStyle_127}>
                             + 117g
                           </div>
                         </div>
@@ -5642,32 +4542,20 @@ export function AddProductView(): React.JSX.Element {
                     )}
                   </div>
 
-                  <div className={styles.previewBottomRow} style={{ marginTop: '6px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#10B981', display: 'flex', alignItems: 'baseline' }}>
+                  <div className={mergeClasses(styles.previewBottomRow, styles.apStyle_128)}>
+                    <div className={styles.apStyle_129}>
                       <span>{watchedPrice ? `${watchedPrice.toLocaleString()} PKR` : '600 PKR'}</span>
                       {(pricingType === 'perkg' || pricingType === 'amountse') && (
-                        <span style={{ fontSize: '9px', fontWeight: 600, color: tokens.colorNeutralForeground3, marginLeft: '2px' }}>
+                        <span className={styles.apStyle_130}>
                           / {watchedUnit || 'KG'}
                         </span>
                       )}
                     </div>
                     <button
                       type="button"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        border: 'none',
-                        backgroundColor: '#E51937',
-                        color: '#ffffff',
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        cursor: 'default',
-                      }}
+                      className={styles.apRemBtnRedPillSmall}
                     >
-                      <Add20Regular style={{ width: 12, height: 12 }} />
+                      <Add20Regular className={styles.apStyle_114} />
                       <span>Add</span>
                     </button>
                   </div>
@@ -5752,7 +4640,7 @@ export function AddProductView(): React.JSX.Element {
                   render={({ field }) => (
                     <CustomSelect
                       label="Industry Profile (Size & Unit Presets)"
-                      value={field.value || (watchedCatModule === 'fastfood' ? 'food' : 'standard')}
+                      value={addCatProfileOptions.some((opt) => opt.value === field.value) ? field.value : (addCatProfileOptions[0]?.value || (watchedCatModule === 'fastfood' ? 'food' : 'standard'))}
                       onChange={(val) => {
                         const newProf = val as CategoryProfile;
                         field.onChange(newProf);
@@ -5779,8 +4667,8 @@ export function AddProductView(): React.JSX.Element {
 
               {/* 3. Select Category */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                  <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                <div className={styles.apStyle_132}>
+                  <span className={styles.apStyle_81}>
                     {isAddCatCustomName ? 'Type any custom category name' : 'Choose preset category or type custom'}
                   </span>
                   <button
@@ -5793,15 +4681,7 @@ export function AddProductView(): React.JSX.Element {
                         categoryForm.setValue('name', addCatDefaultOptions[0]?.value || '');
                       }
                     }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#E51937',
-                      fontSize: '11.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
+                    className={styles.apRemLinkRedPlain}
                   >
                     {isAddCatCustomName ? '← Choose from Presets' : '+ Custom Name'}
                   </button>
@@ -5842,22 +4722,14 @@ export function AddProductView(): React.JSX.Element {
 
               {/* 4. Sab Se Neechay: Preset Units & Sizes preview */}
               {addCatProfileConfig && (
-                <div style={{ padding: '8px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke2}`, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className={styles.apStyle_134}>
                   {addCatProfileConfig.suggestedUnits && addCatProfileConfig.suggestedUnits.length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>Preset Units:</span>
+                    <div className={styles.apStyle_135}>
+                      <span className={styles.apStyle_136}>Preset Units:</span>
                       {addCatProfileConfig.suggestedUnits.map((unit) => (
                         <span
                           key={unit}
-                          style={{
-                            fontSize: '10.5px',
-                            fontWeight: 600,
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            backgroundColor: tokens.colorNeutralBackground1,
-                            border: `1px solid ${tokens.colorNeutralStroke1}`,
-                            color: tokens.colorNeutralForeground1,
-                          }}
+                          className={styles.apRemBadgeStroke1}
                         >
                           {unit}
                         </span>
@@ -5866,20 +4738,12 @@ export function AddProductView(): React.JSX.Element {
                   )}
 
                   {addCatProfileConfig.suggestedSizes && addCatProfileConfig.suggestedSizes.length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>Preset Sizes:</span>
+                    <div className={styles.apStyle_135}>
+                      <span className={styles.apStyle_136}>Preset Sizes:</span>
                       {addCatProfileConfig.suggestedSizes.map((size) => (
                         <span
                           key={size}
-                          style={{
-                            fontSize: '10.5px',
-                            fontWeight: 600,
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            backgroundColor: `${addCatProfileConfig.accentColor}18`,
-                            border: `1px solid ${addCatProfileConfig.accentColor}40`,
-                            color: addCatProfileConfig.accentColor,
-                          }}
+                          className={styles.apCategoryBadgeBase} ref={(el) => { if (el) { el.style.backgroundColor = `${addCatProfileConfig.accentColor}18`; el.style.borderColor = `${addCatProfileConfig.accentColor}40`; el.style.color = addCatProfileConfig.accentColor; } }}
                         >
                           {size}
                         </span>

@@ -657,9 +657,6 @@ export const posApi = {
               return { ...rk, synced: 1 as const };
             });
             await offlineDb.khatas.bulkPut(merged);
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('pos_khata_updated'));
-            }
           }
         }
       } catch {}
@@ -777,25 +774,27 @@ export const posApi = {
       window.dispatchEvent(new CustomEvent('pos_khata_updated', { detail: record }));
     }
 
-    // 3. Opportunistic cloud push if online
+    // 3. Non-blocking cloud sync in background
     if (typeof navigator === 'undefined' || navigator.onLine) {
-      try {
-        const base = await resolveApiUrl();
-        const tenantHeaders = await getTenantHeaders();
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+      (async () => {
+        try {
+          const base = await resolveApiUrl();
+          const tenantHeaders = await getTenantHeaders();
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-        const res = await fetch(`${base}/api/khata${isNew ? '' : `/${record.id}`}`, {
-          method: isNew ? 'POST' : 'PUT',
-          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-          body: JSON.stringify(record),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        if (res.ok) {
-          await offlineDb.khatas.update(record.id, { synced: 1 });
-        }
-      } catch {}
+          const res = await fetch(`${base}/api/khata${isNew ? '' : `/${record.id}`}`, {
+            method: isNew ? 'POST' : 'PUT',
+            headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+            body: JSON.stringify(record),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            await offlineDb.khatas.update(record.id, { synced: 1 });
+          }
+        } catch {}
+      })();
     }
 
     return record;
@@ -849,31 +848,33 @@ export const posApi = {
       window.dispatchEvent(new CustomEvent('pos_khata_updated', { detail: { khataId: params.khataId, newDebt } }));
     }
 
-    // 4. Background push if online
+    // 4. Non-blocking cloud push in background
     if (typeof navigator === 'undefined' || navigator.onLine) {
-      try {
-        const base = await resolveApiUrl();
-        const tenantHeaders = await getTenantHeaders();
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+      (async () => {
+        try {
+          const base = await resolveApiUrl();
+          const tenantHeaders = await getTenantHeaders();
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-        const res = await fetch(`${base}/api/khata/${params.khataId}/transaction`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-          body: JSON.stringify({
-            type: params.type,
-            amount: amt,
-            paymentMethod: params.paymentMethod || 'cash',
-            description: params.description,
-          }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        if (res.ok) {
-          await offlineDb.khataTransactions.update(txRecord.id, { synced: 1 });
-          await offlineDb.khatas.update(params.khataId, { synced: 1 });
-        }
-      } catch {}
+          const res = await fetch(`${base}/api/khata/${params.khataId}/transaction`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+            body: JSON.stringify({
+              type: params.type,
+              amount: amt,
+              paymentMethod: params.paymentMethod || 'cash',
+              description: params.description,
+            }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            await offlineDb.khataTransactions.update(txRecord.id, { synced: 1 });
+            await offlineDb.khatas.update(params.khataId, { synced: 1 });
+          }
+        } catch {}
+      })();
     }
 
     return txRecord;
@@ -893,12 +894,16 @@ export const posApi = {
       }
 
       if (typeof navigator === 'undefined' || navigator.onLine) {
-        const base = await resolveApiUrl();
-        const tenantHeaders = await getTenantHeaders();
-        await fetch(`${base}/api/khata/${id}`, {
-          method: 'DELETE',
-          headers: tenantHeaders,
-        });
+        (async () => {
+          try {
+            const base = await resolveApiUrl();
+            const tenantHeaders = await getTenantHeaders();
+            await fetch(`${base}/api/khata/${id}`, {
+              method: 'DELETE',
+              headers: tenantHeaders,
+            });
+          } catch {}
+        })();
       }
     } catch {}
   },

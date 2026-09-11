@@ -23,6 +23,7 @@ import { DynamicBar } from "@/components/ui/DynamicBar";
 import { Order } from "@/lib/types";
 import { formatPKR } from "@/lib/utils";
 import { KEYS, storage } from "@/lib/storage";
+import { useConfirmDialog, useAppToast } from "../../context/AppNotificationContext";
 import {
   calculateModuleMetrics,
   filterOrdersByTimeframe,
@@ -36,6 +37,8 @@ interface AnalyticsDashboardProps {
 }
 
 export function AnalyticsDashboard({ moduleFilter = "minimart" }: AnalyticsDashboardProps) {
+  const confirmModal = useConfirmDialog();
+  const { notifySuccess } = useAppToast();
   const { orders } = useOrders(moduleFilter === "all" ? undefined : moduleFilter);
   const { products: ffProducts } = useProducts("fastfood");
   const { products: mmProducts } = useProducts("minimart");
@@ -189,12 +192,19 @@ export function AnalyticsDashboard({ moduleFilter = "minimart" }: AnalyticsDashb
 
           <button
             type="button"
-            onClick={() => {
-              if (confirm("Reset all sales and order history data to zero (0)?")) {
+            onClick={async () => {
+              const ok = await confirmModal({
+                title: "Reset Sales Data",
+                message: "Reset all sales and order history data to zero (0)? This will clear all historical transactions from local storage.",
+                confirmLabel: "Reset Data",
+                intent: "danger",
+              });
+              if (ok) {
                 storage.setList(KEYS.orders, []);
                 if (typeof window !== "undefined") {
                   window.dispatchEvent(new Event("pos_orders_updated"));
                 }
+                notifySuccess("Sales history reset to zero");
               }
             }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-950/40 border border-red-500/30 text-xs font-semibold text-red-400 hover:bg-red-900/60 transition"

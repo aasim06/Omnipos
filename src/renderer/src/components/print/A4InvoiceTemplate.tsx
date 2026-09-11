@@ -1,4 +1,5 @@
 import React from 'react';
+import { makeStyles, mergeClasses } from '@fluentui/react-components';
 import { Order } from '@shared/types';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { formatPKR } from '@/lib/utils';
@@ -13,6 +14,420 @@ interface A4InvoiceTemplateProps {
   onClose: () => void;
   onPrint?: () => void;
 }
+
+const useStyles = makeStyles({
+  backdrop: {
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    backdropFilter: 'blur(4px)',
+    zIndex: 9999,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    overflowY: 'auto',
+    padding: '24px 16px',
+  },
+  toolbar: {
+    width: '100%',
+    maxWidth: '820px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '14px',
+    backgroundColor: '#1E293B',
+    padding: '12px 20px',
+    borderRadius: '12px',
+    color: '#FFFFFF',
+    boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+  },
+  toolbarLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  toolbarTitle: {
+    fontWeight: 700,
+    fontSize: '15px',
+  },
+  stageBadge: {
+    fontSize: '11px',
+    padding: '2px 8px',
+    borderRadius: '999px',
+    backgroundColor: '#10B981',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+  },
+  toolbarRight: {
+    display: 'flex',
+    gap: '10px',
+  },
+  printBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
+    padding: '8px 18px',
+    borderRadius: '8px',
+    fontWeight: 700,
+    fontSize: '13px',
+    cursor: 'pointer',
+    boxShadow: '0 4px 12px rgba(229,25,55,0.4)',
+  },
+  closeBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    backgroundColor: '#334155',
+    color: '#F1F5F9',
+    borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
+    padding: '8px 14px',
+    borderRadius: '8px',
+    fontWeight: 600,
+    fontSize: '13px',
+    cursor: 'pointer',
+  },
+  paper: {
+    width: '100%',
+    maxWidth: '820px',
+    backgroundColor: '#FFFFFF',
+    color: '#0F172A',
+    boxShadow: '0 15px 35px rgba(0,0,0,0.25)',
+    borderRadius: '4px',
+    padding: '40px 48px',
+    boxSizing: 'border-box',
+    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+    fontSize: '12px',
+    lineHeight: 1.5,
+  },
+  headerBlock: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: '2.5px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#0F172A',
+    paddingBottom: '18px',
+    marginBottom: '18px',
+  },
+  storeTitle: {
+    margin: 0,
+    fontSize: '24px',
+    fontWeight: 900,
+    color: '#0F172A',
+  },
+  headerNote: {
+    color: '#E51937',
+    fontWeight: 700,
+    fontSize: '11px',
+    marginTop: '2px',
+  },
+  storeAddress: {
+    color: '#475569',
+    fontSize: '11.5px',
+    marginTop: '4px',
+  },
+  storePhone: {
+    color: '#475569',
+    fontSize: '11.5px',
+  },
+  textRight: {
+    textAlign: 'right',
+  },
+  invoiceTitle: {
+    fontSize: '22px',
+    fontWeight: 900,
+    color: '#0F172A',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+  },
+  invoiceSubtitle: {
+    fontSize: '11px',
+    color: '#64748B',
+    fontWeight: 600,
+  },
+  metaBlock: {
+    marginTop: '12px',
+    fontSize: '12px',
+  },
+  metaLabel: {
+    color: '#64748B',
+  },
+  invoiceIdBold: {
+    color: '#E51937',
+    fontSize: '13px',
+  },
+  boldDark: {
+    color: '#0F172A',
+  },
+  customerBanner: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#E2E8F0', borderBottomColor: '#E2E8F0', borderLeftColor: '#E2E8F0', borderRightColor: '#E2E8F0',
+    borderRadius: '8px',
+    padding: '12px 16px',
+    marginBottom: '20px',
+  },
+  sectionSmallHeader: {
+    fontSize: '10px',
+    fontWeight: 800,
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  customerName: {
+    fontSize: '14px',
+    fontWeight: 800,
+    color: '#0F172A',
+    marginTop: '2px',
+  },
+  saleTypeSub: {
+    fontSize: '11.5px',
+    color: '#64748B',
+    marginTop: '2px',
+  },
+  saleTypeVal: {
+    textTransform: 'capitalize',
+    color: '#334155',
+  },
+  paidViaRow: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#0F172A',
+    marginTop: '2px',
+  },
+  paidViaText: {
+    color: '#10B981',
+    fontWeight: 800,
+    textTransform: 'uppercase',
+  },
+  statusSub: {
+    fontSize: '11.5px',
+    color: '#64748B',
+    marginTop: '2px',
+  },
+  itemsTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    marginBottom: '18px',
+  },
+  tableHeadTr: {
+    backgroundColor: '#0F172A',
+    color: '#FFFFFF',
+  },
+  thIndex: {
+    padding: '8px 10px',
+    textAlign: 'center',
+    width: '40px',
+    fontSize: '11px',
+    fontWeight: 700,
+  },
+  thDesc: {
+    padding: '8px 12px',
+    textAlign: 'left',
+    fontSize: '11px',
+    fontWeight: 700,
+  },
+  thQty: {
+    padding: '8px 10px',
+    textAlign: 'center',
+    width: '70px',
+    fontSize: '11px',
+    fontWeight: 700,
+  },
+  thRate: {
+    padding: '8px 12px',
+    textAlign: 'right',
+    width: '110px',
+    fontSize: '11px',
+    fontWeight: 700,
+  },
+  thAmount: {
+    padding: '8px 12px',
+    textAlign: 'right',
+    width: '120px',
+    fontSize: '11px',
+    fontWeight: 700,
+  },
+  tableRowEven: {
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  tableRowOdd: {
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+  },
+  tdIndex: {
+    padding: '10px 8px',
+    textAlign: 'center',
+    color: '#64748B',
+    fontWeight: 600,
+  },
+  tdDesc: {
+    padding: '10px 12px',
+  },
+  lineNameText: {
+    fontWeight: 700,
+    color: '#0F172A',
+    fontSize: '12.5px',
+  },
+  lineSpecText: {
+    fontSize: '11px',
+    color: '#E51937',
+    fontWeight: 600,
+  },
+  tdQty: {
+    padding: '10px 8px',
+    textAlign: 'center',
+    fontWeight: 700,
+    color: '#0F172A',
+    fontSize: '12.5px',
+  },
+  tdRate: {
+    padding: '10px 12px',
+    textAlign: 'right',
+    color: '#334155',
+    fontWeight: 600,
+  },
+  tdAmount: {
+    padding: '10px 12px',
+    textAlign: 'right',
+    fontWeight: 800,
+    color: '#0F172A',
+  },
+  totalsRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  wordsNoticeCol: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    paddingRight: '24px',
+  },
+  wordsLabel: {
+    fontSize: '10.5px',
+    color: '#64748B',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+  },
+  wordsVal: {
+    fontSize: '12.5px',
+    fontWeight: 700,
+    color: '#0F172A',
+    fontStyle: 'italic',
+    marginTop: '2px',
+  },
+  noticeBox: {
+    marginTop: '16px',
+    fontSize: '11px',
+    color: '#64748B',
+    lineHeight: 1.4,
+  },
+  totalsBox: {
+    width: '270px',
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: '#E2E8F0', borderBottomColor: '#E2E8F0', borderLeftColor: '#E2E8F0', borderRightColor: '#E2E8F0',
+    borderRadius: '8px',
+    padding: '12px 16px',
+  },
+  totalsLine: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '4px 0',
+    fontSize: '12px',
+  },
+  colorMuted: {
+    color: '#64748B',
+  },
+  weight700: {
+    fontWeight: 700,
+  },
+  discountLine: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '4px 0',
+    fontSize: '12px',
+    color: '#16A34A',
+  },
+  netPayableRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    paddingTop: '6px',
+    marginTop: '6px',
+    borderTopWidth: '2px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#E2E8F0',
+    fontSize: '15px',
+    fontWeight: 900,
+    color: '#E51937',
+  },
+  tenderedSection: {
+    marginTop: '6px',
+    paddingTop: '6px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'dashed',
+    borderTopColor: '#CBD5E1',
+    fontSize: '11px',
+  },
+  tenderedLine: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    color: '#475569',
+  },
+  changeLine: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    color: '#16A34A',
+    fontWeight: 700,
+  },
+  signaturesBlock: {
+    marginTop: '36px',
+    paddingTop: '16px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#E2E8F0',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  signatureBox: {
+    textAlign: 'center',
+    minWidth: '160px',
+  },
+  customerSignLine: {
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#94A3B8',
+    paddingTop: '4px',
+    fontSize: '11px',
+    color: '#64748B',
+  },
+  authorizedSignLine: {
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: '#0F172A',
+    paddingTop: '4px',
+    fontWeight: 700,
+    fontSize: '11px',
+    color: '#0F172A',
+  },
+});
 
 // Convert numbers to English words
 function numberToWords(num: number): string {
@@ -45,6 +460,7 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
   onClose,
   onPrint,
 }) => {
+  const styles = useStyles();
   const storeName = storeSettings?.storeName || 'OmniPos Store & Solutions';
   const storePhone = storeSettings?.phone || '+92 300 1234567';
   const storeAddress = storeSettings?.address || 'Main Commercial Area';
@@ -74,75 +490,24 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        backdropFilter: 'blur(4px)',
-        zIndex: 9999,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        overflowY: 'auto',
-        padding: '24px 16px',
-      }}
-    >
+    <div className={styles.backdrop}>
       {/* Top Toolbar */}
-      <div
-        className="no-print"
-        style={{
-          width: '100%',
-          maxWidth: '820px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '14px',
-          backgroundColor: '#1E293B',
-          padding: '12px 20px',
-          borderRadius: '12px',
-          color: '#FFFFFF',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div className={mergeClasses('no-print', styles.toolbar)}>
+        <div className={styles.toolbarLeft}>
           <Receipt size={20} color="#10B981" />
-          <span style={{ fontWeight: 700, fontSize: '15px' }}>
+          <span className={styles.toolbarTitle}>
             A4 Commercial Invoice (#{order.id})
           </span>
-          <span
-            style={{
-              fontSize: '11px',
-              padding: '2px 8px',
-              borderRadius: '999px',
-              backgroundColor: '#10B981',
-              color: '#FFFFFF',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-            }}
-          >
+          <span className={styles.stageBadge}>
             {order.stage}
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className={styles.toolbarRight}>
           <button
             type="button"
             onClick={handlePrint}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: '#E51937',
-              color: '#FFFFFF',
-              border: 'none',
-              padding: '8px 18px',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(229,25,55,0.4)',
-            }}
+            className={styles.printBtn}
           >
             <Printer size={16} />
             Print A4 / PDF
@@ -150,19 +515,7 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
           <button
             type="button"
             onClick={onClose}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              backgroundColor: '#334155',
-              color: '#F1F5F9',
-              border: 'none',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className={styles.closeBtn}
           >
             <X size={16} />
             Close
@@ -173,125 +526,86 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
       {/* A4 Sheet Paper */}
       <div
         id="a4-invoice-print-area"
-        style={{
-          width: '100%',
-          maxWidth: '820px',
-          backgroundColor: '#FFFFFF',
-          color: '#0F172A',
-          boxShadow: '0 15px 35px rgba(0,0,0,0.25)',
-          borderRadius: '4px',
-          padding: '40px 48px',
-          boxSizing: 'border-box',
-          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-          fontSize: '12px',
-          lineHeight: 1.5,
-        }}
+        className={styles.paper}
       >
         {/* Header Block */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            borderBottom: '2.5px solid #0F172A',
-            paddingBottom: '18px',
-            marginBottom: '18px',
-          }}
-        >
+        <div className={styles.headerBlock}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, color: '#0F172A' }}>
+            <h1 className={styles.storeTitle}>
               {storeName}
             </h1>
-            <div style={{ color: '#E51937', fontWeight: 700, fontSize: '11px', marginTop: '2px' }}>
+            <div className={styles.headerNote}>
               {headerNote}
             </div>
-            <div style={{ color: '#475569', fontSize: '11.5px', marginTop: '4px' }}>
+            <div className={styles.storeAddress}>
               {storeAddress}
             </div>
-            <div style={{ color: '#475569', fontSize: '11.5px' }}>
+            <div className={styles.storePhone}>
               <strong>Phone:</strong> {storePhone}
             </div>
           </div>
 
-          <div style={{ textAlign: 'right' }}>
-            <div
-              style={{
-                fontSize: '22px',
-                fontWeight: 900,
-                color: '#0F172A',
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-              }}
-            >
+          <div className={styles.textRight}>
+            <div className={styles.invoiceTitle}>
               COMMERCIAL INVOICE
             </div>
-            <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
+            <div className={styles.invoiceSubtitle}>
               TAX INVOICE / CASH BILL
             </div>
 
-            <div style={{ marginTop: '12px', fontSize: '12px' }}>
+            <div className={styles.metaBlock}>
               <div>
-                <span style={{ color: '#64748B' }}>Invoice #: </span>
-                <strong style={{ color: '#E51937', fontSize: '13px' }}>{order.id}</strong>
+                <span className={styles.metaLabel}>Invoice #: </span>
+                <strong className={styles.invoiceIdBold}>{order.id}</strong>
               </div>
               <div>
-                <span style={{ color: '#64748B' }}>Date & Time: </span>
-                <strong style={{ color: '#0F172A' }}>{orderDate} • {orderTime}</strong>
+                <span className={styles.metaLabel}>Date & Time: </span>
+                <strong className={styles.boldDark}>{orderDate} • {orderTime}</strong>
               </div>
               <div>
-                <span style={{ color: '#64748B' }}>Cashier: </span>
-                <strong style={{ color: '#0F172A' }}>{cashierName}</strong>
+                <span className={styles.metaLabel}>Cashier: </span>
+                <strong className={styles.boldDark}>{cashierName}</strong>
               </div>
             </div>
           </div>
         </div>
 
         {/* Customer & Payment Meta */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            backgroundColor: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            marginBottom: '20px',
-          }}
-        >
+        <div className={styles.customerBanner}>
           <div>
-            <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
+            <div className={styles.sectionSmallHeader}>
               Billed To Customer:
             </div>
-            <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
+            <div className={styles.customerName}>
               {order.customerName || 'Walking Customer'}
             </div>
-            <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
-              Sale Type: <strong style={{ textTransform: 'capitalize', color: '#334155' }}>{order.orderType || 'Retail POS'}</strong>
+            <div className={styles.saleTypeSub}>
+              Sale Type: <strong className={styles.saleTypeVal}>{order.orderType || 'Retail POS'}</strong>
             </div>
           </div>
 
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
+          <div className={styles.textRight}>
+            <div className={styles.sectionSmallHeader}>
               Payment Information:
             </div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>
-              Paid Via: <span style={{ color: '#10B981', fontWeight: 800, textTransform: 'uppercase' }}>{paymentMode}</span>
+            <div className={styles.paidViaRow}>
+              Paid Via: <span className={styles.paidViaText}>{paymentMode}</span>
             </div>
-            <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
+            <div className={styles.statusSub}>
               Status: <strong>PAID & FULFILLED</strong>
             </div>
           </div>
         </div>
 
         {/* Table of Items */}
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '18px' }}>
+        <table className={styles.itemsTable}>
           <thead>
-            <tr style={{ backgroundColor: '#0F172A', color: '#FFFFFF' }}>
-              <th style={{ padding: '8px 10px', textAlign: 'center', width: '40px', fontSize: '11px', fontWeight: 700 }}>#</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '11px', fontWeight: 700 }}>Item Description</th>
-              <th style={{ padding: '8px 10px', textAlign: 'center', width: '70px', fontSize: '11px', fontWeight: 700 }}>Qty</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right', width: '110px', fontSize: '11px', fontWeight: 700 }}>Rate (PKR)</th>
-              <th style={{ padding: '8px 12px', textAlign: 'right', width: '120px', fontSize: '11px', fontWeight: 700 }}>Amount (PKR)</th>
+            <tr className={styles.tableHeadTr}>
+              <th className={styles.thIndex}>#</th>
+              <th className={styles.thDesc}>Item Description</th>
+              <th className={styles.thQty}>Qty</th>
+              <th className={styles.thRate}>Rate (PKR)</th>
+              <th className={styles.thAmount}>Amount (PKR)</th>
             </tr>
           </thead>
           <tbody>
@@ -300,31 +614,28 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
               return (
                 <tr
                   key={`${line.productId}_${idx}`}
-                  style={{
-                    borderBottom: '1px solid #E2E8F0',
-                    backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC',
-                  }}
+                  className={idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}
                 >
-                  <td style={{ padding: '10px 8px', textAlign: 'center', color: '#64748B', fontWeight: 600 }}>
+                  <td className={styles.tdIndex}>
                     {idx + 1}
                   </td>
-                  <td style={{ padding: '10px 12px' }}>
-                    <div style={{ fontWeight: 700, color: '#0F172A', fontSize: '12.5px' }}>
+                  <td className={styles.tdDesc}>
+                    <div className={styles.lineNameText}>
                       {line.name}
                     </div>
                     {line.variantLabel && (
-                      <div style={{ fontSize: '11px', color: '#E51937', fontWeight: 600 }}>
+                      <div className={styles.lineSpecText}>
                         Spec: {line.variantLabel}
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700, color: '#0F172A', fontSize: '12.5px' }}>
+                  <td className={styles.tdQty}>
                     {line.quantity}
                   </td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right', color: '#334155', fontWeight: 600 }}>
+                  <td className={styles.tdRate}>
                     {line.unitPrice.toLocaleString('en-PK')}
                   </td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#0F172A' }}>
+                  <td className={styles.tdAmount}>
                     {lineTotal.toLocaleString('en-PK')}
                   </td>
                 </tr>
@@ -334,56 +645,45 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
         </table>
 
         {/* Totals Summary */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ flex: 1, paddingRight: '24px' }}>
-            <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>
+        <div className={styles.totalsRow}>
+          <div className={styles.wordsNoticeCol}>
+            <div className={styles.wordsLabel}>
               Amount in Words:
             </div>
-            <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A', fontStyle: 'italic', marginTop: '2px' }}>
+            <div className={styles.wordsVal}>
               {numberToWords(total)}
             </div>
 
-            <div style={{ marginTop: '16px', fontSize: '11px', color: '#64748B', lineHeight: 1.4 }}>
+            <div className={styles.noticeBox}>
               <strong>Notice:</strong> Goods once sold will not be refunded without original receipt. Warranty claims handled as per vendor terms.
             </div>
           </div>
 
-          <div style={{ width: '270px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px 16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px' }}>
-              <span style={{ color: '#64748B' }}>Gross Total:</span>
-              <span style={{ fontWeight: 700 }}>{formatPKR(subtotal)}</span>
+          <div className={styles.totalsBox}>
+            <div className={styles.totalsLine}>
+              <span className={styles.colorMuted}>Gross Total:</span>
+              <span className={styles.weight700}>{formatPKR(subtotal)}</span>
             </div>
 
             {discountAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', color: '#16A34A' }}>
+              <div className={styles.discountLine}>
                 <span>Discount Applied:</span>
-                <span style={{ fontWeight: 700 }}>- {formatPKR(discountAmount)}</span>
+                <span className={styles.weight700}>- {formatPKR(discountAmount)}</span>
               </div>
             )}
 
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                paddingTop: '6px',
-                marginTop: '6px',
-                borderTop: '2px solid #E2E8F0',
-                fontSize: '15px',
-                fontWeight: 900,
-                color: '#E51937',
-              }}
-            >
+            <div className={styles.netPayableRow}>
               <span>NET PAYABLE:</span>
               <span>{formatPKR(total)}</span>
             </div>
 
             {typeof tenderedAmount === 'number' && tenderedAmount >= total && (
-              <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #CBD5E1', fontSize: '11px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+              <div className={styles.tenderedSection}>
+                <div className={styles.tenderedLine}>
                   <span>Amount Tendered:</span>
                   <span>{formatPKR(tenderedAmount)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16A34A', fontWeight: 700 }}>
+                <div className={styles.changeLine}>
                   <span>Change Returned:</span>
                   <span>{formatPKR(tenderedAmount - total)}</span>
                 </div>
@@ -393,24 +693,15 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
         </div>
 
         {/* Footer & Signatures */}
-        <div
-          style={{
-            marginTop: '36px',
-            paddingTop: '16px',
-            borderTop: '1px solid #E2E8F0',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-end',
-          }}
-        >
-          <div style={{ textAlign: 'center', minWidth: '160px' }}>
-            <div style={{ borderTop: '1px solid #94A3B8', paddingTop: '4px', fontSize: '11px', color: '#64748B' }}>
+        <div className={styles.signaturesBlock}>
+          <div className={styles.signatureBox}>
+            <div className={styles.customerSignLine}>
               Customer's Signature
             </div>
           </div>
 
-          <div style={{ textAlign: 'center', minWidth: '160px' }}>
-            <div style={{ borderTop: '1px solid #0F172A', paddingTop: '4px', fontWeight: 700, fontSize: '11px', color: '#0F172A' }}>
+          <div className={styles.signatureBox}>
+            <div className={styles.authorizedSignLine}>
               Authorized Signature / Stamp
             </div>
           </div>

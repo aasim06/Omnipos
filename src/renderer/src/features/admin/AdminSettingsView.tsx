@@ -22,6 +22,7 @@ import {
   Badge,
   Avatar,
 } from '@fluentui/react-components';
+import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
 import {
   BuildingShop24Regular,
   Print24Regular,
@@ -89,728 +90,12 @@ const ROLE_OPTIONS = [
   { value: 'admin', label: 'Store Manager (Full Admin Access)' },
 ];
 
-const useStyles = makeStyles({
-  container: {
-    padding: '28px 32px',
-    height: '100%',
-    boxSizing: 'border-box',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    overflowY: 'auto',
-  },
-  pageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingBottom: '20px',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke1,
-  },
-  pageTitle: {
-    fontWeight: 700,
-    fontSize: '20px',
-    color: tokens.colorNeutralForeground1,
-    margin: 0,
-    display: 'block',
-  },
-  pageSubtitle: {
-    color: tokens.colorNeutralForeground2,
-    marginTop: '4px',
-    marginBottom: 0,
-    display: 'block',
-    fontSize: '13px',
-  },
-  primaryRedButton: {
-    backgroundColor: '#E51937',
-    color: '#FFFFFF',
-    borderRadius: tokens.borderRadiusMedium,
-    fontWeight: 700,
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-    padding: '0 18px',
-    height: '38px',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.3)',
-    ':hover': {
-      backgroundColor: '#C4122C',
-      color: '#FFFFFF',
-    },
-  },
-  saveButton: {
-    backgroundColor: '#E51937',
-    color: '#FFFFFF',
-    borderRadius: tokens.borderRadiusMedium,
-    fontWeight: 600,
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-    padding: '0 20px',
-    height: '38px',
-    ':hover': {
-      backgroundColor: '#C4122C',
-      color: '#FFFFFF',
-    },
-  },
-  tabNavContainer: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke1,
-    paddingBottom: '12px',
-    flexWrap: 'wrap',
-  },
-  tabButton: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '9px 18px',
-    borderRadius: tokens.borderRadiusMedium,
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    backgroundColor: tokens.colorNeutralBackground1,
-    color: tokens.colorNeutralForeground1,
-    fontWeight: 700,
-    fontSize: '13px',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-    boxShadow: 'none',
-    transition: 'all 0.15s ease',
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground1Hover,
-    },
-  },
-  tabButtonActive: {
-    borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
-    borderTopColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderRightColor: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.08)',
-    color: '#E51937',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.12)',
-  },
-  tabIcon: {
-    width: '18px',
-    height: '18px',
-    color: 'inherit',
-  },
-  tabIconActive: {
-    color: '#E51937',
-  },
-  tabBadge: {
-    fontWeight: 700,
-    whiteSpace: 'nowrap',
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-    color: '#E51937',
-  },
-  tabBadgeActive: {
-    backgroundColor: '#E51937',
-    color: '#FFFFFF',
-    fontWeight: 700,
-    whiteSpace: 'nowrap',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-    gap: '16px',
-    alignItems: 'start',
-  },
-  card: {
-    padding: '0',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: tokens.shadow4,
-    borderTopWidth: '1px',
-    borderBottomWidth: '1px',
-    borderLeftWidth: '1px',
-    borderRightWidth: '1px',
-    borderTopStyle: 'solid',
-    borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid',
-    borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1,
-    borderBottomColor: tokens.colorNeutralStroke1,
-    borderLeftColor: tokens.colorNeutralStroke1,
-    borderRightColor: tokens.colorNeutralStroke1,
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    padding: '16px 20px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: tokens.colorNeutralStroke1,
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
-  cardHeaderBetween: {
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: '12px',
-  },
-  cardIconBox: {
-    width: '36px',
-    height: '36px',
-    borderRadius: tokens.borderRadiusSmall,
-    backgroundColor: tokens.colorNeutralBackground3,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    color: tokens.colorNeutralForeground2,
-  },
-  cardIconBoxRed: {
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
-    color: '#E51937',
-  },
-  cardIconBoxBlue: {
-    backgroundColor: 'rgba(0, 120, 212, 0.1)',
-    color: '#0078D4',
-  },
-  cardIconBoxGreen: {
-    backgroundColor: 'rgba(16, 124, 65, 0.1)',
-    color: '#107C41',
-  },
-  cardIconBoxOrange: {
-    backgroundColor: 'rgba(217, 119, 6, 0.1)',
-    color: '#D97706',
-  },
-  cardIconBoxPurple: {
-    backgroundColor: 'rgba(136, 23, 152, 0.1)',
-    color: '#881798',
-  },
-  backupGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-    gap: '16px',
-  },
-  backupActionCard: {
-    padding: '20px',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    boxShadow: tokens.shadow2,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    gap: '14px',
-    transition: 'all 0.15s ease',
-    ':hover': {
-      boxShadow: tokens.shadow4,
-      borderTopColor: tokens.colorNeutralStroke1Hover,
-      borderBottomColor: tokens.colorNeutralStroke1Hover,
-      borderLeftColor: tokens.colorNeutralStroke1Hover,
-      borderRightColor: tokens.colorNeutralStroke1Hover,
-    },
-  },
-  icon20: {
-    width: '20px',
-    height: '20px',
-  },
-  headerFlex: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  headerTextCol: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-  },
-  headerTitleRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  headerTitle: {
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-    lineHeight: '20px',
-  },
-  headerBadge: {
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-    color: '#E51937',
-  },
-  headerSubtitle: {
-    color: tokens.colorNeutralForeground2,
-    display: 'block',
-    fontSize: '12px',
-    lineHeight: '16px',
-  },
-  cardBody: {
-    padding: '20px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  formRow: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-  segmentedGroup: {
-    display: 'flex',
-    borderRadius: tokens.borderRadiusSmall,
-    overflow: 'hidden',
-    borderTopWidth: '1px',
-    borderBottomWidth: '1px',
-    borderLeftWidth: '1px',
-    borderRightWidth: '1px',
-    borderTopStyle: 'solid',
-    borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid',
-    borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1,
-    borderBottomColor: tokens.colorNeutralStroke1,
-    borderLeftColor: tokens.colorNeutralStroke1,
-    borderRightColor: tokens.colorNeutralStroke1,
-    backgroundColor: tokens.colorNeutralBackground3,
-  },
-  segmentedItem: {
-    flex: 1,
-    height: '32px',
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'background-color 0.1s ease',
-    fontFamily: 'inherit',
-    fontSize: '13px',
-  },
-  segmentedItemActive: {
-    backgroundColor: tokens.colorNeutralBackground1,
-    color: tokens.colorNeutralForeground1,
-    fontWeight: 700,
-  },
-  segmentedItemInactive: {
-    backgroundColor: 'transparent',
-    color: tokens.colorNeutralForeground2,
-    fontWeight: 400,
-  },
-  switchRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: '6px',
-    paddingBottom: '6px',
-  },
-  switchLabel: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-  },
-  switchRowTitle: {
-    fontWeight: 600,
-    color: tokens.colorNeutralForeground1,
-  },
-  switchRowDesc: {
-    color: tokens.colorNeutralForeground2,
-  },
-  statusBar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '12px 16px',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderTopWidth: '1px',
-    borderBottomWidth: '1px',
-    borderLeftWidth: '1px',
-    borderRightWidth: '1px',
-    borderTopStyle: 'solid',
-    borderBottomStyle: 'solid',
-    borderLeftStyle: 'solid',
-    borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1,
-    borderBottomColor: tokens.colorNeutralStroke1,
-    borderLeftColor: tokens.colorNeutralStroke1,
-    borderRightColor: tokens.colorNeutralStroke1,
-  },
-  tableWrapper: {
-    overflowX: 'auto',
-    width: '100%',
-  },
-  userTable: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    textAlign: 'left',
-    fontSize: '13px',
-  },
-  th: {
-    padding: '12px 16px',
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground2,
-    fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  thRight: {
-    textAlign: 'right',
-  },
-  td: {
-    padding: '14px 16px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    color: tokens.colorNeutralForeground1,
-    verticalAlign: 'middle',
-  },
-  tdRight: {
-    textAlign: 'right',
-  },
-  tableRow: {
-    transition: 'background-color 0.15s ease',
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground1Hover,
-    },
-  },
-  userCell: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  userName: {
-    fontWeight: 700,
-    display: 'block',
-    color: tokens.colorNeutralForeground1,
-  },
-  userPhone: {
-    fontSize: '11px',
-    color: tokens.colorNeutralForeground3,
-  },
-  usernamePill: {
-    fontFamily: 'monospace',
-    fontWeight: 700,
-    backgroundColor: tokens.colorNeutralBackground3,
-    padding: '2px 6px',
-    borderRadius: '4px',
-  },
-  roleBadge: {
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    fontSize: '10px',
-  },
-  statusToggleBtn: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    padding: 0,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  statusDotActive: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    backgroundColor: '#10B981',
-  },
-  statusDotInactive: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    backgroundColor: '#94A3B8',
-  },
-  statusTextActive: {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#10B981',
-  },
-  statusTextInactive: {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: tokens.colorNeutralForeground3,
-  },
-  permissionsBadgeRow: {
-    display: 'flex',
-    gap: '4px',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  },
-  permissionsCountBadge: {
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
-    color: '#E51937',
-  },
-  permissionsListText: {
-    fontSize: '11px',
-    color: tokens.colorNeutralForeground3,
-  },
-  actionBtnsRow: {
-    display: 'flex',
-    gap: '6px',
-    justifyContent: 'flex-end',
-  },
-  deleteIcon: {
-    color: '#E51937',
-  },
-  engineCard: {
-    padding: '16px',
-    borderRadius: tokens.borderRadiusSmall,
-    backgroundColor: tokens.colorNeutralBackground3,
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    lineHeight: 1.6,
-  },
-  engineTitle: {
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-  },
-  engineSubtitle: {
-    color: tokens.colorNeutralForeground2,
-    display: 'block',
-    marginTop: '6px',
-  },
-  engineStatusRow: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-    marginTop: '12px',
-  },
-  engineDot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    backgroundColor: '#107C41',
-  },
-  engineReadyText: {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#107C41',
-  },
-  paperWidthLabel: {
-    fontWeight: 600,
-    color: tokens.colorNeutralForeground2,
-  },
-  testPrintRow: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-  },
-  testPrintBtn: {
-    color: tokens.colorNeutralForeground1,
-    borderRadius: tokens.borderRadiusMedium,
-    fontWeight: 600,
-  },
-  testPrintSuccess: {
-    color: '#107C41',
-    fontWeight: 600,
-  },
-  taxHelper: {
-    color: tokens.colorNeutralForeground3,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    marginTop: '4px',
-  },
-  icon12: {
-    width: '12px',
-    height: '12px',
-  },
-  statusBarLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  statusShieldIcon: {
-    color: '#107C41',
-    width: '18px',
-    height: '18px',
-  },
-  statusTitle: {
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-    display: 'block',
-  },
-  statusSubtitle: {
-    color: tokens.colorNeutralForeground2,
-  },
-  statusTerminalActive: {
-    color: '#107C41',
-    fontWeight: 600,
-  },
-  technicianBtn: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: '12px',
-  },
-  dialogSurfaceLarge: {
-    borderRadius: tokens.borderRadiusLarge,
-    maxWidth: '640px',
-    width: '100%',
-    overflowX: 'hidden',
-  },
-  dialogSurfaceSmall: {
-    borderRadius: tokens.borderRadiusLarge,
-    maxWidth: '440px',
-    width: '100%',
-    overflowX: 'hidden',
-  },
-  dialogBodyNoOverflow: {
-    overflowX: 'hidden',
-  },
-  dialogContentFlex: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-    marginTop: '14px',
-    overflowX: 'hidden',
-    overflowY: 'auto',
-  },
-  dialogDescText: {
-    color: tokens.colorNeutralForeground2,
-  },
-  dialogGrid2: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '12px',
-  },
-  permMatrixHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '8px',
-  },
-  permMatrixTitle: {
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    color: tokens.colorNeutralForeground1,
-  },
-  btnGroup: {
-    display: 'flex',
-    gap: '6px',
-  },
-  permissionGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: '10px',
-    marginTop: '6px',
-    maxHeight: '340px',
-    overflowY: 'auto',
-    padding: '4px',
-  },
-  permItem: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '10px',
-    padding: '10px 12px',
-    borderRadius: '8px',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    backgroundColor: tokens.colorNeutralBackground1,
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
-  },
-  permItemActive: {
-    borderTopColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderRightColor: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.05)',
-  },
-  permItemDisabled: {
-    cursor: 'not-allowed',
-  },
-  permCheckbox: {
-    marginTop: '2px',
-    accentColor: '#E51937',
-  },
-  permTextCol: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  permItemTitle: {
-    fontSize: '13px',
-    fontWeight: 700,
-    color: tokens.colorNeutralForeground1,
-  },
-  permItemDesc: {
-    fontSize: '11px',
-    color: tokens.colorNeutralForeground3,
-  },
-  formErrorText: {
-    color: '#E51937',
-    fontWeight: 600,
-  },
-  dialogActionsRow: {
-    marginTop: '20px',
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '10px',
-  },
-  dialogCancelBtn: {
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-    height: '38px',
-    padding: '0 16px',
-  },
-  dialogSubmitBtn: {
-    backgroundColor: '#E51937',
-    color: '#FFFFFF',
-    fontWeight: 700,
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-    padding: '0 24px',
-    height: '38px',
-    borderRadius: tokens.borderRadiusMedium,
-    ':hover': {
-      backgroundColor: '#C4122C',
-      color: '#FFFFFF',
-    },
-  },
-  userBannerRow: {
-    padding: '10px 14px',
-    borderRadius: '8px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  userBannerName: {
-    fontWeight: 700,
-    display: 'block',
-    fontSize: '13px',
-    color: tokens.colorNeutralForeground1,
-  },
-  userBannerMeta: {
-    fontSize: '11px',
-    color: tokens.colorNeutralForeground3,
-  },
-  successRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    color: '#10B981',
-  },
-  licenseDescText: {
-    color: tokens.colorNeutralForeground2,
-    marginBottom: '16px',
-    display: 'block',
-  },
-  dialogColGap14: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '14px',
-  },
-  licenseErrText: {
-    color: '#E51937',
-    fontWeight: 600,
-  },
-  licenseOkText: {
-    color: '#107C41',
-    fontWeight: 600,
-  },
-  licenseActions: {
-    paddingTop: '16px',
-  },
-});
+import { useAdminSettingsStyles, useStyles } from './adminSettings.styles';
 
 export function AdminSettingsView(): React.JSX.Element {
-  const styles = useStyles();
+  const styles = useAdminSettingsStyles();
+  const { notifySuccess, notifyWarning, notifyError } = useAppToast();
+  const confirmModal = useConfirmDialog();
   const [settings, setSettings] = useState<StoreSettings>(() =>
     storage.getItem<StoreSettings>(KEYS.storeSettings, defaultSettings)
   );
@@ -1085,17 +370,24 @@ export function AdminSettingsView(): React.JSX.Element {
     }
   };
 
-  const handleDeleteUser = (u: AppUser) => {
+  const handleDeleteUser = async (u: AppUser) => {
     if (u.username === 'admin') {
-      alert('The primary Store Administrator account cannot be deleted.');
+      notifyWarning('The primary Store Administrator account cannot be deleted.');
       return;
     }
-    if (confirm(`Are you sure you want to delete user "${u.username}" (${u.name})?`)) {
+    const ok = await confirmModal({
+      title: 'Delete User Account',
+      message: `Are you sure you want to delete user "${u.username}" (${u.name})? This user will no longer be able to log in.`,
+      confirmLabel: 'Delete User',
+      intent: 'danger',
+    });
+    if (ok) {
       try {
         userStorage.deleteUser(u.id);
         setUsers(userStorage.getUsers());
+        notifySuccess(`User "${u.username}" deleted successfully.`);
       } catch (err: any) {
-        alert(err.message || 'Failed to delete user');
+        notifyError(err.message || 'Failed to delete user');
       }
     }
   };
@@ -1104,8 +396,9 @@ export function AdminSettingsView(): React.JSX.Element {
     try {
       userStorage.updateUser(u.id, { isActive: !u.isActive });
       setUsers(userStorage.getUsers());
+      notifySuccess(`User "${u.username}" status updated.`);
     } catch (err: any) {
-      alert(err.message);
+      notifyError(err.message || 'Failed to update user status');
     }
   };
 
@@ -1578,7 +871,7 @@ export function AdminSettingsView(): React.JSX.Element {
 
       {/* ── TAB 4: Database Backup & Recovery (SQLite & JSON) ── */}
       {activeTab === 'backup' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className={styles.tabColumnContainer}>
           {/* Top Status Card */}
           <div className={styles.card}>
             <div className={mergeClasses(styles.cardHeader, styles.cardHeaderBetween)}>
@@ -1611,60 +904,38 @@ export function AdminSettingsView(): React.JSX.Element {
               </Button>
             </div>
 
-            <div className={styles.cardBody} style={{ gap: '14px' }}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                  gap: '14px',
-                  backgroundColor: tokens.colorNeutralBackground3,
-                  padding: '16px',
-                  borderRadius: tokens.borderRadiusMedium,
-                }}
-              >
+            <div className={mergeClasses(styles.cardBody, styles.cardBodyGap14)}>
+              <div className={styles.dbStatusGrid}>
                 <div>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                  <Caption1 className={styles.mutedBlockCaption}>
                     Active Database File:
                   </Caption1>
-                  <Text size={300} weight="bold" style={{ wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                  <Text size={300} weight="bold" className={styles.monoBreakText}>
                     {backupStatus?.dbPath || 'Loading...'}
                   </Text>
                 </div>
 
                 <div>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                  <Caption1 className={styles.mutedBlockCaption}>
                     Database File Size:
                   </Caption1>
-                  <Text size={300} weight="bold" style={{ color: '#0078D4' }}>
+                  <Text size={300} weight="bold" className={styles.blueBoldText}>
                     {backupStatus?.dbSize ? `${(backupStatus.dbSize / (1024 * 1024)).toFixed(2)} MB` : 'Calculating...'}
                   </Text>
                 </div>
 
                 <div>
-                  <Caption1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                  <Caption1 className={styles.mutedBlockCaption}>
                     Last Backup Created:
                   </Caption1>
-                  <Text size={300} weight="bold" style={{ color: backupStatus?.lastBackup ? '#107C41' : tokens.colorNeutralForeground4 }}>
+                  <Text size={300} weight="bold" className={backupStatus?.lastBackup ? styles.greenBoldText : styles.mutedBoldText}>
                     {backupStatus?.lastBackup ? new Date(backupStatus.lastBackup).toLocaleString() : 'No backup taken yet'}
                   </Text>
                 </div>
               </div>
 
               {backupMsg && (
-                <div
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    backgroundColor: backupMsg.type === 'success' ? 'rgba(16, 124, 65, 0.1)' : 'rgba(209, 52, 56, 0.1)',
-                    border: `1px solid ${backupMsg.type === 'success' ? 'rgba(16, 124, 65, 0.3)' : 'rgba(209, 52, 56, 0.3)'}`,
-                    color: backupMsg.type === 'success' ? '#107C41' : '#D13438',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                  }}
-                >
+                <div className={backupMsg.type === 'success' ? styles.backupSuccessBanner : styles.backupDangerBanner}>
                   {backupMsg.type === 'success' ? <Checkmark20Regular /> : <Warning20Regular />}
                   <span>{backupMsg.text}</span>
                 </div>
@@ -1676,28 +947,28 @@ export function AdminSettingsView(): React.JSX.Element {
           <div className={styles.backupGrid}>
             {/* Card 1: SQLite Full Backup */}
             <div className={styles.backupActionCard}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className={styles.cardColGap8}>
+                <div className={styles.cardHeaderBetween}>
                   <div className={mergeClasses(styles.cardIconBox, styles.cardIconBoxBlue)}>
                     <ArrowDownload20Regular className={styles.icon20} />
                   </div>
                   <Badge appearance="filled" color="success">Recommended</Badge>
                 </div>
-                <Body1 style={{ fontWeight: 700, fontSize: '15px' }}>
+                <Body1 className={styles.boldTitle15}>
                   1-Click SQLite Database Backup (.db)
                 </Body1>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.5 }}>
+                <Caption1 className={styles.mutedTextLineHeight}>
                   Creates a clean, 100% full snapshot of your active SQLite database file including all sales invoices, products, stock levels, khata ledgers, and settings.
                 </Caption1>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+              <div className={styles.btnStackCol}>
                 <Button
                   appearance="primary"
                   icon={<ArrowDownload20Regular />}
                   disabled={backupLoading}
                   onClick={() => handleCreateDbBackup(true)}
-                  style={{ backgroundColor: '#0078D4', fontWeight: 700 }}
+                  className={styles.primaryBlueBtn}
                 >
                   {backupLoading ? 'Backing up...' : 'Save Backup to USB / Drive (.db)'}
                 </Button>
@@ -1714,28 +985,28 @@ export function AdminSettingsView(): React.JSX.Element {
 
             {/* Card 2: JSON Archive Export */}
             <div className={styles.backupActionCard}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className={styles.cardColGap8}>
+                <div className={styles.cardHeaderBetween}>
                   <div className={mergeClasses(styles.cardIconBox, styles.cardIconBoxPurple)}>
                     <DocumentTableSearch20Regular className={styles.icon20} />
                   </div>
                   <Badge appearance="tint" color="brand">Universal Archive</Badge>
                 </div>
-                <Body1 style={{ fontWeight: 700, fontSize: '15px' }}>
+                <Body1 className={styles.boldTitle15}>
                   Export Complete JSON Archive (.json)
                 </Body1>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.5 }}>
+                <Caption1 className={styles.mutedTextLineHeight}>
                   Exports all tables as a readable and portable JSON archive. Useful for custom analytics, third-party audits, or cross-platform migrations.
                 </Caption1>
               </div>
 
-              <div style={{ marginTop: '10px' }}>
+              <div className={styles.btnWrapTop10}>
                 <Button
                   appearance="outline"
                   icon={<DocumentTableSearch20Regular />}
                   disabled={backupLoading}
                   onClick={handleExportJsonArchive}
-                  style={{ width: '100%', fontWeight: 600 }}
+                  className={styles.fullWidthMediumBtn}
                 >
                   Export Data as JSON (.json)
                 </Button>
@@ -1744,28 +1015,28 @@ export function AdminSettingsView(): React.JSX.Element {
 
             {/* Card 3: Database Restore */}
             <div className={styles.backupActionCard}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className={styles.cardColGap8}>
+                <div className={styles.cardHeaderBetween}>
                   <div className={mergeClasses(styles.cardIconBox, styles.cardIconBoxOrange)}>
                     <ArrowUpload20Regular className={styles.icon20} />
                   </div>
                   <Badge appearance="tint" color="danger">Restore Safeguard</Badge>
                 </div>
-                <Body1 style={{ fontWeight: 700, fontSize: '15px' }}>
+                <Body1 className={styles.boldTitle15}>
                   Restore Database from Backup (.db)
                 </Body1>
-                <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.5 }}>
+                <Caption1 className={styles.mutedTextLineHeight}>
                   Restore from an existing backup file. A pre-restore safety copy of your current database is automatically created before replacement.
                 </Caption1>
               </div>
 
-              <div style={{ marginTop: '10px' }}>
+              <div className={styles.btnWrapTop10}>
                 <Button
                   appearance="outline"
                   icon={<ArrowUpload20Regular />}
                   disabled={backupLoading}
                   onClick={() => setIsRestoreConfirmOpen(true)}
-                  style={{ width: '100%', borderColor: '#D97706', color: '#D97706', fontWeight: 700 }}
+                  className={styles.restoreAmberBtn}
                 >
                   Restore from .DB Backup...
                 </Button>
@@ -1774,19 +1045,9 @@ export function AdminSettingsView(): React.JSX.Element {
           </div>
 
           {/* Help Tip Banner */}
-          <div
-            style={{
-              padding: '14px 18px',
-              borderRadius: tokens.borderRadiusMedium,
-              backgroundColor: tokens.colorNeutralBackground3,
-              border: `1px solid ${tokens.colorNeutralStroke2}`,
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '12px',
-            }}
-          >
-            <Info16Regular style={{ color: '#0078D4', marginTop: '2px', flexShrink: 0 }} />
-            <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.6 }}>
+          <div className={styles.helpTipBanner}>
+            <Info16Regular className={styles.blueInfoIcon} />
+            <Caption1 className={styles.helpTipText}>
               <strong>Best Practice for Point of Sale Safety:</strong> It is strongly recommended to copy your backup file to an external USB flash drive or cloud-synced folder (such as OneDrive or Google Drive) at least once a week or before updating software.
             </Caption1>
           </div>
@@ -1795,30 +1056,30 @@ export function AdminSettingsView(): React.JSX.Element {
 
       {/* ── MODAL: Restore Database Confirmation Dialog ────── */}
       <Dialog open={isRestoreConfirmOpen} onOpenChange={(_, d) => setIsRestoreConfirmOpen(d.open)}>
-        <DialogSurface style={{ maxWidth: '460px' }}>
+        <DialogSurface className={styles.dialogSurface460}>
           <DialogBody>
             <DialogTitle>Confirm Database Restore</DialogTitle>
-            <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#D97706' }}>
-                <Warning20Regular style={{ width: 28, height: 28 }} />
+            <DialogContent className={styles.dialogContentCol12}>
+              <div className={styles.dialogWarningRow}>
+                <Warning20Regular className={styles.icon28} />
                 <Text weight="bold" size={300}>
                   Are you sure you want to restore?
                 </Text>
               </div>
-              <Text size={200} style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.5 }}>
+              <Text size={200} className={styles.mutedTextLineHeight}>
                 Restoring will replace your current SQLite database with the selected backup file. Any recent sales or transactions made after that backup will be overwritten.
               </Text>
-              <div style={{ padding: '10px', borderRadius: '6px', backgroundColor: tokens.colorNeutralBackground3, fontSize: '11.5px', color: tokens.colorNeutralForeground2 }}>
+              <div className={styles.dialogSafetySnapshotBox}>
                 A safety fallback snapshot of your current database will be saved automatically as <code>pos.db.pre_restore_safety</code>.
               </div>
             </DialogContent>
-            <DialogActions style={{ marginTop: '16px' }}>
+            <DialogActions className={styles.dialogActionsTop16}>
               <Button appearance="secondary" onClick={() => setIsRestoreConfirmOpen(false)}>
                 Cancel
               </Button>
               <Button
                 appearance="primary"
-                style={{ backgroundColor: '#D13438' }}
+                className={styles.dangerRedBtn}
                 onClick={handleExecuteRestore}
               >
                 Proceed &amp; Select Backup File (.db)

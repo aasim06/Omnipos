@@ -34,6 +34,7 @@ import { uid } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { useAppToast } from '../../context/AppNotificationContext';
 
 const STOCK_OUT_REASONS = [
   { value: 'Kitchen Usage', label: 'Kitchen Usage / Consumption' },
@@ -340,6 +341,7 @@ const useStyles = makeStyles({
 export function InventoryView(): React.JSX.Element {
   const styles = useStyles();
   const queryClient = useQueryClient();
+  const { notifySuccess, notifyError } = useAppToast();
   const [activeTab, setActiveTab] = useState<'all' | 'in' | 'out'>('all');
 
   // Dialog open states
@@ -407,13 +409,22 @@ export function InventoryView(): React.JSX.Element {
         referenceInvoice: payload.note || '',
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      await queryClient.refetchQueries({ queryKey: ['stock-movements'] });
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
+      await queryClient.refetchQueries({ queryKey: ['products'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
+      }
       setIsStockInOpen(false);
       setIsStockOutOpen(false);
       stockInForm.reset();
       stockOutForm.reset();
+      notifySuccess('Stock adjustment recorded successfully');
+    },
+    onError: (err: any) => {
+      notifyError(err.message || 'Failed to record stock movement');
     },
   });
 
