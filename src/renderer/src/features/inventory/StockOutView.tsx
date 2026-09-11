@@ -615,6 +615,136 @@ const useStyles = makeStyles({
     cursor: 'pointer',
     boxShadow: '0 2px 8px rgba(0, 120, 212, 0.35)',
   },
+  scopeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '10px',
+  },
+  scopeLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  scopeLabel: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  scopeTabList: {
+    display: 'inline-flex',
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: '3px',
+    borderRadius: '8px',
+    gap: '3px',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
+  },
+  scopeBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 12px',
+    borderRadius: '6px',
+    borderTopStyle: 'none', borderBottomStyle: 'none',
+    borderLeftStyle: 'none', borderRightStyle: 'none',
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: 500,
+    color: tokens.colorNeutralForeground2,
+    backgroundColor: 'transparent',
+    transitionProperty: 'all',
+    transitionDuration: '0.12s',
+    transitionTimingFunction: 'ease',
+  },
+  scopeBtnActive: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    fontWeight: 700,
+  },
+  scopeBtnBadge: {
+    fontSize: '10px',
+    padding: '1px 5px',
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    fontWeight: 700,
+  },
+  scopeBtnBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  scopeSingleChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+    padding: '4px 10px',
+    borderRadius: '6px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
+  },
+  icon14Red: {
+    width: '14px',
+    height: '14px',
+    color: '#E51937',
+  },
+  icon14Blue: {
+    width: '14px',
+    height: '14px',
+    color: '#2563EB',
+  },
+  icon14Neutral: {
+    width: '14px',
+    height: '14px',
+  },
+  icon12Red: {
+    width: '12px',
+    height: '12px',
+    color: '#E51937',
+  },
+  historyHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '12px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: tokens.colorNeutralStroke2,
+    paddingBottom: '10px',
+  },
+  minWidth220: {
+    minWidth: '220px',
+  },
+  filterActionsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  deleteDangerBtn: {
+    backgroundColor: '#D13438',
+    color: '#FFFFFF',
+    fontWeight: 600,
+  },
+  productCellStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
 });
 
 export function StockOutView(): React.JSX.Element {
@@ -863,41 +993,26 @@ export function StockOutView(): React.JSX.Element {
   return (
     <div className={styles.container}>
       {/* ── CARD 1: Record Stock Out (Damage / Waste / Usage) ── */}
-      <div className={styles.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+      <div className={styles.        <div className={styles.scopeRow}>
           <span className={styles.cardTitle}>Record Stock Out (Damage / Waste / Usage)</span>
 
           {/* Department / Branch Switcher for Stock Out */}
           {hasFastFood && hasOmnimart ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className={styles.scopeLeft}>
+              <span className={styles.scopeLabel}>
                 Department:
               </span>
-              <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+              <div className={styles.scopeTabList}>
                 <button
                   type="button"
                   onClick={() => {
                     form.setValue('module', 'fastfood');
                     form.setValue('reason', 'Kitchen Usage');
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '5px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    backgroundColor: form.watch('module') === 'fastfood' ? '#E51937' : 'transparent',
-                    color: form.watch('module') === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                    fontWeight: form.watch('module') === 'fastfood' ? 700 : 500,
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                    transition: 'all 0.12s ease',
-                  }}
+                  className={mergeClasses(styles.scopeBtn, form.watch('module') === 'fastfood' && styles.scopeBtnActive)}
                 >
-                  <Food24Regular style={{ width: 14, height: 14 }} />
-                  <span>Kitchen Consumption & Waste</span>
+                  <Food24Regular className={styles.icon14Neutral} />
+                  <span>Kitchen Consumption &amp; Waste</span>
                 </button>
                 <button
                   type="button"
@@ -905,39 +1020,25 @@ export function StockOutView(): React.JSX.Element {
                     form.setValue('module', 'minimart');
                     form.setValue('reason', 'Damage / Broken');
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '5px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    backgroundColor: form.watch('module') !== 'fastfood' ? '#E51937' : 'transparent',
-                    color: form.watch('module') !== 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                    fontWeight: form.watch('module') !== 'fastfood' ? 700 : 500,
-                    fontSize: '12px',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                    transition: 'all 0.12s ease',
-                  }}
+                  className={mergeClasses(styles.scopeBtn, form.watch('module') !== 'fastfood' && styles.scopeBtnActive)}
                 >
-                  <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                  <ShoppingBag24Regular className={styles.icon14Neutral} />
                   <span>Retail Mini Mart Goods</span>
                 </button>
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className={styles.scopeLeft}>
+              <span className={styles.scopeLabel}>
                 Department:
               </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground1, padding: '4px 10px', borderRadius: '6px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                {hasFastFood ? <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />}
+              <span className={styles.scopeSingleChip}>
+                {hasFastFood ? <Food24Regular className={styles.icon14Red} /> : <ShoppingBag24Regular className={styles.icon14Blue} />}
                 <span>{hasFastFood ? 'Kitchen Consumption & Waste' : 'Retail Mini Mart Goods'}</span>
               </span>
             </div>
           )}
-        </div>
+        </div>  </div>
 
         <form onSubmit={form.handleSubmit(onSave)} className={styles.formColumn}>
           {/* Row 1: Reason, Category & Product Select */}
@@ -1081,94 +1182,55 @@ export function StockOutView(): React.JSX.Element {
       </div>
 
       {/* ── CARD 2: Stock Out (Deduction Logs) ── */}
-      <div className={styles.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderBottom: `1px solid ${tokens.colorNeutralStroke2}`, paddingBottom: '10px' }}>
+      <div className=        <div className={styles.historyHeader}>
           <span className={styles.cardTitle}>Stock Out (Deduction Logs)</span>
 
           {/* Module Filter Tabs */}
           {hasFastFood && hasOmnimart ? (
-            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+            <div className={styles.scopeTabList}>
               <button
                 type="button"
                 onClick={() => setOutflowTab('all')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: outflowTab === 'all' ? '#E51937' : 'transparent',
-                  color: outflowTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: outflowTab === 'all' ? 700 : 500,
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }}
+                className={mergeClasses(styles.scopeBtn, outflowTab === 'all' && styles.scopeBtnActive)}
               >
                 <span>All Outflows</span>
-                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                <span className={mergeClasses(styles.scopeBtnBadge, outflowTab === 'all' && styles.scopeBtnBadgeActive)}>
                   {stockOutMovements.length}
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setOutflowTab('fastfood')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: outflowTab === 'fastfood' ? '#E51937' : 'transparent',
-                  color: outflowTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: outflowTab === 'fastfood' ? 700 : 500,
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }}
+                className={mergeClasses(styles.scopeBtn, outflowTab === 'fastfood' && styles.scopeBtnActive)}
               >
-                <Food24Regular style={{ width: 14, height: 14 }} />
-                <span>Kitchen Usage & Waste</span>
-                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                <Food24Regular className={styles.icon14Neutral} />
+                <span>Kitchen Usage &amp; Waste</span>
+                <span className={mergeClasses(styles.scopeBtnBadge, outflowTab === 'fastfood' && styles.scopeBtnBadgeActive)}>
                   {stockOutMovements.filter((m) => m.module === 'fastfood').length}
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setOutflowTab('minimart')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: outflowTab === 'minimart' ? '#E51937' : 'transparent',
-                  color: outflowTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: outflowTab === 'minimart' ? 700 : 500,
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }}
+                className={mergeClasses(styles.scopeBtn, outflowTab === 'minimart' && styles.scopeBtnActive)}
               >
-                <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                <ShoppingBag24Regular className={styles.icon14Neutral} />
                 <span>Mini Mart Damaged/Expired</span>
-                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: outflowTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                <span className={mergeClasses(styles.scopeBtnBadge, outflowTab === 'minimart' && styles.scopeBtnBadgeActive)}>
                   {stockOutMovements.filter((m) => m.module !== 'fastfood').length}
                 </span>
               </button>
             </div>
           ) : (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}`, fontSize: '12px', fontWeight: 600 }}>
-              {hasFastFood ? <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />}
+            <div className={styles.scopeSingleChip}>
+              {hasFastFood ? <Food24Regular className={styles.icon14Red} /> : <ShoppingBag24Regular className={styles.icon14Blue} />}
               <span>{hasFastFood ? 'Kitchen Usage & Waste Logs' : 'Mini Mart Damaged/Expired Logs'}</span>
-              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
+              <span className={styles.scopeBtnBadge}>
                 {stockOutMovements.length}
               </span>
             </div>
           )}
+        </div>
         </div>
 
         <div className={styles.filterBar}>
@@ -1183,7 +1245,7 @@ export function StockOutView(): React.JSX.Element {
             />
           </div>
 
-          <div style={{ minWidth: '220px' }}>
+          <div className={styles.minWidth220}>
             <CustomSelect
               label="FILTER BY CATEGORY"
               value={tableCategoryFilter}
@@ -1195,14 +1257,14 @@ export function StockOutView(): React.JSX.Element {
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className={styles.filterActionsRow}>
             {selectedIds.length > 0 && (
               <Button
                 appearance="primary"
                 size="small"
                 icon={<Delete20Regular />}
                 onClick={handleBatchDelete}
-                style={{ backgroundColor: '#D13438', color: '#FFFFFF', fontWeight: 600 }}
+                className={styles.deleteDangerBtn}
               >
                 Delete Selected ({selectedIds.length})
               </Button>
@@ -1252,12 +1314,12 @@ export function StockOutView(): React.JSX.Element {
                         <Checkbox checked={isChecked} onChange={() => toggleSelectRow(mov.id)} />
                       </td>
                       <td className={styles.td}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div className={styles.productCellStack}>
                           <span className={styles.productNameText}>
                             {mov.productName}
                           </span>
                           <span className={styles.categoryBadge}>
-                            <Folder20Regular style={{ width: 12, height: 12, color: '#E51937' }} />
+                            <Folder20Regular className={styles.icon12Red} />
                             <span>{matchedProd?.category || 'General'}</span>
                           </span>
                         </div>

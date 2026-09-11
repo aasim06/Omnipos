@@ -1064,6 +1064,22 @@ const useStyles = makeStyles({
   textMuted: {
     color: tokens.colorNeutralForeground2,
   },
+  storageCloseBtnBold: {
+    fontWeight: 600,
+  },
+  storageBackupBlue: {
+    backgroundColor: '#0078D4',
+    boxShadow: '0 2px 8px rgba(0, 120, 212, 0.3)',
+  },
+  flyoutPortalWrapper: {
+    position: 'fixed',
+    zIndex: 999999,
+  },
+  flyoutSubList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
 });
 
 export function FluentSidebar(): React.JSX.Element {
@@ -1204,8 +1220,8 @@ export function FluentSidebar(): React.JSX.Element {
           to: '/dashboard',
           label: 'Dashboard',
           badge: 'LIVE',
-          icon: <DataTrending24Regular style={{ width: 19, height: 19 }} />,
-          activeIcon: <DataTrending24Filled style={{ width: 19, height: 19 }} />,
+          icon: <DataTrending24Regular className={styles.icon19} />,
+          activeIcon: <DataTrending24Filled className={styles.icon19} />,
         },
       ],
     },
@@ -1806,16 +1822,14 @@ export function FluentSidebar(): React.JSX.Element {
                   setIsStorageModalOpen(false);
                   navigate('/settings', { state: { tab: 'backup' } });
                 }}
-                className={mergeClasses(styles.storageCloseBtn, isDark ? styles.storageCloseDark : styles.storageCloseLight)}
-                style={{ fontWeight: 600 }}
+                className={mergeClasses(styles.storageCloseBtn, isDark ? styles.storageCloseDark : styles.storageCloseLight, styles.storageCloseBtnBold)}
               >
                 <span>Full Backup Manager</span>
               </button>
               <button
                 type="button"
                 onClick={handleQuickBackup}
-                className={styles.storageResyncBtn}
-                style={{ backgroundColor: '#0078D4', boxShadow: '0 2px 8px rgba(0, 120, 212, 0.3)' }}
+                className={mergeClasses(styles.storageResyncBtn, styles.storageBackupBlue)}
               >
                 <ArrowDownload20Regular className={styles.icon15} />
                 <span>Backup Now (.db)</span>
@@ -1837,17 +1851,13 @@ export function FluentSidebar(): React.JSX.Element {
       {flyout &&
         createPortal(
           <div
-            style={{
-              position: 'fixed',
-              top: `${flyout.top}px`,
-              left: `${flyout.left}px`,
-              zIndex: 999999,
-            }}
+            style={{ top: `${flyout.top}px`, left: `${flyout.left}px` }}
             onMouseEnter={() => {
               if (flyoutTimerRef.current) clearTimeout(flyoutTimerRef.current);
             }}
             onMouseLeave={closeFlyoutWithDelay}
             className={mergeClasses(
+              styles.flyoutPortalWrapper,
               styles.menuPopover,
               isDark ? styles.menuPopoverDark : styles.menuPopoverLight
             )}
@@ -1860,7 +1870,7 @@ export function FluentSidebar(): React.JSX.Element {
                 {flyout.item.subtitle || 'Module navigation'}
               </Text>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div className={styles.flyoutSubList}>
               {flyout.item.subItems
                 .filter((sub: any) => !sub.moduleKey || can(sub.moduleKey))
                 .map((sub: any) => {

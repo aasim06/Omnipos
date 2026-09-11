@@ -330,6 +330,125 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     fontSize: '11px',
   },
+  scopeBar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '12px',
+    padding: '12px 16px',
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    boxShadow: tokens.shadow2,
+  },
+  scopeLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  scopeLabel: {
+    fontSize: '11px',
+    fontWeight: 800,
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+  },
+  scopeTabList: {
+    display: 'inline-flex',
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: '3px',
+    borderRadius: '8px',
+    gap: '4px',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
+  },
+  scopeBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 14px',
+    borderRadius: '6px',
+    borderTopStyle: 'none', borderBottomStyle: 'none',
+    borderLeftStyle: 'none', borderRightStyle: 'none',
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    fontSize: '12.5px',
+    fontWeight: 500,
+    color: tokens.colorNeutralForeground2,
+    backgroundColor: 'transparent',
+    transitionProperty: 'all',
+    transitionDuration: '0.12s',
+    transitionTimingFunction: 'ease',
+  },
+  scopeBtnActive: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    fontWeight: 700,
+  },
+  scopeBtnBadge: {
+    fontSize: '10px',
+    padding: '1px 6px',
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    fontWeight: 700,
+  },
+  scopeBtnBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  icon15Red: {
+    width: '15px',
+    height: '15px',
+    color: '#E51937',
+  },
+  icon15Blue: {
+    width: '15px',
+    height: '15px',
+    color: '#2563EB',
+  },
+  icon15Neutral: {
+    width: '15px',
+    height: '15px',
+  },
+  scopeSingleChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 12px',
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
+    fontSize: '12.5px',
+    fontWeight: 600,
+  },
+  scopeCountChip: {
+    fontSize: '10px',
+    padding: '1px 6px',
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    fontWeight: 700,
+  },
+  scopeRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+  },
 });
 
 export function InventoryDashboardView(): React.JSX.Element {
@@ -420,48 +539,20 @@ export function InventoryDashboardView(): React.JSX.Element {
 
   return (
     <div className={styles.container}>
-      {/* ── Inventory Department Overview Tabs ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px',
-          padding: '12px 16px',
-          borderRadius: tokens.borderRadiusMedium,
-          backgroundColor: tokens.colorNeutralBackground1,
-          border: `1px solid ${tokens.colorNeutralStroke1}`,
-          boxShadow: tokens.shadow2,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      {/* ── Inventory Department Overview Tabs ─�    <div className={styles.scopeBar}>
+        <div className={styles.scopeLeft}>
+          <span className={styles.scopeLabel}>
             Inventory Scope:
           </span>
           {hasFastFood && hasOmnimart ? (
-            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '4px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+            <div className={styles.scopeTabList}>
               <button
                 type="button"
                 onClick={() => setInventoryTab('all')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 14px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: inventoryTab === 'all' ? '#E51937' : 'transparent',
-                  color: inventoryTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: inventoryTab === 'all' ? 700 : 500,
-                  fontSize: '12.5px',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
+                className={mergeClasses(styles.scopeBtn, inventoryTab === 'all' && styles.scopeBtnActive)}
               >
                 <span>Store-Wide Overview</span>
-                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                <span className={mergeClasses(styles.scopeBtnBadge, inventoryTab === 'all' && styles.scopeBtnBadgeActive)}>
                   {licensedProducts.length}
                 </span>
               </button>
@@ -469,25 +560,11 @@ export function InventoryDashboardView(): React.JSX.Element {
               <button
                 type="button"
                 onClick={() => setInventoryTab('fastfood')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 14px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: inventoryTab === 'fastfood' ? '#E51937' : 'transparent',
-                  color: inventoryTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: inventoryTab === 'fastfood' ? 700 : 500,
-                  fontSize: '12.5px',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
+                className={mergeClasses(styles.scopeBtn, inventoryTab === 'fastfood' && styles.scopeBtnActive)}
               >
-                <Food24Regular style={{ width: 15, height: 15 }} />
-                <span>Kitchen & Fast Food Raw Stock</span>
-                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                <Food24Regular className={styles.icon15Neutral} />
+                <span>Kitchen &amp; Fast Food Raw Stock</span>
+                <span className={mergeClasses(styles.scopeBtnBadge, inventoryTab === 'fastfood' && styles.scopeBtnBadgeActive)}>
                   {licensedProducts.filter((p) => p.module === 'fastfood' || p.itemRole === 'raw_ingredient').length}
                 </span>
               </button>
@@ -495,44 +572,30 @@ export function InventoryDashboardView(): React.JSX.Element {
               <button
                 type="button"
                 onClick={() => setInventoryTab('minimart')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 14px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: inventoryTab === 'minimart' ? '#E51937' : 'transparent',
-                  color: inventoryTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: inventoryTab === 'minimart' ? 700 : 500,
-                  fontSize: '12.5px',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
+                className={mergeClasses(styles.scopeBtn, inventoryTab === 'minimart' && styles.scopeBtnActive)}
               >
-                <ShoppingBag24Regular style={{ width: 15, height: 15 }} />
+                <ShoppingBag24Regular className={styles.icon15Neutral} />
                 <span>Retail Mini Mart Goods</span>
-                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: inventoryTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
+                <span className={mergeClasses(styles.scopeBtnBadge, inventoryTab === 'minimart' && styles.scopeBtnBadgeActive)}>
                   {licensedProducts.filter((p) => (p.module === 'minimart' || p.itemRole === 'retail_product') && p.itemRole !== 'raw_ingredient').length}
                 </span>
               </button>
             </div>
           ) : (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}`, fontSize: '12.5px', fontWeight: 600 }}>
-              {hasFastFood ? <Food24Regular style={{ width: 15, height: 15, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 15, height: 15, color: '#2563EB' }} />}
+            <div className={styles.scopeSingleChip}>
+              {hasFastFood ? <Food24Regular className={styles.icon15Red} /> : <ShoppingBag24Regular className={styles.icon15Blue} />}
               <span>{hasFastFood ? 'Kitchen & Fast Food Raw Stock' : 'Retail Mini Mart Goods'}</span>
-              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
+              <span className={styles.scopeCountChip}>
                 {licensedProducts.length} items
               </span>
             </div>
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+        <div className={styles.scopeRight}>
           <span>Showing <strong>{displayedProducts.length}</strong> items in scope</span>
         </div>
-      </div>
+      </div>  </div>
 
       {/* ── KPI Metrics Row (5 Connected Cards) ── */}
       <div className={styles.metricsGrid}>

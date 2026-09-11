@@ -1241,6 +1241,167 @@ const useStyles = makeStyles({
       backgroundColor: '#C6172E',
     },
   },
+  scopeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '10px',
+  },
+  scopeLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  scopeLabel: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  scopeTabList: {
+    display: 'inline-flex',
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: '3px',
+    borderRadius: '8px',
+    gap: '3px',
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
+  },
+  scopeBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 12px',
+    borderRadius: '6px',
+    borderTopStyle: 'none', borderBottomStyle: 'none',
+    borderLeftStyle: 'none', borderRightStyle: 'none',
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: 500,
+    color: tokens.colorNeutralForeground2,
+    backgroundColor: 'transparent',
+    transitionProperty: 'all',
+    transitionDuration: '0.12s',
+    transitionTimingFunction: 'ease',
+  },
+  scopeBtnActive: {
+    backgroundColor: '#E51937',
+    color: '#FFFFFF',
+    fontWeight: 700,
+  },
+  scopeBtnBadge: {
+    fontSize: '10px',
+    padding: '1px 5px',
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    fontWeight: 700,
+  },
+  scopeBtnBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  scopeSingleChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+    padding: '4px 10px',
+    borderRadius: '6px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
+  },
+  icon14Red: {
+    width: '14px',
+    height: '14px',
+    color: '#E51937',
+  },
+  icon14Blue: {
+    width: '14px',
+    height: '14px',
+    color: '#2563EB',
+  },
+  icon14Neutral: {
+    width: '14px',
+    height: '14px',
+  },
+  icon14Grey: {
+    width: '14px',
+    height: '14px',
+    color: '#94A3B8',
+  },
+  icon12Blue: {
+    width: '12px',
+    height: '12px',
+    color: '#2563EB',
+  },
+  icon22Orange: {
+    width: '22px',
+    height: '22px',
+    color: '#D97706',
+    flexShrink: 0,
+  },
+  icon24Grey: {
+    width: '24px',
+    height: '24px',
+    color: '#94A3B8',
+  },
+  metaBadgeInline: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+  },
+  variantBtnInline: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  historyHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '12px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: tokens.colorNeutralStroke2,
+    paddingBottom: '10px',
+  },
+  minWidth170: {
+    minWidth: '170px',
+  },
+  filterActionsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  deleteDangerBtn: {
+    backgroundColor: '#D13438',
+    color: '#FFFFFF',
+    fontWeight: 600,
+  },
+  productCellStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  verifiedTagFlex: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
 });
 
 export function StockInView(): React.JSX.Element {
@@ -2192,16 +2353,16 @@ export function StockInView(): React.JSX.Element {
     <div className={styles.container}>
       {/* ── CARD 1: Record Stock In (Receiving Invoice) ── */}
       <div className={styles.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+        <div className={styles.scopeRow}>
           <span className={styles.cardTitle}>Record Stock In (Receiving Invoice)</span>
 
           {/* Department / Branch Switcher for Stock In */}
           {hasFastFood && hasOmnimart ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className={styles.scopeLeft}>
+              <span className={styles.scopeLabel}>
                 Destination:
               </span>
-              <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+              <div className={styles.scopeTabList}>
                 <button
                   type="button"
                   onClick={() => {
@@ -2209,24 +2370,10 @@ export function StockInView(): React.JSX.Element {
                     setSelectedMainCategory('all');
                     setSelectedCategory('all');
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '5px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    backgroundColor: form.watch('module') === 'fastfood' ? '#E51937' : 'transparent',
-                    color: form.watch('module') === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                    fontWeight: form.watch('module') === 'fastfood' ? 700 : 500,
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    transition: 'all 0.12s ease',
-                  }}
+                  className={mergeClasses(styles.scopeBtn, form.watch('module') === 'fastfood' && styles.scopeBtnActive)}
                 >
-                  <Food24Regular style={{ width: 14, height: 14 }} />
-                  <span>Kitchen & Fast Food</span>
+                  <Food24Regular className={styles.icon14Neutral} />
+                  <span>Kitchen &amp; Fast Food</span>
                 </button>
                 <button
                   type="button"
@@ -2235,34 +2382,20 @@ export function StockInView(): React.JSX.Element {
                     setSelectedMainCategory('all');
                     setSelectedCategory('all');
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '5px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    backgroundColor: form.watch('module') !== 'fastfood' ? '#E51937' : 'transparent',
-                    color: form.watch('module') !== 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                    fontWeight: form.watch('module') !== 'fastfood' ? 700 : 500,
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    transition: 'all 0.12s ease',
-                  }}
+                  className={mergeClasses(styles.scopeBtn, form.watch('module') !== 'fastfood' && styles.scopeBtnActive)}
                 >
-                  <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
+                  <ShoppingBag24Regular className={styles.icon14Neutral} />
                   <span>Retail Mini Mart</span>
                 </button>
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className={styles.scopeLeft}>
+              <span className={styles.scopeLabel}>
                 Destination:
               </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground1, padding: '4px 10px', borderRadius: '6px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-                {hasFastFood ? <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />}
+              <span className={styles.scopeSingleChip}>
+                {hasFastFood ? <Food24Regular className={styles.icon14Red} /> : <ShoppingBag24Regular className={styles.icon14Blue} />}
                 <span>{hasFastFood ? 'Kitchen & Fast Food' : 'Retail Mini Mart'}</span>
               </span>
             </div>

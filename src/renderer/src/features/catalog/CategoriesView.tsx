@@ -491,6 +491,65 @@ const useStyles = makeStyles({
     color: '#059669',
     fontWeight: 600,
   },
+  catFormHintRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '5px',
+  },
+  catFormHintText: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+  },
+  catFormToggleBtn: {
+    backgroundColor: 'transparent',
+    borderTopStyle: 'none', borderBottomStyle: 'none',
+    borderLeftStyle: 'none', borderRightStyle: 'none',
+    color: '#E51937',
+    fontSize: '11.5px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    padding: 0,
+  },
+  presetInfoBox: {
+    padding: '8px 10px',
+    borderRadius: '8px',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  presetChipRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    flexWrap: 'wrap',
+  },
+  presetChipLabel: {
+    fontSize: '10.5px',
+    fontWeight: 700,
+    color: tokens.colorNeutralForeground3,
+  },
+  presetUnitChip: {
+    fontSize: '10.5px',
+    fontWeight: 600,
+    padding: '1px 6px',
+    borderRadius: '4px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
+    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    color: tokens.colorNeutralForeground1,
+  },
 });
 
 interface ProfileOption {
@@ -935,8 +994,8 @@ export function CategoriesView(): React.JSX.Element {
 
               {/* 3. Select Category */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                  <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3 }}>
+                <div className={styles.catFormHintRow}>
+                  <span className={styles.catFormHintText}>
                     {isCustomName ? 'Type any custom category name' : 'Choose preset category or type custom'}
                   </span>
                   <button
@@ -949,15 +1008,7 @@ export function CategoriesView(): React.JSX.Element {
                         categoryForm.setValue('name', defaultCategoryOptions[0]?.value || '');
                       }
                     }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#E51937',
-                      fontSize: '11.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
+                    className={styles.catFormToggleBtn}
                   >
                     {isCustomName ? '← Choose from Presets' : '+ Custom Name'}
                   </button>
@@ -998,22 +1049,14 @@ export function CategoriesView(): React.JSX.Element {
 
               {/* 4. Sab Se Neechay: Preset Units & Sizes preview */}
               {currentProfileConfig && (
-                <div style={{ padding: '8px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground2, border: `1px solid ${tokens.colorNeutralStroke2}`, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className={styles.presetInfoBox}>
                   {currentProfileConfig.suggestedUnits && currentProfileConfig.suggestedUnits.length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>Preset Units:</span>
+                    <div className={styles.presetChipRow}>
+                      <span className={styles.presetChipLabel}>Preset Units:</span>
                       {currentProfileConfig.suggestedUnits.map((unit) => (
                         <span
                           key={unit}
-                          style={{
-                            fontSize: '10.5px',
-                            fontWeight: 600,
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            backgroundColor: tokens.colorNeutralBackground1,
-                            border: `1px solid ${tokens.colorNeutralStroke1}`,
-                            color: tokens.colorNeutralForeground1,
-                          }}
+                          className={styles.presetUnitChip}
                         >
                           {unit}
                         </span>
@@ -1022,8 +1065,8 @@ export function CategoriesView(): React.JSX.Element {
                   )}
 
                   {currentProfileConfig.suggestedSizes && currentProfileConfig.suggestedSizes.length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: tokens.colorNeutralForeground3 }}>Preset Sizes:</span>
+                    <div className={styles.presetChipRow}>
+                      <span className={styles.presetChipLabel}>Preset Sizes:</span>
                       {currentProfileConfig.suggestedSizes.map((size) => (
                         <span
                           key={size}

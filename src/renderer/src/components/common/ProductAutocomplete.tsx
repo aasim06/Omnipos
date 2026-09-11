@@ -21,7 +21,6 @@ export interface ProductAutocompleteProps {
   label?: string;
   error?: string;
   disabled?: boolean;
-  style?: React.CSSProperties;
   labelBg?: string;
 }
 
@@ -167,6 +166,36 @@ const useStyles = makeStyles({
     fontWeight: 700,
     color: tokens.colorBrandForeground1,
   },
+  emptyCategoryWrap: {
+    textAlign: 'center',
+    padding: '8px 4px',
+  },
+  emptyCategoryTitle: {
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground1,
+    marginBottom: '4px',
+  },
+  emptyCategorySubtitle: {
+    fontSize: '11px',
+    color: tokens.colorNeutralForeground3,
+    marginBottom: '10px',
+  },
+  addProductBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '6px 14px',
+    fontSize: '11.5px',
+    fontWeight: 700,
+    color: '#ffffff',
+    backgroundColor: '#E51937',
+    borderTopStyle: 'none',
+    borderBottomStyle: 'none',
+    borderLeftStyle: 'none',
+    borderRightStyle: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
 });
 
 export function ProductAutocomplete({
@@ -183,7 +212,6 @@ export function ProductAutocomplete({
   label,
   error,
   disabled = false,
-  style,
   labelBg,
 }: ProductAutocompleteProps): React.JSX.Element {
   const styles = useStyles();
@@ -290,7 +318,7 @@ export function ProductAutocomplete({
   };
 
   return (
-    <div ref={containerRef} className={styles.container} style={style}>
+    <div ref={containerRef} className={styles.container}>
       <CustomInput
         id={id}
         label={label}
@@ -356,11 +384,11 @@ export function ProductAutocomplete({
           {suggestions.length === 0 ? (
             <div className={styles.noItems}>
               {isCategoryFiltered ? (
-                <div style={{ textAlign: 'center', padding: '8px 4px' }}>
-                  <div style={{ fontWeight: 600, color: tokens.colorNeutralForeground1, marginBottom: '4px' }}>
+                <div className={styles.emptyCategoryWrap}>
+                  <div className={styles.emptyCategoryTitle}>
                     No products found in &quot;{filterCategory}&quot;
                   </div>
-                  <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, marginBottom: '10px' }}>
+                  <div className={styles.emptyCategorySubtitle}>
                     Is category mein abhi tak koi item create nahi kiya gaya.
                   </div>
                   <button
@@ -371,25 +399,13 @@ export function ProductAutocomplete({
                         `/catalog/new?category=${encodeURIComponent(filterCategory!)}&module=${filterModule || 'minimart'}&returnUrl=/inventory/stock-in`
                       );
                     }}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '6px 14px',
-                      fontSize: '11.5px',
-                      fontWeight: 700,
-                      color: '#ffffff',
-                      backgroundColor: '#E51937',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                    }}
+                    className={styles.addProductBtn}
                   >
                     + Add New Product in &quot;{filterCategory}&quot;
                   </button>
                 </div>
               ) : (
-                `No items match "${value}". Custom name will be used.`
+                `No items match "${displayValue}". Custom name will be used.`
               )}
             </div>
           ) : (

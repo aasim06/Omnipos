@@ -17,7 +17,6 @@ export interface CustomSelectProps {
   options: (string | CustomSelectOption)[];
   placeholder?: string;
   className?: string;
-  style?: React.CSSProperties;
   disabled?: boolean;
   required?: boolean;
   error?: string;
@@ -254,6 +253,10 @@ const useStyles = makeStyles({
     fontWeight: 700,
     fontFamily: 'monospace',
   },
+  optionItemDisabled: {
+    opacity: 0.45,
+    cursor: 'not-allowed',
+  },
 });
 
 export function CustomSelect({
@@ -263,7 +266,6 @@ export function CustomSelect({
   options,
   placeholder = 'Select...',
   className = '',
-  style,
   disabled = false,
   required = false,
   error,
@@ -299,7 +301,6 @@ export function CustomSelect({
     <div
       ref={containerRef}
       className={mergeClasses(styles.container, className)}
-      style={style}
     >
       {/* Trigger Outline Box with Floating Label Notch */}
       <div
@@ -393,10 +394,10 @@ export function CustomSelect({
                     onChange(opt.value);
                     setIsOpen(false);
                   }}
-                  style={opt.disabled ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
                   className={mergeClasses(
                     styles.optionItem,
-                    isSelected && styles.optionItemSelected
+                    isSelected && styles.optionItemSelected,
+                    opt.disabled && styles.optionItemDisabled
                   )}
                 >
                   <div className={styles.optionContent}>

@@ -9,7 +9,6 @@ export interface CustomInputProps extends React.InputHTMLAttributes<HTMLInputEle
   leftIcon?: React.ReactNode;
   rightElement?: React.ReactNode;
   onClear?: () => void;
-  containerStyle?: React.CSSProperties;
   labelBg?: string;
 }
 
@@ -135,6 +134,10 @@ const useStyles = makeStyles({
     marginTop: '3px',
     fontWeight: 500,
   },
+  dismissIcon: {
+    width: '12px',
+    height: '12px',
+  },
 });
 
 export const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
@@ -146,10 +149,8 @@ export const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
       leftIcon,
       rightElement,
       onClear,
-      containerStyle,
       labelBg,
       className = '',
-      style,
       disabled,
       required,
       onFocus,
@@ -165,7 +166,6 @@ export const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
     return (
       <div
         className={mergeClasses(styles.container, className)}
-        style={containerStyle}
       >
         <div
           className={mergeClasses(
@@ -208,7 +208,6 @@ export const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
               onBlur?.(e);
             }}
             className={styles.input}
-            style={style}
             {...rest}
           />
 
@@ -225,7 +224,7 @@ export const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
               className={styles.clearBtn}
               title="Clear"
             >
-              <Dismiss16Regular style={{ width: 12, height: 12 }} />
+              <Dismiss16Regular className={styles.dismissIcon} />
             </button>
           )}
         </div>

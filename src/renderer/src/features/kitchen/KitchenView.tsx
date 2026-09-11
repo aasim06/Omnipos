@@ -473,6 +473,15 @@ const useStyles = makeStyles({
   btnMarkServed: {
     borderRadius: '6px',
   },
+  timeChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+  },
+  timerSmallIcon: {
+    width: '13px',
+    height: '13px',
+  },
 });
 
 interface KitchenTicket {
@@ -913,10 +922,12 @@ export function KitchenView(): React.JSX.Element {
                         Ticket #{String(idx + 1).padStart(3, '0')}
                       </Body1>
                       <span
-                        className={elapsedMins > 15 ? styles.timeUrgent : elapsedMins > 8 ? styles.timeWarning : styles.timeGood}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                        className={mergeClasses(
+                          elapsedMins > 15 ? styles.timeUrgent : elapsedMins > 8 ? styles.timeWarning : styles.timeGood,
+                          styles.timeChip
+                        )}
                       >
-                        <Timer16Regular style={{ width: 13, height: 13 }} />
+                        <Timer16Regular className={styles.timerSmallIcon} />
                         <span>{elapsedMins}m ago</span>
                       </span>
                     </div>
