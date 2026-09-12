@@ -43,6 +43,7 @@ import { KitchenPageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { playKitchenBell } from '@/lib/soundFx';
+import { useConfirmDialog, useAppToast } from '@/context/AppNotificationContext';
 
 /* ── Zod Validation Schema for Manual KDS Ticket with Multiple Items ── */
 const rushTicketLineSchema = z.object({
@@ -83,6 +84,8 @@ interface KitchenTicket {
 export function KitchenView(): React.JSX.Element {
   const styles = useKitchenStyles();
   const queryClient = useQueryClient();
+  const confirmModal = useConfirmDialog();
+  const { notifySuccess } = useAppToast();
   const [activeTab, setActiveTab] = useState<TabValue>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -562,7 +565,18 @@ export function KitchenView(): React.JSX.Element {
                       size="small"
                       icon={<Delete16Regular />}
                       title="Cancel / Delete Ticket"
-                      onClick={() => deleteTicketMutation.mutate(ticket.id)}
+                      onClick={async () => {
+                        const ok = await confirmModal({
+                          title: 'Cancel / Delete Ticket',
+                          message: `Are you sure you want to remove Kitchen Ticket #${ticket.orderId?.slice(-6) || ticket.id.slice(-6)}?`,
+                          confirmLabel: 'Delete Ticket',
+                          intent: 'danger',
+                        });
+                        if (ok) {
+                          deleteTicketMutation.mutate(ticket.id);
+                          notifySuccess('Kitchen ticket deleted.');
+                        }
+                      }}
                     />
                     <Button
                       appearance="subtle"

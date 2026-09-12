@@ -22,7 +22,7 @@ export function ConfirmDeleteModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
       <div className="w-full max-w-md bg-[#141720] border border-[#232734] rounded-xl p-6 shadow-2xl space-y-5 relative font-sans text-white animate-in zoom-in-95 duration-150">
         {/* Close Button */}
         <button

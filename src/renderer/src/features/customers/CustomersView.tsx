@@ -184,11 +184,11 @@ export function CustomersView(): React.JSX.Element {
 
       const key = rawName.toLowerCase();
       const existing = custMap.get(key);
-      const orderAmount = Number(ord.totalAmount || 0);
+      const netOrderAmount = Math.max(0, Number(ord.totalAmount || 0) - Number(ord.refundedAmount || 0));
 
       if (existing) {
         existing.totalOrders += 1;
-        existing.totalSpent += orderAmount;
+        existing.totalSpent += netOrderAmount;
       } else {
         custMap.set(key, {
           id: uid('cust_'),
@@ -197,7 +197,7 @@ export function CustomersView(): React.JSX.Element {
           address: '',
           accountType: 'regular',
           totalOrders: 1,
-          totalSpent: orderAmount,
+          totalSpent: netOrderAmount,
           khataDebt: 0,
           creditLimit: 0,
           hasKhataAccount: false,
@@ -272,7 +272,20 @@ export function CustomersView(): React.JSX.Element {
       initialQtys[`${l.productId || l.name}_${idx}`] = 0;
     });
     setReturnQuantities(initialQtys);
-    setRefundPaymentMode(ord.orderType === 'khata' ? 'khata' : 'cash');
+
+    // Auto-detect Khata account or active debt for customer
+    const custRaw = (ord.customerName || '').toLowerCase().trim();
+    const cleanCust = custRaw.replace(/\s*\(.*?\)\s*/g, '').trim();
+    const matchedKhata = (customerKhatas || []).find((k: any) => {
+      const kn = (k.name || '').toLowerCase().trim();
+      return kn && (custRaw === kn || cleanCust === kn || custRaw.includes(kn) || kn.includes(cleanCust));
+    });
+
+    if (ord.orderType === 'khata' || (matchedKhata && Number(matchedKhata.currentDebt || 0) > 0)) {
+      setRefundPaymentMode('khata');
+    } else {
+      setRefundPaymentMode('cash');
+    }
   };
 
   // Calculate current refund total
@@ -312,18 +325,33 @@ export function CustomersView(): React.JSX.Element {
         }
       });
 
+      const custRaw = (selectedOrderForRefund.customerName || '').toLowerCase().trim();
+      const cleanCust = custRaw.replace(/\s*\(.*?\)\s*/g, '').trim();
+      const matchedKhata = (customerKhatas || []).find((k: any) => {
+        const kn = (k.name || '').toLowerCase().trim();
+        return kn && (custRaw === kn || cleanCust === kn || custRaw.includes(kn) || kn.includes(cleanCust));
+      });
+
       await posApi.processOrderRefund(selectedOrderForRefund.id, {
         returnedLines,
         refundAmount: calculatedRefundTotal,
         reason: refundReason,
         paymentMode: refundPaymentMode,
         customerName: selectedOrderForRefund.customerName,
+        khataId: matchedKhata?.id,
       });
 
-      // Refetch
-      await Promise.all([refetchOrders(), refetchRefunds(), refetchKhatas()]);
-      queryClient.invalidateQueries({ queryKey: ['analytics-report'] });
-      queryClient.refetchQueries({ queryKey: ['analytics-report'] });
+      // Invalidate all related caches and refetch
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['orders'] }),
+        queryClient.invalidateQueries({ queryKey: ['khatas'] }),
+        queryClient.invalidateQueries({ queryKey: ['refunds'] }),
+        queryClient.invalidateQueries({ queryKey: ['khata-transactions'] }),
+        queryClient.invalidateQueries({ queryKey: ['analytics-report'] }),
+        refetchOrders(),
+        refetchRefunds(),
+        refetchKhatas(),
+      ]);
 
       notifySuccess(`Refund of ${formatPKR(calculatedRefundTotal)} processed successfully! Stock replenished.`);
       setRefundSuccessMsg(`Refund of ${formatPKR(calculatedRefundTotal)} processed successfully! Stock has been replenished and sales adjusted.`);

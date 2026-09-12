@@ -54,6 +54,7 @@ import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { CATEGORY_PROFILES, detectCategoryProfile, ALL_PROFILE_OPTIONS, getFilteredProfileOptions } from '@/lib/categoryProfiles';
 import { UNIT_OPTIONS } from '@/lib/units';
+import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext';
 
 /* ── Zod Schemas ───────────────────────────────────────────────────── */
 const productSchema = z.object({
@@ -131,6 +132,8 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
   }, [refreshModules]);
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
+  const { notifySuccess, notifyError } = useAppToast();
+  const confirmModal = useConfirmDialog();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -234,6 +237,23 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
+
+  const handleDeleteProduct = async (product: Product) => {
+    const ok = await confirmModal({
+      title: 'Delete Product',
+      message: `Are you sure you want to delete "${product.name}"? This action cannot be undone and will permanently remove this item from the catalog.`,
+      confirmLabel: 'Delete Product',
+      intent: 'danger',
+    });
+    if (ok) {
+      try {
+        await deleteProductMutation.mutateAsync(product.id);
+        notifySuccess(`Product "${product.name}" deleted successfully.`);
+      } catch (err: any) {
+        notifyError(err?.message || 'Failed to delete product');
+      }
+    }
+  };
 
   // Save Category Mutation
   const saveCategoryMutation = useMutation({
@@ -1033,7 +1053,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                               size="small"
                               appearance="subtle"
                               icon={<Delete20Regular className={styles.deleteIcon} />}
-                              onClick={() => deleteProductMutation.mutate(p.id)}
+                              onClick={() => handleDeleteProduct(p)}
                               title="Delete Product"
                             />
                           </div>

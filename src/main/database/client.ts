@@ -55,6 +55,10 @@ export function getPrisma(): PrismaClient {
         db: { url: `file:${targetDbPath.replaceAll('\\', '/')}` },
       },
     });
+    const activePrisma = prisma;
+    initializeDatabase(activePrisma).catch((err) => {
+      console.warn('[DB] initializeDatabase error:', err);
+    });
   }
 
   return prisma;
@@ -124,6 +128,8 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
       "orderType" TEXT,
       "stage" TEXT NOT NULL DEFAULT 'paid',
       "totalAmount" REAL NOT NULL DEFAULT 0,
+      "refundedAmount" REAL NOT NULL DEFAULT 0,
+      "syncStatus" TEXT NOT NULL DEFAULT 'synced',
       "isSynced" BOOLEAN NOT NULL DEFAULT 0,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL
@@ -270,6 +276,18 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
 
   try {
     await database.$executeRawUnsafe(`ALTER TABLE "Order" ADD COLUMN "refundedAmount" REAL DEFAULT 0`);
+  } catch {
+    /* Ignore if column already exists */
+  }
+
+  try {
+    await database.$executeRawUnsafe(`ALTER TABLE "Order" ADD COLUMN "syncStatus" TEXT DEFAULT 'synced'`);
+  } catch {
+    /* Ignore if column already exists */
+  }
+
+  try {
+    await database.$executeRawUnsafe(`ALTER TABLE "Order" ADD COLUMN "isSynced" BOOLEAN DEFAULT 0`);
   } catch {
     /* Ignore if column already exists */
   }

@@ -80,10 +80,13 @@ const editSchema = z.object({
 type EditFormData = z.infer<typeof editSchema>;
 
 import { useStockInStyles, useStyles } from './stockIn.styles';
+import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext';
 
 export function StockInView(): React.JSX.Element {
   const styles = useStockInStyles();
   const queryClient = useQueryClient();
+  const { notifySuccess } = useAppToast();
+  const confirmModal = useConfirmDialog();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -969,19 +972,33 @@ export function StockInView(): React.JSX.Element {
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this stock in shipment record?')) {
+  const handleDelete = async (id: string) => {
+    const ok = await confirmModal({
+      title: 'Delete Stock In Record',
+      message: 'Are you sure you want to delete this stock in shipment record? Product inventory quantities will be recalculated.',
+      confirmLabel: 'Delete Record',
+      intent: 'danger',
+    });
+    if (ok) {
       deleteMutation.mutate(id);
+      notifySuccess('Stock in shipment record deleted.');
     }
   };
 
   const handleBatchDelete = async () => {
     if (selectedIds.length === 0) return;
-    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} selected stock in records?`)) {
+    const ok = await confirmModal({
+      title: 'Delete Selected Records',
+      message: `Are you sure you want to delete ${selectedIds.length} selected stock in records?`,
+      confirmLabel: `Delete ${selectedIds.length} Records`,
+      intent: 'danger',
+    });
+    if (ok) {
       for (const id of selectedIds) {
         await deleteMutation.mutateAsync(id);
       }
       setSelectedIds([]);
+      notifySuccess(`${selectedIds.length} records deleted.`);
     }
   };
 

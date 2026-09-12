@@ -648,16 +648,39 @@ export function registerRoutes(app: Express): void {
         }
       }
 
-      // 3. Adjust Customer Khata if refunded to Khata account
+      // 3. Adjust Customer Khata if refunded to Khata account or if order was on Khata
       const custName = customerName || order.customerName;
-      if (pMode === 'khata' && custName && totalRefund > 0) {
+      let updatedKhata: any = null;
+      if ((pMode === 'khata' || order.orderType === 'khata' || (req.body as any).khataId) && totalRefund > 0) {
         try {
-          const khata = await db.customerKhata.findFirst({
-            where: { name: custName },
-          });
+          let khata: any = null;
+          const targetKhataId = (req.body as any).khataId;
+          if (targetKhataId) {
+            khata = await db.customerKhata.findUnique({ where: { id: String(targetKhataId) } });
+          }
+          if (!khata && custName) {
+            khata = await db.customerKhata.findFirst({
+              where: { name: custName },
+            });
+            if (!khata) {
+              const cleanName = custName.replace(/\s*\(.*?\)\s*/g, '').trim();
+              khata = await db.customerKhata.findFirst({
+                where: { name: cleanName },
+              });
+            }
+            if (!khata) {
+              const allKhatas = await db.customerKhata.findMany();
+              const cn = custName.toLowerCase().trim();
+              khata = allKhatas.find((k: any) => {
+                const kn = (k.name || '').toLowerCase().trim();
+                return kn && (cn === kn || cn.includes(kn) || kn.includes(cn));
+              }) || null;
+            }
+          }
+
           if (khata) {
             const newDebt = Math.max(0, (khata.currentDebt || 0) - totalRefund);
-            await db.customerKhata.update({
+            updatedKhata = await db.customerKhata.update({
               where: { id: khata.id },
               data: { currentDebt: newDebt, updatedAt: new Date() },
             });
@@ -709,6 +732,7 @@ export function registerRoutes(app: Express): void {
         ok: true,
         refund,
         order: updatedOrder,
+        updatedKhata,
       });
     } catch (err: any) {
       console.error('[Refund] Error processing refund:', err);

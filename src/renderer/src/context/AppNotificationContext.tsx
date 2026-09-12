@@ -25,7 +25,9 @@ import {
 
 const useStyles = makeStyles({
   confirmSurface: {
-    maxWidth: '440px',
+    maxWidth: '460px',
+    width: '92vw',
+    boxSizing: 'border-box',
     borderRadius: '16px',
     padding: '24px',
     backgroundColor: tokens.colorNeutralBackground1,
@@ -45,13 +47,27 @@ const useStyles = makeStyles({
   confirmActions: {
     display: 'flex',
     justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: '12px',
+    flexWrap: 'nowrap',
+    marginTop: '16px',
+  },
+  actionButton: {
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    minHeight: '36px',
+    padding: '0 18px',
+    fontWeight: '600',
   },
   dangerButton: {
     backgroundColor: '#DC2626 !important',
     color: '#FFFFFF !important',
     border: 'none !important',
     fontWeight: '600',
+    whiteSpace: 'nowrap !important',
+    flexShrink: '0 !important',
+    minHeight: '36px',
+    padding: '0 18px',
     '&:hover': {
       backgroundColor: '#B91C1C !important',
     },
@@ -222,12 +238,16 @@ export function AppNotificationProvider({ children }: PropsWithChildren): React.
           <DialogBody>
             <DialogContent className={styles.confirmBody}>{confirmState.message}</DialogContent>
             <DialogActions className={styles.confirmActions}>
-              <Button appearance="secondary" onClick={() => handleConfirmClose(false)}>
+              <Button
+                appearance="secondary"
+                className={styles.actionButton}
+                onClick={() => handleConfirmClose(false)}
+              >
                 {confirmState.cancelLabel}
               </Button>
               <Button
                 appearance="primary"
-                className={confirmState.intent === 'danger' ? styles.dangerButton : undefined}
+                className={confirmState.intent === 'danger' ? styles.dangerButton : styles.actionButton}
                 onClick={() => handleConfirmClose(true)}
               >
                 {confirmState.confirmLabel}

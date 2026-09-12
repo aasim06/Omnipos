@@ -912,7 +912,8 @@ export const posApi = {
     reason?: string;
     paymentMode?: string;
     customerName?: string;
-  }): Promise<{ ok: boolean; refund: OrderRefund; order: Order }> {
+    khataId?: string;
+  }): Promise<{ ok: boolean; refund: OrderRefund; order: Order; updatedKhata?: LocalCustomerKhata }> {
     // 1. Instant local Dexie stock restoration
     try {
       for (const line of payload.returnedLines) {
@@ -926,45 +927,136 @@ export const posApi = {
       console.warn('[OfflineDB] local restock error:', dexErr);
     }
 
-    // 2. Call backend API
-    const base = await resolveApiUrl();
-    const tenantHeaders = await getTenantHeaders();
-    const res = await fetch(`${base}/api/orders/${orderId}/refund`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...tenantHeaders,
-      },
-      body: JSON.stringify(payload),
-    });
+    // 2. Instant local Dexie Khata reversal if applicable
+    const isKhataRefund = (payload.paymentMode || '').toLowerCase() === 'khata';
+    let matchedKhata: LocalCustomerKhata | undefined;
+    try {
+      if (payload.khataId) {
+        matchedKhata = await offlineDb.khatas.get(payload.khataId);
+      }
+      if (!matchedKhata && payload.customerName) {
+        const rawName = payload.customerName.trim().toLowerCase();
+        const cleanName = rawName.replace(/\s*\(.*?\)\s*/g, '').trim();
+        const allKhatas = await offlineDb.khatas.toArray();
+        matchedKhata = allKhatas.find((k) => {
+          const kn = (k.name || '').trim().toLowerCase();
+          return kn && (kn === rawName || kn === cleanName || rawName.includes(kn) || kn.includes(rawName));
+        });
+      }
 
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Failed to process refund');
+      // Check if order was originally on Khata
+      let orderWasKhata = false;
+      try {
+        const localOrd = await offlineDb.orders.get(orderId);
+        if (localOrd && (localOrd.orderType === 'khata' || (localOrd as any).paymentMode === 'khata')) {
+          orderWasKhata = true;
+        }
+      } catch {}
+
+      const shouldAdjustKhata = isKhataRefund || orderWasKhata || (matchedKhata && Number(matchedKhata.currentDebt || 0) > 0);
+      if (matchedKhata && shouldAdjustKhata && payload.refundAmount > 0) {
+        const prevDebt = Number(matchedKhata.currentDebt || 0);
+        const newDebt = Math.max(0, prevDebt - payload.refundAmount);
+        await offlineDb.khatas.update(matchedKhata.id, {
+          currentDebt: newDebt,
+          updatedAt: new Date().toISOString(),
+          synced: 0,
+        });
+
+        const txRecord: LocalKhataTx = {
+          id: `tx_ref_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          khataId: matchedKhata.id,
+          type: 'CREDIT',
+          amount: payload.refundAmount,
+          balanceAfter: newDebt,
+          description: `Refund Reversal - Invoice #${orderId} (${payload.reason || 'Customer Return'})`,
+          paymentMethod: payload.paymentMode || 'khata',
+          createdAt: new Date().toISOString(),
+          synced: 0,
+        };
+        await offlineDb.khataTransactions.put(txRecord);
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('pos_khata_updated', { detail: { khataId: matchedKhata.id, newDebt } }));
+        }
+      }
+    } catch (khataLocalErr) {
+      console.warn('[OfflineDB] local khata refund adjustment error:', khataLocalErr);
     }
 
-    const data = await res.json();
+    // 3. Call backend API
+    const base = await resolveApiUrl();
+    const tenantHeaders = await getTenantHeaders();
+    let data: any = { ok: true };
+    try {
+      const res = await fetch(`${base}/api/orders/${orderId}/refund`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...tenantHeaders,
+        },
+        body: JSON.stringify({
+          ...payload,
+          khataId: matchedKhata?.id || payload.khataId,
+        }),
+      });
 
-    // 3. Save refund to local Dexie
+      if (res.ok) {
+        data = await res.json();
+      }
+    } catch (netErr) {
+      console.warn('[Refund] Remote push failed or offline:', netErr);
+    }
+
+    // 4. Save refund to local Dexie
     if (data.refund) {
       try {
         await offlineDb.refunds.put(data.refund);
       } catch {}
-    }
-
-    // 4. Update order in local Dexie
-    if (data.order) {
+    } else {
       try {
-        await offlineDb.orders.update(orderId, {
-          refundedAmount: data.order.refundedAmount,
-          stage: data.order.stage,
+        await offlineDb.refunds.put({
+          id: `ref_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          orderId,
+          customerName: payload.customerName || 'Walk-In Customer',
+          refundAmount: payload.refundAmount,
+          paymentMode: payload.paymentMode || 'cash',
+          reason: payload.reason || 'Customer Return',
+          items: payload.returnedLines,
+          createdAt: new Date().toISOString(),
         });
       } catch {}
     }
 
-    // Notify listeners
-    window.dispatchEvent(new CustomEvent('pos_orders_updated'));
-    window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
+    // 5. Update order in local Dexie
+    try {
+      const existingOrd = await offlineDb.orders.get(orderId);
+      const prevRefunded = Number(existingOrd?.refundedAmount || 0);
+      const newRefundedTotal = prevRefunded + payload.refundAmount;
+      const isFullyRefunded = existingOrd && existingOrd.totalAmount ? newRefundedTotal >= existingOrd.totalAmount : true;
+      await offlineDb.orders.update(orderId, {
+        refundedAmount: newRefundedTotal,
+        stage: isFullyRefunded ? 'refunded' : existingOrd?.stage || 'billed',
+        updatedAt: new Date().toISOString(),
+      });
+    } catch {}
+
+    // 6. Update Khata if backend returned updatedKhata
+    if (data.updatedKhata) {
+      try {
+        await offlineDb.khatas.put({
+          ...data.updatedKhata,
+          synced: 1,
+        });
+      } catch {}
+    }
+
+    // Notify all listeners
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('pos_orders_updated'));
+      window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
+      window.dispatchEvent(new CustomEvent('pos_khata_updated'));
+    }
 
     return data;
   },

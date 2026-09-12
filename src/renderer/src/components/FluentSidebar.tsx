@@ -112,7 +112,7 @@ const useStyles = makeStyles({
     padding: '0 8px',
     borderRadius: '6px',
     border: 'none',
-    fontSize: '12px',
+    fontSize: '13px',
     cursor: 'pointer',
     width: '100%',
     boxSizing: 'border-box',
@@ -429,14 +429,13 @@ const useStyles = makeStyles({
     borderRadius: '10px',
     padding: '6px',
     minWidth: '220px',
-    position: 'relative',
     '::before': {
       content: '""',
       position: 'absolute',
       top: '-15px',
       bottom: '-15px',
       left: '-25px',
-      width: '30px',
+      width: '35px',
       backgroundColor: 'transparent',
     },
   },
@@ -472,9 +471,11 @@ const useStyles = makeStyles({
   },
   menuHeaderTitle: {
     color: '#FF4D63',
+    fontWeight: 600
   },
   menuHeaderSubtitle: {
     color: '#64748B',
+    fontSize: '14px'
   },
   flyoutItemBtn: {
     display: 'flex',
@@ -484,7 +485,7 @@ const useStyles = makeStyles({
     padding: '0 10px',
     borderRadius: '6px',
     border: 'none',
-    fontSize: '12.5px',
+    fontSize: '13px',
     cursor: 'pointer',
     width: '100%',
     boxSizing: 'border-box',
@@ -589,11 +590,11 @@ const useStyles = makeStyles({
     color: '#475569',
   },
   accordionLabelActive: {
-    fontSize: '13px',
+    fontSize: '14px',
     fontWeight: 700,
   },
   accordionLabelInactive: {
-    fontSize: '13px',
+    fontSize: '14px',
     fontWeight: 500,
   },
   chevronIcon: {
@@ -674,11 +675,11 @@ const useStyles = makeStyles({
   },
   subItemLabelActive: {
     fontWeight: 700,
-    fontSize: '12px',
+    fontSize: '13px',
   },
   subItemLabelInactive: {
     fontWeight: 500,
-    fontSize: '12px',
+    fontSize: '13px',
   },
   subItemIconWrapActive: {
     opacity: 1,
@@ -777,7 +778,7 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    fontSize: '13px',
+    fontSize: '14px',
   },
   badgePill: {
     fontSize: '9.5px',
@@ -954,7 +955,10 @@ const useStyles = makeStyles({
   },
   storageDialogSurface: {
     borderRadius: tokens.borderRadiusLarge,
-    maxWidth: '440px',
+    maxWidth: '520px',
+    width: '92vw',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
   },
   storageDialogTitle: {
     display: 'flex',
@@ -1003,13 +1007,79 @@ const useStyles = makeStyles({
     fontSize: '12px',
     fontWeight: 600,
     textAlign: 'center',
+    padding: '8px 12px',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderRadius: '6px',
+  },
+  storageActionRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+    marginTop: '4px',
+  },
+  storageActionButton: {
+    height: '40px',
+    borderRadius: '8px',
+    borderTopStyle: 'none',
+    borderBottomStyle: 'none',
+    borderLeftStyle: 'none',
+    borderRightStyle: 'none',
+    color: '#FFFFFF',
+    fontSize: '13px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    outline: 'none',
+    transition: 'all 0.15s ease',
+  },
+  storageBackupBlue: {
+    backgroundColor: '#0078D4',
+    boxShadow: '0 2px 8px rgba(0, 120, 212, 0.25)',
+    ':hover': {
+      backgroundColor: '#106EBE',
+    },
+  },
+  storageResyncRed: {
+    backgroundColor: '#E51937',
+    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+    ':hover': {
+      backgroundColor: '#C4122C',
+    },
   },
   storageActions: {
-    marginTop: '20px',
+    marginTop: '18px',
     display: 'flex',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: '10px',
+    width: '100%',
+    paddingTop: '12px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2,
+  },
+  storageManagerLink: {
+    background: 'transparent',
+    borderTopStyle: 'none',
+    borderBottomStyle: 'none',
+    borderLeftStyle: 'none',
+    borderRightStyle: 'none',
+    color: '#0078D4',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    padding: '6px 8px',
+    borderRadius: '6px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    transition: 'all 0.15s ease',
+    ':hover': {
+      textDecoration: 'underline',
+      backgroundColor: 'rgba(0, 120, 212, 0.08)',
+    },
   },
   storageCloseBtn: {
     height: '36px',
@@ -1067,10 +1137,7 @@ const useStyles = makeStyles({
   storageCloseBtnBold: {
     fontWeight: 600,
   },
-  storageBackupBlue: {
-    backgroundColor: '#0078D4',
-    boxShadow: '0 2px 8px rgba(0, 120, 212, 0.3)',
-  },
+
   flyoutPortalWrapper: {
     position: 'fixed',
     zIndex: 999999,
@@ -1179,11 +1246,11 @@ export function FluentSidebar(): React.JSX.Element {
   const openFlyout = (e: React.MouseEvent<HTMLElement>, item: any) => {
     if (flyoutTimerRef.current) clearTimeout(flyoutTimerRef.current);
     const rect = e.currentTarget.getBoundingClientRect();
-    const calculatedTop = Math.max(10, Math.min(rect.top, window.innerHeight - 300));
+    const calculatedTop = Math.max(12, Math.min(rect.top - 6, window.innerHeight - 340));
     setFlyout({
       label: item.label,
       top: calculatedTop,
-      left: rect.right + 6,
+      left: Math.max(68, rect.right + 8),
       item,
     });
   };
@@ -1192,7 +1259,7 @@ export function FluentSidebar(): React.JSX.Element {
     if (flyoutTimerRef.current) clearTimeout(flyoutTimerRef.current);
     flyoutTimerRef.current = setTimeout(() => {
       setFlyout(null);
-    }, 250);
+    }, 400);
   };
 
   const closeFlyoutImmediately = () => {
@@ -1463,6 +1530,7 @@ export function FluentSidebar(): React.JSX.Element {
                       >
                         <button
                           type="button"
+                          onMouseEnter={(e) => openFlyout(e, item)}
                           onClick={(e) => {
                             if (isOpen) closeFlyoutImmediately();
                             else openFlyout(e, item);
@@ -1807,40 +1875,44 @@ export function FluentSidebar(): React.JSX.Element {
                   {storageStatusMsg}
                 </div>
               )}
+
+              {/* Action Buttons Grid */}
+              <div className={styles.storageActionRow}>
+                <button
+                  type="button"
+                  onClick={handleQuickBackup}
+                  className={mergeClasses(styles.storageActionButton, styles.storageBackupBlue)}
+                >
+                  <ArrowDownload20Regular className={styles.icon17} />
+                  <span>Backup Now (.db)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResyncStorage}
+                  className={mergeClasses(styles.storageActionButton, styles.storageResyncRed)}
+                >
+                  <ArrowSync20Filled className={styles.icon17} />
+                  <span>Force Cloud Resync</span>
+                </button>
+              </div>
             </DialogContent>
             <DialogActions className={styles.storageActions}>
-              <button
-                type="button"
-                onClick={() => setIsStorageModalOpen(false)}
-                className={mergeClasses(styles.storageCloseBtn, isDark ? styles.storageCloseDark : styles.storageCloseLight)}
-              >
-                Close
-              </button>
               <button
                 type="button"
                 onClick={() => {
                   setIsStorageModalOpen(false);
                   navigate('/settings', { state: { tab: 'backup' } });
                 }}
-                className={mergeClasses(styles.storageCloseBtn, isDark ? styles.storageCloseDark : styles.storageCloseLight, styles.storageCloseBtnBold)}
+                className={styles.storageManagerLink}
               >
-                <span>Full Backup Manager</span>
+                <span>Full Backup Manager →</span>
               </button>
               <button
                 type="button"
-                onClick={handleQuickBackup}
-                className={mergeClasses(styles.storageResyncBtn, styles.storageBackupBlue)}
+                onClick={() => setIsStorageModalOpen(false)}
+                className={mergeClasses(styles.storageCloseBtn, isDark ? styles.storageCloseDark : styles.storageCloseLight)}
               >
-                <ArrowDownload20Regular className={styles.icon15} />
-                <span>Backup Now (.db)</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleResyncStorage}
-                className={styles.storageResyncBtn}
-              >
-                <ArrowSync20Filled className={styles.icon15} />
-                <span>Force Cloud Resync</span>
+                Close
               </button>
             </DialogActions>
           </DialogBody>
@@ -1849,7 +1921,14 @@ export function FluentSidebar(): React.JSX.Element {
 
       {/* ── Collapsed Flyout Submenu Portal (Zero-Blink Pure React Portal) ── */}
       {flyout && (() => {
-        const flyoutPositionStyle: React.CSSProperties = { top: `${flyout.top}px`, left: `${flyout.left}px` };
+        const flyoutPositionStyle: React.CSSProperties = {
+          position: 'fixed',
+          top: `${flyout.top}px`,
+          left: `${flyout.left}px`,
+          zIndex: 999999,
+          width: 'max-content',
+          minWidth: '220px',
+        };
         return createPortal(
           <div
             style={flyoutPositionStyle}
@@ -1889,8 +1968,8 @@ export function FluentSidebar(): React.JSX.Element {
                         isSubActive
                           ? (isDark ? styles.flyoutItemActiveDark : styles.flyoutItemActiveLight)
                           : sub.isSpecial
-                          ? (isDark ? styles.flyoutItemSpecialDark : styles.flyoutItemSpecialLight)
-                          : (isDark ? styles.flyoutItemInactiveDark : styles.flyoutItemInactiveLight)
+                            ? (isDark ? styles.flyoutItemSpecialDark : styles.flyoutItemSpecialLight)
+                            : (isDark ? styles.flyoutItemInactiveDark : styles.flyoutItemInactiveLight)
                       )}
                     >
                       <span className={styles.iconWrap}>{sub.icon}</span>
