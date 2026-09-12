@@ -685,9 +685,9 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
   const [selectedQty, setSelectedQty] = useState(1);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [isCartExpanded, setIsCartExpanded] = useState(false);
-  const [promoCode, setPromoCode] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState('');
-  const [discountPct, setDiscountPct] = useState(0);
+  const [discountMode, setDiscountMode] = useState<'percent' | 'fixed'>('percent');
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [discountInput, setDiscountInput] = useState<string>('');
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [isSuccess, setIsSuccess] = useState(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
@@ -768,7 +768,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
 
   /* Collapsible Sections (for maximizing cart item room) */
   const [isTopSectionCollapsed, setIsTopSectionCollapsed] = useState(false);
-  const [isPromoCollapsed, setIsPromoCollapsed] = useState(true);
+  const [isDiscountCollapsed, setIsDiscountCollapsed] = useState(true);
 
   /* Customer Autocomplete (MUI floating-label outline style matching reference screenshot) */
   interface CustomerOption {
@@ -1436,25 +1436,30 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
     } catch {}
   };
 
-  /* Financial Totals */
+  /* Financial Totals & Discount */
   const effectiveDeliveryFee = orderType === 'delivery' ? deliveryDetails.fee : deliveryFee;
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const discountVal = (subtotal * discountPct) / 100;
+
+  const discountVal = discountMode === 'percent'
+    ? Math.round((subtotal * (discountValue || 0)) / 100)
+    : Math.min(subtotal, Math.max(0, discountValue || 0));
+
+  const effectiveDiscountPct = subtotal > 0
+    ? discountMode === 'percent'
+      ? discountValue
+      : Math.round(((discountVal / subtotal) * 100) * 10) / 10
+    : 0;
+
   const total = Math.max(0, subtotal - discountVal + effectiveDeliveryFee);
 
-  const applyPromo = () => {
-    const code = promoCode.trim().toUpperCase();
-    if (code === 'SAVE10') {
-      setDiscountPct(10);
-      setAppliedPromo(promoCode.trim());
-    } else if (code === 'SAVE20') {
-      setDiscountPct(20);
-      setAppliedPromo(promoCode.trim());
-    } else {
-      setAppliedPromo('');
-      setDiscountPct(0);
-    }
-    setPromoCode('');
+  const handleClearDiscount = () => {
+    setDiscountValue(0);
+    setDiscountInput('');
+  };
+
+  const handleApplyPreset = (val: number) => {
+    setDiscountValue(val);
+    setDiscountInput(val > 0 ? String(val) : '');
   };
 
   /* Checkout Mutation */
@@ -1494,7 +1499,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         id: uid(),
         module,
         lines: cart,
-        discountPercent: discountPct,
+        discountPercent: effectiveDiscountPct,
         totalAmount: total,
         customerName: assignedCustomerName,
         orderType: assignedOrderType,
@@ -1529,8 +1534,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
       queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
       setLastOrder(savedOrder);
       setCart([]);
-      setAppliedPromo('');
-      setDiscountPct(0);
+      handleClearDiscount();
       setPaymentMode('cash');
       setSelectedKhataId('');
       const guestInDb = customerKhatas.find((k: any) => k.name.toLowerCase() === 'guest');
@@ -2795,6 +2799,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                 onClick={() => {
                   setCart([]);
                   setTenderedAmount('');
+                  handleClearDiscount();
                 }}
                 title="Clear order cart"
                 style={{
@@ -3641,7 +3646,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
           )}
         </div>
 
-        {/* Docked Footer (Promocode, Summary & Quick Cash Tender) */}
+        {/* Docked Footer (Bill Discount, Summary & Quick Cash Tender) */}
         <div
           style={{
             padding: '14px 18px 18px',
@@ -3653,41 +3658,59 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
             flexShrink: 0,
           }}
         >
-          {/* Collapsible Promo Code Field */}
-          {isPromoCollapsed ? (
-            /* Collapsed Promo Bar */
-            appliedPromo ? (
+          {/* Collapsible Bill Discount Field */}
+          {isDiscountCollapsed ? (
+            /* Collapsed Discount Bar */
+            discountVal > 0 ? (
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '4px 10px',
+                  padding: '5px 12px',
                   borderRadius: F.radiusSm,
-                  backgroundColor: isDark ? 'rgba(229, 25, 55, 0.15)' : '#FEF2F2',
-                  border: `1px solid ${isDark ? 'rgba(229, 25, 55, 0.3)' : '#FECACA'}`,
+                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5',
+                  border: `1px solid ${isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0'}`,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Tag20Regular style={{ width: 13, height: 13, color: F.accentRed }} />
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: F.accentRed }}>
-                    {appliedPromo.toUpperCase()} (-{discountPct}%)
+                <div
+                  onClick={() => setIsDiscountCollapsed(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', flex: 1 }}
+                >
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 17,
+                      height: 17,
+                      borderRadius: '50%',
+                      backgroundColor: '#10B981',
+                      color: '#FFFFFF',
+                      fontSize: '10px',
+                      fontWeight: 900,
+                    }}
+                  >
+                    %
+                  </span>
+                  <span style={{ fontSize: '11.5px', fontWeight: 800, color: isDark ? '#34D399' : '#047857' }}>
+                    {discountMode === 'percent' ? `${discountValue}% OFF` : `PKR ${discountValue} OFF`}
+                    <span style={{ fontWeight: 600, marginLeft: '6px', fontSize: '11px' }}>
+                      (-PKR {discountVal.toLocaleString()})
+                    </span>
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Dismiss16Regular
-                    style={{ width: 13, height: 13, cursor: 'pointer', color: F.accentRed }}
-                    title="Remove promocode"
-                    onClick={() => {
-                      setAppliedPromo('');
-                      setDiscountPct(0);
-                    }}
+                    style={{ width: 14, height: 14, cursor: 'pointer', color: isDark ? '#34D399' : '#047857' }}
+                    title="Remove discount"
+                    onClick={handleClearDiscount}
                   />
                   <button
                     type="button"
-                    onClick={() => setIsPromoCollapsed(false)}
-                    title="Expand promocode"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: F.accentRed, padding: 0, display: 'flex' }}
+                    onClick={() => setIsDiscountCollapsed(false)}
+                    title="Edit discount"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#34D399' : '#047857', padding: 0, display: 'flex' }}
                   >
                     <ChevronDown20Regular style={{ width: 14, height: 14 }} />
                   </button>
@@ -3695,12 +3718,12 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
               </div>
             ) : (
               <div
-                onClick={() => setIsPromoCollapsed(false)}
+                onClick={() => setIsDiscountCollapsed(false)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '5px 10px',
+                  padding: '5px 12px',
                   borderRadius: F.radiusSm,
                   backgroundColor: F.bgSubtle,
                   border: `1px dashed ${F.border}`,
@@ -3712,115 +3735,261 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = F.border)}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Tag20Regular style={{ width: 13, height: 13, color: F.textMuted }} />
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: F.textSecondary }}>
-                    PROMOCODE
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 17,
+                      height: 17,
+                      borderRadius: '50%',
+                      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                      color: F.accentRed,
+                      fontSize: '10.5px',
+                      fontWeight: 800,
+                    }}
+                  >
+                    %
+                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, letterSpacing: '0.04em' }}>
+                    BILL DISCOUNT
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: F.textMuted, fontSize: '10.5px' }}>
-                  <span>+ Add Code</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: F.textMuted, fontSize: '11px' }}>
+                  <span style={{ fontWeight: 600 }}>+ Add Discount</span>
                   <ChevronDown20Regular style={{ width: 14, height: 14 }} />
                 </div>
               </div>
             )
           ) : (
-            /* Expanded Promo Field */
+            /* Expanded Discount Control Panel */
             <div
               style={{
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '6px 12px',
+                flexDirection: 'column',
+                gap: '8px',
+                padding: '9px 12px',
                 borderRadius: F.radiusMd,
                 backgroundColor: F.bgSubtle,
-                border: `1px dashed ${F.border}`,
+                border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.35)' : '#FCA5A5'}`,
+                boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : '0 2px 6px rgba(0,0,0,0.05)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Tag20Regular style={{ width: 14, height: 14, color: F.textMuted }} />
-                <span style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, letterSpacing: '0.04em' }}>
-                  PROMOCODE
-                </span>
-              </div>
-
-              {appliedPromo ? (
+              {/* Header: Title + Mode Toggle + Collapse Button */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 17,
+                      height: 17,
+                      borderRadius: '50%',
+                      backgroundColor: F.accentRed,
+                      color: '#FFF',
+                      fontSize: '10px',
+                      fontWeight: 900,
+                    }}
+                  >
+                    %
+                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: F.textPrimary, letterSpacing: '0.03em' }}>
+                    BILL DISCOUNT
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* Percentage vs Fixed Toggle */}
                   <div
                     style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      backgroundColor: isDark ? 'rgba(229, 25, 55, 0.2)' : '#FEF2F2',
-                      color: F.accentRed,
-                      padding: '2px 8px',
                       borderRadius: F.radiusSm,
-                      fontSize: '11px',
-                      fontWeight: 700,
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0',
+                      padding: '2px',
+                      gap: '2px',
                     }}
                   >
-                    <span>{appliedPromo.toUpperCase()}</span>
-                    <Dismiss16Regular
-                      style={{ width: 12, height: 12, cursor: 'pointer' }}
+                    <button
+                      type="button"
                       onClick={() => {
-                        setAppliedPromo('');
-                        setDiscountPct(0);
+                        setDiscountMode('percent');
+                        if (discountMode !== 'percent') {
+                          setDiscountValue(0);
+                          setDiscountInput('');
+                        }
                       }}
-                    />
+                      style={{
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '2px 7px',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        backgroundColor: discountMode === 'percent' ? F.accentRed : 'transparent',
+                        color: discountMode === 'percent' ? '#FFF' : F.textMuted,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      % Percent
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiscountMode('fixed');
+                        if (discountMode !== 'fixed') {
+                          setDiscountValue(0);
+                          setDiscountInput('');
+                        }
+                      }}
+                      style={{
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '2px 7px',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        backgroundColor: discountMode === 'fixed' ? F.accentRed : 'transparent',
+                        color: discountMode === 'fixed' ? '#FFF' : F.textMuted,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      PKR Flat
+                    </button>
                   </div>
+
                   <button
                     type="button"
-                    onClick={() => setIsPromoCollapsed(true)}
-                    title="Collapse promocode"
+                    onClick={() => setIsDiscountCollapsed(true)}
+                    title="Collapse discount"
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: F.textMuted, padding: '2px', display: 'flex', alignItems: 'center' }}
                   >
-                    <ChevronUp20Regular style={{ width: 14, height: 14 }} />
+                    <ChevronUp20Regular style={{ width: 15, height: 15 }} />
                   </button>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                {discountMode === 'percent'
+                  ? [5, 10, 15, 20, 25].map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => handleApplyPreset(pct)}
+                        style={{
+                          flex: 1,
+                          padding: '3px 0',
+                          borderRadius: F.radiusSm,
+                          border: `1px solid ${discountValue === pct ? F.accentRed : F.border}`,
+                          backgroundColor: discountValue === pct ? (isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2') : F.bgCard,
+                          color: discountValue === pct ? F.accentRed : F.textSecondary,
+                          fontSize: '11px',
+                          fontWeight: discountValue === pct ? 800 : 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.1s ease',
+                        }}
+                      >
+                        {pct}%
+                      </button>
+                    ))
+                  : [50, 100, 200, 500].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => handleApplyPreset(amt)}
+                        style={{
+                          flex: 1,
+                          padding: '3px 0',
+                          borderRadius: F.radiusSm,
+                          border: `1px solid ${discountValue === amt ? F.accentRed : F.border}`,
+                          backgroundColor: discountValue === amt ? (isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2') : F.bgCard,
+                          color: discountValue === amt ? F.accentRed : F.textSecondary,
+                          fontSize: '11px',
+                          fontWeight: discountValue === amt ? 800 : 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.1s ease',
+                        }}
+                      >
+                        {amt}
+                      </button>
+                    ))}
+              </div>
+
+              {/* Custom Input + Clear + Done */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
                   <input
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && applyPromo()}
-                    placeholder="Code..."
+                    type="number"
+                    min="0"
+                    max={discountMode === 'percent' ? 100 : subtotal}
+                    value={discountInput}
+                    onChange={(e) => {
+                      const valStr = e.target.value;
+                      setDiscountInput(valStr);
+                      const valNum = parseFloat(valStr) || 0;
+                      if (discountMode === 'percent') {
+                        setDiscountValue(Math.min(100, Math.max(0, valNum)));
+                      } else {
+                        setDiscountValue(Math.max(0, valNum));
+                      }
+                    }}
+                    placeholder={discountMode === 'percent' ? 'Custom % (e.g. 12)' : 'Custom PKR (e.g. 150)'}
                     style={{
-                      width: '80px',
-                      padding: '3px 8px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      padding: '4px 8px',
                       borderRadius: F.radiusSm,
                       border: `1px solid ${F.border}`,
-                      backgroundColor: F.bgSubtle,
+                      backgroundColor: F.bgCard,
                       color: F.textPrimary,
                       fontSize: '11.5px',
                       fontFamily: F.font,
                       outline: 'none',
                     }}
                   />
+                </div>
+
+                {discountValue > 0 && (
                   <button
-                    onClick={applyPromo}
+                    type="button"
+                    onClick={handleClearDiscount}
                     style={{
-                      padding: '3px 10px',
+                      padding: '4px 8px',
                       borderRadius: F.radiusSm,
-                      border: 'none',
-                      backgroundColor: isDark ? F.accentRed : '#1A1A1E',
-                      color: '#FFFFFF',
+                      border: `1px solid ${F.border}`,
+                      backgroundColor: F.bgCard,
+                      color: F.textMuted,
                       fontSize: '11px',
                       fontWeight: 600,
                       cursor: 'pointer',
-                      fontFamily: F.font,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
                     }}
                   >
-                    Apply
+                    <Dismiss16Regular style={{ width: 12, height: 12 }} />
+                    <span>Clear</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsPromoCollapsed(true)}
-                    title="Collapse promocode"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: F.textMuted, padding: '2px', display: 'flex', alignItems: 'center' }}
-                  >
-                    <ChevronUp20Regular style={{ width: 14, height: 14 }} />
-                  </button>
-                </div>
-              )}
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsDiscountCollapsed(true)}
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: F.radiusSm,
+                    border: 'none',
+                    backgroundColor: F.accentRed,
+                    color: '#FFF',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Done
+                </button>
+              </div>
             </div>
           )}
 
@@ -3832,9 +4001,9 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
             </div>
 
             {discountVal > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: F.accentRed }}>
-                <span>Discount ({discountPct}%)</span>
-                <span style={{ fontWeight: 600 }}>-PKR {discountVal.toLocaleString()}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#10B981' }}>
+                <span>Discount ({discountMode === 'percent' ? `${discountValue}%` : `PKR ${discountValue}`})</span>
+                <span style={{ fontWeight: 700 }}>-PKR {discountVal.toLocaleString()}</span>
               </div>
             )}
 
@@ -4629,6 +4798,14 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   <span>Total Items:</span>
                   <span>{lastOrder.lines.reduce((s, l) => s + l.quantity, 0)} units</span>
                 </div>
+                {lastOrder.discountPercent && lastOrder.discountPercent > 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#10B981', marginTop: '2px' }}>
+                    <span>Discount ({lastOrder.discountPercent}%):</span>
+                    <span>
+                      - PKR {Math.round((lastOrder.lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0) * lastOrder.discountPercent) / 100).toLocaleString()}
+                    </span>
+                  </div>
+                ) : null}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '14px', marginTop: '4px', color: isDark ? '#FFF' : '#0F172A' }}>
                   <span>NET TOTAL:</span>
                   <span style={{ color: F.accentRed }}>PKR {lastOrder.totalAmount?.toLocaleString()}</span>
@@ -5217,10 +5394,10 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                 <span>Subtotal ({cart.reduce((s, i) => s + i.quantity, 0)} units):</span>
                 <span style={{ fontWeight: 700, color: F.textPrimary }}>PKR {subtotal.toLocaleString()}</span>
               </div>
-              {discountPct > 0 && (
+              {discountVal > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#10B981' }}>
-                  <span>Discount ({discountPct}%):</span>
-                  <span>- PKR {((subtotal * discountPct) / 100).toLocaleString()}</span>
+                  <span>Discount ({discountMode === 'percent' ? `${discountValue}%` : `PKR ${discountValue}`}):</span>
+                  <span>- PKR {discountVal.toLocaleString()}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '16px', fontWeight: 900, borderTop: `1px dashed ${F.border}`, paddingTop: '8px' }}>

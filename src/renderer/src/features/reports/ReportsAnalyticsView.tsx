@@ -18,6 +18,7 @@ import {
   ArrowClockwise20Regular,
   BuildingShop24Regular,
   ArrowCounterclockwise24Regular,
+  Tag24Regular,
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { resolveApiUrl } from '@/lib/api';
@@ -51,9 +52,22 @@ export function ReportsAnalyticsView(): React.JSX.Element {
         const localExpenses = await offlineDb.expenses.toArray();
         const localRefunds = await offlineDb.refunds.toArray();
         const paidOrders = localOrders.filter((o) => o.stage === 'paid');
-        const grossSales = paidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+        let grossSales = 0;
+        let totalDiscounts = 0;
+        let totalSalesAfterDiscount = 0;
+
+        paidOrders.forEach((o) => {
+          const sub = (o.lines || []).reduce((s, l) => s + (l.unitPrice || 0) * (l.quantity || 1), 0);
+          grossSales += sub;
+          const netOrd = typeof o.totalAmount === 'number' && o.totalAmount >= 0
+            ? o.totalAmount
+            : Math.max(0, sub - ((sub * (o.discountPercent || 0)) / 100));
+          totalSalesAfterDiscount += netOrd;
+          totalDiscounts += Math.max(0, sub - netOrd);
+        });
+
         const totalRefunds = localRefunds.reduce((sum, r) => sum + (r.refundAmount || 0), 0);
-        const netSales = Math.max(0, grossSales - totalRefunds);
+        const netSales = Math.max(0, totalSalesAfterDiscount - totalRefunds);
         const totalExpenses = localExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
         const estimatedCOGS = Math.round(netSales * 0.45);
         const netProfit = netSales - estimatedCOGS - totalExpenses;
@@ -74,6 +88,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
 
         return {
           totalGrossSales: grossSales,
+          totalDiscounts,
           totalRefunds,
           netSales,
           estimatedCOGS,
@@ -90,6 +105,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
   });
 
   const grossSales = report?.totalGrossSales || 0;
+  const totalDiscounts = report?.totalDiscounts || 0;
   const totalRefunds = report?.totalRefunds || 0;
   const netSales = report?.netSales ?? Math.max(0, grossSales - totalRefunds);
   const cogs = report?.estimatedCOGS || 0;
@@ -153,6 +169,21 @@ export function ReportsAnalyticsView(): React.JSX.Element {
             {totalRefundsCount} processed returns
           </Caption1>
         </div>
+
+        {totalDiscounts > 0 && (
+          <div className={styles.metricCard}>
+            <div className={styles.metricHeader}>
+              <Tag24Regular className={styles.refundIcon} />
+              <Caption1 className={styles.metricLabel}>Discounts Granted</Caption1>
+            </div>
+            <Subtitle1 className={styles.refundValue}>
+              - {formatPKR(totalDiscounts)}
+            </Subtitle1>
+            <Caption1 className={styles.metricSubtext}>
+              Subtracted from customer gross bills
+            </Caption1>
+          </div>
+        )}
 
         <div className={styles.metricCard}>
           <div className={styles.metricHeader}>

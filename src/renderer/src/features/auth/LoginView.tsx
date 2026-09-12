@@ -214,19 +214,6 @@ export function LoginView(): React.JSX.Element {
     }
   };
 
-  const handleQuickDemo = (user: string, pass: string) => {
-    setUsername(user);
-    setPassword(pass);
-    setErrorMsg('');
-    const result = userStorage.verifyCredentials(user, pass);
-    if (result.success && result.user) {
-      login(result.user);
-      navigate(result.user.role === 'admin' || result.user.permissions.includes('pos_fastfood') ? '/pos/fastfood' : '/pos/omnimart');
-    } else {
-      setErrorMsg(result.error || 'Quick login failed');
-    }
-  };
-
   return (
     <div className={styles.container}>
       <Card className={styles.loginCard}>
@@ -303,21 +290,6 @@ export function LoginView(): React.JSX.Element {
           </Button>
         </form>
 
-        {/* Quick Demo Sign In Pills */}
-        <div>
-          <Caption1 className={styles.demoLabel}>
-            Quick Demo Login:
-          </Caption1>
-          <div className={styles.quickPills}>
-            <Button
-              size="small"
-              appearance="secondary"
-              onClick={() => handleQuickDemo('admin', '1234')}
-            >
-              Manager (Admin)
-            </Button>
-          </div>
-        </div>
 
         {/* Connected Indicator footer matching screenshot */}
         <div className={styles.footerStatus}>

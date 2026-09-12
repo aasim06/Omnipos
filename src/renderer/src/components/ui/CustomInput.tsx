@@ -64,20 +64,20 @@ const useStyles = makeStyles({
     cursor: 'not-allowed',
   },
   label: {
-    position: 'absolute',
-    top: '-8px',
-    left: '10px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    padding: '0 4px',
-    fontSize: '11px',
-    fontWeight: 600,
-    color: tokens.colorNeutralForeground3,
-    lineHeight: 1,
-    pointerEvents: 'none',
-    zIndex: 1,
-    display: 'flex',
+    display: 'inline-flex',
     alignItems: 'center',
-    gap: '2px',
+    gap: '3px',
+    backgroundColor: 'transparent',
+    padding: '0',
+    marginBottom: '5px',
+    fontSize: '11.5px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground2,
+    lineHeight: 1.2,
+    userSelect: 'none',
+    transitionProperty: 'color',
+    transitionDuration: '0.15s',
+    transitionTimingFunction: 'ease',
   },
   labelFocused: {
     color: '#E51937',
@@ -167,6 +167,20 @@ export const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
       <div
         className={mergeClasses(styles.container, className)}
       >
+        {label && (
+          <label
+            className={mergeClasses(
+              styles.label,
+              (isFocused || error) && styles.labelFocused,
+              error && styles.labelError
+            )}
+            style={labelBg ? { backgroundColor: labelBg } : undefined}
+          >
+            {label}
+            {required && <span className={styles.requiredStar}>*</span>}
+          </label>
+        )}
+
         <div
           className={mergeClasses(
             styles.wrapper,
@@ -175,19 +189,6 @@ export const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
             disabled && styles.wrapperDisabled
           )}
         >
-          {label && (
-            <span
-              className={mergeClasses(
-                styles.label,
-                (isFocused || error) && styles.labelFocused,
-                error && styles.labelError
-              )}
-              style={labelBg ? { backgroundColor: labelBg } : undefined}
-            >
-              {label}
-              {required && <span className={styles.requiredStar}>*</span>}
-            </span>
-          )}
 
           {activeIcon && (
             <div className={styles.activeIconWrapper}>

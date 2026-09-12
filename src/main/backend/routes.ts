@@ -1161,9 +1161,22 @@ export function registerRoutes(app: Express): void {
         refunds = await (db as any).orderRefund.findMany();
       } catch {}
 
-      const totalGrossSales = orders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0);
+      let totalGrossSales = 0;
+      let totalDiscounts = 0;
+      let totalSalesAfterDiscount = 0;
+
+      for (const ord of orders) {
+        const sub = (ord.lines || []).reduce((s: number, l: any) => s + (l.unitPrice || 0) * (l.quantity || 1), 0);
+        totalGrossSales += sub;
+        const netOrd = typeof ord.totalAmount === 'number' && ord.totalAmount >= 0
+          ? ord.totalAmount
+          : Math.max(0, sub - ((sub * (ord.discountPercent || 0)) / 100));
+        totalSalesAfterDiscount += netOrd;
+        totalDiscounts += Math.max(0, sub - netOrd);
+      }
+
       const totalRefunds = refunds.reduce((sum: number, r: any) => sum + (r.refundAmount || 0), 0);
-      const netSales = Math.max(0, totalGrossSales - totalRefunds);
+      const netSales = Math.max(0, totalSalesAfterDiscount - totalRefunds);
       const totalExpenses = expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
 
       // Estimate Cost of Goods Sold (COGS)
@@ -1192,6 +1205,7 @@ export function registerRoutes(app: Express): void {
 
       res.json({
         totalGrossSales,
+        totalDiscounts,
         totalRefunds,
         netSales,
         estimatedCOGS,

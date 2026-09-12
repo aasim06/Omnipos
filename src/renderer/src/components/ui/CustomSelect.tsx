@@ -77,20 +77,20 @@ const useStyles = makeStyles({
     opacity: 0.6,
   },
   label: {
-    position: 'absolute',
-    top: '-8px',
-    left: '10px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    padding: '0 4px',
-    fontSize: '11px',
-    fontWeight: 600,
-    color: tokens.colorNeutralForeground3,
-    lineHeight: 1,
-    pointerEvents: 'none',
-    zIndex: 1,
-    display: 'flex',
+    display: 'inline-flex',
     alignItems: 'center',
-    gap: '2px',
+    gap: '3px',
+    backgroundColor: 'transparent',
+    padding: '0',
+    marginBottom: '5px',
+    fontSize: '11.5px',
+    fontWeight: 600,
+    color: tokens.colorNeutralForeground2,
+    lineHeight: 1.2,
+    userSelect: 'none',
+    transitionProperty: 'color',
+    transitionDuration: '0.15s',
+    transitionTimingFunction: 'ease',
   },
   labelOpen: {
     color: '#E51937',
@@ -302,7 +302,22 @@ export function CustomSelect({
       ref={containerRef}
       className={mergeClasses(styles.container, className)}
     >
-      {/* Trigger Outline Box with Floating Label Notch */}
+      {/* Label */}
+      {label && (
+        <label
+          className={mergeClasses(
+            styles.label,
+            (isOpen || error) && styles.labelOpen,
+            error && styles.labelError
+          )}
+          style={labelBg ? { backgroundColor: labelBg } : undefined}
+        >
+          {label}
+          {required && <span className={styles.requiredStar}>*</span>}
+        </label>
+      )}
+
+      {/* Trigger Outline Box */}
       <div
         onClick={() => {
           if (!disabled) setIsOpen((prev) => !prev);
@@ -314,20 +329,6 @@ export function CustomSelect({
           disabled && styles.triggerBoxDisabled
         )}
       >
-        {/* Floating Label Notch */}
-        {label && (
-          <span
-            className={mergeClasses(
-              styles.label,
-              (isOpen || error) && styles.labelOpen,
-              error && styles.labelError
-            )}
-            style={labelBg ? { backgroundColor: labelBg } : undefined}
-          >
-            {label}
-            {required && <span className={styles.requiredStar}>*</span>}
-          </span>
-        )}
 
         {/* Selected Label Display */}
         <div className={styles.selectedDisplay}>

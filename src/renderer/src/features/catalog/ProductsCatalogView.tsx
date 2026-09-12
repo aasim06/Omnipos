@@ -41,6 +41,7 @@ import {
   Warning20Regular,
   Box20Regular,
   Money20Regular,
+  Eye20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -856,7 +857,12 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                     </div>
 
                     {/* 4 Parts Details (84px) */}
-                    <div className={styles.liveCardContent}>
+                    <div
+                      className={styles.liveCardContent}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/catalog/products/${p.id}`)}
+                      title="Click to view product details"
+                    >
                       <div>
                         <div className={styles.cardProdName}>
                           {p.name}
@@ -987,7 +993,14 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                               )}
                             </div>
                             <div className={styles.prodTextCol}>
-                              <Body1 className={styles.prodTitle}>{p.name}</Body1>
+                              <Body1
+                                className={styles.prodTitle}
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => navigate(`/catalog/products/${p.id}`)}
+                                title="Click to view product details"
+                              >
+                                {p.name}
+                              </Body1>
                               {p.description && (
                                 <Caption1 className={styles.prodDesc}>
                                   {p.description}
@@ -1042,6 +1055,13 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
                         <TableCell className={styles.tdActions}>
                           <div className={styles.actionsRow}>
+                            <Button
+                              size="small"
+                              appearance="subtle"
+                              icon={<Eye20Regular />}
+                              onClick={() => navigate(`/catalog/products/${p.id}`)}
+                              title="View Product Details"
+                            />
                             <Button
                               size="small"
                               appearance="subtle"

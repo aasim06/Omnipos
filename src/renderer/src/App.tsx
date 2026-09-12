@@ -17,6 +17,7 @@ import { AdminSettingsView } from '@/features/admin/AdminSettingsView';
 import { ProductsCatalogView } from '@/features/catalog/ProductsCatalogView';
 import { CategoriesView } from '@/features/catalog/CategoriesView';
 import { AddProductView } from '@/features/catalog/AddProductView';
+import { ProductDetailsView } from '@/features/catalog/ProductDetailsView';
 import { BarcodeLabelGeneratorView } from '@/features/catalog/BarcodeLabelGeneratorView';
 import { QuotationsView } from '@/features/quotations/QuotationsView';
 import { CustomersView } from '@/features/customers/CustomersView';
@@ -414,6 +415,54 @@ export default function App(): React.JSX.Element {
               element={
                 <RouteAccessGate moduleKey="catalog">
                   <AddProductView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/catalog/products/:id"
+              element={
+                <RouteAccessGate moduleKey="catalog">
+                  <ProductDetailsView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/catalog/product/:id"
+              element={
+                <RouteAccessGate moduleKey="catalog">
+                  <ProductDetailsView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/catalog/details/:id"
+              element={
+                <RouteAccessGate moduleKey="catalog">
+                  <ProductDetailsView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/products/:id"
+              element={
+                <RouteAccessGate moduleKey="catalog">
+                  <ProductDetailsView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/product-details/:id"
+              element={
+                <RouteAccessGate moduleKey="catalog">
+                  <ProductDetailsView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/product-details"
+              element={
+                <RouteAccessGate moduleKey="catalog">
+                  <ProductDetailsView />
                 </RouteAccessGate>
               }
             />

@@ -141,6 +141,8 @@ export function FastFoodDashboardView(): React.JSX.Element {
   // Key KPI Calculations
   const metrics = React.useMemo(() => {
     let totalRevenue = 0;
+    let totalGrossSales = 0;
+    let totalDiscounts = 0;
     let completedCount = 0;
     let inKitchenCount = 0;
     let readyCount = 0;
@@ -152,7 +154,13 @@ export function FastFoodDashboardView(): React.JSX.Element {
     const itemCountMap: Record<string, { name: string; qty: number; revenue: number; img?: string }> = {};
 
     filteredOrders.forEach((o) => {
-      const orderTotal = o.lines.reduce((sum, l) => sum + (l.unitPrice || 0) * (l.quantity || 1), 0);
+      const orderSubtotal = o.lines.reduce((sum, l) => sum + (l.unitPrice || 0) * (l.quantity || 1), 0);
+      const orderTotal = typeof o.totalAmount === 'number' && o.totalAmount >= 0
+        ? o.totalAmount
+        : Math.max(0, orderSubtotal - (orderSubtotal * (o.discountPercent || 0)) / 100);
+      const discountAmt = Math.max(0, orderSubtotal - orderTotal);
+      totalGrossSales += orderSubtotal;
+      totalDiscounts += discountAmt;
       totalRevenue += orderTotal;
 
       if (o.stage === 'paid') completedCount++;
@@ -188,6 +196,8 @@ export function FastFoodDashboardView(): React.JSX.Element {
 
     return {
       totalRevenue,
+      totalGrossSales,
+      totalDiscounts,
       totalOrders,
       completedCount,
       inKitchenCount,
@@ -222,7 +232,11 @@ export function FastFoodDashboardView(): React.JSX.Element {
         const d = new Date(o.createdAt);
         if (d.getHours() === h) {
           ordersInHour++;
-          revenueInHour += o.lines.reduce((s, l) => s + (l.unitPrice || 0) * (l.quantity || 1), 0);
+          const ordSub = o.lines.reduce((s, l) => s + (l.unitPrice || 0) * (l.quantity || 1), 0);
+          const ordTot = typeof o.totalAmount === 'number' && o.totalAmount >= 0
+            ? o.totalAmount
+            : Math.max(0, ordSub - (ordSub * (o.discountPercent || 0)) / 100);
+          revenueInHour += ordTot;
           hourOrders.push(o);
         }
       });
@@ -464,6 +478,11 @@ export function FastFoodDashboardView(): React.JSX.Element {
           <div className={mergeClasses(styles.kpiValue, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
             PKR {metrics.totalRevenue.toLocaleString()}
           </div>
+          {metrics.totalDiscounts > 0 && (
+            <div style={{ fontSize: '11px', color: '#10B981', fontWeight: 600, marginTop: '2px' }}>
+              Discounts: -PKR {metrics.totalDiscounts.toLocaleString()}
+            </div>
+          )}
           <div className={styles.kpiTrendRow}>
             <ArrowTrending24Filled className={styles.icon14} />
             <span className={styles.trendGreen}>+18.4%</span>
@@ -1144,7 +1163,10 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 </div>
               ) : (
                 selectedHourDetails.hourOrders.map((ord) => {
-                  const ordTotal = ord.lines.reduce((s, l) => s + (l.unitPrice || 0) * (l.quantity || 1), 0);
+                  const ordSub = ord.lines.reduce((s, l) => s + (l.unitPrice || 0) * (l.quantity || 1), 0);
+                  const ordTotal = typeof ord.totalAmount === 'number' && ord.totalAmount >= 0
+                    ? ord.totalAmount
+                    : Math.max(0, ordSub - (ordSub * (ord.discountPercent || 0)) / 100);
                   const timeStr = new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                   return (
                     <div

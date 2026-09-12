@@ -58,6 +58,10 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
     .join('');
 
   const totalQty = (order.lines || []).reduce((sum, l) => sum + (l.quantity || 1), 0);
+  const subtotal = (order.lines || []).reduce((sum, l) => sum + (l.unitPrice || 0) * (l.quantity || 1), 0);
+  const discountAmount = order.discountPercent && order.discountPercent > 0
+    ? Math.round((subtotal * order.discountPercent) / 100)
+    : 0;
   const totalAmount = order.totalAmount || 0;
   const paymentMode = (options?.paymentMode || (order as any).paymentMethod || 'Cash').toUpperCase();
   const tendered = options?.tenderedAmount;
@@ -222,6 +226,20 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
       <td>Total Items:</td>
       <td style="text-align: right; font-weight: bold;">${totalQty} units</td>
     </tr>
+    ${
+      discountAmount > 0
+        ? `
+    <tr>
+      <td>Subtotal:</td>
+      <td style="text-align: right;">${currency} ${subtotal.toLocaleString()}</td>
+    </tr>
+    <tr style="font-weight: bold;">
+      <td>Discount (${order.discountPercent}%):</td>
+      <td style="text-align: right;">-${currency} ${discountAmount.toLocaleString()}</td>
+    </tr>
+    `
+        : ''
+    }
     <tr class="grand-total">
       <td>NET TOTAL:</td>
       <td style="text-align: right;">${currency} ${totalAmount.toLocaleString()}</td>
