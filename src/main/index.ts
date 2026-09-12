@@ -7,6 +7,7 @@ import { startBackendServer, type BackendServer } from './backend/server';
 import { registerLicenseIpc } from './license/license.ipc';
 import { registerPrintIpc } from './print/print.ipc';
 import { registerBackupIpc } from './backup/backup.ipc';
+import { initAutoUpdater } from './updater';
 
 app.setName('Omnipos');
 app.setPath('userData', join(app.getPath('appData'), 'Omnipos'));
@@ -95,6 +96,7 @@ app.whenReady().then(async () => {
     registerLicenseIpc();
     registerPrintIpc();
     registerBackupIpc();
+    initAutoUpdater();
 
     // 4. Create Main Desktop Window
     createWindow();

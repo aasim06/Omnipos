@@ -18,6 +18,8 @@ const useStyles = makeStyles({
 });
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppNotificationProvider } from '../context/AppNotificationContext';
+import { UpdateProvider } from '../context/UpdateContext';
+import { UpdateBanner } from '../components/UpdateBanner';
 
 // Microsoft Fluent 2 Red Brand Accent (#E51937)
 const fluentRedBrand: BrandVariants = {
@@ -173,7 +175,12 @@ export function AppProviders({ children }: PropsWithChildren): React.JSX.Element
     <QueryClientProvider client={queryClient}>
       <ThemeContext.Provider value={{ mode, toggleTheme }}>
         <FluentProvider theme={currentTheme} className={styles.rootProvider}>
-          <AppNotificationProvider>{children}</AppNotificationProvider>
+          <AppNotificationProvider>
+            <UpdateProvider>
+              {children}
+              <UpdateBanner />
+            </UpdateProvider>
+          </AppNotificationProvider>
         </FluentProvider>
       </ThemeContext.Provider>
     </QueryClientProvider>

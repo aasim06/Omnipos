@@ -21,8 +21,11 @@ import {
   Divider,
   Badge,
   Avatar,
+  ProgressBar,
+  Spinner,
 } from '@fluentui/react-components';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
+import { useUpdate } from '../../context/UpdateContext';
 import {
   BuildingShop24Regular,
   Print24Regular,
@@ -30,6 +33,7 @@ import {
   Save20Regular,
   Key20Regular,
   Checkmark20Filled,
+  CheckmarkCircle20Filled,
   Info16Regular,
   ShieldCheckmark20Regular,
   PeopleCommunity24Regular,
@@ -109,8 +113,54 @@ export function AdminSettingsView(): React.JSX.Element {
 
   const location = useLocation();
 
+  // ── Auto Updater State ──
+  const {
+    currentVersion,
+    progress: downloadProgress,
+    progressInfo,
+    isChecking,
+    isDownloading,
+    isReady: isUpdateReady,
+    error: updateError,
+    checkForUpdates,
+    installUpdate,
+    formatSpeed,
+  } = useUpdate();
+
+  const [updateCheckStatus, setUpdateCheckStatus] = useState<'idle' | 'checking' | 'available' | 'latest' | 'error'>('idle');
+
+  const handleManualCheckUpdate = async () => {
+    try {
+      setUpdateCheckStatus('checking');
+      const res = await checkForUpdates();
+      if (res === 'available' || (typeof res === 'object' && res?.updateInfo)) {
+        setUpdateCheckStatus('available');
+        notifySuccess('New update found! Downloading installer in background...');
+      } else if (res === 'latest') {
+        setUpdateCheckStatus('latest');
+        notifySuccess(`You are already running the latest version (v${currentVersion}).`);
+      } else if (typeof res === 'object' && (res as any)?.disabled) {
+        setUpdateCheckStatus('idle');
+        notifyWarning((res as any).error || 'Updates are available only in Windows Desktop application.');
+      } else if (typeof res === 'object' && res?.error) {
+        setUpdateCheckStatus('error');
+        notifyError(`Update check failed: ${res.error}`);
+      } else {
+        setUpdateCheckStatus('latest');
+        notifySuccess(`App is up to date (v${currentVersion}).`);
+      }
+    } catch (err: any) {
+      setUpdateCheckStatus('error');
+      notifyError(err?.message || 'Error occurred while checking updates.');
+    } finally {
+      setTimeout(() => {
+        setUpdateCheckStatus((curr) => (curr === 'checking' ? 'idle' : curr));
+      }, 4000);
+    }
+  };
+
   // ── Tab State ──
-  const [activeTab, setActiveTab] = useState<'staff' | 'profile' | 'hardware' | 'backup'>(() => {
+  const [activeTab, setActiveTab] = useState<'staff' | 'profile' | 'hardware' | 'backup' | 'updates'>(() => {
     return (location.state as any)?.tab || 'staff';
   });
 
@@ -426,6 +476,27 @@ export function AdminSettingsView(): React.JSX.Element {
           >
             Add New Cashier / Staff
           </Button>
+        ) : activeTab === 'updates' ? (
+          isUpdateReady ? (
+            <Button
+              appearance="primary"
+              icon={<ArrowSync20Regular />}
+              onClick={installUpdate}
+              className={styles.updateInstallBtn}
+            >
+              Restart &amp; Install Update
+            </Button>
+          ) : (
+            <Button
+              appearance="primary"
+              icon={<ArrowSync20Regular />}
+              disabled={isChecking || isDownloading}
+              onClick={handleManualCheckUpdate}
+              className={styles.saveButton}
+            >
+              {isChecking ? 'Checking…' : isDownloading ? `Downloading (${downloadProgress}%)` : 'Check for Updates'}
+            </Button>
+          )
         ) : (
           <Button
             appearance="primary"
@@ -488,6 +559,32 @@ export function AdminSettingsView(): React.JSX.Element {
           >
             SQLite WAL
           </Badge>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('updates')}
+          className={mergeClasses(styles.tabButton, activeTab === 'updates' && styles.tabButtonActive)}
+        >
+          <ArrowSync20Regular className={mergeClasses(styles.tabIcon, activeTab === 'updates' && styles.tabIconActive)} />
+          <span>App Updates</span>
+          {isUpdateReady ? (
+            <Badge appearance="filled" color="success">
+              Ready
+            </Badge>
+          ) : isDownloading ? (
+            <Badge appearance="tint" color="brand">
+              {downloadProgress}%
+            </Badge>
+          ) : (
+            <Badge
+              appearance="tint"
+              color="brand"
+              className={activeTab === 'updates' ? styles.tabBadgeActive : styles.tabBadge}
+            >
+              v{currentVersion}
+            </Badge>
+          )}
         </button>
       </div>
 
@@ -1056,6 +1153,215 @@ export function AdminSettingsView(): React.JSX.Element {
         </div>
       )}
 
+      {/* ── TAB 5: Software Updates & GitHub Releases ────────── */}
+      {activeTab === 'updates' && (
+        <div className={styles.card}>
+          <div className={mergeClasses(styles.cardHeader, styles.cardHeaderBetween)}>
+            <div className={styles.headerFlex}>
+              <div className={mergeClasses(styles.cardIconBox, styles.cardIconBoxRed)}>
+                <ArrowDownload20Regular className={styles.icon20} />
+              </div>
+              <div className={styles.headerTextCol}>
+                <div className={styles.headerTitleRow}>
+                  <Body1 className={styles.headerTitle}>
+                    Software Updates &amp; GitHub Releases
+                  </Body1>
+                  <Badge appearance="tint" color="brand">
+                    v{currentVersion}
+                  </Badge>
+                </div>
+                <Caption1 className={styles.headerSubtitle}>
+                  Stay up to date with the latest features, security patches, and performance optimizations
+                </Caption1>
+              </div>
+            </div>
+
+            {isUpdateReady ? (
+              <Button
+                appearance="primary"
+                icon={<ArrowSync20Regular />}
+                onClick={installUpdate}
+                className={styles.updateInstallBtn}
+              >
+                Restart &amp; Install Now
+              </Button>
+            ) : (
+              <Button
+                appearance="primary"
+                icon={<ArrowSync20Regular />}
+                disabled={isChecking || isDownloading}
+                onClick={handleManualCheckUpdate}
+                className={styles.primaryRedButton}
+              >
+                {isChecking ? 'Checking…' : isDownloading ? `Downloading (${downloadProgress}%)` : 'Check for Updates'}
+              </Button>
+            )}
+          </div>
+
+          <div className={styles.cardBody}>
+            {/* Version & Channel Information Banner */}
+            <div className={styles.updateStatusBanner}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '15px', color: tokens.colorNeutralForeground1, marginBottom: '4px' }}>
+                  Current Installed Version
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className={styles.updateVersionTag}>v{currentVersion}</span>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
+                    Release Channel: <strong>Production (GitHub Releases)</strong>
+                  </Caption1>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <a
+                  href="https://github.com/aasim06/Omnipos/releases"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: tokens.colorBrandForeground1,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  View Releases on GitHub ↗
+                </a>
+              </div>
+            </div>
+
+            {/* Downloading State Progress Card */}
+            {isDownloading && (
+              <div className={styles.updateProgressBarBox}>
+                <div className={styles.updateProgressMeta}>
+                  <span style={{ fontWeight: 600 }}>
+                    {progressInfo.phase === 'starting'
+                      ? 'Initializing secure download…'
+                      : progressInfo.label
+                        ? `Downloading installer: ${progressInfo.label}`
+                        : 'Downloading update package…'}
+                  </span>
+                  <span style={{ fontWeight: 700, color: '#E51937' }}>
+                    {downloadProgress}%
+                  </span>
+                </div>
+                <ProgressBar
+                  value={downloadProgress / 100}
+                  color="brand"
+                  thickness="large"
+                />
+                <div className={styles.updateProgressMeta} style={{ fontSize: '11px' }}>
+                  <span>
+                    Speed: {progressInfo.bytesPerSecond > 0 ? formatSpeed(progressInfo.bytesPerSecond) : 'Connecting…'}
+                  </span>
+                  <span>Full NSIS Windows installer package</span>
+                </div>
+              </div>
+            )}
+
+            {/* Update Ready Banner */}
+            {isUpdateReady && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 20px',
+                  borderRadius: tokens.borderRadiusMedium,
+                  backgroundColor: '#DCFCE7',
+                  border: '1px solid #86EFAC',
+                  gap: '16px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <CheckmarkCircle20Filled style={{ color: '#16A34A', fontSize: '24px' }} />
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#15803D', fontSize: '14px' }}>
+                      Update Downloaded &amp; Ready to Apply!
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#166534', marginTop: '2px' }}>
+                      The new software release has been downloaded and verified. Click the button to restart and complete the upgrade.
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  appearance="primary"
+                  icon={<ArrowSync20Regular />}
+                  onClick={installUpdate}
+                  className={styles.updateInstallBtn}
+                >
+                  Restart &amp; Install Update
+                </Button>
+              </div>
+            )}
+
+            {/* Error Banner */}
+            {updateError && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 18px',
+                  borderRadius: tokens.borderRadiusMedium,
+                  backgroundColor: '#FEE2E2',
+                  border: '1px solid #FCA5A5',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#B91C1C' }}>
+                  <Warning20Regular />
+                  <span style={{ fontSize: '13px', fontWeight: 600 }}>{updateError}</span>
+                </div>
+                <Button size="small" appearance="subtle" onClick={handleManualCheckUpdate}>
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            {/* Status explanation & information cards */}
+            <div className={styles.backupGrid} style={{ marginTop: '8px' }}>
+              <div className={styles.backupActionCard}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <ArrowSync20Regular style={{ color: '#E51937' }} />
+                    <Body1 style={{ fontWeight: 700 }}>Automated Background Updates</Body1>
+                  </div>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.6 }}>
+                    Omnipos automatically checks for updates silently in the background every 4 hours. When a new release tag is created on GitHub, the installer is staged without interrupting your POS cashier operations.
+                  </Caption1>
+                </div>
+              </div>
+
+              <div className={styles.backupActionCard}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <ShieldCheckmark20Regular style={{ color: '#107C41' }} />
+                    <Body1 style={{ fontWeight: 700 }}>Data Safety Guarantee</Body1>
+                  </div>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.6 }}>
+                    Upgrades will never wipe or reset your SQLite database, local products, sales records, customer khatas, or store configuration. All business records remain completely intact.
+                  </Caption1>
+                </div>
+              </div>
+            </div>
+
+            {/* Help Tip Banner */}
+            <div className={styles.helpTipBanner}>
+              <Info16Regular className={styles.blueInfoIcon} />
+              <Caption1 className={styles.helpTipText}>
+                <strong>Publishing New Releases:</strong> When publishing an update, run <code>npm run build:win</code> or create a Release on <code>https://github.com/aasim06/Omnipos/releases</code> attaching the generated <code>Omnipos Setup.exe</code> and <code>latest.yml</code>.
+              </Caption1>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── MODAL: Restore Database Confirmation Dialog ────── */}
       <Dialog open={isRestoreConfirmOpen} onOpenChange={(_, d) => setIsRestoreConfirmOpen(d.open)}>
         <DialogSurface className={styles.dialogSurface460}>
@@ -1097,7 +1403,7 @@ export function AdminSettingsView(): React.JSX.Element {
           <ShieldCheckmark20Regular className={styles.statusShieldIcon} />
           <div>
             <Body2 className={styles.statusTitle}>
-              Omnipos Counter Edition v1.0.0
+              Omnipos Counter Edition v{currentVersion}
             </Body2>
             <Caption1 className={styles.statusSubtitle}>
               Status: <span className={styles.statusTerminalActive}>● Terminal Active — Offline-Ready</span>

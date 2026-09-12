@@ -1,4 +1,4 @@
-import { PosApi, PosLicenseGate, PosSupportContact } from './index';
+import { PosApi, PosLicenseGate, PosSupportContact, PosUpdateApi, PosUpdateProgress } from './index';
 
 declare global {
   interface Window {
@@ -6,4 +6,4 @@ declare global {
   }
 }
 
-export type { PosApi, PosLicenseGate, PosSupportContact };
+export type { PosApi, PosLicenseGate, PosSupportContact, PosUpdateApi, PosUpdateProgress };
