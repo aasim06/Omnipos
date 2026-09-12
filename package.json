@@ -17,8 +17,8 @@
     "prisma:generate": "prisma generate",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "dist:win": "node -e \"import('node:fs').then(f => f.rmSync('release/win-unpacked', { recursive: true, force: true }))\" && npm run prisma:generate && npm run build && electron-builder --win",
-    "dist:publish": "node -e \"import('node:fs').then(f => f.rmSync('release/win-unpacked', { recursive: true, force: true }))\" && npm run prisma:generate && npm run build && electron-builder --win -p always"
+    "dist:win": "npm run prisma:generate && npm run build && electron-builder --win",
+    "dist:publish": "npm run prisma:generate && npm run build && electron-builder --win -p always"
   },
   "build": {
     "appId": "com.omnipos.app",
