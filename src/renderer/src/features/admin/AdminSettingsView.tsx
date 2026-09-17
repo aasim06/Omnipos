@@ -12,6 +12,7 @@ import {
   Body2,
   Subtitle1,
   Text,
+  Label,
   Dialog,
   DialogSurface,
   DialogTitle,
@@ -75,6 +76,11 @@ export interface StoreSettings {
   drawerKick: boolean;
   currency: string;
   taxPercent: number;
+  paymentQrTitle?: string;
+  paymentQrNumber?: string;
+  paymentQrType?: 'easypaisa' | 'jazzcash' | 'raast' | 'bank' | 'upi' | 'custom';
+  paymentQrImage?: string;
+  showPaymentQrOnInvoice?: boolean;
 }
 
 const defaultSettings: StoreSettings = {
@@ -88,6 +94,11 @@ const defaultSettings: StoreSettings = {
   drawerKick: true,
   currency: 'PKR',
   taxPercent: 0,
+  paymentQrTitle: 'Omnipos Store',
+  paymentQrNumber: '0300 1234567',
+  paymentQrType: 'raast',
+  paymentQrImage: '',
+  showPaymentQrOnInvoice: true,
 };
 
 const ROLE_OPTIONS = [
@@ -249,7 +260,9 @@ export function AdminSettingsView(): React.JSX.Element {
           text: res.message || 'Database restored successfully! Please restart or reload the app.',
         });
         await refreshBackupStatus();
-        await clearAllLocalData();
+        if (backupStatus?.isElectron) {
+          await clearAllLocalData();
+        }
         setTimeout(() => {
           window.location.reload();
         }, 1500);
@@ -796,6 +809,97 @@ export function AdminSettingsView(): React.JSX.Element {
             </div>
           </div>
 
+          {/* CARD: Digital Payment & Scan-to-Pay QR Code */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.cardIconBox}>
+                <MoneySettings24Regular className={styles.icon20} />
+              </div>
+              <div className={styles.headerTextCol}>
+                <Body1 className={styles.headerTitle}>
+                  Scan-to-Pay Digital QR Code
+                </Body1>
+                <Caption1 className={styles.headerSubtitle}>
+                  Print Raast / EasyPaisa / JazzCash / Bank QR code on customer bills
+                </Caption1>
+              </div>
+            </div>
+
+            <div className={styles.cardBody}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <Body2 style={{ fontWeight: 600 }}>Print Payment QR on Invoices</Body2>
+                <Switch
+                  checked={settings.showPaymentQrOnInvoice ?? true}
+                  onChange={(_, data) => setSettings({ ...settings, showPaymentQrOnInvoice: data.checked })}
+                />
+              </div>
+
+              <CustomSelect
+                label="Payment Provider / Gateway"
+                value={settings.paymentQrType || 'raast'}
+                onChange={(val) => setSettings({ ...settings, paymentQrType: val as any })}
+                options={[
+                  { value: 'raast', label: 'Raast (Instant Interbank Transfer)' },
+                  { value: 'easypaisa', label: 'EasyPaisa Mobile Account' },
+                  { value: 'jazzcash', label: 'JazzCash Mobile Account' },
+                  { value: 'bank', label: 'Commercial Bank Account (IBAN)' },
+                  { value: 'custom', label: 'Custom UPI / QR' },
+                ]}
+              />
+
+              <CustomInput
+                label="Account Title (Beneficiary Name)"
+                value={settings.paymentQrTitle || ''}
+                onChange={(e) => setSettings({ ...settings, paymentQrTitle: e.target.value })}
+                placeholder="e.g. Omnipos Retail / Ahmed Khan"
+              />
+
+              <CustomInput
+                label="Account / Phone / IBAN Number"
+                value={settings.paymentQrNumber || ''}
+                onChange={(e) => setSettings({ ...settings, paymentQrNumber: e.target.value })}
+                placeholder="e.g. 0300 1234567 or PK36MEZN000..."
+              />
+
+              <div>
+                <Label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                  Custom QR Image (Optional)
+                </Label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (evt) => {
+                        setSettings({ ...settings, paymentQrImage: evt.target?.result as string });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  style={{ fontSize: '12px' }}
+                />
+                {settings.paymentQrImage && (
+                  <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <img
+                      src={settings.paymentQrImage}
+                      alt="Payment QR"
+                      style={{ width: '60px', height: '60px', objectFit: 'contain', border: '1px solid #ccc', borderRadius: '6px' }}
+                    />
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      onClick={() => setSettings({ ...settings, paymentQrImage: '' })}
+                    >
+                      Remove Image
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Database Engine Info */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>
@@ -998,6 +1102,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 size="small"
                 icon={<ArrowSync20Regular />}
                 onClick={refreshBackupStatus}
+                className={styles.headerActionBtn}
               >
                 Refresh Database Status
               </Button>
@@ -1039,6 +1144,26 @@ export function AdminSettingsView(): React.JSX.Element {
                   <span>{backupMsg.text}</span>
                 </div>
               )}
+
+              {!backupStatus?.isElectron && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '12px 16px',
+                  backgroundColor: '#EFF6FF',
+                  border: '1px solid #BFDBFE',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  color: '#1E40AF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <Info16Regular style={{ fontSize: '18px', flexShrink: 0 }} />
+                  <span>
+                    <strong>Browser Mode (IndexedDB):</strong> You are currently using the web browser interface. For 100% native offline SQLite backups and restores (<code>.db</code> / <code>.dbbackup</code>), please open the <strong>Omnipos Windows Desktop Application</strong> (run <code>npm run dev:electron</code> or launch Omnipos from Desktop).
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1054,10 +1179,10 @@ export function AdminSettingsView(): React.JSX.Element {
                   <Badge appearance="filled" color="success">Recommended</Badge>
                 </div>
                 <Body1 className={styles.boldTitle15}>
-                  1-Click SQLite Database Backup (.db)
+                  1-Click Full System Backup (.zip)
                 </Body1>
                 <Caption1 className={styles.mutedTextLineHeight}>
-                  Creates a clean, 100% full snapshot of your active SQLite database file (.db) including all product photos/images (embedded Base64), sales invoices, catalog, stock levels, khata ledgers, and settings.
+                  Creates a full package (.zip) of your entire POS system, containing both the active SQLite database and all product images/media on disk. Legacy .db format is also supported.
                 </Caption1>
               </div>
 
@@ -1069,7 +1194,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   onClick={() => handleCreateDbBackup(true)}
                   className={styles.primaryBlueBtn}
                 >
-                  {backupLoading ? 'Backing up...' : 'Save Backup to USB / Drive (.db)'}
+                  {backupLoading ? 'Backing up...' : 'Save Full Backup (.zip)'}
                 </Button>
                 <Button
                   appearance="subtle"
@@ -1122,10 +1247,10 @@ export function AdminSettingsView(): React.JSX.Element {
                   <Badge appearance="tint" color="danger">Restore Safeguard</Badge>
                 </div>
                 <Body1 className={styles.boldTitle15}>
-                  Restore Database from Backup (.db)
+                  Restore System from Backup (.zip / .db)
                 </Body1>
                 <Caption1 className={styles.mutedTextLineHeight}>
-                  Restore from an existing backup file. A pre-restore safety copy of your current database is automatically created before replacement.
+                  Restore from a full backup package (.zip) or database file (.db). Automatically restores all database data and restores all product images.
                 </Caption1>
               </div>
 
@@ -1137,7 +1262,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   onClick={() => setIsRestoreConfirmOpen(true)}
                   className={styles.restoreAmberBtn}
                 >
-                  Restore from .DB Backup...
+                  Restore System (.zip / .db)...
                 </Button>
               </div>
             </div>
@@ -1191,7 +1316,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 icon={<ArrowSync20Regular />}
                 disabled={isChecking || isDownloading}
                 onClick={handleManualCheckUpdate}
-                className={styles.primaryRedButton}
+                className={mergeClasses(styles.primaryRedButton, styles.headerActionBtn)}
               >
                 {isChecking ? 'Checking…' : isDownloading ? `Downloading (${downloadProgress}%)` : 'Check for Updates'}
               </Button>
@@ -1366,31 +1491,64 @@ export function AdminSettingsView(): React.JSX.Element {
       <Dialog open={isRestoreConfirmOpen} onOpenChange={(_, d) => setIsRestoreConfirmOpen(d.open)}>
         <DialogSurface className={styles.dialogSurface460}>
           <DialogBody>
-            <DialogTitle>Confirm Database Restore</DialogTitle>
-            <DialogContent className={styles.dialogContentCol12}>
-              <div className={styles.dialogWarningRow}>
-                <Warning20Regular className={styles.icon28} />
-                <Text weight="bold" size={300}>
-                  Are you sure you want to restore?
-                </Text>
+            <DialogTitle>
+              <div className={styles.restoreModalHeader}>
+                <div className={styles.restoreIconBox}>
+                  <ArrowUpload20Regular style={{ fontSize: '20px' }} />
+                </div>
+                <div className={styles.restoreHeaderTexts}>
+                  <span className={styles.restoreModalTitle}>Restore System from Backup</span>
+                  <span className={styles.restoreModalSubtitle}>
+                    Replace active database &amp; product images from backup archive (.zip / .db)
+                  </span>
+                </div>
               </div>
-              <Text size={200} className={styles.mutedTextLineHeight}>
-                Restoring will replace your current SQLite database with the selected backup file. Any recent sales or transactions made after that backup will be overwritten.
-              </Text>
-              <div className={styles.dialogSafetySnapshotBox}>
-                A safety fallback snapshot of your current database will be saved automatically as <code>pos.db.pre_restore_safety</code>.
+            </DialogTitle>
+
+            <DialogContent className={styles.dialogContentCol12}>
+              <div className={styles.restoreWarningCard}>
+                <div className={styles.restoreWarningCardHeader}>
+                  <Warning20Regular style={{ fontSize: '18px' }} />
+                  <span>Important: Replacement Warning</span>
+                </div>
+                <div className={styles.restoreWarningText}>
+                  Restoring will overwrite your current SQLite database and product media files with the selected backup file. Any transactions recorded after that backup was created will be permanently replaced.
+                </div>
+                <div className={styles.restoreFeaturesList}>
+                  <div className={styles.restoreFeatureItem}>
+                    <CheckmarkCircle20Filled style={{ color: '#059669', fontSize: 15 }} />
+                    <span><strong>Database Tables:</strong> Products, categories, orders, customers &amp; khatas</span>
+                  </div>
+                  <div className={styles.restoreFeatureItem}>
+                    <CheckmarkCircle20Filled style={{ color: '#059669', fontSize: 15 }} />
+                    <span><strong>Media Assets:</strong> All saved product images &amp; menu photos</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.restoreSafetyBox}>
+                <ShieldCheckmark20Regular className={styles.restoreSafetyIcon} />
+                <span>
+                  <strong>Automated Safety Net:</strong> A pre-restore snapshot of your current database will be saved automatically before replacement begins.
+                </span>
               </div>
             </DialogContent>
-            <DialogActions className={styles.dialogActionsTop16}>
-              <Button appearance="secondary" onClick={() => setIsRestoreConfirmOpen(false)}>
+
+            <DialogActions className={styles.restoreActionsRow}>
+              <Button
+                appearance="secondary"
+                onClick={() => setIsRestoreConfirmOpen(false)}
+                className={styles.restoreCancelBtn}
+              >
                 Cancel
               </Button>
               <Button
                 appearance="primary"
-                className={styles.dangerRedBtn}
+                icon={<ArrowUpload20Regular />}
+                className={styles.restoreProceedBtn}
                 onClick={handleExecuteRestore}
               >
-                Proceed &amp; Select Backup File (.db)
+                Proceed &amp; Choose Backup File (.zip / .db)
               </Button>
             </DialogActions>
           </DialogBody>

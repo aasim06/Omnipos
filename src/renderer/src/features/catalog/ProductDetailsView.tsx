@@ -24,6 +24,8 @@ import {
   Timer20Regular,
   Save20Regular,
   ShoppingBag20Regular,
+  Calendar20Regular,
+  Receipt20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
@@ -79,6 +81,14 @@ export function ProductDetailsView(): React.JSX.Element {
   const [editCategory, setEditCategory] = useState('');
   const [editSku, setEditSku] = useState('');
   const [editUnit, setEditUnit] = useState('');
+  const [editPrimaryUnit, setEditPrimaryUnit] = useState('');
+  const [editSecondaryUnit, setEditSecondaryUnit] = useState('');
+  const [editConversionRate, setEditConversionRate] = useState<number | ''>('');
+  const [editSecondaryPrice, setEditSecondaryPrice] = useState<number | ''>('');
+  const [editTrackBatchExpiry, setEditTrackBatchExpiry] = useState(false);
+  const [editBatchNumber, setEditBatchNumber] = useState('');
+  const [editMfgDate, setEditMfgDate] = useState('');
+  const [editExpiryDate, setEditExpiryDate] = useState('');
 
   const openEditModal = () => {
     if (!product) return;
@@ -89,6 +99,14 @@ export function ProductDetailsView(): React.JSX.Element {
     setEditCategory(product.category || '');
     setEditSku(product.skuCode || '');
     setEditUnit(product.unit || 'PCS');
+    setEditPrimaryUnit(product.primaryUnit || '');
+    setEditSecondaryUnit(product.secondaryUnit || '');
+    setEditConversionRate(product.conversionRate ?? '');
+    setEditSecondaryPrice(product.secondaryPrice ?? '');
+    setEditTrackBatchExpiry(product.trackBatchExpiry ?? false);
+    setEditBatchNumber(product.batchNumber || '');
+    setEditMfgDate(product.mfgDate || '');
+    setEditExpiryDate(product.expiryDate || '');
     setIsEditDialogOpen(true);
   };
 
@@ -105,6 +123,14 @@ export function ProductDetailsView(): React.JSX.Element {
         category: editCategory.trim() || product.category,
         skuCode: editSku.trim() || product.skuCode,
         unit: editUnit || product.unit || 'PCS',
+        primaryUnit: editPrimaryUnit.trim() || undefined,
+        secondaryUnit: editSecondaryUnit.trim() || undefined,
+        conversionRate: editConversionRate !== '' ? Number(editConversionRate) : undefined,
+        secondaryPrice: editSecondaryPrice !== '' ? Number(editSecondaryPrice) : undefined,
+        trackBatchExpiry: editTrackBatchExpiry,
+        batchNumber: editBatchNumber.trim() || undefined,
+        mfgDate: editMfgDate || undefined,
+        expiryDate: editExpiryDate || undefined,
         updatedAt: new Date().toISOString(),
       };
       await posApi.saveProduct(updated);
@@ -474,6 +500,67 @@ export function ProductDetailsView(): React.JSX.Element {
               )}
             </div>
           )}
+
+          {/* Dual Units / Wholesale Packaging Card */}
+          {(product.primaryUnit || product.conversionRate) && (
+            <div className={styles.sectionCard}>
+              <div className={styles.sectionTitle}>
+                <Box20Regular style={{ width: 18, height: 18, color: '#0078D4' }} /> Wholesale Packaging &amp; Dual Unit Conversion
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginTop: '8px' }}>
+                <div style={{ backgroundColor: '#F8F9FA', padding: '10px 12px', borderRadius: '8px', border: '1px solid #EDEBE9' }}>
+                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>WHOLESALE UNIT</span>
+                  <strong style={{ fontSize: '15px', color: '#0078D4' }}>{product.primaryUnit || 'BOX'}</strong>
+                </div>
+                <div style={{ backgroundColor: '#F8F9FA', padding: '10px 12px', borderRadius: '8px', border: '1px solid #EDEBE9' }}>
+                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>RETAIL UNIT</span>
+                  <strong style={{ fontSize: '15px', color: '#107C41' }}>{product.secondaryUnit || product.unit || 'PCS'}</strong>
+                </div>
+                <div style={{ backgroundColor: '#F8F9FA', padding: '10px 12px', borderRadius: '8px', border: '1px solid #EDEBE9' }}>
+                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>CONVERSION RATIO</span>
+                  <strong style={{ fontSize: '15px' }}>1 {product.primaryUnit || 'BOX'} = {product.conversionRate || 1} {product.secondaryUnit || 'PCS'}</strong>
+                </div>
+                {product.secondaryPrice !== undefined && (
+                  <div style={{ backgroundColor: '#F8F9FA', padding: '10px 12px', borderRadius: '8px', border: '1px solid #EDEBE9' }}>
+                    <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>RETAIL PIECE PRICE</span>
+                    <strong style={{ fontSize: '15px', color: '#D13438' }}>{formatPKR(product.secondaryPrice)}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Batch Number & Expiry Tracking Card */}
+          {(product.trackBatchExpiry || product.batchNumber || product.expiryDate) && (
+            <div className={styles.sectionCard}>
+              <div className={styles.sectionTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Calendar20Regular style={{ width: 18, height: 18, color: '#D97706' }} /> Batch &amp; Expiry Information
+                </div>
+                {product.expiryDate && (() => {
+                  const diff = Math.ceil((new Date(product.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                  if (diff < 0) return <Badge appearance="filled" color="danger">EXPIRED ({Math.abs(diff)} days ago)</Badge>;
+                  if (diff <= 30) return <Badge appearance="filled" color="warning">EXPIRING SOON ({diff} days left)</Badge>;
+                  return <Badge appearance="tint" color="success">ACTIVE ({diff} days left)</Badge>;
+                })()}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginTop: '8px' }}>
+                <div style={{ backgroundColor: '#FDFCF7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #F2E8A2' }}>
+                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>BATCH / LOT #</span>
+                  <strong style={{ fontSize: '14px', fontFamily: 'monospace' }}>{product.batchNumber || '—'}</strong>
+                </div>
+                <div style={{ backgroundColor: '#FDFCF7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #F2E8A2' }}>
+                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>MFG DATE</span>
+                  <strong style={{ fontSize: '14px' }}>{product.mfgDate ? new Date(product.mfgDate).toLocaleDateString() : '—'}</strong>
+                </div>
+                <div style={{ backgroundColor: '#FDFCF7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #F2E8A2' }}>
+                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>EXPIRY DATE</span>
+                  <strong style={{ fontSize: '14px', color: '#D97706' }}>{product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '—'}</strong>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Recent Sales Activity */}
@@ -581,6 +668,84 @@ export function ProductDetailsView(): React.JSX.Element {
               onChange={(e) => setEditCategory(e.target.value)}
               placeholder="Category"
             />
+
+            {/* Dual Units Edit Fields */}
+            <div style={{ borderTop: '1px solid #E1DFDD', paddingTop: '10px', marginTop: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#0078D4', display: 'block', marginBottom: '6px' }}>
+                Dual Units (Wholesale / Retail)
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <CustomInput
+                  label="Wholesale Unit (e.g. BOX)"
+                  value={editPrimaryUnit}
+                  onChange={(e) => setEditPrimaryUnit(e.target.value)}
+                  placeholder="BOX"
+                />
+                <CustomInput
+                  label="Retail Unit (e.g. PCS)"
+                  value={editSecondaryUnit}
+                  onChange={(e) => setEditSecondaryUnit(e.target.value)}
+                  placeholder="PCS"
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
+                <CustomInput
+                  label="Conversion Rate (1 Box = X Pcs)"
+                  type="number"
+                  value={editConversionRate !== '' ? String(editConversionRate) : ''}
+                  onChange={(e) => setEditConversionRate(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="12"
+                />
+                <CustomInput
+                  label="Retail Piece Price (PKR)"
+                  type="number"
+                  value={editSecondaryPrice !== '' ? String(editSecondaryPrice) : ''}
+                  onChange={(e) => setEditSecondaryPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="50"
+                />
+              </div>
+            </div>
+
+            {/* Batch & Expiry Edit Fields */}
+            <div style={{ borderTop: '1px solid #E1DFDD', paddingTop: '10px', marginTop: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#D97706' }}>
+                  Batch &amp; Expiry Tracking
+                </span>
+                <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={editTrackBatchExpiry}
+                    onChange={(e) => setEditTrackBatchExpiry(e.target.checked)}
+                  />
+                  Enable
+                </label>
+              </div>
+              {editTrackBatchExpiry && (
+                <>
+                  <CustomInput
+                    label="Batch / Lot Number"
+                    value={editBatchNumber}
+                    onChange={(e) => setEditBatchNumber(e.target.value)}
+                    placeholder="BATCH-2026"
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
+                    <CustomInput
+                      label="MFG Date"
+                      type="date"
+                      value={editMfgDate}
+                      onChange={(e) => setEditMfgDate(e.target.value)}
+                    />
+                    <CustomInput
+                      label="Expiry Date"
+                      type="date"
+                      value={editExpiryDate}
+                      onChange={(e) => setEditExpiryDate(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
           </DialogBody>
           <DialogActions style={{ marginTop: '16px' }}>
             <Button appearance="secondary" onClick={() => setIsEditDialogOpen(false)}>

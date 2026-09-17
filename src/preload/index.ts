@@ -49,6 +49,7 @@ export interface PosApi {
     restore: (filePath?: string) => Promise<{ ok: boolean; message?: string; cancelled?: boolean; error?: string }>;
     exportJson: () => Promise<{ ok: boolean; path?: string; counts?: any; cancelled?: boolean; error?: string }>;
     getStatus: () => Promise<{ dbPath: string; dbSize: number; lastBackup?: string | null; lastBackupPath?: string | null; lastBackupSize?: number | null }>;
+    flushSync: (data?: { products?: any[]; categories?: any[] }) => Promise<{ ok: boolean; productsFlushed?: number; categoriesFlushed?: number; error?: string }>;
   };
   update: PosUpdateApi;
 }
@@ -73,6 +74,7 @@ const posApi: PosApi = {
     restore: (filePath) => ipcRenderer.invoke('backup:restore', filePath),
     exportJson: () => ipcRenderer.invoke('backup:export-json'),
     getStatus: () => ipcRenderer.invoke('backup:get-status'),
+    flushSync: (data) => ipcRenderer.invoke('backup:flush-sync', data),
   },
   update: {
     getVersion: () => ipcRenderer.invoke('app:get-version'),

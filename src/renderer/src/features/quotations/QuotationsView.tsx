@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
   mergeClasses,
@@ -25,6 +26,7 @@ import {
   Timer20Regular,
   Money20Regular,
   BarcodeScanner20Regular,
+  ShoppingBag20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
@@ -41,6 +43,7 @@ import { useQuotationsStyles, useStyles } from './quotations.styles';
 
 export function QuotationsView(): React.JSX.Element {
   const styles = useQuotationsStyles();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { notifySuccess, notifyWarning, notifyError } = useAppToast();
   const confirmModal = useConfirmDialog();
@@ -586,12 +589,44 @@ export function QuotationsView(): React.JSX.Element {
                           <Print20Regular className={styles.printIcon} />
                         </button>
 
-                        {/* Convert to Sale Button */}
+                        {/* Open / Load in POS Counter Button */}
                         {quote.status !== 'converted' && (
                           <button
                             type="button"
                             className={styles.actionBtn}
-                            title="Convert to Sale Bill"
+                            title="Open & Checkout in POS Counter (Load Cart)"
+                            onClick={() => {
+                              try {
+                                localStorage.setItem(
+                                  'pos_pending_quotation_load',
+                                  JSON.stringify({
+                                    quotationId: quote.id,
+                                    quoteNumber: quote.quoteNumber,
+                                    customerName: quote.customerName,
+                                    customerPhone: quote.customerPhone,
+                                    lines: quote.lines,
+                                    discountPercent: quote.discountPercent,
+                                    module: quote.module,
+                                  })
+                                );
+                                notifySuccess(`Loading ${quote.quoteNumber} into POS Counter...`);
+                                const targetRoute = quote.module === 'fastfood' ? '/pos/fastfood' : '/pos/omnimart';
+                                navigate(targetRoute);
+                              } catch {
+                                notifyError('Could not transfer quotation to POS cart');
+                              }
+                            }}
+                          >
+                            <ShoppingBag20Regular style={{ color: '#E51937' }} />
+                          </button>
+                        )}
+
+                        {/* Convert to Direct Sale Button */}
+                        {quote.status !== 'converted' && (
+                          <button
+                            type="button"
+                            className={styles.actionBtn}
+                            title="Convert to Sale Bill (Direct Paid Order)"
                             onClick={async () => {
                               const ok = await confirmModal({
                                 title: 'Convert to POS Sale',

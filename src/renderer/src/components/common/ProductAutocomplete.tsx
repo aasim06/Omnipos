@@ -16,6 +16,7 @@ export interface ProductAutocompleteProps {
   filterModule?: 'fastfood' | 'minimart' | 'all';
   filterCategory?: string;
   filterCategories?: string[];
+  products?: Product[];
   placeholder?: string;
   required?: boolean;
   label?: string;
@@ -39,7 +40,8 @@ const useStyles = makeStyles({
     position: 'absolute',
     top: '100%',
     left: 0,
-    right: 0,
+    minWidth: '280px',
+    width: '100%',
     zIndex: 2500,
     marginTop: '4px',
     backgroundColor: tokens.colorNeutralBackground1,
@@ -196,6 +198,48 @@ const useStyles = makeStyles({
     borderRadius: '6px',
     cursor: 'pointer',
   },
+  variantPillList: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    marginTop: '6px',
+    flexWrap: 'wrap',
+  },
+  variantSelectPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '3px 8px',
+    fontSize: '11px',
+    fontWeight: 600,
+    borderRadius: '6px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground1,
+    borderTopWidth: '1px', borderBottomWidth: '1px',
+    borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid',
+    borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
+    cursor: 'pointer',
+    transitionProperty: 'all',
+    transitionDuration: '0.12s',
+    transitionTimingFunction: 'ease',
+    ':hover': {
+      backgroundColor: 'rgba(229, 25, 55, 0.12)',
+      borderTopColor: '#E51937', borderBottomColor: '#E51937',
+      borderLeftColor: '#E51937', borderRightColor: '#E51937',
+      color: '#E51937',
+    },
+  },
+  variantBadgeCount: {
+    fontSize: '10.5px',
+    fontWeight: 700,
+    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    color: '#E51937',
+    padding: '1px 6px',
+    borderRadius: '4px',
+  },
 });
 
 export function ProductAutocomplete({
@@ -207,6 +251,7 @@ export function ProductAutocomplete({
   filterModule = 'all',
   filterCategory,
   filterCategories,
+  products: propProducts,
   placeholder = 'Search by product name, SKU or barcode...',
   required = false,
   label,
@@ -229,12 +274,15 @@ export function ProductAutocomplete({
 
   const displayValue = controlledValue !== undefined ? controlledValue : internalValue;
 
-  // Fetch products Cache-First (<5ms)
-  const { data: allProducts = [] } = useQuery<Product[]>({
+  // Fetch products Cache-First (<5ms) when no explicit products prop is passed
+  const { data: allProductsRaw = [] } = useQuery<Product[]>({
     queryKey: ['products'],
     queryFn: () => posApi.fetchProducts(),
     staleTime: 1000 * 60 * 5,
+    enabled: !propProducts,
   });
+
+  const allProducts = propProducts ?? allProductsRaw;
 
   const isCategoryFiltered = !!filterCategory;
   const isMultipleCategoryFiltered = !!filterCategories && filterCategories.length > 0;
@@ -267,10 +315,11 @@ export function ProductAutocomplete({
     return true;
   });
 
-  // When filtering by a category or category group, show strictly those items (even if 0)
-  const availableProducts = isAnyCategoryFiltered
-    ? filteredByModule
-    : (filteredByModule.length > 0 ? filteredByModule : allProducts);
+  // When explicit products prop is passed, it is already pre-filtered by the caller.
+  // Otherwise, use filteredByModule without incorrect fallback to allProducts of other modules.
+  const availableProducts = propProducts
+    ? propProducts
+    : (filterModule !== 'all' || isAnyCategoryFiltered ? filteredByModule : allProducts);
 
   // Filter suggestions by search query (name, SKU barcode, category, variant barcode)
   const query = (displayValue || '').toLowerCase().trim();
@@ -303,16 +352,33 @@ export function ProductAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelect = (prod: Product) => {
+  const handleSelect = (prod: Product, variant?: any) => {
+    let finalProd = prod;
+    let finalName = prod.name;
+    if (variant) {
+      finalName = `${prod.name} (${variant.label})`;
+      const vPrice = variant.price !== undefined ? variant.price : (prod.price + (variant.priceDelta || 0));
+      const vCost = variant.costDelta !== undefined ? ((prod.costPrice || 0) + variant.costDelta) : (prod.costPrice || 0);
+      finalProd = {
+        ...prod,
+        name: finalName,
+        price: vPrice,
+        costPrice: vCost,
+        skuCode: variant.skuCode || prod.skuCode,
+        openingStock: variant.stock !== undefined ? variant.stock : prod.openingStock,
+        selectedVariant: variant,
+      } as any;
+    }
+
     if (clearOnSelect) {
       setInternalValue('');
-      onChange?.('', prod);
+      onChange?.('', finalProd);
     } else {
-      setInternalValue(prod.name);
-      onChange?.(prod.name, prod);
+      setInternalValue(finalName);
+      onChange?.(finalName, finalProd);
     }
     if (onSelectProduct) {
-      onSelectProduct(prod);
+      onSelectProduct(finalProd);
     }
     setIsOpen(false);
   };
@@ -340,7 +406,15 @@ export function ProductAutocomplete({
             e.preventDefault();
             const rawTerm = (displayValue || '').trim().toLowerCase();
             if (suggestions.length > 0) {
-              handleSelect(suggestions[0]);
+              const first = suggestions[0];
+              const matchedV = rawTerm && first.variants
+                ? first.variants.find(
+                    (v) =>
+                      (v.skuCode && v.skuCode.toLowerCase() === rawTerm) ||
+                      (v.label && v.label.toLowerCase() === rawTerm)
+                  )
+                : undefined;
+              handleSelect(first, matchedV);
             } else if (rawTerm) {
               // Direct barcode / SKU fallback lookup across all products
               const match = allProducts.find(
@@ -423,7 +497,7 @@ export function ProductAutocomplete({
                   key={prod.id}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    handleSelect(prod);
+                    handleSelect(prod, matchedVariant || undefined);
                   }}
                   className={styles.itemRow}
                 >
@@ -440,8 +514,13 @@ export function ProductAutocomplete({
 
                   {/* Name & Category / SKU */}
                   <div className={styles.itemInfo}>
-                    <div className={styles.itemName}>
-                      {prod.name}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span className={styles.itemName}>{prod.name}</span>
+                      {prod.variants && prod.variants.length > 0 && (
+                        <span className={styles.variantBadgeCount}>
+                          {prod.variants.length} Sizes
+                        </span>
+                      )}
                     </div>
                     <div className={styles.itemMeta}>
                       <span>{prod.category || 'Product'}</span>
@@ -451,14 +530,51 @@ export function ProductAutocomplete({
                         </span>
                       )}
                       {matchedVariant && (
-                        <span className={styles.variantBadge}>
-                          Variant: {matchedVariant.label} {matchedVariant.skuCode ? `(${matchedVariant.skuCode})` : ''}
+                        <span className={styles.variantBadge} style={{ color: '#E51937', fontWeight: 800 }}>
+                          Matched: {matchedVariant.label}
                         </span>
                       )}
                       {prod.openingStock !== undefined && (
                         <span>• {prod.openingStock} in stock</span>
                       )}
                     </div>
+
+                    {/* Quick-select pill buttons for each variant size! */}
+                    {prod.variants && prod.variants.length > 0 && (
+                      <div className={styles.variantPillList}>
+                        {prod.variants.map((v) => {
+                          const vPrice = v.price !== undefined ? v.price : (prod.price + (v.priceDelta || 0));
+                          const isMatchedQuery = query && (
+                            v.label.toLowerCase().includes(query) ||
+                            (v.skuCode && v.skuCode.toLowerCase().includes(query))
+                          );
+                          return (
+                            <button
+                              key={v.id}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleSelect(prod, v);
+                              }}
+                              className={styles.variantSelectPill}
+                              style={isMatchedQuery ? { borderColor: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937', fontWeight: 800 } : undefined}
+                              title={`Select ${prod.name} (${v.label}) - PKR ${vPrice.toLocaleString()}`}
+                            >
+                              <span style={{ fontWeight: 800 }}>{v.label}</span>
+                              <span style={{ opacity: 0.85, fontSize: '10px' }}>
+                                Rs. {vPrice.toLocaleString()}
+                              </span>
+                              {v.stock !== undefined && (
+                                <span style={{ fontSize: '9.5px', color: (v.stock || 0) <= 0 ? '#DC2626' : '#107C41' }}>
+                                  ({v.stock})
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Price */}

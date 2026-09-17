@@ -28,6 +28,8 @@ import {
   Add20Regular,
   Checkmark20Regular,
   ArrowCircleDown20Regular,
+  Receipt20Regular,
+  History20Regular,
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -39,6 +41,8 @@ import { formatPKR } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { vendorStorage, Vendor } from './vendorStorage';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
+import { PurchaseBillModal } from './PurchaseBillModal';
+import { VendorLedgerModal } from './VendorLedgerModal';
 
 const PARTY_TYPE_OPTIONS = [
   { value: 'Supplier (Vendor)', label: 'Supplier (Vendor)' },
@@ -91,6 +95,12 @@ export function VendorsView(): React.JSX.Element {
   // Print Modal State
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printingVendor, setPrintingVendor] = useState<Vendor | null>(null);
+
+  // Purchase Bill & Vendor Ledger Modal States
+  const [isPurchaseBillOpen, setIsPurchaseBillOpen] = useState(false);
+  const [purchaseBillVendorId, setPurchaseBillVendorId] = useState<string | undefined>(undefined);
+  const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
+  const [ledgerVendor, setLedgerVendor] = useState<Vendor | null>(null);
 
   // Fetch Stock Movements: Offline-First Cache (<5ms)
   const { data: movements = [] } = useQuery<StockMovement[]>({
@@ -344,10 +354,28 @@ export function VendorsView(): React.JSX.Element {
 
       {/* ── CARD 2: Vendors & Suppliers Directory (Logs Table) ───────── */}
       <div className={styles.card}>
-        <div className={styles.cardHeader}>
+        <div className={styles.cardHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Subtitle2 className={styles.directoryTitle}>
             Vendors &amp; Suppliers Directory
           </Subtitle2>
+          <Button
+            appearance="primary"
+            icon={<Receipt20Regular />}
+            onClick={() => {
+              setPurchaseBillVendorId(undefined);
+              setIsPurchaseBillOpen(true);
+            }}
+            style={{
+              backgroundColor: '#0078D4',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              borderRadius: '8px',
+              fontSize: '13px',
+              boxShadow: '0 2px 6px rgba(0, 120, 212, 0.25)',
+            }}
+          >
+            + New Purchase Bill (Kharidari)
+          </Button>
         </div>
 
         {/* Filter Bar */}
@@ -436,8 +464,34 @@ export function VendorsView(): React.JSX.Element {
                         </span>
                       </td>
                       <td className={mergeClasses(styles.td, styles.tdCenter)}>
-                        {/* ── ACTION ICONS: Stock In Shortcut, Print, Edit (Right Drawer), Delete ── */}
+                        {/* ── ACTION ICONS: Purchase Bill, Ledger, Stock In Shortcut, Print, Edit, Delete ── */}
                         <div className={styles.actionBtnsRow}>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Receipt20Regular style={{ color: '#0078D4' }} />}
+                            onClick={() => {
+                              setPurchaseBillVendorId(v.id);
+                              setIsPurchaseBillOpen(true);
+                            }}
+                            className={styles.actionBtnStockIn}
+                            title="New Purchase Bill (Kharidari Invoice)"
+                            aria-label="New Purchase Bill"
+                          />
+
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<History20Regular style={{ color: '#8764B8' }} />}
+                            onClick={() => {
+                              setLedgerVendor(v);
+                              setIsLedgerModalOpen(true);
+                            }}
+                            className={styles.actionBtnPrint}
+                            title="View Account Ledger & Record Payment"
+                            aria-label="View Vendor Ledger"
+                          />
+
                           <Button
                             appearance="subtle"
                             size="small"
@@ -735,6 +789,22 @@ export function VendorsView(): React.JSX.Element {
           </DialogBody>
         </DialogSurface>
       </Dialog>
+
+      {/* ── PURCHASE BILL MODAL (Kharidari Invoice) ── */}
+      <PurchaseBillModal
+        isOpen={isPurchaseBillOpen}
+        onClose={() => setIsPurchaseBillOpen(false)}
+        initialVendorId={purchaseBillVendorId}
+        onSuccess={() => setVendors(vendorStorage.getVendors())}
+      />
+
+      {/* ── VENDOR ACCOUNT LEDGER MODAL (Khata & Payments) ── */}
+      <VendorLedgerModal
+        isOpen={isLedgerModalOpen}
+        onClose={() => setIsLedgerModalOpen(false)}
+        vendor={ledgerVendor}
+        onVendorUpdated={() => setVendors(vendorStorage.getVendors())}
+      />
     </div>
   );
 }

@@ -51,6 +51,7 @@ import {
   DocumentTableSearch20Regular,
   Database20Regular,
   ArrowSync20Filled,
+  ArrowSync20Regular,
   ArrowDownload20Regular,
   BarcodeScanner20Regular,
   DocumentBulletList24Regular,
@@ -835,10 +836,10 @@ const useStyles = makeStyles({
     margin: 0,
   },
   toolbarAdmin: {
-    gridTemplateColumns: 'repeat(5, 1fr)',
+    gridTemplateColumns: 'repeat(6, 1fr)',
   },
   toolbarNonAdmin: {
-    gridTemplateColumns: 'repeat(3, 1fr)',
+    gridTemplateColumns: 'repeat(4, 1fr)',
   },
   toolbarDark: {
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
@@ -879,6 +880,22 @@ const useStyles = makeStyles({
     ':hover': {
       backgroundColor: '#FFFFFF',
       boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    },
+  },
+  refreshBtnDark: {
+    color: '#06B6D4',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+      color: '#22D3EE',
+    },
+  },
+  refreshBtnLight: {
+    color: '#0891B2',
+    ':hover': {
+      backgroundColor: '#FFFFFF',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+      color: '#0E7490',
     },
   },
   adminBtnActiveDark: {
@@ -1772,6 +1789,17 @@ export function FluentSidebar(): React.JSX.Element {
             ) : (
               <WeatherMoon20Regular className={mergeClasses(styles.icon17, styles.icon17Red)} />
             )}
+          </button>
+
+          {/* 2. Refresh App Button (F5) */}
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            title="Refresh App (F5)"
+            aria-label="Refresh App (F5)"
+            className={mergeClasses(styles.toolbarBtn, isDark ? styles.refreshBtnDark : styles.refreshBtnLight)}
+          >
+            <ArrowSync20Regular className={styles.icon17} />
           </button>
 
           {/* 2. Admin & Store Settings Button (Admin Only) */}

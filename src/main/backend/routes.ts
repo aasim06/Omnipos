@@ -1,5 +1,88 @@
 import { Express, Request, Response } from 'express';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { extname, join } from 'node:path';
 import { getPrisma } from '../database/client';
+import { getImagesDir, resolveImagePath } from '../backup/images-paths';
+
+export function saveBase64Image(dataUrlOrBase64: string, prefix: string): string | null {
+  if (!dataUrlOrBase64 || typeof dataUrlOrBase64 !== 'string') return null;
+  if (dataUrlOrBase64.startsWith('images/') || dataUrlOrBase64.startsWith('/images/')) {
+    return dataUrlOrBase64;
+  }
+  let ext = 'png';
+  let base64 = dataUrlOrBase64;
+  const match = dataUrlOrBase64.match(/^data:(image\/([a-zA-Z0-9+.-]+));base64,(.+)$/);
+  if (match) {
+    ext = match[2] === 'jpeg' ? 'jpg' : match[2];
+    base64 = match[3];
+  } else if (dataUrlOrBase64.startsWith('data:')) {
+    return dataUrlOrBase64;
+  }
+
+  try {
+    const dir = getImagesDir('products');
+    const safePrefix = prefix.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `${safePrefix}.${ext}`;
+    const dest = join(dir, filename);
+    writeFileSync(dest, Buffer.from(base64, 'base64'));
+    return `images/products/${filename}`;
+  } catch (err) {
+    console.warn('[saveBase64Image] Error saving image file:', err);
+    return dataUrlOrBase64;
+  }
+}
+
+export function sanitizeProduct(raw: any) {
+  if (!raw || typeof raw !== 'object') return {};
+  const allowed = [
+    'id', 'module', 'name', 'description', 'costPrice', 'price',
+    'category', 'skuCode', 'rackLocation', 'unit', 'minThreshold',
+    'openingStock', 'prepTime', 'displayOrder', 'tags', 'allergens',
+    'isAvailable', 'imageBase64', 'imageUrl', 'variants'
+  ];
+  const out: any = {};
+  for (const k of allowed) {
+    if (raw[k] !== undefined) {
+      if (k === 'price' || k === 'costPrice') {
+        out[k] = raw[k] === null || raw[k] === '' ? null : Number(raw[k]);
+      } else if (k === 'openingStock' || k === 'minThreshold' || k === 'prepTime' || k === 'displayOrder') {
+        out[k] = raw[k] === null || raw[k] === '' || raw[k] === undefined ? null : Math.round(Number(raw[k]));
+      } else if (k === 'variants') {
+        out[k] = Array.isArray(raw[k]) ? JSON.stringify(raw[k]) : typeof raw[k] === 'string' ? raw[k] : null;
+      } else if (k === 'tags' || k === 'allergens') {
+        out[k] = Array.isArray(raw[k]) ? JSON.stringify(raw[k]) : typeof raw[k] === 'string' ? raw[k] : null;
+      } else if (k === 'isAvailable') {
+        out[k] = Boolean(raw[k]);
+      } else {
+        out[k] = raw[k];
+      }
+    }
+  }
+
+  // If image is given as base64, save to disk under userData/images/products and store clean relative path
+  const prodId = out.id || `prod_${Date.now()}`;
+  if (out.imageUrl && typeof out.imageUrl === 'string' && out.imageUrl.startsWith('data:image/')) {
+    const savedPath = saveBase64Image(out.imageUrl, prodId);
+    if (savedPath) out.imageUrl = savedPath;
+  } else if (out.imageBase64 && typeof out.imageBase64 === 'string' && out.imageBase64.startsWith('data:image/')) {
+    const savedPath = saveBase64Image(out.imageBase64, prodId);
+    if (savedPath) {
+      if (!out.imageUrl) out.imageUrl = savedPath;
+    }
+  }
+
+  return out;
+}
+
+export function sanitizeCategory(raw: any) {
+  if (!raw || typeof raw !== 'object') return {};
+  const allowed = ['id', 'module', 'name'];
+  const out: any = {};
+  for (const k of allowed) {
+    if (raw[k] !== undefined) out[k] = raw[k];
+  }
+  return out;
+}
 
 export function registerRoutes(app: Express): void {
   const db = new Proxy({} as any, {
@@ -26,7 +109,18 @@ export function registerRoutes(app: Express): void {
             /* ignore */
           }
         }
-        return { ...p, variants: v };
+        let imageBase64 = p.imageBase64;
+        if (!imageBase64 && p.imageUrl && p.imageUrl.startsWith('images/')) {
+          try {
+            const abs = resolveImagePath(p.imageUrl);
+            if (existsSync(abs)) {
+              const ext = extname(abs).replace('.', '') || 'png';
+              const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+              imageBase64 = `data:${mime};base64,${readFileSync(abs).toString('base64')}`;
+            }
+          } catch {}
+        }
+        return { ...p, imageBase64, variants: v };
       });
       res.json(parsed);
     } catch (err: any) {
@@ -36,17 +130,27 @@ export function registerRoutes(app: Express): void {
 
   app.post('/api/products', async (req: Request, res: Response) => {
     try {
-      const { hasVariants, itemRole, isKitchenRouted, pricingType, variants, ...safeData } = req.body;
-      const variantsStr = Array.isArray(variants) ? JSON.stringify(variants) : typeof variants === 'string' ? variants : null;
-      const product = await db.product.create({
-        data: {
+      const safeData = sanitizeProduct(req.body);
+      const id = safeData.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const product = await db.product.upsert({
+        where: { id },
+        update: {
           ...safeData,
-          ...(variantsStr ? { variants: variantsStr } : {}),
+          updatedAt: new Date(),
+        },
+        create: {
+          ...safeData,
+          id,
           updatedAt: new Date(),
         },
       });
-      res.json({ ...product, variants: Array.isArray(variants) ? variants : product.variants });
+      let parsedVariants = product.variants;
+      if (typeof parsedVariants === 'string') {
+        try { parsedVariants = JSON.parse(parsedVariants); } catch {}
+      }
+      res.json({ ...product, variants: parsedVariants });
     } catch (err: any) {
+      console.error('[API POST /api/products] Error:', err.message);
       res.status(500).json({ error: err.message });
     }
   });
@@ -54,18 +158,22 @@ export function registerRoutes(app: Express): void {
   app.put('/api/products/:id', async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id);
-      const { hasVariants, itemRole, isKitchenRouted, pricingType, variants, ...safeData } = req.body;
-      const variantsStr = Array.isArray(variants) ? JSON.stringify(variants) : typeof variants === 'string' ? variants : null;
+      const safeData = sanitizeProduct(req.body);
+      delete safeData.id;
       const product = await db.product.update({
         where: { id },
         data: {
           ...safeData,
-          ...(variantsStr ? { variants: variantsStr } : {}),
           updatedAt: new Date(),
         },
       });
-      res.json({ ...product, variants: Array.isArray(variants) ? variants : product.variants });
+      let parsedVariants = product.variants;
+      if (typeof parsedVariants === 'string') {
+        try { parsedVariants = JSON.parse(parsedVariants); } catch {}
+      }
+      res.json({ ...product, variants: parsedVariants });
     } catch (err: any) {
+      console.error('[API PUT /api/products] Error:', err.message);
       res.status(500).json({ error: err.message });
     }
   });
@@ -404,9 +512,58 @@ export function registerRoutes(app: Express): void {
 
   app.post('/api/categories', async (req: Request, res: Response) => {
     try {
-      const cat = await db.category.create({ data: req.body });
+      const safeData = sanitizeCategory(req.body);
+      const cat = await db.category.create({ data: safeData });
       res.json(cat);
     } catch (err: any) {
+      console.error('[API POST /api/categories] Error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Pre-backup flush: Bulk upsert products & categories into SQLite ──
+  app.post('/api/sync/flush-all', async (req: Request, res: Response) => {
+    try {
+      const { products = [], categories = [] } = req.body;
+      let pCount = 0;
+      let cCount = 0;
+
+      for (const rawC of categories) {
+        if (!rawC || !rawC.name) continue;
+        const safeC = sanitizeCategory(rawC);
+        const cId = String(safeC.id || `cat_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
+        try {
+          await db.category.upsert({
+            where: { id: cId },
+            update: safeC,
+            create: { ...safeC, id: cId },
+          });
+          cCount++;
+        } catch (catErr: any) {
+          console.warn('[flush-all] Category error:', catErr.message);
+        }
+      }
+
+      for (const rawP of products) {
+        if (!rawP || !rawP.name) continue;
+        const safeP = sanitizeProduct(rawP);
+        const pId = String(safeP.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
+        try {
+          await db.product.upsert({
+            where: { id: pId },
+            update: { ...safeP, updatedAt: new Date() },
+            create: { ...safeP, id: pId, updatedAt: new Date() },
+          });
+          pCount++;
+        } catch (prodErr: any) {
+          console.warn('[flush-all] Product error:', prodErr.message);
+        }
+      }
+
+      console.log(`[API /api/sync/flush-all] Flushed ${pCount} products, ${cCount} categories to SQLite`);
+      res.json({ ok: true, syncedProducts: pCount, syncedCategories: cCount });
+    } catch (err: any) {
+      console.error('[API POST /api/sync/flush-all] Error:', err.message);
       res.status(500).json({ error: err.message });
     }
   });

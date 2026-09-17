@@ -1,5 +1,6 @@
 import { storage } from '@/lib/storage';
 import { uid } from '@/lib/utils';
+import { PurchaseBill } from '@shared/types';
 
 export interface Vendor {
   id: string;
@@ -9,14 +10,30 @@ export interface Vendor {
   phone?: string;
   email?: string;
   address?: string;
-  openingBalance?: number; // PKR balance
+  openingBalance?: number; // PKR balance (positive = payable/we owe vendor)
+  currentBalance?: number; // Running balance payable
   category?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface VendorTransaction {
+  id: string;
+  vendorId: string;
+  type: 'BILL' | 'PAYMENT';
+  amount: number;
+  balanceAfter: number;
+  description: string;
+  billId?: string;
+  paymentMethod?: string;
+  date: string;
+  createdAt: string;
+}
+
 const STORAGE_KEY = 'pos.vendors';
+const TX_STORAGE_KEY = 'pos.vendor_transactions';
+const BILLS_STORAGE_KEY = 'pos.purchase_bills';
 
 const LEGACY_DUMMY_IDS = new Set(['vend_1', 'vend_2', 'vend_3', 'vend_4']);
 const LEGACY_DUMMY_NAMES = new Set([
@@ -53,9 +70,13 @@ export const vendorStorage = {
           ...v,
           contactPerson: v.name,
           name: v.companyName,
+          currentBalance: v.currentBalance ?? v.openingBalance ?? 0,
         };
       }
-      return v;
+      return {
+        ...v,
+        currentBalance: v.currentBalance ?? v.openingBalance ?? 0,
+      };
     });
 
     if (changed) {
@@ -77,6 +98,7 @@ export const vendorStorage = {
           ...list[idx],
           ...vendor,
           id: vendor.id,
+          currentBalance: vendor.currentBalance ?? list[idx].currentBalance ?? vendor.openingBalance ?? 0,
           updatedAt: now,
         };
         list[idx] = updated;
@@ -88,6 +110,7 @@ export const vendorStorage = {
     const newVendor: Vendor = {
       ...vendor,
       id: uid('vend_'),
+      currentBalance: vendor.openingBalance ?? 0,
       createdAt: now,
       updatedAt: now,
     };
@@ -99,5 +122,68 @@ export const vendorStorage = {
   deleteVendor(id: string): void {
     const list = this.getVendors().filter((v) => v.id !== id);
     storage.setList(STORAGE_KEY, list);
+  },
+
+  /* ── Vendor Running Ledger Transactions ── */
+  getTransactions(vendorId?: string): VendorTransaction[] {
+    const all = storage.getList<VendorTransaction>(TX_STORAGE_KEY) || [];
+    if (!vendorId) return all;
+    return all.filter((t) => t.vendorId === vendorId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  },
+
+  recordTransaction(
+    vendorId: string,
+    type: 'BILL' | 'PAYMENT',
+    amount: number,
+    description: string,
+    paymentMethod = 'cash',
+    billId?: string
+  ): VendorTransaction {
+    const vendors = this.getVendors();
+    const vendor = vendors.find((v) => v.id === vendorId);
+    const prevBalance = vendor?.currentBalance ?? vendor?.openingBalance ?? 0;
+    // BILL increases what we owe (+amount), PAYMENT decreases what we owe (-amount)
+    const newBalance = type === 'BILL' ? prevBalance + amount : prevBalance - amount;
+
+    if (vendor) {
+      vendor.currentBalance = newBalance;
+      this.saveVendor(vendor);
+    }
+
+    const txs = storage.getList<VendorTransaction>(TX_STORAGE_KEY) || [];
+    const now = new Date().toISOString();
+    const newTx: VendorTransaction = {
+      id: uid('vtx_'),
+      vendorId,
+      type,
+      amount,
+      balanceAfter: newBalance,
+      description,
+      paymentMethod,
+      billId,
+      date: now,
+      createdAt: now,
+    };
+
+    txs.unshift(newTx);
+    storage.setList(TX_STORAGE_KEY, txs);
+    return newTx;
+  },
+
+  /* ── Multi-Item Purchase Bills Storage ── */
+  getPurchaseBills(): PurchaseBill[] {
+    return storage.getList<PurchaseBill>(BILLS_STORAGE_KEY) || [];
+  },
+
+  savePurchaseBill(bill: PurchaseBill): PurchaseBill {
+    const bills = this.getPurchaseBills();
+    const idx = bills.findIndex((b) => b.id === bill.id);
+    if (idx !== -1) {
+      bills[idx] = bill;
+    } else {
+      bills.unshift(bill);
+    }
+    storage.setList(BILLS_STORAGE_KEY, bills);
+    return bill;
   },
 };

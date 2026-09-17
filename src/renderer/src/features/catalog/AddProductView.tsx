@@ -28,6 +28,7 @@ import {
   Scales20Regular,
   Flash20Regular,
   Checkmark16Filled,
+  Calendar20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -433,10 +434,18 @@ const productSchema = z.object({
   skuCode: z.string().optional(),
   rackLocation: z.string().optional(),
   prepTime: z.coerce.number().min(0).optional(),
-  openingStock: z.coerce.number().min(0, 'Stock cannot be negative').default(0),
+  openingStock: z.coerce.number().min(0, 'Stock cannot be negative').nullable().optional(),
   minThreshold: z.coerce.number().min(0).default(10),
   imageUrl: z.string().optional(),
   description: z.string().optional(),
+  primaryUnit: z.string().optional(),
+  secondaryUnit: z.string().optional(),
+  conversionRate: z.coerce.number().min(1).optional(),
+  secondaryPrice: z.coerce.number().min(0).optional(),
+  trackBatchExpiry: z.boolean().optional().default(false),
+  batchNumber: z.string().optional(),
+  mfgDate: z.string().optional(),
+  expiryDate: z.string().optional(),
 });
 type ProductFormData = z.infer<typeof productSchema>;
 
@@ -516,10 +525,18 @@ export function AddProductView(): React.JSX.Element {
       unit: defaultModule === 'minimart' ? 'PCS' : 'PCS',
       skuCode: generateRandomSku(),
       rackLocation: '',
-      openingStock: 0,
+      openingStock: defaultModule === 'fastfood' ? undefined : 0,
       minThreshold: 10,
       imageUrl: '',
       description: '',
+      primaryUnit: '',
+      secondaryUnit: '',
+      conversionRate: undefined,
+      secondaryPrice: undefined,
+      trackBatchExpiry: false,
+      batchNumber: '',
+      mfgDate: '',
+      expiryDate: '',
     },
   });
 
@@ -2071,10 +2088,18 @@ export function AddProductView(): React.JSX.Element {
         skuCode: data.skuCode || generateRandomSku(),
         rackLocation: data.rackLocation,
         prepTime: data.prepTime,
-        openingStock: data.openingStock,
+        openingStock: data.openingStock !== undefined && data.openingStock !== null ? data.openingStock : (data.module === 'fastfood' ? undefined : 0),
         minThreshold: data.minThreshold,
         imageUrl: imagePreview || data.imageUrl || undefined,
         description: combinedNotes || undefined,
+        primaryUnit: data.primaryUnit?.trim() || undefined,
+        secondaryUnit: data.secondaryUnit?.trim() || undefined,
+        conversionRate: data.conversionRate ? Number(data.conversionRate) : undefined,
+        secondaryPrice: data.secondaryPrice !== undefined ? Number(data.secondaryPrice) : undefined,
+        trackBatchExpiry: !!data.trackBatchExpiry,
+        batchNumber: data.batchNumber?.trim() || undefined,
+        mfgDate: data.mfgDate || undefined,
+        expiryDate: data.expiryDate || undefined,
         hasVariants: variants.length > 0,
         variants: variants.length > 0 ? variants : undefined,
         createdAt: new Date().toISOString(),
@@ -2099,6 +2124,14 @@ export function AddProductView(): React.JSX.Element {
   const watchedCatModule = categoryForm.watch('module') || watchedModule;
   const watchedCatProfile = categoryForm.watch('profile') || (watchedCatModule === 'fastfood' ? 'food' : 'standard');
   const addCatProfileConfig = CATEGORY_PROFILES[watchedCatProfile as CategoryProfile] || CATEGORY_PROFILES.standard;
+
+  const addCatModuleOptions = React.useMemo(() => {
+    const opts = [
+      ...(hasFastFood ? [{ value: 'fastfood', label: 'Food' }] : []),
+      ...(hasOmnimart ? [{ value: 'minimart', label: 'Mart' }] : []),
+    ];
+    return opts.length > 0 ? opts : [{ value: watchedModule || 'fastfood', label: watchedModule === 'minimart' ? 'Mart' : 'Food' }];
+  }, [hasFastFood, hasOmnimart, watchedModule]);
 
   const addCatProfileOptions = React.useMemo(() => {
     return getFilteredProfileOptions(watchedCatModule, businessProfiles);
@@ -4013,7 +4046,7 @@ export function AddProductView(): React.JSX.Element {
             {/* Single Price Mode (Fixed, Per Piece, Weighed) */}
             {!isVariantPricingType(pricingType) && pricingType !== 'custom' && (
               <>
-                <div className={styles.threeColGrid}>
+                <div className={watchedModule === 'fastfood' ? styles.twoColGrid : styles.threeColGrid}>
                   <div>
                     <Controller
                       control={productForm.control}
@@ -4049,37 +4082,42 @@ export function AddProductView(): React.JSX.Element {
                     />
                   </div>
 
-                  <div>
-                    <Controller
-                      control={productForm.control}
-                      name="openingStock"
-                      render={({ field }) => (
-                        <div>
-                          <CustomInput
-                            label={pricingType === 'perkg' || pricingType === 'amountse' ? 'Stock Weight (KG / Grams - Read-only)' : 'Stock Quantity (Read-only)'}
-                            type="number"
-                            readOnly
-                            disabled
-                            placeholder="0"
-                            value={field.value !== undefined ? String(field.value) : '0'}
-                            onChange={() => {}}
-                            error={productForm.formState.errors.openingStock?.message}
-                          />
-                          <div className={styles.apStyle_100}>
-                            <span className={styles.apStyle_101}>
-                              <Package className={styles.apStyle_102} />
-                              Initial stock: <strong>0</strong> (Add via Stock In)
-                            </span>
-                            {watchedCategory && (
-                              <span className={styles.apStyle_103}>
-                                Category &quot;{watchedCategory}&quot;: {categoryStockInfo.totalStock} in stock ({categoryStockInfo.count} items)
+                  {watchedModule !== 'fastfood' && (
+                    <div>
+                      <Controller
+                        control={productForm.control}
+                        name="openingStock"
+                        render={({ field }) => (
+                          <div>
+                            <CustomInput
+                              label={
+                                pricingType === 'perkg' || pricingType === 'amountse'
+                                  ? 'Stock Weight (KG / Grams - Read-only)'
+                                  : 'Stock Quantity (Read-only)'
+                              }
+                              type="number"
+                              readOnly
+                              disabled
+                              placeholder="0"
+                              value={field.value !== undefined && field.value !== null ? String(field.value) : '0'}
+                              error={productForm.formState.errors.openingStock?.message}
+                            />
+                            <div className={styles.apStyle_100}>
+                              <span className={styles.apStyle_101}>
+                                <Package className={styles.apStyle_102} />
+                                Initial stock: <strong>0</strong> (Add via Stock In)
                               </span>
-                            )}
+                              {watchedCategory && (
+                                <span className={styles.apStyle_103}>
+                                  Category &quot;{watchedCategory}&quot;: {categoryStockInfo.totalStock} in stock ({categoryStockInfo.count} items)
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    />
-                  </div>
+                        )}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Helpful Banner for Rupees Budget Calculation Mode */}
@@ -4098,7 +4136,7 @@ export function AddProductView(): React.JSX.Element {
 
             {/* Optional Cost Price & Opening Stock for Multi-Size/Portion Products */}
             {isVariantPricingType(pricingType) && (
-              <div className={styles.twoColGrid}>
+              <div className={watchedModule === 'fastfood' ? undefined : styles.twoColGrid}>
                 <div>
                   <Controller
                     control={productForm.control}
@@ -4116,42 +4154,43 @@ export function AddProductView(): React.JSX.Element {
                   />
                 </div>
 
-                <div>
-                  <Controller
-                    control={productForm.control}
-                    name="openingStock"
-                    render={({ field }) => (
-                      <div>
-                        <CustomInput
-                          label="Total Opening Stock (Read-only)"
-                          type="number"
-                          readOnly
-                          disabled
-                          placeholder="0"
-                          value={field.value !== undefined ? String(field.value) : '0'}
-                          onChange={() => {}}
-                          error={productForm.formState.errors.openingStock?.message}
-                        />
+                {watchedModule !== 'fastfood' && (
+                  <div>
+                    <Controller
+                      control={productForm.control}
+                      name="openingStock"
+                      render={({ field }) => (
+                        <div>
+                          <CustomInput
+                            label="Total Opening Stock (Read-only)"
+                            type="number"
+                            readOnly
+                            disabled
+                            placeholder="0"
+                            value={field.value !== undefined && field.value !== null ? String(field.value) : '0'}
+                            error={productForm.formState.errors.openingStock?.message}
+                          />
                           <div className={styles.apStyle_100}>
                             <span className={styles.apStyle_101}>
                               <Package className={styles.apStyle_102} />
                               Initial stock: <strong>0</strong> (Add via Stock In)
                             </span>
-                          {watchedCategory && (
-                            <span className={styles.apStyle_103}>
-                              Category &quot;{watchedCategory}&quot;: {categoryStockInfo.totalStock} in stock ({categoryStockInfo.count} items)
-                            </span>
-                          )}
+                            {watchedCategory && (
+                              <span className={styles.apStyle_103}>
+                                Category &quot;{watchedCategory}&quot;: {categoryStockInfo.totalStock} in stock ({categoryStockInfo.count} items)
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  />
-                </div>
+                      )}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Unit & Barcode / SKU */}
-            <div className={styles.threeColGrid}>
+            {/* Unit & Barcode / SKU / Kitchen Prep Time */}
+            <div className={watchedModule === 'fastfood' ? styles.twoColGrid : styles.threeColGrid}>
               <div>
                 <Controller
                   control={productForm.control}
@@ -4209,22 +4248,8 @@ export function AddProductView(): React.JSX.Element {
                 )}
               </div>
 
-              <div>
-                {watchedModule === 'fastfood' ? (
-                  <Controller
-                    control={productForm.control}
-                    name="minThreshold"
-                    render={({ field }) => (
-                      <CustomInput
-                        label="Low Stock Alert Threshold"
-                        type="number"
-                        placeholder="e.g. 10"
-                        value={field.value !== undefined ? String(field.value) : ''}
-                        onChange={(e) => field.onChange(e.target.value === '' ? 10 : Number(e.target.value))}
-                      />
-                    )}
-                  />
-                ) : (
+              {watchedModule !== 'fastfood' && (
+                <div>
                   <Controller
                     control={productForm.control}
                     name="rackLocation"
@@ -4237,8 +4262,8 @@ export function AddProductView(): React.JSX.Element {
                       />
                     )}
                   />
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Quick Unit Presets Bar */}
@@ -4417,6 +4442,150 @@ export function AddProductView(): React.JSX.Element {
                 )}
               </div>
             )}
+
+            {/* ── Feature: Dual Units / Wholesale vs Retail ── */}
+            <div style={{ marginTop: '20px', padding: '16px', borderRadius: '10px', backgroundColor: '#F8F9FA', border: '1px solid #E1DFDD' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <Boxes size={18} color="#0078D4" />
+                <span style={{ fontWeight: 700, fontSize: '14px', color: '#323130' }}>
+                  Dual Units / Unit Conversion (Wholesale vs Retail)
+                </span>
+                <span style={{ fontSize: '11px', backgroundColor: '#EFF6FC', color: '#0078D4', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                  Box ➔ Pieces
+                </span>
+              </div>
+              <Caption1 style={{ color: '#605E5C', display: 'block', marginBottom: '14px' }}>
+                Configure wholesale packaging (e.g. Box, Carton, Dozen) and auto-conversion to retail selling pieces.
+              </Caption1>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                <Controller
+                  control={productForm.control}
+                  name="primaryUnit"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Wholesale Unit"
+                      placeholder="e.g. BOX, CARTON"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+
+                <Controller
+                  control={productForm.control}
+                  name="secondaryUnit"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Retail Unit"
+                      placeholder="e.g. PCS, PIECES"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+
+                <Controller
+                  control={productForm.control}
+                  name="conversionRate"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Conversion Rate"
+                      type="number"
+                      placeholder="e.g. 12 (1 Box = 12 Pcs)"
+                      value={field.value !== undefined ? String(field.value) : ''}
+                      onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                    />
+                  )}
+                />
+
+                <Controller
+                  control={productForm.control}
+                  name="secondaryPrice"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Retail Piece Price (PKR)"
+                      type="number"
+                      placeholder="e.g. 50 (Price/Pc)"
+                      value={field.value !== undefined ? String(field.value) : ''}
+                      onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                    />
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* ── Feature: Batch Number, Expiry & Manufacturing Dates ── */}
+            <div style={{ marginTop: '16px', padding: '16px', borderRadius: '10px', backgroundColor: '#FDFCF7', border: '1px solid #F2E8A2' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Calendar20Regular style={{ color: '#D97706' }} />
+                  <span style={{ fontWeight: 700, fontSize: '14px', color: '#323130' }}>
+                    Batch Number &amp; Expiry Tracking
+                  </span>
+                </div>
+                <Controller
+                  control={productForm.control}
+                  name="trackBatchExpiry"
+                  render={({ field }) => (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#323130' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                      Enable Expiry &amp; Batch
+                    </label>
+                  )}
+                />
+              </div>
+              <Caption1 style={{ color: '#605E5C', display: 'block', marginBottom: '14px' }}>
+                Track medicine/food batches, manufacturing dates, and automatically warn cashiers before selling expired products.
+              </Caption1>
+
+              {productForm.watch('trackBatchExpiry') && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+                  <Controller
+                    control={productForm.control}
+                    name="batchNumber"
+                    render={({ field }) => (
+                      <CustomInput
+                        label="Batch / Lot Number"
+                        placeholder="e.g. BATCH-2026-04"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+
+                  <Controller
+                    control={productForm.control}
+                    name="mfgDate"
+                    render={({ field }) => (
+                      <CustomInput
+                        label="Manufacturing Date (MFG)"
+                        type="date"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+
+                  <Controller
+                    control={productForm.control}
+                    name="expiryDate"
+                    render={({ field }) => (
+                      <CustomInput
+                        label="Expiry Date (EXP)"
+                        type="date"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Column: Image Upload & Live POS Card Preview */}
@@ -4490,6 +4659,8 @@ export function AddProductView(): React.JSX.Element {
                   <div className={styles.previewBadge}>
                     {variants.length > 0
                       ? `${variants.reduce((sum, v) => sum + (v.stock || 0), 0)} left`
+                      : watchedModule === 'fastfood' && (watchedStock === null || watchedStock === undefined)
+                      ? 'Fresh Kitchen'
                       : `${watchedStock ?? 50} left`}
                   </div>
                 </div>
@@ -4615,10 +4786,7 @@ export function AddProductView(): React.JSX.Element {
                     label="Target Store Module"
                     required
                     value={field.value}
-                    options={[
-                      { value: 'fastfood', label: 'Food' },
-                      { value: 'minimart', label: 'Mart' },
-                    ]}
+                    options={addCatModuleOptions}
                     onChange={(val) => {
                       const newMod = val as ModuleKey;
                       field.onChange(newMod);

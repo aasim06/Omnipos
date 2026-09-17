@@ -61,9 +61,28 @@ function createWindow(): BrowserWindow {
   });
 
   // Enable F12 and Ctrl+Shift+I to toggle DevTools even in production
-  mainWindow.webContents.on('before-input-event', (_, input) => {
-    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
-      mainWindow.webContents.toggleDevTools();
+  // Enable F5, Ctrl+R, and Cmd+R to reload the window from any route
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown') {
+      if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+        mainWindow.webContents.toggleDevTools();
+        event.preventDefault();
+        return;
+      }
+
+      if (
+        input.key === 'F5' ||
+        input.code === 'F5' ||
+        ((input.control || input.meta) && (input.key?.toLowerCase() === 'r' || input.code === 'KeyR'))
+      ) {
+        if (input.shift) {
+          mainWindow.webContents.reloadIgnoringCache();
+        } else {
+          mainWindow.webContents.reload();
+        }
+        event.preventDefault();
+        return;
+      }
     }
   });
 

@@ -1,7 +1,13 @@
 import { BrowserWindow, dialog, ipcMain, app } from 'electron';
-import { join } from 'node:path';
-import { existsSync, copyFileSync, statSync, writeFileSync, readFileSync, rmSync, mkdirSync } from 'node:fs';
+import { basename, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
+import { existsSync, copyFileSync, statSync, writeFileSync, readFileSync, rmSync, mkdirSync, readdirSync } from 'node:fs';
+import AdmZip from 'adm-zip';
 import { getPosDbPath, getPrisma, disconnectPrisma, initializeDatabase } from '../database/client';
+import { copyDirRecursive, writeBackupZip } from './backup-zip';
+import { getImagesRoot } from './images-paths';
+import { sanitizeProduct, sanitizeCategory } from '../backend/routes';
 
 interface BackupHistory {
   lastBackup?: string;
@@ -33,7 +39,21 @@ function saveBackupHistory(history: BackupHistory): void {
   }
 }
 
+function ensureExtension(filePath: string, preferredExt: 'zip' | 'db'): string {
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith('.zip') || lower.endsWith('.db') || lower.endsWith('.dbbackup')) {
+    return filePath;
+  }
+  return `${filePath}.${preferredExt}`;
+}
+
 export function registerBackupIpc(): void {
+  ipcMain.removeHandler('backup:get-status');
+  ipcMain.removeHandler('backup:create');
+  ipcMain.removeHandler('backup:restore');
+  ipcMain.removeHandler('backup:flush-sync');
+  ipcMain.removeHandler('backup:export-json');
+
   /**
    * Get Database Status & Stats
    */
@@ -59,7 +79,62 @@ export function registerBackupIpc(): void {
   });
 
   /**
-   * Create Full SQLite Database Backup (.db file)
+   * Direct Pre-Backup Flush: Bulk writes all Dexie & LocalStorage products & categories to SQLite
+   */
+  ipcMain.handle('backup:flush-sync', async (_event, data?: { products?: any[]; categories?: any[] }) => {
+    try {
+      const prisma = getPrisma();
+      const products = data?.products || [];
+      const categories = data?.categories || [];
+
+      let pCount = 0;
+      for (const rawP of products) {
+        if (!rawP || !rawP.name) continue;
+        try {
+          const safeData = sanitizeProduct(rawP);
+          const id = safeData.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          await prisma.product.upsert({
+            where: { id },
+            update: { ...safeData, updatedAt: new Date() },
+            create: { ...safeData, id, updatedAt: new Date() },
+          });
+          pCount++;
+        } catch (pErr: any) {
+          console.warn('[backup:flush-sync] Product error:', pErr.message);
+        }
+      }
+
+      let cCount = 0;
+      for (const rawC of categories) {
+        if (!rawC || !rawC.name) continue;
+        try {
+          const safeC = sanitizeCategory(rawC);
+          const id = safeC.id || `cat_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          await prisma.category.upsert({
+            where: { id },
+            update: safeC,
+            create: { ...safeC, id },
+          });
+          cCount++;
+        } catch (cErr: any) {
+          console.warn('[backup:flush-sync] Category error:', cErr.message);
+        }
+      }
+
+      try {
+        await prisma.$queryRawUnsafe('PRAGMA wal_checkpoint(FULL);');
+      } catch {}
+
+      console.log(`[backup:flush-sync] Successfully flushed ${pCount} products and ${cCount} categories to SQLite`);
+      return { ok: true, productsFlushed: pCount, categoriesFlushed: cCount };
+    } catch (err: any) {
+      console.error('[backup:flush-sync] Error:', err);
+      return { ok: false, error: err.message };
+    }
+  });
+
+  /**
+   * Create Full Omnipos Backup (.zip archive containing SQLite database + product images)
    */
   ipcMain.handle('backup:create', async (event, options?: { promptDialog?: boolean }) => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -70,26 +145,19 @@ export function registerBackupIpc(): void {
     }
 
     try {
-      // 1. Flush SQLite WAL to ensure all latest transactions are written to pos.db
-      const prisma = getPrisma();
-      try {
-        await prisma.$queryRawUnsafe('PRAGMA wal_checkpoint(FULL)');
-      } catch (checkpointErr) {
-        console.warn('[Backup IPC] WAL checkpoint warning:', checkpointErr);
-      }
-
-      const timestampStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const defaultFilename = `Omnipos_Backup_${timestampStr}.db`;
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+      const defaultFilename = `Omnipos_Backup_${stamp}.zip`;
 
       let targetPath: string | undefined;
 
       if (options?.promptDialog !== false && win) {
         const result = await dialog.showSaveDialog(win, {
-          title: 'Save Omnipos Database Backup',
+          title: 'Save Omnipos Full System Backup (ZIP)',
           defaultPath: defaultFilename,
           filters: [
-            { name: 'SQLite Database (.db)', extensions: ['db'] },
-            { name: 'All Files', extensions: ['*'] },
+            { name: 'Omnipos Full Backup ZIP (*.zip)', extensions: ['zip'] },
+            { name: 'SQLite Database Only (*.db)', extensions: ['db'] },
+            { name: 'All Files (*.*)', extensions: ['*'] },
           ],
         });
 
@@ -98,7 +166,6 @@ export function registerBackupIpc(): void {
         }
         targetPath = result.filePath;
       } else {
-        // Automatic destination inside userData/backups
         const backupDir = join(app.getPath('userData'), 'backups');
         if (!existsSync(backupDir)) {
           mkdirSync(backupDir, { recursive: true });
@@ -106,32 +173,49 @@ export function registerBackupIpc(): void {
         targetPath = join(backupDir, defaultFilename);
       }
 
-      // 2. Perform copy
-      copyFileSync(dbPath, targetPath);
-      const stats = statSync(targetPath);
+      const isZip = !targetPath.toLowerCase().endsWith('.db') && !targetPath.toLowerCase().endsWith('.dbbackup');
+      const finalPath = isZip ? ensureExtension(targetPath, 'zip') : targetPath;
 
-      // 3. Save History
+      if (isZip) {
+        await writeBackupZip(finalPath);
+      } else {
+        // Legacy .db copy: perform checkpoint and copy
+        const prisma = getPrisma();
+        try {
+          await prisma.$queryRawUnsafe('PRAGMA wal_checkpoint(FULL);');
+        } catch {}
+        await disconnectPrisma();
+        try {
+          copyFileSync(dbPath, finalPath);
+        } finally {
+          getPrisma();
+        }
+      }
+
+      const stats = statSync(finalPath);
+
       saveBackupHistory({
         lastBackup: new Date().toISOString(),
-        lastBackupPath: targetPath,
+        lastBackupPath: finalPath,
         lastBackupSize: stats.size,
       });
 
-      console.log(`[Backup IPC] Database backup successfully created at: ${targetPath} (${stats.size} bytes)`);
+      console.log(`[Backup IPC] System backup successfully created at: ${finalPath} (${stats.size} bytes)`);
       return {
         ok: true,
-        path: targetPath,
+        path: finalPath,
         size: stats.size,
+        mode: isZip ? 'full' : 'db',
         timestamp: new Date().toISOString(),
       };
     } catch (err: any) {
       console.error('[Backup IPC] Failed to create backup:', err);
-      return { ok: false, error: err.message || 'Failed to create database backup' };
+      return { ok: false, error: err.message || 'Failed to create system backup' };
     }
   });
 
   /**
-   * Restore Database from a .db backup file
+   * Restore Database and Product Images from a .zip or .db backup file
    */
   ipcMain.handle('backup:restore', async (event, filePath?: string) => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -140,11 +224,13 @@ export function registerBackupIpc(): void {
     if (!sourceBackupPath) {
       if (!win) return { ok: false, error: 'No active window found' };
       const result = await dialog.showOpenDialog(win, {
-        title: 'Select Omnipos Database Backup (.db) to Restore',
+        title: 'Select Omnipos Backup File (.zip or .db) to Restore',
         properties: ['openFile'],
         filters: [
-          { name: 'SQLite Database (.db)', extensions: ['db', 'sqlite', 'sqlite3'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: 'Omnipos Backup (*.zip, *.db, *.sqlite)', extensions: ['zip', 'db', 'dbbackup', 'sqlite', 'sqlite3', 'bak', 'backup'] },
+          { name: 'Full Backup ZIP (*.zip)', extensions: ['zip'] },
+          { name: 'Database Only (*.db)', extensions: ['db', 'dbbackup', 'sqlite', 'sqlite3'] },
+          { name: 'All Files (*.*)', extensions: ['*'] },
         ],
       });
 
@@ -158,40 +244,99 @@ export function registerBackupIpc(): void {
       return { ok: false, error: 'The selected backup file does not exist.' };
     }
 
-    try {
-      const dbPath = getPosDbPath();
+    const stats = statSync(sourceBackupPath);
+    if (stats.size === 0) {
+      return { ok: false, error: 'The selected backup file is empty (0 bytes).' };
+    }
 
+    const dbPath = getPosDbPath();
+    const staging = join(tmpdir(), `omnipos-restore-${randomUUID()}`);
+
+    try {
       // 1. Safety snapshot of current database
       if (existsSync(dbPath)) {
         try {
           copyFileSync(dbPath, `${dbPath}.pre_restore_safety`);
         } catch {
-          /* ignore safety copy failure */
+          /* ignore */
         }
       }
 
-      // 2. Disconnect Prisma
+      // 2. Disconnect Prisma before altering database files
       await disconnectPrisma();
 
-      // 3. Remove old WAL & SHM files to prevent schema/index conflicts
+      let dbSource = sourceBackupPath;
+      const isZip = sourceBackupPath.toLowerCase().endsWith('.zip');
+
+      if (isZip) {
+        mkdirSync(staging, { recursive: true });
+        const zip = new AdmZip(sourceBackupPath);
+        zip.extractAllTo(staging, true);
+
+        // Look for database file in extracted root or subfolder
+        const candidateDbs = [
+          join(staging, 'omnipos.db'),
+          join(staging, 'pos.db'),
+          join(staging, 'clinic.db'),
+          join(staging, basename(sourceBackupPath, '.zip'), 'omnipos.db'),
+          join(staging, basename(sourceBackupPath, '.zip'), 'pos.db'),
+        ];
+
+        let foundDb = candidateDbs.find((p) => existsSync(p));
+        if (!foundDb) {
+          const files = readdirSync(staging);
+          const dbFile = files.find((f) => f.toLowerCase().endsWith('.db') || f.toLowerCase().endsWith('.sqlite'));
+          if (dbFile) foundDb = join(staging, dbFile);
+        }
+
+        if (!foundDb) {
+          throw new Error('Backup ZIP does not contain a valid database file (omnipos.db or *.db)');
+        }
+        dbSource = foundDb;
+
+        // Restore images directory if present
+        const stagedImages = join(staging, 'images');
+        if (existsSync(stagedImages)) {
+          copyDirRecursive(stagedImages, getImagesRoot());
+          console.log('[Backup IPC] Restored images folder from backup zip');
+        }
+
+        const stagedDocs = join(staging, 'documents');
+        if (existsSync(stagedDocs)) {
+          copyDirRecursive(stagedDocs, getImagesRoot());
+        }
+      }
+
+      // 3. Remove old WAL & SHM files to avoid index/schema mismatch
       try {
-        if (existsSync(`${dbPath}-wal`)) rmSync(`${dbPath}-wal`);
-        if (existsSync(`${dbPath}-shm`)) rmSync(`${dbPath}-shm`);
+        if (existsSync(`${dbPath}-wal`)) rmSync(`${dbPath}-wal`, { force: true });
+        if (existsSync(`${dbPath}-shm`)) rmSync(`${dbPath}-shm`, { force: true });
       } catch (rmErr) {
         console.warn('[Backup IPC] Warning cleaning wal/shm:', rmErr);
       }
 
-      // 4. Overwrite pos.db with backup
-      copyFileSync(sourceBackupPath, dbPath);
+      // 4. Overwrite pos database with backup
+      copyFileSync(dbSource, dbPath);
 
-      // 5. Reinitialize Prisma and tables
+      // 5. Reinitialize Prisma and ensure table schemas
       await initializeDatabase();
 
-      console.log(`[Backup IPC] Database successfully restored from: ${sourceBackupPath}`);
-      return { ok: true, message: 'Database was successfully restored! Please reload the application.' };
+      console.log(`[Backup IPC] Database and media successfully restored from: ${sourceBackupPath}`);
+      return {
+        ok: true,
+        mode: isZip ? 'full' : 'db',
+        message: 'Database and media were successfully restored! Please reload the application (F5).',
+      };
     } catch (err: any) {
       console.error('[Backup IPC] Restore failed:', err);
-      return { ok: false, error: err.message || 'Failed to restore database.' };
+      try {
+        await initializeDatabase();
+      } catch {}
+      return { ok: false, error: err.message || 'Failed to restore backup.' };
+    } finally {
+      try {
+        if (existsSync(staging)) rmSync(staging, { recursive: true, force: true });
+      } catch {}
     }
   });
 

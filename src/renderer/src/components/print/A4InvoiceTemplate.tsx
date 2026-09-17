@@ -657,6 +657,64 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
             <div className={styles.noticeBox}>
               <strong>Notice:</strong> Goods once sold will not be refunded without original receipt. Warranty claims handled as per vendor terms.
             </div>
+
+            {storeSettings?.showPaymentQrOnInvoice && (storeSettings?.paymentQrImage || storeSettings?.paymentQrNumber) && (
+              <div
+                style={{
+                  marginTop: '10px',
+                  padding: '8px 12px',
+                  backgroundColor: '#F8FAFC',
+                  borderRadius: '6px',
+                  border: '1px solid #E2E8F0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                {storeSettings.paymentQrImage ? (
+                  <img
+                    src={storeSettings.paymentQrImage}
+                    alt="Scan & Pay"
+                    style={{ width: '60px', height: '60px', objectFit: 'contain', border: '1px solid #CBD5E1', borderRadius: '4px', backgroundColor: '#FFFFFF' }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      border: '1.5px solid #0F172A',
+                      borderRadius: '4px',
+                      backgroundColor: '#FFFFFF',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '8px',
+                      color: '#0F172A',
+                      fontWeight: 800,
+                      textAlign: 'center',
+                      padding: '2px',
+                    }}
+                  >
+                    <span>SCAN TO PAY</span>
+                    <span style={{ fontSize: '7px', color: '#64748B', marginTop: '2px' }}>
+                      {(storeSettings.paymentQrType || 'RAAST').toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase' }}>
+                    Digital Payment (Scan to Pay)
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#334155', marginTop: '2px' }}>
+                    <strong>Title:</strong> {storeSettings.paymentQrTitle || storeName}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#334155' }}>
+                    <strong>Account / Raast ID:</strong> {storeSettings.paymentQrNumber}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className={styles.totalsBox}>
@@ -675,6 +733,36 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
             <div className={styles.netPayableRow}>
               <span>NET PAYABLE:</span>
               <span>{formatPKR(total)}</span>
+            </div>
+
+            {/* Payment Mode & Split Breakdown */}
+            <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px dashed #CBD5E1', fontSize: '11px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                <span>Payment Mode:</span>
+                <span style={{ textTransform: 'uppercase', color: '#E51937' }}>{order.paymentMode || paymentMode}</span>
+              </div>
+              {order.splitPayments && (
+                <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px', color: '#475569', fontSize: '10.5px' }}>
+                  {order.splitPayments.cash ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Cash Paid:</span>
+                      <span>{formatPKR(order.splitPayments.cash)}</span>
+                    </div>
+                  ) : null}
+                  {order.splitPayments.online ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Card / Online:</span>
+                      <span>{formatPKR(order.splitPayments.online)}</span>
+                    </div>
+                  ) : null}
+                  {order.splitPayments.khata ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Khata Balance:</span>
+                      <span>{formatPKR(order.splitPayments.khata)}</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             {typeof tenderedAmount === 'number' && tenderedAmount >= total && (

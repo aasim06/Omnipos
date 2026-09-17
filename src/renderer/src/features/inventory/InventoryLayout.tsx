@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   makeStyles,
@@ -10,7 +10,9 @@ import {
 import {
   ArrowCircleUp20Regular,
   Add20Regular,
+  Receipt20Regular,
 } from '@fluentui/react-icons';
+import { PurchaseBillModal } from './PurchaseBillModal';
 
 const useStyles = makeStyles({
   layoutContainer: {
@@ -135,6 +137,7 @@ export function InventoryLayout(): React.JSX.Element {
   const isStockInPage = location.pathname === '/inventory/stock-in';
   const isStockOutPage = location.pathname === '/inventory/stock-out';
   const meta = pageMeta[location.pathname] || pageMeta['/inventory/dashboard'];
+  const [isPurchaseBillOpen, setIsPurchaseBillOpen] = useState(false);
 
   return (
     <div className={styles.layoutContainer}>
@@ -151,6 +154,20 @@ export function InventoryLayout(): React.JSX.Element {
 
         {/* Top Bar Quick Action Buttons */}
         <div className={styles.headerActions}>
+          <Button
+            appearance="outline"
+            icon={<Receipt20Regular />}
+            onClick={() => setIsPurchaseBillOpen(true)}
+            style={{
+              borderColor: '#0078D4',
+              color: '#0078D4',
+              fontWeight: 700,
+              borderRadius: '8px',
+              fontSize: '13px',
+            }}
+          >
+            + Purchase Bill (Kharidari)
+          </Button>
           {!isStockOutPage && (
             <Button
               appearance="subtle"
@@ -178,6 +195,12 @@ export function InventoryLayout(): React.JSX.Element {
       <div className={styles.contentArea}>
         <Outlet />
       </div>
+
+      {/* ── Global Purchase Bill Modal ── */}
+      <PurchaseBillModal
+        isOpen={isPurchaseBillOpen}
+        onClose={() => setIsPurchaseBillOpen(false)}
+      />
     </div>
   );
 }

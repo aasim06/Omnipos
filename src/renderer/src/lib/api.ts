@@ -252,7 +252,7 @@ export const posApi = {
         const base = await resolveApiUrl();
         const tenantHeaders = await getTenantHeaders();
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const res = await fetch(`${base}/api/products`, {
           method: 'POST',
@@ -264,9 +264,12 @@ export const posApi = {
         if (res.ok) {
           const remote = await res.json();
           return decodeProductVariants({ ...remote, variants: decodedProduct.variants, pricingType: decodedProduct.pricingType });
+        } else {
+          console.warn('[saveProduct] Local backend returned non-OK status:', res.status, await res.text().catch(() => ''));
         }
       }
-    } catch {
+    } catch (saveErr) {
+      console.warn('[saveProduct] Offline fallback active:', saveErr);
       /* Saved safely offline in Dexie, localStorage, and Outbox */
     }
     return decodedProduct;
@@ -1354,6 +1357,10 @@ export const posApi = {
     return record;
   },
 
+  async addStockMovement(data: Partial<StockMovement> & { variants?: ProductVariant[] }): Promise<StockMovement> {
+    return this.saveStockMovement(data);
+  },
+
   async updateStockMovement(id: string, patch: Partial<StockMovement>): Promise<void> {
     try {
       // 1. Instant local update in Dexie
@@ -1621,6 +1628,49 @@ export const posApi = {
 
   async createBackup(promptDialog: boolean = true): Promise<{ ok: boolean; path?: string; size?: number; cancelled?: boolean; error?: string }> {
     if (typeof window !== 'undefined' && window.posApi?.backup?.create) {
+      try {
+        // Guarantee all active Dexie & LocalStorage products & categories are written into SQLite before taking the snapshot!
+        const dexieProducts = await offlineDb.products.toArray().catch(() => []);
+        const localProducts = storage.getList<Product>(KEYS.products) || [];
+        const prodMap = new Map<string, Product>();
+        dexieProducts.forEach((p) => prodMap.set(p.id, p));
+        localProducts.forEach((p) => prodMap.set(p.id, p));
+        const allProducts = Array.from(prodMap.values());
+
+        const dexieCategories = await offlineDb.categories.toArray().catch(() => []);
+        const localCategories = storage.getList<Category>(KEYS.categories) || [];
+        const catMap = new Map<string, Category>();
+        dexieCategories.forEach((c) => catMap.set(c.id, c));
+        localCategories.forEach((c) => catMap.set(c.id, c));
+        const allCategories = Array.from(catMap.values());
+
+        if (allProducts.length > 0 || allCategories.length > 0) {
+          // 1. First priority: Direct IPC flush directly into SQLite via Prisma (guaranteed instant offline write)
+          if (window.posApi?.backup?.flushSync) {
+            try {
+              const ipcRes = await window.posApi.backup.flushSync({ products: allProducts, categories: allCategories });
+              console.log('[createBackup] Direct IPC flush result:', ipcRes);
+            } catch (ipcErr) {
+              console.warn('[createBackup] Direct IPC flush warning:', ipcErr);
+            }
+          }
+
+          // 2. Also flush via Express backend if reachable
+          try {
+            const base = await resolveApiUrl();
+            const headers = await getTenantHeaders();
+            const flushRes = await fetch(`${base}/api/sync/flush-all`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...headers },
+              body: JSON.stringify({ products: allProducts, categories: allCategories }),
+            });
+            const flushData = await flushRes.json().catch(() => ({}));
+            console.log('[createBackup] Pre-backup Express flush result:', flushData);
+          } catch {}
+        }
+      } catch (flushErr) {
+        console.warn('[createBackup] Pre-backup flush warning:', flushErr);
+      }
       return await window.posApi.backup.create({ promptDialog });
     }
 
@@ -1656,9 +1706,157 @@ export const posApi = {
 
   async restoreBackup(): Promise<{ ok: boolean; message?: string; cancelled?: boolean; error?: string }> {
     if (typeof window !== 'undefined' && window.posApi?.backup?.restore) {
-      return await window.posApi.backup.restore();
+      const res = await window.posApi.backup.restore();
+      if (res.ok) {
+        try {
+          // Immediately populate Dexie & LocalStorage from freshly restored SQLite database!
+          const base = await resolveApiUrl();
+          const headers = await getTenantHeaders();
+          const [pRes, cRes] = await Promise.all([
+            fetch(`${base}/api/products`, { headers }),
+            fetch(`${base}/api/categories`, { headers }),
+          ]);
+          if (pRes.ok) {
+            const restoredProducts = await pRes.json();
+            if (Array.isArray(restoredProducts)) {
+              await offlineDb.products.clear();
+              if (restoredProducts.length > 0) {
+                await offlineDb.products.bulkPut(restoredProducts);
+              }
+              storage.setList(KEYS.products, restoredProducts);
+            }
+          }
+          if (cRes.ok) {
+            const restoredCategories = await cRes.json();
+            if (Array.isArray(restoredCategories)) {
+              await offlineDb.categories.clear();
+              if (restoredCategories.length > 0) {
+                await offlineDb.categories.bulkPut(restoredCategories);
+              }
+              storage.setList(KEYS.categories, restoredCategories);
+            }
+          }
+        } catch (popErr) {
+          console.warn('[restoreBackup] Post-restore populate error:', popErr);
+        }
+      }
+      return res;
     }
-    return { ok: false, error: 'Database restore is supported in the Windows Desktop application.' };
+
+    // Web Browser Fallback:
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,.dbbackup,.db,.sqlite,.sqlite3,.bak';
+      input.style.display = 'none';
+
+      let settled = false;
+      const cleanup = () => {
+        if (document.body.contains(input)) {
+          document.body.removeChild(input);
+        }
+      };
+
+      input.oncancel = () => {
+        if (!settled) {
+          settled = true;
+          cleanup();
+          resolve({ ok: false, cancelled: true });
+        }
+      };
+
+      input.onchange = async () => {
+        settled = true;
+        const file = input.files?.[0];
+        cleanup();
+        if (!file) {
+          resolve({ ok: false, cancelled: true });
+          return;
+        }
+
+        try {
+          // Read first 16 bytes to check if it's SQLite binary
+          const slice = file.slice(0, 16);
+          const buffer = await slice.arrayBuffer();
+          const header = new TextDecoder().decode(buffer);
+
+          if (header.startsWith('SQLite format 3')) {
+            resolve({
+              ok: false,
+              error:
+                'Yeh file native Windows SQLite database (.db / .dbbackup) hai. Isay restore karne ke liye Omnipos ko Windows Desktop Application mein open karein (Desktop shortcut ya terminal mein "npm run dev:electron"). Browser mode sirf JSON backups ko restore kar sakta hai.',
+            });
+            return;
+          }
+
+          // Try parsing JSON backup
+          const text = await file.text();
+          let parsed: any;
+          try {
+            parsed = JSON.parse(text);
+          } catch {
+            resolve({
+              ok: false,
+              error:
+                'Invalid backup format. Agar yeh SQLite (.db / .dbbackup) file hai to Omnipos Windows Desktop App mein open karke restore karein.',
+            });
+            return;
+          }
+
+          const tables = parsed.data || parsed;
+          let count = 0;
+
+          if (Array.isArray(tables.products) && tables.products.length > 0) {
+            await offlineDb.products.clear();
+            await offlineDb.products.bulkPut(tables.products);
+            count += tables.products.length;
+          }
+          if (Array.isArray(tables.categories) && tables.categories.length > 0) {
+            await offlineDb.categories.clear();
+            await offlineDb.categories.bulkPut(tables.categories);
+            count += tables.categories.length;
+          }
+          if (Array.isArray(tables.orders) && tables.orders.length > 0) {
+            await offlineDb.orders.clear();
+            await offlineDb.orders.bulkPut(tables.orders);
+            count += tables.orders.length;
+          }
+          if (Array.isArray(tables.refunds) && tables.refunds.length > 0) {
+            await offlineDb.refunds.clear();
+            await offlineDb.refunds.bulkPut(tables.refunds);
+            count += tables.refunds.length;
+          }
+          if (Array.isArray(tables.quotations) && tables.quotations.length > 0) {
+            await offlineDb.quotations.clear();
+            await offlineDb.quotations.bulkPut(tables.quotations);
+          }
+          if (Array.isArray(tables.khatas) && tables.khatas.length > 0) {
+            await offlineDb.khatas.clear();
+            await offlineDb.khatas.bulkPut(tables.khatas);
+            count += tables.khatas.length;
+          }
+          if (Array.isArray(tables.khataTransactions) && tables.khataTransactions.length > 0) {
+            await offlineDb.khataTransactions.clear();
+            await offlineDb.khataTransactions.bulkPut(tables.khataTransactions);
+          }
+          if (Array.isArray(tables.expenses) && tables.expenses.length > 0) {
+            await offlineDb.expenses.clear();
+            await offlineDb.expenses.bulkPut(tables.expenses);
+            count += tables.expenses.length;
+          }
+
+          resolve({
+            ok: true,
+            message: `Backup data successfully restored into IndexedDB (${count} items restored)! Reloading app...`,
+          });
+        } catch (e: any) {
+          resolve({ ok: false, error: e.message || 'Failed to restore backup in browser.' });
+        }
+      };
+
+      document.body.appendChild(input);
+      input.click();
+    });
   },
 
   async exportJsonBackup(): Promise<{ ok: boolean; path?: string; counts?: any; cancelled?: boolean; error?: string }> {

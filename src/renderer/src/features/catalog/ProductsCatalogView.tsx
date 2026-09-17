@@ -883,6 +883,12 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                         ) : (
                           <div className={styles.cardCatSubtitle}>
                             {p.category} • {p.module === 'fastfood' ? 'Fast Food' : 'Omnimart'}
+                            {p.expiryDate && (() => {
+                              const diff = Math.ceil((new Date(p.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                              if (diff < 0) return <span style={{ color: '#D13438', fontWeight: 700, marginLeft: 4 }}>• EXPIRED</span>;
+                              if (diff <= 30) return <span style={{ color: '#D97706', fontWeight: 700, marginLeft: 4 }}>• Exp: {diff}d</span>;
+                              return null;
+                            })()}
                           </div>
                         )}
                       </div>
@@ -956,11 +962,13 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                   <TableHeaderCell className={styles.thCost}>
                     Purchase Cost
                   </TableHeaderCell>
-                  <TableHeaderCell className={styles.thStock}>
-                    Current Stock
-                  </TableHeaderCell>
+                  {activeTab !== 'fastfood' && (
+                    <TableHeaderCell className={styles.thStock}>
+                      Current Stock
+                    </TableHeaderCell>
+                  )}
                   <TableHeaderCell className={styles.thSku}>
-                    SKU / Rack
+                    {activeTab === 'fastfood' ? 'Prep Time / Status' : 'SKU / Rack'}
                   </TableHeaderCell>
                   <TableHeaderCell className={styles.thActions}>
                     Actions
@@ -970,7 +978,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
               <TableBody>
                 {filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className={styles.emptyTd}>
+                    <TableCell colSpan={activeTab === 'fastfood' ? 6 : 7} className={styles.emptyTd}>
                       No products found matching the criteria. Click "+ Add New Product" to create one.
                     </TableCell>
                   </TableRow>
@@ -1006,6 +1014,47 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                                   {p.description}
                                 </Caption1>
                               )}
+
+                              {/* Dual Units / Wholesale Conversion Badge */}
+                              {p.primaryUnit && p.conversionRate && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
+                                  <span style={{ fontSize: '10.5px', backgroundColor: '#EFF6FC', color: '#0078D4', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                    1 {p.primaryUnit} = {p.conversionRate} {p.secondaryUnit || p.unit || 'Pcs'}
+                                  </span>
+                                  {p.secondaryPrice !== undefined && (
+                                    <span style={{ fontSize: '10.5px', color: '#605E5C' }}>
+                                      (@ {formatPKR(p.secondaryPrice)}/pc)
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Batch Number & Expiry Badge */}
+                              {p.expiryDate && (() => {
+                                const diff = Math.ceil((new Date(p.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                const isExp = diff < 0;
+                                const isSoon = diff >= 0 && diff <= 30;
+                                return (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
+                                    <span style={{
+                                      fontSize: '10.5px',
+                                      padding: '1px 6px',
+                                      borderRadius: '4px',
+                                      fontWeight: 700,
+                                      backgroundColor: isExp ? '#FDF3F4' : isSoon ? '#FFF8E6' : '#F1F9F4',
+                                      color: isExp ? '#D13438' : isSoon ? '#D97706' : '#107C41',
+                                      border: `1px solid ${isExp ? '#F9D9DC' : isSoon ? '#FCE3A1' : '#CEEAD6'}`
+                                    }}>
+                                      {isExp ? `Expired (${Math.abs(diff)}d ago)` : isSoon ? `Exp in ${diff} days` : `Exp: ${new Date(p.expiryDate).toLocaleDateString()}`}
+                                    </span>
+                                    {p.batchNumber && (
+                                      <span style={{ fontSize: '10px', color: '#8A8886', fontFamily: 'monospace' }}>
+                                        #{p.batchNumber}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                         </TableCell>
@@ -1033,24 +1082,37 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                           </Caption1>
                         </TableCell>
 
-                        <TableCell className={styles.tdCell}>
-                          <Badge
-                            size="medium"
-                            appearance="filled"
-                            color={isLow ? 'danger' : 'success'}
-                            className={styles.stockBadge}
-                          >
-                            {p.openingStock ?? 0} {p.unit || 'PCS'}
-                          </Badge>
-                        </TableCell>
+                        {activeTab !== 'fastfood' && (
+                          <TableCell className={styles.tdCell}>
+                            <Badge
+                              size="medium"
+                              appearance="filled"
+                              color={isLow ? 'danger' : 'success'}
+                              className={styles.stockBadge}
+                            >
+                              {p.openingStock ?? 0} {p.unit || 'PCS'}
+                            </Badge>
+                          </TableCell>
+                        )}
 
                         <TableCell className={styles.tdCell}>
-                          <div className={styles.skuCol}>
-                            <Caption1 className={styles.skuCode}>{p.skuCode || '—'}</Caption1>
-                            {p.rackLocation && (
-                              <Caption1 className={styles.rackText}>Rack: {p.rackLocation}</Caption1>
-                            )}
-                          </div>
+                          {isFastFood ? (
+                            <div className={styles.skuCol}>
+                              <Caption1 className={styles.skuCode}>
+                                {p.prepTime ? `⏱ ${p.prepTime} mins prep` : 'Fresh Kitchen'}
+                              </Caption1>
+                              <Caption1 className={styles.rackText} style={{ color: p.isAvailable !== false ? '#10B981' : '#EF4444', fontWeight: 600 }}>
+                                {p.isAvailable !== false ? '● Available' : '○ Unavailable'}
+                              </Caption1>
+                            </div>
+                          ) : (
+                            <div className={styles.skuCol}>
+                              <Caption1 className={styles.skuCode}>{p.skuCode || '—'}</Caption1>
+                              {p.rackLocation && (
+                                <Caption1 className={styles.rackText}>Rack: {p.rackLocation}</Caption1>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
 
                         <TableCell className={styles.tdActions}>

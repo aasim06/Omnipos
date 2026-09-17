@@ -39,13 +39,14 @@ import {
   Warning20Regular,
   ArrowSync20Regular,
   Flash20Regular,
+  Info20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { resolveApiUrl, posApi } from '@/lib/api';
-import { StockMovement, Product, Category, ProductVariant } from '@shared/types';
+import { StockMovement, Product, Category, ProductVariant, PurchaseBill } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
@@ -53,6 +54,27 @@ import { vendorStorage } from './vendorStorage';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { detectCategoryProfile, getFilteredProfileOptions } from '@/lib/categoryProfiles';
+
+export const FOOD_GROUPS: Record<string, { label: string; match: RegExp }> = {
+  burgers: { label: 'Burgers & Sandwiches', match: /(burger|sandwich|shawarma|roll|wrap|patty)/i },
+  pizza: { label: 'Pizzas & Calzones', match: /(pizza|calzone|slice|pasta|lasagna)/i },
+  broast: { label: 'Fried Chicken, Broast & Wings', match: /(broast|crispy|fried|wing|nugget|tender|strip)/i },
+  bbq: { label: 'BBQ, Tikka, Karahi & Gravies', match: /(bbq|tikka|kebab|karahi|handi|biryani|gravy|curry|kabab)/i },
+  beverages: { label: 'Beverages, Drinks & Shakes', match: /(beverage|drink|shake|soda|cola|juice|tea|chai|coffee|water|cold drink)/i },
+  deals: { label: 'Deals, Combos & Platters', match: /(deal|combo|family|platter|feast|special)/i },
+  raw: { label: 'Raw Materials & Kitchen Supplies', match: /(raw|ingredient|material|chicken|meat|beef|mutton|sauce|bun|bread|cheese|mayo|ketchup|oil|packaging|box|disposable)/i },
+  general: { label: 'General Food Menu', match: /.*/i },
+};
+
+export function detectFoodGroup(catName: string): string {
+  const name = (catName || '').toLowerCase().trim();
+  for (const [key, grp] of Object.entries(FOOD_GROUPS)) {
+    if (key !== 'general' && grp.match.test(name)) {
+      return key;
+    }
+  }
+  return 'general';
+}
 
 const stockInSchema = z.object({
   module: z.enum(['fastfood', 'minimart']).default('minimart'),
@@ -75,6 +97,7 @@ const editSchema = z.object({
   unitPrice: z.coerce.number().min(0, 'Unit price cannot be negative'),
   discountPercent: z.coerce.number().min(0).max(100).optional(),
   note: z.string().optional(),
+  date: z.string().optional(),
 });
 
 type EditFormData = z.infer<typeof editSchema>;
@@ -108,12 +131,144 @@ export function StockInView(): React.JSX.Element {
     queryFn: () => posApi.fetchStockMovements(),
   });
 
-  // Fetch Products for Live Stock Inspection
-  const { data: allProducts = [] } = useQuery<Product[]>({
+  // Purchase bills map for linking supplier invoices
+  const purchaseBills = React.useMemo(() => vendorStorage.getPurchaseBills(), [movements.length]);
+  const purchaseBillsMap = React.useMemo(() => {
+    const map = new Map<string, PurchaseBill>();
+    purchaseBills.forEach((b) => {
+      map.set(b.billNumber.trim().toLowerCase(), b);
+      map.set(b.id, b);
+    });
+    return map;
+  }, [purchaseBills]);
+
+  // Helper to reliably resolve vendor / supplier name (never show 'purchase_invoice')
+  const getResolvedVendorName = React.useCallback(
+    (mov: StockMovement): string => {
+      if (mov.vendorName && mov.vendorName.trim() && mov.vendorName !== 'purchase_invoice') {
+        return mov.vendorName.trim();
+      }
+      if (mov.referenceInvoice) {
+        const linkedBill = purchaseBillsMap.get(mov.referenceInvoice.trim().toLowerCase());
+        if (linkedBill?.vendorName && linkedBill.vendorName.trim() && linkedBill.vendorName !== 'purchase_invoice') {
+          return linkedBill.vendorName.trim();
+        }
+      }
+      if (mov.reason && mov.reason.trim() && mov.reason !== 'purchase_invoice') {
+        return mov.reason.trim();
+      }
+      return 'Direct Supplier / Purchase';
+    },
+    [purchaseBillsMap]
+  );
+
+  // Helper to accurately resolve movement date (correcting midnight UTC bug)
+  const getResolvedDate = React.useCallback(
+    (mov: StockMovement): Date => {
+      const d = new Date(mov.date);
+      // Check if midnight UTC bug (saved as 00:00:00Z which shows as 05:00 AM in PKT)
+      if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+        if (mov.referenceInvoice) {
+          const linkedBill = purchaseBillsMap.get(mov.referenceInvoice.trim().toLowerCase());
+          if (linkedBill?.createdAt) {
+            return new Date(linkedBill.createdAt);
+          }
+        }
+      }
+      return d;
+    },
+    [purchaseBillsMap]
+  );
+
+  // Auto-healing migration for existing records in Dexie that had 'purchase_invoice' or midnight UTC
+  useEffect(() => {
+    const healLegacyRecords = async () => {
+      const bills = vendorStorage.getPurchaseBills();
+      const bMap = new Map(bills.map((b) => [b.billNumber.trim().toLowerCase(), b]));
+      let anyChanged = false;
+
+      for (const m of movements) {
+        let needsPatch = false;
+        const patch: Partial<StockMovement> = {};
+        const linked = m.referenceInvoice ? bMap.get(m.referenceInvoice.trim().toLowerCase()) : null;
+
+        // Fix 'purchase_invoice' vendor label
+        if (m.reason === 'purchase_invoice' || !m.vendorName || m.vendorName === 'purchase_invoice') {
+          const vName = linked?.vendorName || (m.vendorName && m.vendorName !== 'purchase_invoice' ? m.vendorName : null) || 'General Supplier';
+          patch.vendorName = vName;
+          patch.reason = vName;
+          needsPatch = true;
+        }
+
+        // Fix midnight UTC (05:00 AM) date
+        const d = new Date(m.date);
+        if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+          if (linked?.createdAt) {
+            patch.date = linked.createdAt;
+            needsPatch = true;
+          } else {
+            const now = new Date();
+            const [y, mon, day] = m.date.slice(0, 10).split('-').map(Number);
+            if (y && mon && day) {
+              patch.date = new Date(y, mon - 1, day, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+              needsPatch = true;
+            }
+          }
+        }
+
+        if (needsPatch) {
+          anyChanged = true;
+          await posApi.updateStockMovement(m.id, patch);
+        }
+      }
+
+      if (anyChanged) {
+        queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      }
+    };
+
+    if (movements.length > 0) {
+      healLegacyRecords();
+    }
+  }, [movements.length]);
+
+  // Fetch Products for Live Stock Inspection (Exclude made-to-order kitchen food)
+  const { data: allProductsRaw = [] } = useQuery<Product[]>({
     queryKey: ['products'],
     queryFn: () => posApi.fetchProducts(),
     staleTime: 60000,
   });
+
+  const { can, businessProfiles = ['standard', 'food'] } = useLicense();
+  const hasFastFood = can('fastfood');
+  const hasOmnimart = can('omnimart');
+
+  // Active module: dynamically defaults to fastfood if user only enabled food module
+  const [activeModule, setActiveModule] = useState<'fastfood' | 'minimart'>(() => {
+    if (hasFastFood && !hasOmnimart) return 'fastfood';
+    if (!hasFastFood && hasOmnimart) return 'minimart';
+    return 'fastfood';
+  });
+
+  useEffect(() => {
+    if (hasFastFood && !hasOmnimart && activeModule !== 'fastfood') {
+      setActiveModule('fastfood');
+    } else if (!hasFastFood && hasOmnimart && activeModule !== 'minimart') {
+      setActiveModule('minimart');
+    }
+  }, [hasFastFood, hasOmnimart]);
+
+  const allProducts = React.useMemo(() => {
+    return allProductsRaw.filter((p) => {
+      if (activeModule === 'fastfood') {
+        if (!hasOmnimart) return p.module !== 'minimart';
+        return p.module === 'fastfood' || p.itemRole === 'food_menu' || p.itemRole === 'raw_ingredient';
+      } else {
+        if (!hasFastFood) return p.module !== 'fastfood';
+        return p.module === 'minimart' || p.itemRole === 'retail_product';
+      }
+    });
+  }, [allProductsRaw, activeModule, hasFastFood, hasOmnimart]);
 
   // Fetch Categories for quick category filtering in form & logs table
   const { data: categories = [] } = useQuery<Category[]>({
@@ -125,17 +280,6 @@ export function StockInView(): React.JSX.Element {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [tableMainCategoryFilter, setTableMainCategoryFilter] = useState<string>('all');
   const [tableCategoryFilter, setTableCategoryFilter] = useState<string>('all');
-
-  const { can, businessProfiles = ['standard', 'food'] } = useLicense();
-  const hasFastFood = can('fastfood');
-  const hasOmnimart = can('omnimart');
-
-  // Filter tab for stock inflows (All, Fast Food Raw Materials, Mini Mart Products)
-  const [inventoryTab, setInventoryTab] = useState<'all' | 'fastfood' | 'minimart'>(() => {
-    if (hasFastFood && !hasOmnimart) return 'fastfood';
-    if (!hasFastFood && hasOmnimart) return 'minimart';
-    return 'all';
-  });
 
   // Top Card Create Form
   const form = useForm<StockInFormData>({
@@ -152,19 +296,49 @@ export function StockInView(): React.JSX.Element {
     },
   });
 
-  const currentModule = form.watch('module') || (hasFastFood && !hasOmnimart ? 'fastfood' : 'minimart');
+  // Keep form's module value synced with activeModule
+  useEffect(() => {
+    form.setValue('module', activeModule);
+  }, [activeModule]);
 
   const moduleCategories = React.useMemo(() => {
-    return categories.filter((c) => c.module === currentModule);
-  }, [categories, currentModule]);
+    return categories.filter((c) => {
+      if (activeModule === 'fastfood') {
+        if (!hasOmnimart) return c.module !== 'minimart';
+        return c.module === 'fastfood' || c.profile === 'food';
+      } else {
+        if (!hasFastFood) return c.module !== 'fastfood';
+        return c.module === 'minimart' || c.profile !== 'food';
+      }
+    });
+  }, [categories, activeModule, hasFastFood, hasOmnimart]);
 
   const mainCategoryOptions = React.useMemo(() => {
-    if (currentModule === 'fastfood') {
-      const opts = [{ value: 'all', label: `All Kitchen Categories (${moduleCategories.length})` }];
-      if (!businessProfiles || businessProfiles.length === 0 || businessProfiles.includes('food')) {
-        opts.push({ value: 'food', label: 'Fast Food & Pizzas' });
-      }
-      opts.push({ value: 'standard', label: 'General Food Items' });
+    if (activeModule === 'fastfood') {
+      const opts = [{ value: 'all', label: `All Food Categories (${moduleCategories.length})` }];
+      const presentGroups = new Set<string>();
+
+      moduleCategories.forEach((c) => {
+        const grp = detectFoodGroup(c.name);
+        presentGroups.add(grp);
+      });
+
+      // Show present food groups with counts
+      presentGroups.forEach((grpKey) => {
+        const grp = FOOD_GROUPS[grpKey];
+        if (grp) {
+          const count = moduleCategories.filter((c) => detectFoodGroup(c.name) === grpKey).length;
+          opts.push({ value: grpKey, label: `${grp.label} (${count})` });
+        }
+      });
+
+      // Show any other food groups not currently present
+      Object.entries(FOOD_GROUPS).forEach(([grpKey, grp]) => {
+        if (!presentGroups.has(grpKey) && grpKey !== 'general') {
+          opts.push({ value: grpKey, label: grp.label });
+        }
+      });
+
       return opts;
     }
 
@@ -219,19 +393,23 @@ export function StockInView(): React.JSX.Element {
     });
 
     return opts;
-  }, [moduleCategories, currentModule, businessProfiles]);
+  }, [moduleCategories, activeModule, businessProfiles]);
 
   // Sub-categories available based on selected main category
   const availableCategories = React.useMemo(() => {
     if (selectedMainCategory === 'all') {
       return moduleCategories;
     }
+    if (activeModule === 'fastfood') {
+      const matched = moduleCategories.filter((c) => detectFoodGroup(c.name) === selectedMainCategory);
+      return matched.length > 0 ? matched : moduleCategories;
+    }
     const matched = moduleCategories.filter((c) => {
       const prof = detectCategoryProfile(c.name, c.profile);
       return prof === selectedMainCategory;
     });
     return matched.length > 0 ? matched : moduleCategories;
-  }, [moduleCategories, selectedMainCategory]);
+  }, [moduleCategories, selectedMainCategory, activeModule]);
 
   // Count products available in selected category or main category
   const categoryProducts = React.useMemo(() => {
@@ -246,6 +424,30 @@ export function StockInView(): React.JSX.Element {
     }
     return allProducts;
   }, [allProducts, selectedCategory, selectedMainCategory, availableCategories]);
+
+  // If selected category changes and the currently selected product does not belong to it, clear selection
+  useEffect(() => {
+    if (selectedCategory !== 'all') {
+      const currentProdId = form.getValues('selectedProductId');
+      if (currentProdId) {
+        const prod = allProducts.find((p) => p.id === currentProdId);
+        if (prod && (prod.category || '').toLowerCase() !== selectedCategory.toLowerCase()) {
+          form.setValue('selectedProductId', '');
+          form.setValue('productName', '');
+        }
+      }
+    }
+  }, [selectedCategory, allProducts]);
+
+  // When activeModule changes, reset all category selections
+  useEffect(() => {
+    setSelectedMainCategory('all');
+    setSelectedCategory('all');
+    setTableMainCategoryFilter('all');
+    setTableCategoryFilter('all');
+    form.setValue('selectedProductId', '');
+    form.setValue('productName', '');
+  }, [activeModule]);
 
   // Prefill from Navigation State (e.g. from Dashboard or Vendors)
   useEffect(() => {
@@ -403,15 +605,17 @@ export function StockInView(): React.JSX.Element {
         .join(' • ');
 
       await posApi.saveStockMovement({
-        module: data.module || 'minimart',
+        module: data.module || activeModule,
         type: 'in',
         productId: data.selectedProductId || uid('prod_'),
         productName: data.productName,
         quantity: data.quantity,
         unitCost: unitCost,
+        vendorName: data.vendorName || 'Supplier Purchase',
         reason: data.vendorName || 'Supplier Purchase',
         referenceInvoice: noteDetails,
         variants: updatedVariants,
+        date: new Date().toISOString(),
       });
 
       // Update Vendor Payable Balance in real-time
@@ -465,11 +669,15 @@ export function StockInView(): React.JSX.Element {
         .filter(Boolean)
         .join(' • ');
 
+      const updatedDate = data.date ? new Date(data.date).toISOString() : (editingMovement?.date || new Date().toISOString());
+
       await posApi.updateStockMovement(data.id, {
         productName: data.productName,
         quantity: data.quantity,
         unitCost: data.unitPrice,
+        vendorName: data.vendorName || 'Supplier Purchase',
         reason: data.vendorName || 'Supplier Purchase',
+        date: updatedDate,
         note: noteDetails,
       });
 
@@ -547,14 +755,20 @@ export function StockInView(): React.JSX.Element {
       if (match && match[1]) parsedDiscount = Number(match[1]);
     }
 
+    const resolvedVendor = getResolvedVendorName(mov);
+    const resolvedDateObj = getResolvedDate(mov);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const localDateTimeStr = `${resolvedDateObj.getFullYear()}-${pad(resolvedDateObj.getMonth() + 1)}-${pad(resolvedDateObj.getDate())}T${pad(resolvedDateObj.getHours())}:${pad(resolvedDateObj.getMinutes())}`;
+
     editForm.reset({
       id: mov.id,
       productName: mov.productName,
-      vendorName: mov.reason || '',
+      vendorName: resolvedVendor === 'Direct Supplier / Purchase' ? '' : resolvedVendor,
       quantity: mov.quantity,
       unitPrice: mov.unitCost || 0,
       discountPercent: parsedDiscount,
       note: mov.note || '',
+      date: localDateTimeStr,
     });
     setIsDrawerOpen(true);
   };
@@ -566,11 +780,12 @@ export function StockInView(): React.JSX.Element {
   };
 
   // Current Vendor & Invoice calculations for printing
+  const resolvedPrintVendorName = printingMovement ? getResolvedVendorName(printingMovement) : '';
   const currentPrintVendor = printingMovement
     ? vendors.find(
         (v) =>
-          v.name.toLowerCase() === (printingMovement.reason || '').toLowerCase() ||
-          v.companyName?.toLowerCase() === (printingMovement.reason || '').toLowerCase()
+          v.name.toLowerCase() === resolvedPrintVendorName.toLowerCase() ||
+          v.companyName?.toLowerCase() === resolvedPrintVendorName.toLowerCase()
       )
     : undefined;
 
@@ -584,18 +799,19 @@ export function StockInView(): React.JSX.Element {
   const printNetTotal = printGrossTotal - printDiscountAmount;
   const printVendorBalance = currentPrintVendor?.openingBalance || printNetTotal;
   const printPrevBalance = Math.max(0, printVendorBalance - printNetTotal);
-  const printDocNo = printingMovement
-    ? `PINV-${new Date(printingMovement.date).toISOString().slice(0, 10).replace(/-/g, '')}-${printingMovement.id.slice(-6).toUpperCase()}`
+  const resolvedPrintDate = printingMovement ? getResolvedDate(printingMovement) : null;
+  const printDocNo = printingMovement && resolvedPrintDate
+    ? `PINV-${resolvedPrintDate.toISOString().slice(0, 10).replace(/-/g, '')}-${printingMovement.id.slice(-6).toUpperCase()}`
     : '';
-  const printDate = printingMovement
-    ? new Date(printingMovement.date).toLocaleDateString('en-PK', {
+  const printDate = resolvedPrintDate
+    ? resolvedPrintDate.toLocaleDateString('en-PK', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
       })
     : '';
-  const printTime = printingMovement
-    ? new Date(printingMovement.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const printTime = resolvedPrintDate
+    ? resolvedPrintDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
 
   const handlePrint = () => {
@@ -829,7 +1045,7 @@ export function StockInView(): React.JSX.Element {
           <!-- Vendor / Supplier Details -->
           <div class="party-card">
             <div class="party-role">Supplier / Vendor Details</div>
-            <div class="party-name">${currentPrintVendor?.name || printingMovement.reason || 'Vendor / Supplier'}</div>
+            <div class="party-name">${currentPrintVendor?.name || getResolvedVendorName(printingMovement)}</div>
             <div class="party-detail"><strong>Contact Rep:</strong> ${currentPrintVendor?.contactPerson || 'Authorized Agent'}</div>
             <div class="party-detail"><strong>Phone / Mobile:</strong> ${currentPrintVendor?.phone || 'N/A'}</div>
             <div class="party-detail"><strong>Address:</strong> ${currentPrintVendor?.address || 'Local Wholesale Supply'}</div>
@@ -1002,18 +1218,20 @@ export function StockInView(): React.JSX.Element {
     }
   };
 
-  // Only Inflow Movements (filtered by licensed modules)
+  // Only Inflow Movements
   const stockInMovements = movements.filter((m) => {
     if (m.type !== 'in') return false;
-    if (!hasFastFood && m.module === 'fastfood') return false;
-    if (!hasOmnimart && m.module !== 'fastfood') return false;
-    return true;
+    if (activeModule === 'fastfood') {
+      if (!hasOmnimart) return m.module !== 'minimart';
+      return m.module === 'fastfood';
+    } else {
+      if (!hasFastFood) return m.module !== 'fastfood';
+      return m.module === 'minimart';
+    }
   });
 
   // Filtered List by Tab, Search Query and Category Filter
   const filteredMovements = stockInMovements.filter((m) => {
-    if (inventoryTab === 'fastfood' && m.module !== 'fastfood') return false;
-    if (inventoryTab === 'minimart' && m.module === 'fastfood') return false;
 
     const matchedProd = allProducts.find((p) => p.id === m.productId || p.name.toLowerCase() === m.productName.toLowerCase());
     if (tableCategoryFilter !== 'all') {
@@ -1022,17 +1240,27 @@ export function StockInView(): React.JSX.Element {
       }
     } else if (tableMainCategoryFilter !== 'all') {
       const catName = matchedProd?.category || '';
-      const prof = detectCategoryProfile(catName);
-      if (prof !== tableMainCategoryFilter) {
-        return false;
+      if (activeModule === 'fastfood') {
+        const grp = detectFoodGroup(catName);
+        if (grp !== tableMainCategoryFilter) {
+          return false;
+        }
+      } else {
+        const prof = detectCategoryProfile(catName);
+        if (prof !== tableMainCategoryFilter) {
+          return false;
+        }
       }
     }
 
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
+    const resolvedVendor = getResolvedVendorName(m).toLowerCase();
     return (
       m.productName.toLowerCase().includes(q) ||
+      resolvedVendor.includes(q) ||
       (m.reason && m.reason.toLowerCase().includes(q)) ||
+      (m.referenceInvoice && m.referenceInvoice.toLowerCase().includes(q)) ||
       (m.note && m.note.toLowerCase().includes(q)) ||
       (matchedProd?.category && matchedProd.category.toLowerCase().includes(q))
     );
@@ -1063,50 +1291,53 @@ export function StockInView(): React.JSX.Element {
         <div className={styles.scopeRow}>
           <span className={styles.cardTitle}>Record Stock In (Receiving Invoice)</span>
 
-          {/* Department / Branch Switcher for Stock In */}
-          {hasFastFood && hasOmnimart ? (
-            <div className={styles.scopeLeft}>
-              <span className={styles.scopeLabel}>
-                Destination:
-              </span>
+          <div className={styles.scopeLeft}>
+            <span className={styles.scopeLabel}>
+              Destination:
+            </span>
+            {hasFastFood && hasOmnimart ? (
               <div className={styles.scopeTabList}>
                 <button
                   type="button"
                   onClick={() => {
-                    form.setValue('module', 'fastfood');
+                    setActiveModule('fastfood');
                     setSelectedMainCategory('all');
                     setSelectedCategory('all');
+                    form.setValue('selectedProductId', '');
+                    form.setValue('productName', '');
                   }}
-                  className={mergeClasses(styles.scopeBtn, form.watch('module') === 'fastfood' && styles.scopeBtnActive)}
+                  className={mergeClasses(styles.scopeBtn, activeModule === 'fastfood' && styles.scopeBtnActive)}
                 >
-                  <Food24Regular className={styles.icon14Neutral} />
-                  <span>Kitchen &amp; Fast Food</span>
+                  <Food24Regular className={styles.icon14Red} />
+                  <span>Kitchen / Food Stock</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    form.setValue('module', 'minimart');
+                    setActiveModule('minimart');
                     setSelectedMainCategory('all');
                     setSelectedCategory('all');
+                    form.setValue('selectedProductId', '');
+                    form.setValue('productName', '');
                   }}
-                  className={mergeClasses(styles.scopeBtn, form.watch('module') !== 'fastfood' && styles.scopeBtnActive)}
+                  className={mergeClasses(styles.scopeBtn, activeModule === 'minimart' && styles.scopeBtnActive)}
                 >
-                  <ShoppingBag24Regular className={styles.icon14Neutral} />
-                  <span>Retail Mini Mart</span>
+                  <ShoppingBag24Regular className={styles.icon14Blue} />
+                  <span>Store / Retail Stock</span>
                 </button>
               </div>
-            </div>
-          ) : (
-            <div className={styles.scopeLeft}>
-              <span className={styles.scopeLabel}>
-                Destination:
-              </span>
+            ) : activeModule === 'fastfood' ? (
               <span className={styles.scopeSingleChip}>
-                {hasFastFood ? <Food24Regular className={styles.icon14Red} /> : <ShoppingBag24Regular className={styles.icon14Blue} />}
-                <span>{hasFastFood ? 'Kitchen & Fast Food' : 'Retail Mini Mart'}</span>
+                <Food24Regular className={styles.icon14Red} />
+                <span>Kitchen / Food Stock</span>
               </span>
-            </div>
-          )}
+            ) : (
+              <span className={styles.scopeSingleChip}>
+                <ShoppingBag24Regular className={styles.icon14Blue} />
+                <span>Store / Retail Stock</span>
+              </span>
+            )}
+          </div>
         </div>
 
         <form onSubmit={form.handleSubmit(onSave)} className={styles.form}>
@@ -1145,9 +1376,16 @@ export function StockInView(): React.JSX.Element {
                   if (val === 'all') {
                     setSelectedCategory('all');
                   } else {
-                    const inGroup = moduleCategories.filter((c) => detectCategoryProfile(c.name, c.profile) === val);
-                    if (!inGroup.some((c) => c.name.toLowerCase() === selectedCategory.toLowerCase())) {
-                      setSelectedCategory('all');
+                    if (activeModule === 'fastfood') {
+                      const inGroup = moduleCategories.filter((c) => detectFoodGroup(c.name) === val);
+                      if (!inGroup.some((c) => c.name.toLowerCase() === selectedCategory.toLowerCase())) {
+                        setSelectedCategory('all');
+                      }
+                    } else {
+                      const inGroup = moduleCategories.filter((c) => detectCategoryProfile(c.name, c.profile) === val);
+                      if (!inGroup.some((c) => c.name.toLowerCase() === selectedCategory.toLowerCase())) {
+                        setSelectedCategory('all');
+                      }
                     }
                   }
                 }}
@@ -1168,9 +1406,16 @@ export function StockInView(): React.JSX.Element {
                   if (val && val !== 'all') {
                     const matched = moduleCategories.find((c) => c.name === val);
                     if (matched) {
-                      const prof = detectCategoryProfile(matched.name, matched.profile);
-                      if (prof && prof !== 'food' && prof !== selectedMainCategory) {
-                        setSelectedMainCategory(prof);
+                      if (activeModule === 'fastfood') {
+                        const grp = detectFoodGroup(matched.name);
+                        if (grp !== selectedMainCategory) {
+                          setSelectedMainCategory(grp);
+                        }
+                      } else {
+                        const prof = detectCategoryProfile(matched.name, matched.profile);
+                        if (prof && prof !== 'food' && prof !== selectedMainCategory) {
+                          setSelectedMainCategory(prof);
+                        }
                       }
                     }
                   }
@@ -1187,7 +1432,8 @@ export function StockInView(): React.JSX.Element {
                     id="stockInItemSelect"
                     label="ITEM SELECT"
                     required
-                    filterModule={form.watch('module')}
+                    products={categoryProducts}
+                    filterModule={activeModule}
                     filterCategory={selectedCategory !== 'all' ? selectedCategory : undefined}
                     filterCategories={selectedCategory === 'all' && selectedMainCategory !== 'all' ? availableCategories.map((c) => c.name) : undefined}
                     placeholder="Search by product name, SKU or barcode..."
@@ -1198,9 +1444,14 @@ export function StockInView(): React.JSX.Element {
                         form.setValue('selectedProductId', prod.id);
                         if (prod.category && selectedCategory === 'all') {
                           setSelectedCategory(prod.category);
-                          const prof = detectCategoryProfile(prod.category);
-                          if (prof && prof !== 'food') {
-                            setSelectedMainCategory(prof);
+                          if (activeModule === 'fastfood') {
+                            const grp = detectFoodGroup(prod.category);
+                            setSelectedMainCategory(grp);
+                          } else {
+                            const prof = detectCategoryProfile(prod.category);
+                            if (prof && prof !== 'food') {
+                              setSelectedMainCategory(prof);
+                            }
                           }
                         }
                         if (prod.costPrice !== undefined && prod.costPrice !== null) {
@@ -1239,7 +1490,7 @@ export function StockInView(): React.JSX.Element {
                 icon={<Add20Regular />}
                 onClick={() => {
                   navigate(
-                    `/catalog/new?category=${encodeURIComponent(selectedCategory)}&module=${form.getValues('module') || 'minimart'}&returnUrl=/inventory/stock-in`
+                    `/catalog/new?category=${encodeURIComponent(selectedCategory)}&module=${activeModule}&returnUrl=/inventory/stock-in`
                   );
                 }}
               >
@@ -1555,90 +1806,17 @@ export function StockInView(): React.JSX.Element {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderBottom: `1px solid ${tokens.colorNeutralStroke2}`, paddingBottom: '10px' }}>
           <span className={styles.cardTitle}>Stock In (Receiving Logs)</span>
 
-          {/* Module Filter Tabs */}
-          {hasFastFood && hasOmnimart ? (
-            <div style={{ display: 'inline-flex', backgroundColor: tokens.colorNeutralBackground3, padding: '3px', borderRadius: '8px', gap: '3px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
-              <button
-                type="button"
-                onClick={() => setInventoryTab('all')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: inventoryTab === 'all' ? '#E51937' : 'transparent',
-                  color: inventoryTab === 'all' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: inventoryTab === 'all' ? 700 : 500,
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }}
-              >
-                <span>All Inflows</span>
-                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: inventoryTab === 'all' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                  {stockInMovements.length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setInventoryTab('fastfood')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: inventoryTab === 'fastfood' ? '#E51937' : 'transparent',
-                  color: inventoryTab === 'fastfood' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: inventoryTab === 'fastfood' ? 700 : 500,
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }}
-              >
-                <Food24Regular style={{ width: 14, height: 14 }} />
-                <span>Kitchen / Fast Food</span>
-                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: inventoryTab === 'fastfood' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                  {stockInMovements.filter((m) => m.module === 'fastfood').length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setInventoryTab('minimart')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: inventoryTab === 'minimart' ? '#E51937' : 'transparent',
-                  color: inventoryTab === 'minimart' ? '#FFFFFF' : tokens.colorNeutralForeground2,
-                  fontWeight: inventoryTab === 'minimart' ? 700 : 500,
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }}
-              >
-                <ShoppingBag24Regular style={{ width: 14, height: 14 }} />
-                <span>Mini Mart Retail</span>
-                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '8px', backgroundColor: inventoryTab === 'minimart' ? 'rgba(255,255,255,0.25)' : tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                  {stockInMovements.filter((m) => m.module !== 'fastfood').length}
-                </span>
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}`, fontSize: '12px', fontWeight: 600 }}>
-              {hasFastFood ? <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} /> : <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />}
-              <span>{hasFastFood ? 'Kitchen / Fast Food Logs' : 'Mini Mart Retail Logs'}</span>
-              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
-                {stockInMovements.length}
-              </span>
-            </div>
-          )}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}`, fontSize: '12px', fontWeight: 600 }}>
+            {activeModule === 'fastfood' ? (
+              <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} />
+            ) : (
+              <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />
+            )}
+            <span>{activeModule === 'fastfood' ? 'Kitchen Inventory Inflows' : 'Store Inventory Inflows'}</span>
+            <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
+              {stockInMovements.length}
+            </span>
+          </div>
         </div>
 
         <div className={styles.filterBar}>
@@ -1663,9 +1841,16 @@ export function StockInView(): React.JSX.Element {
                 if (val === 'all') {
                   setTableCategoryFilter('all');
                 } else {
-                  const inGroup = moduleCategories.filter((c) => detectCategoryProfile(c.name, c.profile) === val);
-                  if (!inGroup.some((c) => c.name.toLowerCase() === tableCategoryFilter.toLowerCase())) {
-                    setTableCategoryFilter('all');
+                  if (activeModule === 'fastfood') {
+                    const inGroup = moduleCategories.filter((c) => detectFoodGroup(c.name) === val);
+                    if (!inGroup.some((c) => c.name.toLowerCase() === tableCategoryFilter.toLowerCase())) {
+                      setTableCategoryFilter('all');
+                    }
+                  } else {
+                    const inGroup = moduleCategories.filter((c) => detectCategoryProfile(c.name, c.profile) === val);
+                    if (!inGroup.some((c) => c.name.toLowerCase() === tableCategoryFilter.toLowerCase())) {
+                      setTableCategoryFilter('all');
+                    }
                   }
                 }
               }}
@@ -1680,7 +1865,9 @@ export function StockInView(): React.JSX.Element {
                 { value: 'all', label: `All ${tableMainCategoryFilter !== 'all' ? 'In Group' : 'Categories'}` },
                 ...(tableMainCategoryFilter === 'all'
                   ? moduleCategories
-                  : moduleCategories.filter((c) => detectCategoryProfile(c.name, c.profile) === tableMainCategoryFilter)
+                  : activeModule === 'fastfood'
+                    ? moduleCategories.filter((c) => detectFoodGroup(c.name) === tableMainCategoryFilter)
+                    : moduleCategories.filter((c) => detectCategoryProfile(c.name, c.profile) === tableMainCategoryFilter)
                 ).map((c) => ({ value: c.name, label: c.name })),
               ]}
               onChange={(val) => {
@@ -1688,9 +1875,16 @@ export function StockInView(): React.JSX.Element {
                 if (val && val !== 'all') {
                   const matched = moduleCategories.find((c) => c.name === val);
                   if (matched) {
-                    const prof = detectCategoryProfile(matched.name, matched.profile);
-                    if (prof && prof !== 'food' && prof !== tableMainCategoryFilter) {
-                      setTableMainCategoryFilter(prof);
+                    if (activeModule === 'fastfood') {
+                      const grp = detectFoodGroup(matched.name);
+                      if (grp !== tableMainCategoryFilter) {
+                        setTableMainCategoryFilter(grp);
+                      }
+                    } else {
+                      const prof = detectCategoryProfile(matched.name, matched.profile);
+                      if (prof && prof !== 'food' && prof !== tableMainCategoryFilter) {
+                        setTableMainCategoryFilter(prof);
+                      }
                     }
                   }
                 }
@@ -1743,7 +1937,8 @@ export function StockInView(): React.JSX.Element {
               ) : (
                 filteredMovements.map((mov) => {
                   const isChecked = selectedIds.includes(mov.id);
-                  const dt = new Date(mov.date);
+                  const resolvedVendor = getResolvedVendorName(mov);
+                  const resolvedDt = getResolvedDate(mov);
                   const totalLine = (mov.unitCost || 0) * (mov.quantity || 0);
                   const matchedProd = allProducts.find(
                     (p) => p.id === mov.productId || p.name.toLowerCase() === mov.productName.toLowerCase()
@@ -1777,13 +1972,27 @@ export function StockInView(): React.JSX.Element {
                         {totalLine > 0 ? formatPKR(totalLine) : '—'}
                       </td>
                       <td className={styles.td}>
-                        <span className={styles.reasonText}>
-                          {mov.reason || 'Supplier Purchase'}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span className={styles.reasonText} style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>
+                            {resolvedVendor}
+                          </span>
+                          {mov.referenceInvoice && (
+                            <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <Receipt20Regular style={{ width: 12, height: 12, color: tokens.colorNeutralForeground4 }} />
+                              <span>
+                                {mov.referenceInvoice.startsWith('Inv #') || mov.referenceInvoice.startsWith('PB-')
+                                  ? mov.referenceInvoice
+                                  : mov.referenceInvoice.includes(' • ')
+                                    ? mov.referenceInvoice.split(' • ')[0]
+                                    : `Inv #${mov.referenceInvoice}`}
+                              </span>
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className={styles.td}>
-                        <span className={styles.dateTimeText}>
-                          {dt.toLocaleDateString()} at {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <span className={styles.dateTimeText} style={{ fontWeight: 500 }}>
+                          {resolvedDt.toLocaleDateString()} at {resolvedDt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </td>
                       <td className={mergeClasses(styles.td, styles.tdCenter)}>
@@ -1964,6 +2173,22 @@ export function StockInView(): React.JSX.Element {
                 </div>
               </div>
 
+              {/* Transaction Date & Time */}
+              <div>
+                <Controller
+                  control={editForm.control}
+                  name="date"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Transaction Date & Time"
+                      type="datetime-local"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+
               {/* Reference Note */}
               <div>
                 <Controller
@@ -2058,7 +2283,7 @@ export function StockInView(): React.JSX.Element {
                       Supplier / Vendor Details
                     </div>
                     <div className={styles.partyName}>
-                      {currentPrintVendor?.name || printingMovement.reason || 'Vendor / Supplier'}
+                      {currentPrintVendor?.name || getResolvedVendorName(printingMovement)}
                     </div>
                     <div className={styles.partyDetail}>
                       <div><strong>Rep:</strong> {currentPrintVendor?.contactPerson || 'Authorized Agent'}</div>

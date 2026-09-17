@@ -24,6 +24,7 @@ import {
   Money20Regular,
   Food24Regular,
   ShoppingBag24Regular,
+  Calendar20Regular,
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
@@ -107,6 +108,20 @@ export function InventoryDashboardView(): React.JSX.Element {
   const lowStockProducts = displayedProducts
     .filter((p) => (p.openingStock || 0) <= (p.minThreshold ?? 10))
     .sort((a, b) => (a.openingStock || 0) - (b.openingStock || 0));
+
+  // Expiring Soon Products (expired or expiring within 60 days)
+  const expiringProducts = React.useMemo(() => {
+    const now = Date.now();
+    return displayedProducts
+      .filter((p) => p.expiryDate)
+      .map((p) => {
+        const expTime = new Date(p.expiryDate!).getTime();
+        const diffDays = Math.ceil((expTime - now) / (1000 * 60 * 60 * 24));
+        return { ...p, diffDays };
+      })
+      .filter((p) => p.diffDays <= 60)
+      .sort((a, b) => a.diffDays - b.diffDays);
+  }, [displayedProducts]);
 
   // Category Breakdown
   const categoryMap = displayedProducts.reduce<Record<string, { count: number; units: number }>>((acc, p) => {
@@ -397,6 +412,63 @@ export function InventoryDashboardView(): React.JSX.Element {
           )}
         </div>
       </div>
+
+      {/* ── Expiring Soon & Batch Alerts ── */}
+      {expiringProducts.length > 0 && (
+        <div className={styles.sectionCard} style={{ borderLeft: '4px solid #D97706' }}>
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionHeaderLeft}>
+              <Calendar20Regular style={{ color: '#D97706', fontSize: '20px' }} />
+              <Subtitle2 className={styles.sectionTitle}>
+                Expiring Soon &amp; Batch Expiry Alerts
+              </Subtitle2>
+              <Badge appearance="filled" color={expiringProducts.some((p) => p.diffDays < 0) ? 'danger' : 'warning'} size="small">
+                {expiringProducts.length} items
+              </Badge>
+            </div>
+            <Caption1 style={{ color: '#605E5C' }}>
+              Products requiring immediate markdown, clearance sale, or vendor return
+            </Caption1>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', marginTop: '8px' }}>
+            {expiringProducts.slice(0, 6).map((prod) => {
+              const isExp = prod.diffDays < 0;
+              return (
+                <div
+                  key={prod.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    backgroundColor: isExp ? '#FDF3F4' : '#FFFDF5',
+                    border: `1px solid ${isExp ? '#F9D9DC' : '#FCE3A1'}`,
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => navigate(`/catalog/products/${prod.id}`)}
+                >
+                  <div>
+                    <strong style={{ fontSize: '13.5px', color: '#323130', display: 'block' }}>
+                      {prod.name}
+                    </strong>
+                    <Caption1 style={{ color: '#605E5C' }}>
+                      {prod.batchNumber ? `Batch: #${prod.batchNumber} • ` : ''}Stock: {prod.openingStock || 0} {prod.unit || 'PCS'}
+                    </Caption1>
+                  </div>
+                  <Badge
+                    appearance="filled"
+                    color={isExp ? 'danger' : 'warning'}
+                  >
+                    {isExp ? `Expired (${Math.abs(prod.diffDays)}d)` : `${prod.diffDays} days left`}
+                  </Badge>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Category Stock Distribution ── */}
       <div className={styles.sectionCard}>

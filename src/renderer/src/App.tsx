@@ -208,6 +208,18 @@ export default function App(): React.JSX.Element {
     void refreshGate();
   }, [refreshGate]);
 
+  // Global F5 and Ctrl+R window refresh listener across all routes
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) {
+        e.preventDefault();
+        window.location.reload();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
   // Live polling: if blocked, check every 10 seconds. If ok, periodic check every 30s.
   useEffect(() => {
     if (gate?.state !== 'blocked' && gate?.state !== 'ok') return;

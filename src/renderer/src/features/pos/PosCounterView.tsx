@@ -59,6 +59,7 @@ import {
   ChevronUp20Regular,
   Person20Regular,
   PaintBrush20Regular,
+  ArrowRepeatAll20Regular,
 } from '@fluentui/react-icons';
 import { posApi, resolveApiUrl } from '@/lib/api';
 import { printKitchenKot } from '@/lib/kotPrinter';
@@ -73,6 +74,7 @@ import { decodeProductVariants } from '@/lib/variants';
 import { A4InvoiceTemplate } from '@/components/print/A4InvoiceTemplate';
 import { storage, KEYS } from '@/lib/storage';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
+import { useAppToast } from '@/context/AppNotificationContext';
 
 /* ─── Fluent UI 2 Desktop Design Tokens (Dynamic Light / Dark) ───── */
 function getTokens(isDark: boolean) {
@@ -211,8 +213,9 @@ const FastFoodVisualCard = React.memo(
     const variants = React.useMemo(() => product.variants || [], [product.variants]);
     const hasVariants = variants.length > 0;
 
-    const isOut = product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
-    const isLowStock = !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= (product.minThreshold ?? 10);
+    const isFood = product.module === 'fastfood';
+    const isOut = !isFood && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
+    const isLowStock = !isFood && !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= (product.minThreshold ?? 10);
     const inCartQty = inCartMap[product.id] ?? 0;
 
     const isWeighedOrAmount = isWeightItem || product.pricingType === 'perkg' || product.pricingType === 'amountse';
@@ -369,7 +372,7 @@ const FastFoodVisualCard = React.memo(
                 boxShadow: `0 0 6px ${isOut ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981'}`,
               }}
             />
-            <span>{isOut ? 'OUT' : `${product.openingStock ?? '—'} left`}</span>
+            <span>{isOut ? 'OUT' : isFood && (product.openingStock === null || product.openingStock === undefined) ? 'Fresh' : `${product.openingStock ?? '—'} left`}</span>
           </div>
 
           {/* In-Cart Glowing Indicator Pill */}
@@ -670,6 +673,7 @@ interface PosCounterProps {
 export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX.Element {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { notifySuccess, notifyWarning } = useAppToast();
   const { mode } = useAppTheme();
   const isDark = mode === 'dark';
   const F = React.useMemo(() => getTokens(isDark), [isDark]);
@@ -693,7 +697,10 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showA4Invoice, setShowA4Invoice] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<'cash' | 'card' | 'khata'>('cash');
+  const [paymentMode, setPaymentMode] = useState<'cash' | 'card' | 'khata' | 'split'>('cash');
+  const [splitCashAmount, setSplitCashAmount] = useState<number | ''>('');
+  const [splitOnlineAmount, setSplitOnlineAmount] = useState<number | ''>('');
+  const [splitKhataAmount, setSplitKhataAmount] = useState<number | ''>('');
   const [selectedKhataId, setSelectedKhataId] = useState<string>('');
 
   const storeSettings = React.useMemo(() => {
@@ -828,6 +835,37 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
       }
     }
   }, [customerKhatas]);
+
+  /* Auto-load Quotation if transferred from Quotations view */
+  React.useEffect(() => {
+    try {
+      const pendingRaw = localStorage.getItem('pos_pending_quotation_load');
+      if (pendingRaw) {
+        const pending = JSON.parse(pendingRaw);
+        if (pending && Array.isArray(pending.lines) && pending.lines.length > 0) {
+          setCart(pending.lines);
+          if (pending.customerName) {
+            setSelectedCustomer({
+              name: pending.customerName,
+              phone: pending.customerPhone || '',
+            });
+            if (pending.customerPhone) {
+              setCustomerPhone(pending.customerPhone);
+            }
+          }
+          if (typeof pending.discountPercent === 'number' && pending.discountPercent > 0) {
+            setDiscountMode('percent');
+            setDiscountValue(pending.discountPercent);
+          }
+          notifySuccess(`Loaded ${pending.lines.length} item(s) from Quotation #${pending.quoteNumber || ''}`);
+          playSuccessChime();
+        }
+        localStorage.removeItem('pos_pending_quotation_load');
+      }
+    } catch (e) {
+      console.warn('Error loading pending quotation into POS cart:', e);
+    }
+  }, []);
 
   const handleSelectCustomer = (cust: CustomerOption) => {
     setSelectedCustomer(cust);
@@ -1252,8 +1290,9 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
     customUnitPrice?: number,
     notes?: string
   ) => {
-    // Prevent adding out-of-stock items
-    const isOut = product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
+    // Prevent adding out-of-stock items (food items are made-to-order and not blocked by stock)
+    const isFood = product.module === 'fastfood';
+    const isOut = !isFood && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
     if (isOut && !variantLabel) {
       playErrorBeep();
       return;
@@ -1278,7 +1317,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
       );
       if (existsIndex > -1) {
         const existingQty = prev[existsIndex].quantity;
-        if (!variantLabel && product.openingStock !== undefined && product.openingStock !== null) {
+        if (!isFood && !variantLabel && product.openingStock !== undefined && product.openingStock !== null) {
           if (existingQty + qty > product.openingStock) {
             playErrorBeep();
             return prev;
@@ -1296,6 +1335,10 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
           unitPrice,
           quantity: qty,
           variantLabel,
+          costPrice: product.costPrice,
+          batchNumber: product.batchNumber,
+          expiryDate: product.expiryDate,
+          unitLabel: product.unit,
           notes,
           imageUrl: product.imageUrl,
         },
@@ -1502,6 +1545,16 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         discountPercent: effectiveDiscountPct,
         totalAmount: total,
         customerName: assignedCustomerName,
+        customerPhone: customerPhone.trim() || undefined,
+        paymentMode,
+        splitPayments:
+          paymentMode === 'split'
+            ? {
+                cash: Number(splitCashAmount) || 0,
+                online: Number(splitOnlineAmount) || 0,
+                khata: Number(splitKhataAmount) || 0,
+              }
+            : undefined,
         orderType: assignedOrderType,
         stage: 'paid',
         createdAt: nowISO(),
@@ -1509,18 +1562,24 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
       };
       await posApi.saveOrder(order);
 
-      // If payment is via Khata, add debit transaction to customer ledger offline-first
-      if (paymentMode === 'khata' && selectedKhataId) {
-        try {
-          await posApi.addKhataTransaction({
-            khataId: selectedKhataId,
-            type: 'DEBIT',
-            amount: total,
-            paymentMethod: 'credit',
-            description: `POS Bill #${order.id.slice(-6)} (${cart.length} items)`,
-          });
-        } catch (e) {
-          console.error('[Khata] Failed to record credit transaction:', e);
+      // If payment is via Khata or Split Khata, add debit transaction to customer ledger offline-first
+      if (
+        (paymentMode === 'khata' || (paymentMode === 'split' && (Number(splitKhataAmount) || 0) > 0)) &&
+        selectedKhataId
+      ) {
+        const debitAmt = paymentMode === 'split' ? (Number(splitKhataAmount) || 0) : total;
+        if (debitAmt > 0) {
+          try {
+            await posApi.addKhataTransaction({
+              khataId: selectedKhataId,
+              type: 'DEBIT',
+              amount: debitAmt,
+              paymentMethod: 'credit',
+              description: `POS Bill #${order.id.slice(-6)} (${cart.length} items)`,
+            });
+          } catch (e) {
+            console.error('[Khata] Failed to record credit transaction:', e);
+          }
         }
       }
 
@@ -1536,6 +1595,9 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
       setCart([]);
       handleClearDiscount();
       setPaymentMode('cash');
+      setSplitCashAmount('');
+      setSplitOnlineAmount('');
+      setSplitKhataAmount('');
       setSelectedKhataId('');
       const guestInDb = customerKhatas.find((k: any) => k.name.toLowerCase() === 'guest');
       setSelectedCustomer(guestInDb || defaultGuestCustomer);
@@ -2448,8 +2510,9 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                       </tr>
                     ) : (
                       filteredProducts.map((product) => {
-                        const isOut = product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
-                        const isLowStock = !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= (product.minThreshold ?? 10);
+                        const isFood = product.module === 'fastfood';
+                        const isOut = !isFood && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
+                        const isLowStock = !isFood && !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= (product.minThreshold ?? 10);
                         const inCartCount = inCartMap[product.id] || 0;
                         const isWeightItem = isWeighableOrLiquid(product.unit);
 
@@ -2495,7 +2558,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                                   color: isOut ? '#EF4444' : isLowStock ? '#D97706' : '#16A34A',
                                 }}
                               >
-                                {isOut ? 'OUT OF STOCK' : `${product.openingStock ?? '—'} left`}
+                                {isOut ? 'OUT OF STOCK' : isFood && (product.openingStock === null || product.openingStock === undefined) ? 'Fresh / Made to Order' : `${product.openingStock ?? '—'} left`}
                               </span>
                             </td>
                             <td style={{ padding: '10px 16px', fontWeight: 800, color: F.accentRed }}>
@@ -4032,7 +4095,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
             <div style={{ fontSize: '10.5px', fontWeight: 700, color: F.textSecondary, marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Payment Method
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
               <button
                 type="button"
                 onClick={() => {
@@ -4045,17 +4108,17 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   border: `1px solid ${paymentMode === 'cash' ? F.accentRed : F.border}`,
                   backgroundColor: paymentMode === 'cash' ? (isDark ? 'rgba(229,25,55,0.2)' : '#FEF2F2') : F.bgSubtle,
                   color: paymentMode === 'cash' ? F.accentRed : F.textPrimary,
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '5px',
+                  gap: '4px',
                   transition: 'all 0.12s ease',
                 }}
               >
-                <Money20Regular style={{ width: 15, height: 15 }} />
+                <Money20Regular style={{ width: 14, height: 14 }} />
                 <span>Cash</span>
               </button>
               <button
@@ -4070,17 +4133,17 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   border: `1px solid ${paymentMode === 'card' ? F.accentRed : F.border}`,
                   backgroundColor: paymentMode === 'card' ? (isDark ? 'rgba(229,25,55,0.2)' : '#FEF2F2') : F.bgSubtle,
                   color: paymentMode === 'card' ? F.accentRed : F.textPrimary,
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '5px',
+                  gap: '4px',
                   transition: 'all 0.12s ease',
                 }}
               >
-                <Payment20Regular style={{ width: 15, height: 15 }} />
+                <Payment20Regular style={{ width: 14, height: 14 }} />
                 <span>Card</span>
               </button>
               <button
@@ -4095,18 +4158,47 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   border: `1px solid ${paymentMode === 'khata' ? F.accentRed : F.border}`,
                   backgroundColor: paymentMode === 'khata' ? (isDark ? 'rgba(229,25,55,0.2)' : '#FEF2F2') : F.bgSubtle,
                   color: paymentMode === 'khata' ? F.accentRed : F.textPrimary,
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '5px',
+                  gap: '4px',
                   transition: 'all 0.12s ease',
                 }}
               >
-                <Notebook20Regular style={{ width: 15, height: 15 }} />
+                <Notebook20Regular style={{ width: 14, height: 14 }} />
                 <span>Khata</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentMode('split');
+                  const half = Math.round(total / 2);
+                  setSplitCashAmount(half);
+                  setSplitOnlineAmount(total - half);
+                  setSplitKhataAmount(0);
+                  playBeep();
+                }}
+                style={{
+                  padding: '6px 0',
+                  borderRadius: F.radiusSm,
+                  border: `1px solid ${paymentMode === 'split' ? F.accentRed : F.border}`,
+                  backgroundColor: paymentMode === 'split' ? (isDark ? 'rgba(229,25,55,0.2)' : '#FEF2F2') : F.bgSubtle,
+                  color: paymentMode === 'split' ? F.accentRed : F.textPrimary,
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                  transition: 'all 0.12s ease',
+                }}
+              >
+                <ArrowRepeatAll20Regular style={{ width: 14, height: 14 }} />
+                <span>Split</span>
               </button>
             </div>
 
@@ -4221,6 +4313,125 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
               </div>
             )}
 
+            {/* Split Payment Controls */}
+            {paymentMode === 'split' && cart.length > 0 && (
+              <div
+                style={{
+                  marginTop: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  padding: '8px',
+                  borderRadius: F.radiusSm,
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC',
+                  border: `1px solid ${F.border}`,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10.5px', fontWeight: 700 }}>
+                  <span style={{ color: F.textSecondary, textTransform: 'uppercase' }}>Split Amount Allocation</span>
+                  <span style={{ color: F.accentRed }}>Total: PKR {total.toLocaleString()}</span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  <div>
+                    <label style={{ fontSize: '10px', color: F.textMuted, display: 'block', marginBottom: '2px' }}>Cash (PKR)</label>
+                    <input
+                      type="number"
+                      value={splitCashAmount}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setSplitCashAmount(val);
+                        if (typeof val === 'number') {
+                          const rem = Math.max(0, total - val - (Number(splitKhataAmount) || 0));
+                          setSplitOnlineAmount(rem);
+                        }
+                      }}
+                      placeholder="Cash amount..."
+                      style={{
+                        width: '100%',
+                        padding: '5px 8px',
+                        borderRadius: '4px',
+                        border: `1px solid ${F.border}`,
+                        backgroundColor: F.bgSubtle,
+                        color: F.textPrimary,
+                        fontSize: '11.5px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '10px', color: F.textMuted, display: 'block', marginBottom: '2px' }}>Card / Online</label>
+                    <input
+                      type="number"
+                      value={splitOnlineAmount}
+                      onChange={(e) => setSplitOnlineAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Online amount..."
+                      style={{
+                        width: '100%',
+                        padding: '5px 8px',
+                        borderRadius: '4px',
+                        border: `1px solid ${F.border}`,
+                        backgroundColor: F.bgSubtle,
+                        color: F.textPrimary,
+                        fontSize: '11.5px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {selectedCustomer.id && (
+                  <div>
+                    <label style={{ fontSize: '10px', color: F.textMuted, display: 'block', marginBottom: '2px' }}>
+                      Khata / Udhar ({selectedCustomer.name})
+                    </label>
+                    <input
+                      type="number"
+                      value={splitKhataAmount}
+                      onChange={(e) => setSplitKhataAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Khata amount..."
+                      style={{
+                        width: '100%',
+                        padding: '5px 8px',
+                        borderRadius: '4px',
+                        border: `1px solid ${F.border}`,
+                        backgroundColor: F.bgSubtle,
+                        color: F.textPrimary,
+                        fontSize: '11.5px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Validation Status */}
+                {(() => {
+                  const sum = (Number(splitCashAmount) || 0) + (Number(splitOnlineAmount) || 0) + (Number(splitKhataAmount) || 0);
+                  const diff = total - sum;
+                  if (diff === 0) {
+                    return (
+                      <div style={{ fontSize: '11px', color: '#10B981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <CheckmarkCircle20Filled style={{ width: 14, height: 14 }} />
+                        <span>Exact match (PKR {sum.toLocaleString()})</span>
+                      </div>
+                    );
+                  }
+                  if (diff > 0) {
+                    return (
+                      <div style={{ fontSize: '11px', color: '#F59E0B', fontWeight: 600 }}>
+                        Remaining to allocate: PKR {diff.toLocaleString()}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div style={{ fontSize: '11px', color: '#EF4444', fontWeight: 600 }}>
+                      Exceeds total by PKR {Math.abs(diff).toLocaleString()}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             {/* Khata Customer Selection */}
             {paymentMode === 'khata' && (
               <div style={{ marginTop: '10px' }}>
@@ -4242,7 +4453,16 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
 
           {/* Primary Interactive Button: Red Brand Accent (#E51937) */}
           <button
-            disabled={cart.length === 0 || isPending || (paymentMode === 'khata' && !selectedKhataId)}
+            disabled={
+              cart.length === 0 ||
+              isPending ||
+              (paymentMode === 'khata' && !selectedKhataId) ||
+              (paymentMode === 'split' &&
+                (Number(splitCashAmount) || 0) +
+                  (Number(splitOnlineAmount) || 0) +
+                  (Number(splitKhataAmount) || 0) !==
+                  total)
+            }
             onClick={() => checkout()}
             style={{
               width: '100%',
@@ -4884,7 +5104,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: module === 'fastfood' ? '1fr 1fr auto' : '1fr auto',
+                  gridTemplateColumns: module === 'fastfood' ? '1fr 1fr 1fr auto' : '1fr 1fr auto',
                   gap: '8px',
                   alignItems: 'center',
                 }}
@@ -4924,6 +5144,46 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                     <span>Print KOT</span>
                   </button>
                 )}
+
+                <button
+                  onClick={() => {
+                    const phone = (lastOrder.customerPhone || customerPhone || '').replace(/[^0-9]/g, '');
+                    const phoneWithCountry = phone.startsWith('92') ? phone : phone.startsWith('0') ? `92${phone.slice(1)}` : `92${phone}`;
+                    const itemsText = (lastOrder.lines || []).map((l) => `• ${l.quantity}x ${l.name} - PKR ${(l.quantity * l.unitPrice).toLocaleString()}`).join('\n');
+                    const text = encodeURIComponent(
+                      `*${storeSettings.storeName || 'OMNIPOS STORE'}*\n${storeSettings.address ? `${storeSettings.address}\n` : ''}Phone: ${storeSettings.phone || ''}\n-----------------------------------\n*INVOICE RECEIPT* (#${lastOrder.id.slice(-6).toUpperCase()})\nDate: ${new Date(lastOrder.createdAt).toLocaleDateString()} ${new Date(lastOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n-----------------------------------\n${itemsText}\n-----------------------------------\n*Net Total:* PKR ${(lastOrder.totalAmount || 0).toLocaleString()}\n*Payment Mode:* ${(lastOrder.paymentMode || 'PAID').toUpperCase()}\n-----------------------------------\n${storeSettings.footerNote || 'Thank you for shopping with us!'}`
+                    );
+                    if (phone.length >= 7) {
+                      window.open(`https://wa.me/${phoneWithCountry}?text=${text}`, '_blank');
+                    } else {
+                      const entered = window.prompt('Enter customer WhatsApp number (e.g. 03001234567):', '');
+                      if (entered) {
+                        const clean = entered.replace(/[^0-9]/g, '');
+                        const withCode = clean.startsWith('92') ? clean : clean.startsWith('0') ? `92${clean.slice(1)}` : `92${clean}`;
+                        window.open(`https://wa.me/${withCode}?text=${text}`, '_blank');
+                      }
+                    }
+                  }}
+                  style={{
+                    height: '36px',
+                    borderRadius: '8px',
+                    border: isDark ? '1px solid #065F46' : '1px solid #A7F3D0',
+                    backgroundColor: isDark ? '#064E3B' : '#ECFDF5',
+                    color: isDark ? '#34D399' : '#059669',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: F.font,
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                  }}
+                  title="Share digital invoice on WhatsApp"
+                >
+                  <Phone20Regular style={{ width: 15, height: 15 }} />
+                  <span>WhatsApp</span>
+                </button>
 
                 <button
                   onClick={() => {
