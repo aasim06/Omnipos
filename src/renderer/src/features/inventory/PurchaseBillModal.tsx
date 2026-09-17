@@ -326,14 +326,64 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
 
   // Select Product for a line
   const handleSelectProduct = (idx: number, prod: Product) => {
+    const selVariant = (prod as any).selectedVariant as ProductVariant | undefined;
+    const targetVariant = selVariant || (prod.variants && prod.variants.length > 0 ? prod.variants[0] : undefined);
+    const cleanBaseName = prod.name.replace(/\s*\([^)]*\)$/, '');
+    const finalName = targetVariant ? `${cleanBaseName} (${targetVariant.label})` : prod.name;
+    const vPrice = targetVariant
+      ? (targetVariant.price !== undefined ? targetVariant.price : (prod.price + (targetVariant.priceDelta || 0)))
+      : (prod.price || 0);
+    const vCost = targetVariant && targetVariant.costDelta !== undefined
+      ? ((prod.costPrice || 0) + targetVariant.costDelta)
+      : (prod.costPrice || 0);
+
     updateLine(idx, {
       productId: prod.id,
-      productName: prod.name,
-      unitCost: prod.costPrice || 0,
-      retailPrice: prod.price || 0,
+      productName: finalName,
+      variantId: targetVariant?.id,
+      variantLabel: targetVariant?.label,
+      unitCost: vCost,
+      retailPrice: vPrice,
       batchNumber: prod.batchNumber || '',
       expiryDate: prod.expiryDate || '',
     });
+  };
+
+  // Switch variant for an existing line
+  const handleSwitchVariant = (idx: number, prod: Product, v: ProductVariant) => {
+    const cleanBaseName = prod.name.replace(/\s*\([^)]*\)$/, '');
+    const vPrice = v.price !== undefined ? v.price : (prod.price + (v.priceDelta || 0));
+    const vCost = v.costDelta !== undefined ? ((prod.costPrice || 0) + v.costDelta) : (prod.costPrice || 0);
+    updateLine(idx, {
+      productName: `${cleanBaseName} (${v.label})`,
+      variantId: v.id,
+      variantLabel: v.label,
+      retailPrice: vPrice,
+      unitCost: vCost,
+    });
+  };
+
+  // Quick-add another variant as a new line
+  const handleAddVariantLine = (prod: Product, v: ProductVariant) => {
+    const cleanBaseName = prod.name.replace(/\s*\([^)]*\)$/, '');
+    const vPrice = v.price !== undefined ? v.price : (prod.price + (v.priceDelta || 0));
+    const vCost = v.costDelta !== undefined ? ((prod.costPrice || 0) + v.costDelta) : (prod.costPrice || 0);
+    setLines((prev) => [
+      ...prev,
+      {
+        id: uid('pbl_'),
+        productId: prod.id,
+        productName: `${cleanBaseName} (${v.label})`,
+        variantId: v.id,
+        variantLabel: v.label,
+        quantity: 1,
+        unitCost: vCost,
+        retailPrice: vPrice,
+        batchNumber: prod.batchNumber || '',
+        expiryDate: prod.expiryDate || '',
+        totalCost: vCost,
+      },
+    ]);
   };
 
   // Save Purchase Bill Handler
@@ -446,10 +496,34 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
         }
       }
 
-      // 3. For each line: add StockMovement (type: 'in') & update product stock/costPrice
+      // 3. For each line: add StockMovement (type: 'in') & update product stock/costPrice (with variant tracking)
+      const productMap = new Map<string, Product>();
+      products.forEach((p) => productMap.set(p.id, { ...p }));
+
       for (const line of validLines) {
-        const movement: Omit<StockMovement, 'id'> = {
-          module: 'minimart',
+        const prod = line.productId ? productMap.get(line.productId) : undefined;
+        const prodModule = prod?.module || (hasFastFood && !hasOmnimart ? 'fastfood' : 'minimart');
+
+        // Update variant stock if product has variants
+        let updatedVariants: ProductVariant[] | undefined = undefined;
+        if (prod?.variants && prod.variants.length > 0) {
+          updatedVariants = prod.variants.map((v) => {
+            const isTarget =
+              (line.variantId && v.id === line.variantId) ||
+              (line.variantLabel && v.label.toLowerCase() === line.variantLabel.toLowerCase());
+            if (isTarget) {
+              const currentVStock = Number(v.stock) || 0;
+              return {
+                ...v,
+                stock: Math.max(0, currentVStock + Number(line.quantity)),
+              };
+            }
+            return v;
+          });
+        }
+
+        const movement: Omit<StockMovement, 'id'> & { variants?: ProductVariant[] } = {
+          module: prodModule,
           productId: line.productId || uid('prod_'),
           productName: line.productName,
           type: 'in',
@@ -462,21 +536,24 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
           referenceInvoice: billNumber.trim(),
           vendorName: activeVendorName,
           date: movementDate,
+          variants: updatedVariants,
         };
         await posApi.saveStockMovement(movement as any);
 
-        // Update product metadata (cost price, selling price, batch, expiry) if product exists
-        if (line.productId) {
-          const existingProd = products.find((p) => p.id === line.productId);
-          if (existingProd) {
-            await posApi.saveProduct({
-              ...existingProd,
-              costPrice: line.unitCost > 0 ? line.unitCost : existingProd.costPrice,
-              price: line.retailPrice && line.retailPrice > 0 ? line.retailPrice : existingProd.price,
-              batchNumber: line.batchNumber || existingProd.batchNumber,
-              expiryDate: line.expiryDate || existingProd.expiryDate,
-            });
-          }
+        // Update product in local state & database
+        if (prod) {
+          const currentProdStock = Number(prod.openingStock) || 0;
+          const updatedProd: Product = {
+            ...prod,
+            openingStock: currentProdStock + Number(line.quantity),
+            costPrice: line.unitCost > 0 ? line.unitCost : prod.costPrice,
+            price: line.retailPrice && line.retailPrice > 0 ? line.retailPrice : prod.price,
+            batchNumber: line.batchNumber || prod.batchNumber,
+            expiryDate: line.expiryDate || prod.expiryDate,
+            variants: updatedVariants || prod.variants,
+          };
+          productMap.set(prod.id, updatedProd);
+          await posApi.saveProduct(updatedProd);
         }
       }
 
@@ -610,11 +687,15 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                       <th className={styles.th} style={{ textAlign: 'center', width: '95px' }}>Batch No</th>
                       <th className={styles.th} style={{ textAlign: 'center', width: '120px' }}>Expiry Date</th>
                       <th className={styles.th} style={{ textAlign: 'right', width: '100px', paddingRight: '8px' }}>Total (PKR)</th>
-                      <th className={styles.th} style={{ textAlign: 'center', width: '42px' }}></th>
+                      <th className={styles.th} style={{ textAlign: 'center', width: '68px' }}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {lines.map((line, idx) => (
+                    {lines.map((line, idx) => {
+                      const linkedProduct = line.productId ? products.find((p) => p.id === line.productId) : undefined;
+                      const hasVariants = linkedProduct?.variants && linkedProduct.variants.length > 0;
+
+                      return (
                       <tr key={line.id} className={styles.tableRow}>
                         {/* Item Name / Autocomplete */}
                         <td style={{ padding: '6px 8px', verticalAlign: 'middle' }}>
@@ -624,6 +705,38 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                             onChange={(val) => updateLine(idx, { productName: val })}
                             onSelectProduct={(p) => handleSelectProduct(idx, p)}
                           />
+                          {hasVariants && linkedProduct && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '3px', flexWrap: 'nowrap' }}>
+                              <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 700, marginRight: '2px' }}>Size:</span>
+                              {linkedProduct.variants!.map((v) => {
+                                const isSelected = line.variantId
+                                  ? line.variantId === v.id
+                                  : (line.variantLabel === v.label || line.productName.includes(`(${v.label})`));
+                                const vPrice = v.price !== undefined ? v.price : (linkedProduct.price + (v.priceDelta || 0));
+                                return (
+                                  <button
+                                    key={v.id}
+                                    type="button"
+                                    onClick={() => handleSwitchVariant(idx, linkedProduct, v)}
+                                    style={{
+                                      padding: '1px 5px',
+                                      fontSize: '10px',
+                                      fontWeight: isSelected ? 800 : 500,
+                                      borderRadius: '3px',
+                                      border: isSelected ? '1px solid #E51937' : '1px solid #CBD5E1',
+                                      backgroundColor: isSelected ? '#FEE2E2' : '#F8FAFC',
+                                      color: isSelected ? '#E51937' : '#334155',
+                                      cursor: 'pointer',
+                                      lineHeight: '1.2',
+                                    }}
+                                    title={`Set to ${v.label} (Rs. ${vPrice.toLocaleString()})`}
+                                  >
+                                    {v.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         </td>
 
                         {/* Qty */}
@@ -691,38 +804,75 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                           PKR {line.totalCost.toLocaleString()}
                         </td>
 
-                        {/* Remove */}
-                        <td style={{ padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveLine(idx)}
-                            disabled={lines.length === 1}
-                            title={lines.length === 1 ? 'At least one item line is required' : 'Remove item line'}
-                            style={{
-                              width: '32px',
-                              height: '32px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: '6px',
-                              border: 'none',
-                              background: 'transparent',
-                              cursor: lines.length === 1 ? 'not-allowed' : 'pointer',
-                              color: lines.length === 1 ? '#CBD5E1' : '#EF4444',
-                              transition: 'background-color 0.15s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                              if (lines.length > 1) e.currentTarget.style.backgroundColor = '#FEE2E2';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'transparent';
-                            }}
-                          >
-                            <Delete20Regular style={{ width: 18, height: 18 }} />
-                          </button>
+                        {/* Remove & Add Size */}
+                        <td style={{ padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                            {hasVariants && linkedProduct && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const unselectedVariant = linkedProduct.variants!.find(
+                                    (v) =>
+                                      !lines.some(
+                                        (l) =>
+                                          l.productId === linkedProduct.id &&
+                                          (l.variantId === v.id ||
+                                            l.variantLabel === v.label ||
+                                            l.productName.includes(`(${v.label})`))
+                                      )
+                                  );
+                                  handleAddVariantLine(linkedProduct, unselectedVariant || linkedProduct.variants![0]);
+                                }}
+                                title="Add another size of this item as a new line in bill"
+                                style={{
+                                  width: '28px',
+                                  height: '28px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  background: 'rgba(229, 25, 55, 0.08)',
+                                  color: '#E51937',
+                                  cursor: 'pointer',
+                                  transition: 'background-color 0.15s ease',
+                                }}
+                              >
+                                <Add20Regular style={{ width: 15, height: 15 }} />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveLine(idx)}
+                              disabled={lines.length === 1}
+                              title={lines.length === 1 ? 'At least one item line is required' : 'Remove item line'}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: lines.length === 1 ? 'not-allowed' : 'pointer',
+                                color: lines.length === 1 ? '#CBD5E1' : '#EF4444',
+                                transition: 'background-color 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                if (lines.length > 1) e.currentTarget.style.backgroundColor = '#FEE2E2';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <Delete20Regular style={{ width: 17, height: 17 }} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>

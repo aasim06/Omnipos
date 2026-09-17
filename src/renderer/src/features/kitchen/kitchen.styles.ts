@@ -195,11 +195,13 @@ export const useKitchenStyles = makeStyles({
     height: '18px',
     color: tokens.colorNeutralForeground2,
   },
+  // ── Dialog / Modal ──
   dialogSurface: {
     maxWidth: '580px',
     width: '94vw',
     padding: '24px',
     borderRadius: '16px',
+    overflow: 'visible',
   },
   dialogTitle: {
     fontWeight: 800,
@@ -213,6 +215,7 @@ export const useKitchenStyles = makeStyles({
     flexDirection: 'column',
     gap: '16px',
     marginTop: '16px',
+    overflow: 'visible',
   },
   formRow: {
     display: 'grid',
@@ -236,12 +239,12 @@ export const useKitchenStyles = makeStyles({
     fontWeight: 700,
     padding: '4px 10px',
   },
+  // overflow: visible so the absolute dropdown is NOT clipped
   foodListScroll: {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
-    maxHeight: '320px',
-    overflowY: 'auto',
+    overflowY: 'visible',
     paddingRight: '4px',
   },
   foodItemCard: {
@@ -252,6 +255,7 @@ export const useKitchenStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: '14px',
+    overflow: 'visible',
   },
   foodItemHeader: {
     display: 'flex',

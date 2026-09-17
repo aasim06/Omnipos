@@ -464,7 +464,7 @@ export const useQuotationsStyles = makeStyles({
   thSpecUnit: {
     padding: '8px 8px',
     textAlign: 'left',
-    width: '130px',
+    width: '145px',
   },
   thQty: {
     padding: '8px 8px',
@@ -484,7 +484,7 @@ export const useQuotationsStyles = makeStyles({
   thDeleteCol: {
     padding: '8px 6px',
     textAlign: 'center',
-    width: '40px',
+    width: '65px',
   },
   emptyLinesTd: {
     padding: '24px',

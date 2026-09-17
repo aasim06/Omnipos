@@ -57,25 +57,73 @@ export async function getTenantHeaders(): Promise<Record<string, string>> {
   return {};
 }
 
+/** True when running inside Electron desktop app */
+const isElectron = typeof window !== 'undefined' && !!(window as any).posApi?.isElectron;
+
 export async function resolveApiUrl(): Promise<string> {
+  // ── Electron Desktop App: ALWAYS use local Express server ──────────────────
+  // Products, categories, orders — all live in local SQLite.
+  // We NEVER use Vercel when running inside Electron.
+  if (isElectron) {
+    // Return cached local URL immediately on subsequent calls
+    if (cachedApiUrl) return cachedApiUrl;
+
+    // Try the waiting IPC handler first (waits up to 5s for server to be ready)
+    if ((window as any).posApi?.getLocalApiUrl) {
+      try {
+        const url = await (window as any).posApi.getLocalApiUrl();
+        if (url && typeof url === 'string' && url.startsWith('http')) {
+          cachedApiUrl = url;
+          return url;
+        }
+      } catch { /* fall through */ }
+    }
+
+    // Fallback: non-waiting IPC with manual retry (up to 3s)
+    for (let attempt = 0; attempt < 30; attempt++) {
+      try {
+        const url = await (window as any).posApi.getApiUrl();
+        if (url && typeof url === 'string' && url.startsWith('http')) {
+          cachedApiUrl = url;
+          return url;
+        }
+      } catch { /* ignore */ }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+
+    // Last resort: scan common ports
+    for (const port of [3001, 3000, 4000]) {
+      try {
+        const r = await fetch(`http://127.0.0.1:${port}/health`, {
+          signal: AbortSignal.timeout(500),
+        });
+        if (r.ok) {
+          cachedApiUrl = `http://127.0.0.1:${port}`;
+          return cachedApiUrl;
+        }
+      } catch { /* try next */ }
+    }
+
+    // If we still can't connect (very rare), return localhost placeholder
+    // so at least fetch errors are informative rather than hitting Vercel
+    console.warn('[OmniPOS] Could not reach local backend server.');
+    return 'http://127.0.0.1:3001';
+  }
+
+  // ── Web Browser: use cached URL or Vercel cloud ─────────────────────────────
   if (cachedApiUrl) return cachedApiUrl;
 
-  // 1. Embedded local Electron Express backend (Primary for Desktop Offline)
   if (typeof window !== 'undefined' && window.posApi?.getApiUrl) {
     try {
       const url = await window.posApi.getApiUrl();
-      if (url) {
+      if (url && typeof url === 'string' && url.startsWith('http')) {
         cachedApiUrl = url;
         return url;
       }
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }
 
-  // 2. Central Cloud Backend (Vercel) or configured environment URL
   const envUrl = (import.meta as any).env?.VITE_API_URL || 'https://omni-server-seven.vercel.app';
-  cachedApiUrl = envUrl;
   return envUrl;
 }
 

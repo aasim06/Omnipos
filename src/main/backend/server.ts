@@ -46,6 +46,10 @@ export async function startBackendServer(port = 0, isLan = false): Promise<Backe
   app.get('/health', (_req, res) => {
     res.json({ ok: true, service: 'omnipos-backend' });
   });
+  // Alias so renderer port-detection also works with /api/health
+  app.get('/api/health', (_req, res) => {
+    res.json({ ok: true, service: 'omnipos-backend' });
+  });
 
   app.use('/images', express.static(getImagesRoot()));
 

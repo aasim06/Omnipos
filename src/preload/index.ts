@@ -33,6 +33,7 @@ export interface PosUpdateApi {
 export interface PosApi {
   isElectron: boolean;
   getApiUrl: () => Promise<string | null>;
+  getLocalApiUrl: () => Promise<string | null>;
   getLicenseMeta: () => Promise<any>;
   activateLicense: (key: string, cloudApiUrl?: string) => Promise<{ ok: boolean; error?: string; schemaId?: string }>;
   license: {
@@ -57,6 +58,7 @@ export interface PosApi {
 const posApi: PosApi = {
   isElectron: true,
   getApiUrl: () => ipcRenderer.invoke('app:get-api-url'),
+  getLocalApiUrl: () => ipcRenderer.invoke('app:get-local-api-url'),
   getLicenseMeta: () => ipcRenderer.invoke('license:get-meta'),
   activateLicense: (key: string, cloudApiUrl?: string) =>
     ipcRenderer.invoke('license:activate', { key, cloudApiUrl }),

@@ -30,12 +30,13 @@ import {
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
-import { Quotation, Product, ModuleKey, CartLine } from '@shared/types';
+import { Quotation, Product, ModuleKey, CartLine, ProductVariant } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { storage, KEYS } from '@/lib/storage';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
+import { decodeProductVariants } from '@/lib/variants';
 import { QuotationPrintTemplate } from '@/components/print/QuotationPrintTemplate';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
 
@@ -88,11 +89,12 @@ export function QuotationsView(): React.JSX.Element {
     queryFn: () => posApi.fetchQuotations(),
   });
 
-  // Fetch Products for autocomplete
-  const { data: products = [] } = useQuery<Product[]>({
+  // Fetch Products for autocomplete & decode variants
+  const { data: rawProducts = [] } = useQuery<Product[]>({
     queryKey: ['products'],
     queryFn: () => posApi.fetchProducts(),
   });
+  const products = useMemo(() => rawProducts.map(decodeProductVariants), [rawProducts]);
 
   // Mutations
   const saveQuotationMutation = useMutation({
@@ -191,8 +193,20 @@ export function QuotationsView(): React.JSX.Element {
 
   // Line helpers
   const addProductToLines = (prod: Product) => {
+    const decoded = decodeProductVariants(prod);
+    const selVariant = (prod as any).selectedVariant as ProductVariant | undefined;
+    const targetVariant = selVariant || (decoded.variants && decoded.variants.length > 0 ? decoded.variants[0] : undefined);
+    const vLabel = targetVariant?.label || prod.unit || undefined;
+    const cleanBaseName = prod.name.replace(/\s*\([^)]*\)$/, '');
+    const finalName = targetVariant ? `${cleanBaseName} (${targetVariant.label})` : prod.name;
+    const vPrice = targetVariant
+      ? (targetVariant.price !== undefined ? targetVariant.price : (prod.price + (targetVariant.priceDelta || 0)))
+      : prod.price;
+
     setLines((prev) => {
-      const existingIdx = prev.findIndex((item) => item.productId === prod.id && !item.variantLabel);
+      const existingIdx = prev.findIndex(
+        (item) => item.productId === prod.id && item.variantLabel === vLabel
+      );
       if (existingIdx >= 0) {
         const next = [...prev];
         next[existingIdx].quantity += 1;
@@ -202,10 +216,10 @@ export function QuotationsView(): React.JSX.Element {
         ...prev,
         {
           productId: prod.id,
-          name: prod.name,
-          unitPrice: prod.price,
+          name: finalName,
+          unitPrice: vPrice,
           quantity: 1,
-          variantLabel: prod.unit || undefined,
+          variantLabel: vLabel,
         },
       ];
     });
@@ -775,6 +789,7 @@ export function QuotationsView(): React.JSX.Element {
                   <ProductAutocomplete
                     placeholder="Search catalog by product name, SKU or barcode to add to quotation..."
                     onSelectProduct={addProductToLines}
+                    products={products}
                     filterModule="all"
                     clearOnSelect={true}
                     onChange={() => {}}
@@ -828,7 +843,11 @@ export function QuotationsView(): React.JSX.Element {
                       </td>
                     </tr>
                   ) : (
-                    lines.map((line, idx) => (
+                    lines.map((line, idx) => {
+                      const linkedProduct = products.find((p) => p.id === line.productId);
+                      const hasVariants = linkedProduct?.variants && linkedProduct.variants.length > 0;
+
+                      return (
                       <tr key={`${line.productId}_${idx}`} className={styles.lineItemTr}>
                         <td className={styles.tdItemName}>
                           <input
@@ -839,13 +858,59 @@ export function QuotationsView(): React.JSX.Element {
                           />
                         </td>
                         <td className={styles.tdSpecUnit}>
-                          <input
-                            type="text"
-                            placeholder="e.g. 4ch / PCS"
-                            value={line.variantLabel || ''}
-                            onChange={(e) => updateLineVariant(idx, e.target.value)}
-                            className={styles.inputSpecUnit}
-                          />
+                          {hasVariants && linkedProduct ? (
+                            <select
+                              value={line.variantLabel || ''}
+                              onChange={(e) => {
+                                const chosenLabel = e.target.value;
+                                const chosenV = linkedProduct.variants!.find((v) => v.label === chosenLabel);
+                                if (chosenV) {
+                                  const cleanBase = linkedProduct.name.replace(/\s*\([^)]*\)$/, '');
+                                  const vPrice = chosenV.price !== undefined ? chosenV.price : (linkedProduct.price + (chosenV.priceDelta || 0));
+                                  setLines((prev) => {
+                                    const copy = [...prev];
+                                    copy[idx] = {
+                                      ...copy[idx],
+                                      name: `${cleanBase} (${chosenV.label})`,
+                                      variantLabel: chosenV.label,
+                                      unitPrice: vPrice,
+                                    };
+                                    return copy;
+                                  });
+                                } else {
+                                  updateLineVariant(idx, chosenLabel);
+                                }
+                              }}
+                              className={styles.inputSpecUnit}
+                              style={{
+                                fontWeight: 700,
+                                color: '#E51937',
+                                backgroundColor: 'rgba(229, 25, 55, 0.05)',
+                                borderTopColor: '#FECACA', borderBottomColor: '#FECACA',
+                                borderLeftColor: '#FECACA', borderRightColor: '#FECACA',
+                                cursor: 'pointer',
+                                height: '30px',
+                              }}
+                              title="Select Variant / Size"
+                            >
+                              {linkedProduct.variants!.map((v) => {
+                                const vPrice = v.price !== undefined ? v.price : (linkedProduct.price + (v.priceDelta || 0));
+                                return (
+                                  <option key={v.id} value={v.label} style={{ color: '#1E293B', fontWeight: 600 }}>
+                                    {v.label} — Rs. {vPrice.toLocaleString()}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              placeholder="e.g. 4ch / PCS"
+                              value={line.variantLabel || ''}
+                              onChange={(e) => updateLineVariant(idx, e.target.value)}
+                              className={styles.inputSpecUnit}
+                            />
+                          )}
                         </td>
                         <td className={styles.tdQty}>
                           <input
@@ -868,17 +933,63 @@ export function QuotationsView(): React.JSX.Element {
                         <td className={styles.tdLineTotal}>
                           {formatPKR(line.quantity * line.unitPrice)}
                         </td>
-                        <td className={styles.tdDeleteCol}>
-                          <button
-                            type="button"
-                            onClick={() => removeLine(idx)}
-                            className={styles.deleteLineBtn}
-                          >
-                            <Delete20Regular />
-                          </button>
+                        <td className={styles.tdDeleteCol} style={{ whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            {hasVariants && linkedProduct && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const unselectedVariant = linkedProduct.variants!.find(
+                                    (v) =>
+                                      !lines.some(
+                                        (l) =>
+                                          l.productId === linkedProduct.id &&
+                                          (l.variantLabel === v.label || l.name.includes(`(${v.label})`))
+                                      )
+                                  );
+                                  const targetV = unselectedVariant || linkedProduct.variants![0];
+                                  const cleanBase = linkedProduct.name.replace(/\s*\([^)]*\)$/, '');
+                                  const vPrice = targetV.price !== undefined ? targetV.price : (linkedProduct.price + (targetV.priceDelta || 0));
+                                  setLines((prev) => [
+                                    ...prev,
+                                    {
+                                      productId: linkedProduct.id,
+                                      name: `${cleanBase} (${targetV.label})`,
+                                      unitPrice: vPrice,
+                                      quantity: 1,
+                                      variantLabel: targetV.label,
+                                    },
+                                  ]);
+                                }}
+                                style={{
+                                  border: 'none',
+                                  background: 'rgba(229, 25, 55, 0.08)',
+                                  color: '#E51937',
+                                  cursor: 'pointer',
+                                  padding: '4px 6px',
+                                  borderRadius: '4px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                                title="Add another size of this item as a new line"
+                              >
+                                <Add20Regular style={{ width: 15, height: 15 }} />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeLine(idx)}
+                              className={styles.deleteLineBtn}
+                              title="Remove line"
+                            >
+                              <Delete20Regular />
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                    ))
+                    );
+                    })
                   )}
                 </tbody>
               </table>

@@ -45,6 +45,36 @@ import { CustomInput, CustomSelect } from '@/components/ui';
 import { playKitchenBell } from '@/lib/soundFx';
 import { useConfirmDialog, useAppToast } from '@/context/AppNotificationContext';
 
+/**
+ * Kitchen always talks to the LOCAL Electron Express backend.
+ * Uses getLocalApiUrl IPC which waits up to 5s for the server to be ready.
+ */
+async function resolveLocalApiUrl(): Promise<string> {
+  // 1. Electron IPC (waiting version) – always preferred
+  if (typeof window !== 'undefined' && (window as any).posApi?.getLocalApiUrl) {
+    try {
+      const url = await (window as any).posApi.getLocalApiUrl();
+      if (url && typeof url === 'string' && url.startsWith('http')) return url;
+    } catch { /* fall through */ }
+  }
+  // 2. Non-waiting IPC fallback
+  if (typeof window !== 'undefined' && (window as any).posApi?.getApiUrl) {
+    try {
+      const url = await (window as any).posApi.getApiUrl();
+      if (url && typeof url === 'string' && url.startsWith('http')) return url;
+    } catch { /* fall through */ }
+  }
+  // 3. Try common local ports (health endpoint is /health)
+  for (const port of [3001, 3000, 4000, 8080]) {
+    try {
+      const r = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(600) });
+      if (r.ok) return `http://127.0.0.1:${port}`;
+    } catch { /* try next */ }
+  }
+  // 4. Last resort
+  return resolveApiUrl();
+}
+
 /* ── Zod Validation Schema for Manual KDS Ticket with Multiple Items ── */
 const rushTicketLineSchema = z.object({
   id: z.string().optional(),
@@ -85,7 +115,7 @@ export function KitchenView(): React.JSX.Element {
   const styles = useKitchenStyles();
   const queryClient = useQueryClient();
   const confirmModal = useConfirmDialog();
-  const { notifySuccess } = useAppToast();
+  const { notifySuccess, notifyError, notifyWarning } = useAppToast();
   const [activeTab, setActiveTab] = useState<TabValue>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -114,35 +144,41 @@ export function KitchenView(): React.JSX.Element {
     name: 'lines',
   });
 
-  // Query tickets with live 4-second auto-refresh
+  // Query tickets with live 6-second auto-refresh (always from local server)
   const { data: tickets = [], isLoading } = useQuery<KitchenTicket[]>({
     queryKey: ['kitchen-tickets'],
     queryFn: async () => {
       try {
-        if (typeof navigator === 'undefined' || navigator.onLine) {
-          const base = await resolveApiUrl();
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 2000);
-          const res = await fetch(`${base}/api/kitchen/tickets`, { signal: controller.signal });
-          clearTimeout(timeoutId);
-          if (res.ok) {
-            const remote = await res.json();
-            if (Array.isArray(remote)) {
+        const base = await resolveLocalApiUrl();
+        const isLocalServer = base.includes('127.0.0.1') || base.includes('localhost');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(`${base}/api/kitchen/tickets`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const remote = await res.json();
+          if (Array.isArray(remote)) {
+            // Only overwrite localStorage with server data if it came from LOCAL server.
+            // Vercel (cloud) has empty kitchen data — never let it wipe local tickets.
+            if (isLocalServer) {
               try {
                 localStorage.setItem('cached_kitchen_tickets', JSON.stringify(remote));
               } catch {}
-              return remote;
             }
+            return remote;
           }
         }
       } catch {
-        /* Offline: proceed with local cached tickets or Dexie orders */
+        /* Server unreachable — fall through to local cache */
       }
 
-      // Offline fallback 1: load from cached tickets
+      // Offline fallback 1: load from cached tickets (includes offline-saved rush tickets)
       try {
         const cached = localStorage.getItem('cached_kitchen_tickets');
-        if (cached) return JSON.parse(cached);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
       } catch {}
 
       // Offline fallback 2: load from local FastFood orders in Dexie
@@ -171,10 +207,10 @@ export function KitchenView(): React.JSX.Element {
 
       return [];
     },
-    // When server is offline or fails, back off to 30s instead of spamming every 4s
+    // Back off to 30s when server is unreachable to avoid hammering
     refetchInterval: (query) => {
       if (query.state.error) return 30000;
-      return 4000;
+      return 6000;
     },
     refetchIntervalInBackground: false,
     retry: 1,
@@ -192,7 +228,7 @@ export function KitchenView(): React.JSX.Element {
   // Mutation: Update status (Pending -> Cooking -> Ready -> Served)
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const base = await resolveApiUrl();
+      const base = await resolveLocalApiUrl();
       await fetch(`${base}/api/kitchen/tickets/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -205,35 +241,73 @@ export function KitchenView(): React.JSX.Element {
     },
   });
 
-  // Mutation: Create manual rush ticket (POST)
+  // Mutation: Create manual rush ticket (POST) with offline fallback
   const createTicketMutation = useMutation({
     mutationFn: async (data: RushTicketFormValues) => {
-      const base = await resolveApiUrl();
-      const res = await fetch(`${base}/api/kitchen/tickets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName: data.customerName,
+      const mappedLines = data.lines.map((l, idx) => ({
+        id: l.id || `line_${Date.now()}_${idx}`,
+        name: l.name,
+        quantity: Number(l.quantity) || 1,
+        variantLabel: l.variantLabel || '',
+        notes: l.notes || '',
+      }));
+
+      // Resolve the local server URL (IPC or port scan)
+      const base = await resolveLocalApiUrl();
+      console.log('[KDS] Posting rush ticket to:', base);
+
+      let res: Response;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        res = await fetch(`${base}/api/kitchen/tickets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            customerName: data.customerName,
+            orderType: data.orderType,
+            lines: mappedLines,
+            itemName: data.lines[0]?.name || 'Manual Item',
+            quantity: Number(data.lines[0]?.quantity) || 1,
+            notes: data.lines[0]?.notes || '',
+          }),
+        });
+        clearTimeout(timeoutId);
+      } catch (networkErr: any) {
+        // ── True network error (server unreachable / timeout) → offline fallback ──
+        console.warn('[KDS] Network error posting ticket:', networkErr?.message);
+        const offlineTicket = {
+          id: `rush_${Date.now()}`,
+          orderId: `rush_${Date.now()}`,
           orderType: data.orderType,
-          lines: data.lines.map((l, idx) => ({
-            id: l.id || `line_${Date.now()}_${idx}`,
-            name: l.name,
-            quantity: Number(l.quantity) || 1,
-            variantLabel: l.variantLabel || '',
-            notes: l.notes || '',
-          })),
-          // Fallback legacy fields for single-item endpoints
-          itemName: data.lines[0]?.name || 'Manual Item',
-          quantity: Number(data.lines[0]?.quantity) || 1,
-          notes: data.lines[0]?.notes || '',
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to create ticket');
+          status: 'pending' as const,
+          createdAt: new Date().toISOString(),
+          notes: data.customerName,
+          order: { lines: mappedLines },
+        };
+        try {
+          const cached = JSON.parse(localStorage.getItem('cached_kitchen_tickets') || '[]');
+          cached.unshift(offlineTicket);
+          localStorage.setItem('cached_kitchen_tickets', JSON.stringify(cached));
+        } catch {}
+        throw Object.assign(new Error('Network error — ticket saved locally.'), { offlineSaved: true });
+      }
+
+      // ── Server responded but with an error (4xx / 5xx) ──
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        const msg = errBody?.error || `Server error ${res.status}`;
+        console.error('[KDS] Server error creating ticket:', msg);
+        throw new Error(`Failed to create ticket: ${msg}`);
+      }
+
       return res.json();
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
       await queryClient.refetchQueries({ queryKey: ['kitchen-tickets'] });
+      notifySuccess('Ticket sent to kitchen successfully!');
       setIsDialogOpen(false);
       reset({
         customerName: '',
@@ -241,12 +315,47 @@ export function KitchenView(): React.JSX.Element {
         lines: [{ id: `item_${Date.now()}`, name: '', quantity: 1, notes: '' }],
       });
     },
+    onError: (err: any, variables: RushTicketFormValues) => {
+      if (err?.offlineSaved) {
+        // Ticket was saved locally — immediately inject into in-memory query cache
+        const offlineId = `rush_${Date.now()}`;
+        const offlineTicket: KitchenTicket = {
+          id: offlineId,
+          orderId: offlineId,
+          orderType: variables.orderType,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          order: {
+            lines: variables.lines.map((l, i) => ({
+              id: l.id || `line_${Date.now()}_${i}`,
+              name: l.name,
+              quantity: Number(l.quantity) || 1,
+              variantLabel: l.variantLabel || '',
+              notes: l.notes || '',
+            })),
+          },
+        };
+        queryClient.setQueryData<KitchenTicket[]>(['kitchen-tickets'], (old) => [
+          offlineTicket,
+          ...(old || []),
+        ]);
+        notifyWarning('Server unreachable — ticket saved locally and showing in queue.');
+        setIsDialogOpen(false);
+        reset({
+          customerName: '',
+          orderType: 'Dine-In',
+          lines: [{ id: `item_${Date.now()}`, name: '', quantity: 1, notes: '' }],
+        });
+      } else {
+        notifyError(err?.message || 'Failed to send ticket to kitchen. Please try again.');
+      }
+    },
   });
 
   // Mutation: Cancel / Delete Ticket (DELETE)
   const deleteTicketMutation = useMutation({
     mutationFn: async (id: string) => {
-      const base = await resolveApiUrl();
+      const base = await resolveLocalApiUrl();
       await fetch(`${base}/api/kitchen/tickets/${id}`, {
         method: 'DELETE',
       });
@@ -259,6 +368,17 @@ export function KitchenView(): React.JSX.Element {
 
   const onSubmit = (data: RushTicketFormValues) => {
     createTicketMutation.mutate(data);
+  };
+
+  const onFormError = (errs: any) => {
+    // Collect first validation message and show as toast
+    const firstErr =
+      errs?.customerName?.message ||
+      errs?.orderType?.message ||
+      errs?.lines?.[0]?.name?.message ||
+      errs?.lines?.[0]?.quantity?.message ||
+      'Please fill all required fields correctly.';
+    notifyError(firstErr);
   };
 
   // Filter tickets by tab
@@ -308,13 +428,13 @@ export function KitchenView(): React.JSX.Element {
                 Manual Rush Ticket
               </Button>
             </DialogTrigger>
-            <DialogSurface className={styles.dialogSurface}>
-              <form onSubmit={handleSubmit(onSubmit)}>
-                <DialogBody>
+            <DialogSurface className={styles.dialogSurface} style={{ overflow: 'visible' }}>
+              <form onSubmit={handleSubmit(onSubmit, onFormError)}>
+                <DialogBody style={{ overflow: 'visible' }}>
                   <DialogTitle className={styles.dialogTitle}>
                     Add Manual Rush Order Ticket
                   </DialogTitle>
-                  <DialogContent className={styles.dialogContent}>
+                  <DialogContent className={styles.dialogContent} style={{ overflow: 'visible' }}>
                     
                     {/* Top Row: Customer Name & Order Type */}
                     <div className={styles.formRow}>

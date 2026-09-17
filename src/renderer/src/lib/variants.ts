@@ -165,7 +165,7 @@ export function decodeProductVariants(product: Product): Product {
       !product.name.toLowerCase().includes('fries') &&
       product.category?.toLowerCase() !== 'fries & sides');
 
-  if (variants.length === 0 && isPizzaCategory && product.module === 'fastfood') {
+  if (variants.length === 0 && isPizzaCategory) {
     variants = synthesizePizzaVariants(product.price, product.name);
     pricingType = 'smlxl';
   }

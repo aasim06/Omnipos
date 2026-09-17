@@ -34,6 +34,17 @@ ipcMain.handle('app:get-api-url', () => {
   return backendServer.url;
 });
 
+// Dedicated handler that waits up to 5s for the server to be ready
+ipcMain.handle('app:get-local-api-url', async () => {
+  if (backendServer?.url) return backendServer.url;
+  // Wait up to 5 seconds for server to be ready
+  for (let i = 0; i < 50; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    if (backendServer?.url) return backendServer.url;
+  }
+  return null;
+});
+
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 1280,

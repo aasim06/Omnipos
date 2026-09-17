@@ -4,6 +4,7 @@ import { Food24Filled, BuildingRetail24Regular } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
 import { Product } from '@shared/types';
+import { decodeProductVariants } from '@/lib/variants';
 import { CustomInput } from '@/components/ui';
 import { useNavigate } from 'react-router-dom';
 
@@ -40,8 +41,9 @@ const useStyles = makeStyles({
     position: 'absolute',
     top: '100%',
     left: 0,
-    minWidth: '280px',
-    width: '100%',
+    minWidth: '450px',
+    maxWidth: '560px',
+    width: 'max(100%, 450px)',
     zIndex: 2500,
     marginTop: '4px',
     backgroundColor: tokens.colorNeutralBackground1,
@@ -59,7 +61,7 @@ const useStyles = makeStyles({
     borderRightColor: tokens.colorNeutralStroke1,
     borderRadius: '10px',
     boxShadow: tokens.shadow16,
-    maxHeight: '220px',
+    maxHeight: '280px',
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
@@ -81,10 +83,13 @@ const useStyles = makeStyles({
   },
   itemRow: {
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: '10px',
-    padding: '7px 10px',
-    borderRadius: '6px',
+    padding: '8px 10px',
+    borderRadius: '8px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: tokens.colorNeutralStroke3,
     cursor: 'pointer',
     transitionProperty: 'background-color',
     transitionDuration: '0.12s',
@@ -94,9 +99,10 @@ const useStyles = makeStyles({
     },
   },
   thumb: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '6px',
+    width: '36px',
+    height: '36px',
+    marginTop: '2px',
+    borderRadius: '8px',
     overflow: 'hidden',
     backgroundColor: tokens.colorNeutralBackground2,
     display: 'flex',
@@ -201,8 +207,12 @@ const useStyles = makeStyles({
   variantPillList: {
     display: 'flex',
     alignItems: 'center',
-    gap: '5px',
-    marginTop: '6px',
+    gap: '6px',
+    marginTop: '7px',
+    paddingTop: '6px',
+    borderTopWidth: '1px',
+    borderTopStyle: 'dashed',
+    borderTopColor: tokens.colorNeutralStroke2,
     flexWrap: 'wrap',
   },
   variantSelectPill: {
@@ -282,7 +292,7 @@ export function ProductAutocomplete({
     enabled: !propProducts,
   });
 
-  const allProducts = propProducts ?? allProductsRaw;
+  const allProducts = (propProducts ?? allProductsRaw).map(decodeProductVariants);
 
   const isCategoryFiltered = !!filterCategory;
   const isMultipleCategoryFiltered = !!filterCategories && filterCategories.length > 0;
@@ -321,24 +331,41 @@ export function ProductAutocomplete({
     ? propProducts
     : (filterModule !== 'all' || isAnyCategoryFiltered ? filteredByModule : allProducts);
 
-  // Filter suggestions by search query (name, SKU barcode, category, variant barcode)
+  // Filter suggestions by search query (name, SKU barcode, category, variant barcode, tokens)
   const query = (displayValue || '').toLowerCase().trim();
+  const queryTokens = query.split(/[\s,()/-]+/).filter(Boolean);
+
   const suggestions = availableProducts.filter((p) => {
-    if (!query) return true;
-    return (
+    if (!query || queryTokens.length === 0) return true;
+
+    // Direct match on base fields
+    const baseFieldsMatch =
       p.name.toLowerCase().includes(query) ||
       (p.skuCode && p.skuCode.toLowerCase().includes(query)) ||
       (p.barcode && p.barcode.toLowerCase().includes(query)) ||
       (p.category && p.category.toLowerCase().includes(query)) ||
-      (p.id && p.id.toLowerCase().includes(query)) ||
-      (p.variants &&
-        p.variants.some(
-          (v) =>
-            (v.skuCode && v.skuCode.toLowerCase().includes(query)) ||
-            ((v as any).barcode && (v as any).barcode.toLowerCase().includes(query)) ||
-            (v.label && v.label.toLowerCase().includes(query))
-        ))
-    );
+      (p.id && p.id.toLowerCase().includes(query));
+
+    if (baseFieldsMatch) return true;
+
+    // Token-based matching on base product details
+    const pBaseText = `${p.name} ${p.skuCode || ''} ${p.barcode || ''} ${p.category || ''}`.toLowerCase();
+    if (queryTokens.every((t) => pBaseText.includes(t))) return true;
+
+    // Token-based or direct matching on product variants
+    if (p.variants && p.variants.length > 0) {
+      return p.variants.some((v) => {
+        const vText = `${p.name} ${v.label} ${v.skuCode || ''} ${(v as any).barcode || ''}`.toLowerCase();
+        return (
+          vText.includes(query) ||
+          queryTokens.every((t) => vText.includes(t)) ||
+          (v.skuCode && v.skuCode.toLowerCase().includes(query)) ||
+          (v.label && v.label.toLowerCase().includes(query))
+        );
+      });
+    }
+
+    return false;
   });
 
   // Close dropdown on click outside
@@ -484,13 +511,23 @@ export function ProductAutocomplete({
             </div>
           ) : (
             suggestions.slice(0, 20).map((prod) => {
-              const matchedVariant = query && prod.variants
-                ? prod.variants.find(
-                    (v) =>
-                      (v.skuCode && v.skuCode.toLowerCase().includes(query)) ||
-                      (v.label && v.label.toLowerCase().includes(query))
-                  )
-                : null;
+              let matchedVariant: any = null;
+              if (query && prod.variants && prod.variants.length > 0) {
+                matchedVariant =
+                  prod.variants.find((v) => {
+                    const vText = `${prod.name} ${v.label} ${v.skuCode || ''} ${(v as any).barcode || ''}`.toLowerCase();
+                    return queryTokens.every((t) => vText.includes(t)) && queryTokens.some((t) => t === v.label.toLowerCase());
+                  }) ||
+                  prod.variants.find((v) => {
+                    const vLower = v.label.toLowerCase();
+                    return queryTokens.some((t) => t === vLower || (t.length >= 2 && vLower.includes(t)));
+                  }) ||
+                  prod.variants.find((v) => {
+                    return (v.skuCode && v.skuCode.toLowerCase() === query) ||
+                      ((v as any).barcode && (v as any).barcode.toLowerCase() === query);
+                  }) ||
+                  null;
+              }
 
               return (
                 <div
@@ -512,31 +549,40 @@ export function ProductAutocomplete({
                     )}
                   </div>
 
-                  {/* Name & Category / SKU */}
+                  {/* Name, Meta, Price & Variants */}
                   <div className={styles.itemInfo}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <span className={styles.itemName}>{prod.name}</span>
-                      {prod.variants && prod.variants.length > 0 && (
-                        <span className={styles.variantBadgeCount}>
-                          {prod.variants.length} Sizes
-                        </span>
-                      )}
-                    </div>
-                    <div className={styles.itemMeta}>
-                      <span>{prod.category || 'Product'}</span>
-                      {prod.skuCode && (
-                        <span className={styles.skuBadge}>
-                          SKU: {prod.skuCode}
-                        </span>
-                      )}
-                      {matchedVariant && (
-                        <span className={styles.variantBadge} style={{ color: '#E51937', fontWeight: 800 }}>
-                          Matched: {matchedVariant.label}
-                        </span>
-                      )}
-                      {prod.openingStock !== undefined && (
-                        <span>• {prod.openingStock} in stock</span>
-                      )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span className={styles.itemName}>{prod.name}</span>
+                          {prod.variants && prod.variants.length > 0 && (
+                            <span className={styles.variantBadgeCount}>
+                              {prod.variants.length} Sizes
+                            </span>
+                          )}
+                        </div>
+                        <div className={styles.itemMeta}>
+                          <span>{prod.category || 'Product'}</span>
+                          {prod.skuCode && (
+                            <span className={styles.skuBadge}>
+                              SKU: {prod.skuCode}
+                            </span>
+                          )}
+                          {matchedVariant && (
+                            <span className={styles.variantBadge} style={{ color: '#E51937', fontWeight: 800 }}>
+                              Matched: {matchedVariant.label}
+                            </span>
+                          )}
+                          {prod.openingStock !== undefined && (
+                            <span>• {prod.openingStock} in stock</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Price */}
+                      <div className={styles.priceText}>
+                        PKR {(matchedVariant && matchedVariant.price !== undefined ? matchedVariant.price : prod.price).toLocaleString()}
+                      </div>
                     </div>
 
                     {/* Quick-select pill buttons for each variant size! */}
@@ -544,10 +590,13 @@ export function ProductAutocomplete({
                       <div className={styles.variantPillList}>
                         {prod.variants.map((v) => {
                           const vPrice = v.price !== undefined ? v.price : (prod.price + (v.priceDelta || 0));
-                          const isMatchedQuery = query && (
-                            v.label.toLowerCase().includes(query) ||
-                            (v.skuCode && v.skuCode.toLowerCase().includes(query))
-                          );
+                          const isMatchedQuery =
+                            (matchedVariant && matchedVariant.id === v.id) ||
+                            (query && (
+                              v.label.toLowerCase().includes(query) ||
+                              queryTokens.some((t) => t === v.label.toLowerCase()) ||
+                              (v.skuCode && v.skuCode.toLowerCase().includes(query))
+                            ));
                           return (
                             <button
                               key={v.id}
@@ -575,11 +624,6 @@ export function ProductAutocomplete({
                         })}
                       </div>
                     )}
-                  </div>
-
-                  {/* Price */}
-                  <div className={styles.priceText}>
-                    PKR {(matchedVariant && matchedVariant.price !== undefined ? matchedVariant.price : prod.price).toLocaleString()}
                   </div>
                 </div>
               );
