@@ -608,20 +608,46 @@ export function registerRoutes(app: Express): void {
         }
       }
 
+      const rawLines = Array.isArray(lines) ? lines : [];
+      const orderLines = await Promise.all(
+        rawLines.map(async (line: any) => {
+          let validProductId: string | null = null;
+          const candidateId =
+            line.productId ||
+            (line.id && !String(line.id).startsWith('item_') && !String(line.id).startsWith('line_')
+              ? String(line.id)
+              : null);
+
+          if (candidateId) {
+            try {
+              const p = await db.product.findUnique({
+                where: { id: candidateId },
+                select: { id: true },
+              });
+              if (p) validProductId = p.id;
+            } catch {
+              validProductId = null;
+            }
+          }
+
+          return {
+            productId: validProductId,
+            name: line.name || 'Order Item',
+            unitPrice: Number(line.unitPrice) || 0,
+            quantity: Number(line.quantity) || 1,
+            variantLabel: line.variantLabel || null,
+            notes: line.notes || null,
+          };
+        })
+      );
+
       const order = await db.order.create({
         data: {
           ...orderData,
           isSynced: true,
           updatedAt: new Date(),
           lines: {
-            create: (lines || []).map((line: any) => ({
-              productId: line.productId,
-              name: line.name,
-              unitPrice: Number(line.unitPrice),
-              quantity: Number(line.quantity),
-              variantLabel: line.variantLabel,
-              notes: line.notes,
-            })),
+            create: orderLines,
           },
         },
         include: { lines: true },
@@ -1096,6 +1122,42 @@ export function registerRoutes(app: Express): void {
   app.post('/api/kitchen/tickets', async (req: Request, res: Response) => {
     try {
       const { customerName, orderType, lines } = req.body;
+
+      const rawLines = Array.isArray(lines) ? lines : [];
+      const orderLines = await Promise.all(
+        rawLines.map(async (l: any) => {
+          let validProductId: string | null = null;
+          const candidateId =
+            l.productId ||
+            (l.id && !String(l.id).startsWith('item_') && !String(l.id).startsWith('line_')
+              ? String(l.id)
+              : null);
+
+          if (candidateId) {
+            try {
+              const productExists = await db.product.findUnique({
+                where: { id: candidateId },
+                select: { id: true },
+              });
+              if (productExists) {
+                validProductId = productExists.id;
+              }
+            } catch {
+              validProductId = null;
+            }
+          }
+
+          return {
+            productId: validProductId,
+            name: l.name || 'Rush Order Item',
+            unitPrice: Number(l.unitPrice) || 0,
+            quantity: Number(l.quantity) || 1,
+            variantLabel: l.variantLabel || null,
+            notes: l.notes || null,
+          };
+        })
+      );
+
       const order = await db.order.create({
         data: {
           module: 'fastfood',
@@ -1106,14 +1168,7 @@ export function registerRoutes(app: Express): void {
           isSynced: true,
           updatedAt: new Date(),
           lines: {
-            create: (lines || []).map((l: any) => ({
-              productId: l.id || null,
-              name: l.name,
-              unitPrice: 0,
-              quantity: Number(l.quantity) || 1,
-              variantLabel: l.variantLabel || null,
-              notes: l.notes || null,
-            })),
+            create: orderLines,
           },
         },
         include: { lines: true },
@@ -1131,6 +1186,7 @@ export function registerRoutes(app: Express): void {
 
       res.status(201).json(ticket);
     } catch (err: any) {
+      console.error('[API POST /api/kitchen/tickets] Error:', err.message);
       res.status(500).json({ error: err.message });
     }
   });

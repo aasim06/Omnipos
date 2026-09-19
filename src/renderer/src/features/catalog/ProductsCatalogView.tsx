@@ -945,7 +945,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
             </Caption1>
           </div>
 
-          {/* Fluent Table with responsive wrapper and high-end styling */}
+          {/* Fluent Table with responsive wrapper and modern high-end styling */}
           <div className={styles.tableOverflow}>
             <Table className={styles.dataTable}>
               <TableHeader>
@@ -979,7 +979,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                 {filteredProducts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={activeTab === 'fastfood' ? 6 : 7} className={styles.emptyTd}>
-                      No products found matching the criteria. Click "+ Add New Product" to create one.
+                      No products found matching the criteria. Click "+ Add Fast Food Item" to create one.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -995,9 +995,9 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                               {p.imageBase64 || p.imageUrl ? (
                                 <img src={p.imageBase64 || p.imageUrl} alt={p.name} className={styles.cardImg} />
                               ) : isFastFood ? (
-                                <Food24Regular className={styles.catSub} />
+                                <Food24Regular style={{ color: '#E51937', width: 22, height: 22 }} />
                               ) : (
-                                <BuildingRetail24Regular className={styles.catSub} />
+                                <BuildingRetail24Regular style={{ color: '#2563EB', width: 22, height: 22 }} />
                               )}
                             </div>
                             <div className={styles.prodTextCol}>
@@ -1061,25 +1061,26 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
                         <TableCell className={styles.tdCell}>
                           <div className={styles.badgeRow}>
-                            <Badge size="medium" appearance="tint" color={isFastFood ? 'warning' : 'informative'}>
+                            <span className={isFastFood ? styles.categoryPillFood : styles.categoryPillRetail}>
                               {p.category}
-                            </Badge>
-                            <Caption1 className={styles.catSub}>
-                              ({isFastFood ? 'Food' : 'Retail'})
-                            </Caption1>
+                            </span>
+                            <span className={styles.typeTag}>
+                              {isFastFood ? 'Food' : 'Retail'}
+                            </span>
                           </div>
                         </TableCell>
 
                         <TableCell className={styles.tdCell}>
-                          <Body1 className={styles.prodTitle}>
-                            {formatPKR(p.price)}
-                          </Body1>
+                          <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                            <span className={styles.priceNumber}>{p.price.toLocaleString()}</span>
+                            <span className={styles.currencyTag}>PKR</span>
+                          </div>
                         </TableCell>
 
                         <TableCell className={styles.tdCell}>
-                          <Caption1 className={styles.costCaption}>
-                            {p.costPrice ? formatPKR(p.costPrice) : '—'}
-                          </Caption1>
+                          <span className={styles.costCaption}>
+                            {p.costPrice ? `${p.costPrice.toLocaleString()} PKR` : '—'}
+                          </span>
                         </TableCell>
 
                         {activeTab !== 'fastfood' && (
@@ -1098,12 +1099,18 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                         <TableCell className={styles.tdCell}>
                           {isFastFood ? (
                             <div className={styles.skuCol}>
-                              <Caption1 className={styles.skuCode}>
-                                {p.prepTime ? `⏱ ${p.prepTime} mins prep` : 'Fresh Kitchen'}
-                              </Caption1>
-                              <Caption1 className={styles.rackText} style={{ color: p.isAvailable !== false ? '#10B981' : '#EF4444', fontWeight: 600 }}>
-                                {p.isAvailable !== false ? '● Available' : '○ Unavailable'}
-                              </Caption1>
+                              <span className={styles.prepTimeChip}>
+                                {p.prepTime ? `${p.prepTime} mins` : 'Fresh Kitchen'}
+                              </span>
+                              {p.isAvailable !== false ? (
+                                <span className={styles.statusAvailable}>
+                                  <span className={styles.statusDotGreen} /> Available
+                                </span>
+                              ) : (
+                                <span className={styles.statusUnavailable}>
+                                  <span className={styles.statusDotRed} /> Unavailable
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <div className={styles.skuCol}>
@@ -1117,27 +1124,33 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
                         <TableCell className={styles.tdActions}>
                           <div className={styles.actionsRow}>
-                            <Button
-                              size="small"
-                              appearance="subtle"
-                              icon={<Eye20Regular />}
+                            <button
+                              type="button"
+                              className={styles.actionBtn}
+                              style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
                               onClick={() => navigate(`/catalog/products/${p.id}`)}
                               title="View Product Details"
-                            />
-                            <Button
-                              size="small"
-                              appearance="subtle"
-                              icon={<Edit20Regular />}
+                            >
+                              <Eye20Regular style={{ width: 15, height: 15 }} />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.actionBtn}
+                              style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
                               onClick={() => handleOpenEditProduct(p)}
                               title="Edit Product"
-                            />
-                            <Button
-                              size="small"
-                              appearance="subtle"
-                              icon={<Delete20Regular className={styles.deleteIcon} />}
+                            >
+                              <Edit20Regular style={{ width: 15, height: 15 }} />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.actionBtnDelete}
+                              style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
                               onClick={() => handleDeleteProduct(p)}
                               title="Delete Product"
-                            />
+                            >
+                              <Delete20Regular style={{ width: 15, height: 15 }} />
+                            </button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1146,6 +1159,19 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Table Footer with Summary Telemetry */}
+          <div className={styles.tableFooterBar}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontWeight: 600 }}>Showing {filteredProducts.length} items</span>
+              <span>•</span>
+              <span>Category: {selectedCategory === 'ALL' ? 'All Categories' : selectedCategory}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }} />
+              <span style={{ fontWeight: 600, color: '#0F172A', fontSize: '11.5px' }}>Fast Food POS Active</span>
+            </div>
           </div>
         </div>
       )}
