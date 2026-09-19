@@ -147,6 +147,13 @@ export function AdminSettingsView(): React.JSX.Element {
       if (res === 'available' || (typeof res === 'object' && res?.updateInfo)) {
         setUpdateCheckStatus('available');
         notifySuccess('New update found! Downloading installer in background...');
+      } else if (typeof res === 'object' && (res as any)?.devMode) {
+        setUpdateCheckStatus('latest');
+        if ((res as any).updateAvailable) {
+          notifyWarning((res as any).message || 'A newer release exists on GitHub.');
+        } else {
+          notifySuccess((res as any).message || `App is aligned with GitHub release (${(res as any).latestVersion}).`);
+        }
       } else if (res === 'latest') {
         setUpdateCheckStatus('latest');
         notifySuccess(`You are already running the latest version (v${currentVersion}).`);

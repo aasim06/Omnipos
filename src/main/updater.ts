@@ -50,6 +50,29 @@ export function initAutoUpdater(): void {
   ipcMain.handle('app:check-for-updates', async () => {
     if (is.dev) {
       console.log('[AutoUpdater] Dev mode check requested. Current Version:', app.getVersion());
+      try {
+        const res = await fetch('https://api.github.com/repos/aasim06/Omnipos/releases/latest', {
+          headers: { 'User-Agent': 'Omnipos-App' },
+        });
+        if (res.ok) {
+          const data: any = await res.json();
+          const latestTag = data.tag_name || data.name;
+          const current = app.getVersion();
+          const cleanTag = (latestTag || '').replace(/^v/, '');
+          const isNewer = cleanTag !== current;
+          return {
+            devMode: true,
+            latestVersion: latestTag,
+            currentVersion: current,
+            updateAvailable: isNewer,
+            message: isNewer
+              ? `Dev Mode: Local project is v${current}. A newer release (${latestTag}) exists on GitHub. (Download disabled in dev mode).`
+              : `Dev Mode: Local project (v${current}) is aligned with the latest GitHub release (${latestTag}).`,
+          };
+        }
+      } catch (err: any) {
+        console.warn('[AutoUpdater] Dev mode GitHub release fetch failed:', err?.message);
+      }
       return 'latest';
     }
 
