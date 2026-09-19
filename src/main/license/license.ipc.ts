@@ -9,6 +9,7 @@ import nodeMachineId from 'node-machine-id';
 const { machineIdSync } = (nodeMachineId as any)?.default || nodeMachineId || {};
 
 const DEFAULT_SERVER_URL =
+  process.env.VITE_LICENSE_SERVER_URL ||
   process.env.VITE_CLOUD_API_URL ||
   process.env.VITE_API_URL ||
   process.env.API_BASE_URL ||

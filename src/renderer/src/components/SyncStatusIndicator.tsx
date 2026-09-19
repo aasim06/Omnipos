@@ -178,23 +178,35 @@ export function SyncStatusIndicator({ isCollapsed = false }: SyncStatusProps): R
   const isSyncing = syncState.isSyncing;
   const pendingCount = syncState.pendingCount;
 
-  let statusText = 'Cloud Synced';
-  let subText = 'Neon PostgreSQL Live';
+  let statusText = 'Local Offline DB';
+  let subText = 'SQLite Engine Live';
   let dotClass = styles.dotOnline;
 
-  if (isSyncing) {
-    statusText = 'Syncing Orders...';
-    subText = 'Sending to Cloud API';
-    dotClass = styles.dotSyncing;
-  } else if (!isOnline) {
-    statusText = 'Offline Cache';
-    subText = `${pendingCount} queued in local DB`;
-    dotClass = styles.dotOffline;
-  } else if (pendingCount > 0) {
-    statusText = 'Pending Upload';
-    subText = `${pendingCount} orders ready`;
-    dotClass = styles.dotPending;
+  if (syncState.isCloudSyncEnabled) {
+    statusText = 'Cloud Synced';
+    subText = 'Neon PostgreSQL Live';
+    if (isSyncing) {
+      statusText = 'Syncing Orders...';
+      subText = 'Sending to Cloud API';
+      dotClass = styles.dotSyncing;
+    } else if (!isOnline) {
+      statusText = 'Offline Cache';
+      subText = `${pendingCount} queued in local DB`;
+      dotClass = styles.dotOffline;
+    } else if (pendingCount > 0) {
+      statusText = 'Pending Upload';
+      subText = `${pendingCount} orders ready`;
+      dotClass = styles.dotPending;
+    }
   }
+
+  const badgeLabel = !syncState.isCloudSyncEnabled
+    ? 'LOCAL'
+    : isSyncing
+    ? 'SYNC'
+    : isOnline
+    ? 'ONLINE'
+    : 'CACHED';
 
   if (isCollapsed) {
     return (
@@ -202,11 +214,11 @@ export function SyncStatusIndicator({ isCollapsed = false }: SyncStatusProps): R
         type="button"
         onClick={handleClick}
         className={styles.collapsedBtn}
-        title={`${statusText} — ${subText} (Click to Sync)`}
-        aria-label={`${statusText} — ${subText} (Click to Sync)`}
+        title={`${statusText} — ${subText}`}
+        aria-label={`${statusText} — ${subText}`}
       >
         <span className={mergeClasses(styles.dotCollapsed, dotClass)} />
-        {pendingCount > 0 && (
+        {syncState.isCloudSyncEnabled && pendingCount > 0 && (
           <span className={styles.collapsedBadge}>
             {pendingCount}
           </span>
@@ -219,7 +231,7 @@ export function SyncStatusIndicator({ isCollapsed = false }: SyncStatusProps): R
     <div
       onClick={handleClick}
       className={styles.fullContainer}
-      title="Click to trigger instant cloud sync"
+      title={syncState.isCloudSyncEnabled ? "Click to trigger instant cloud sync" : "All data stored securely on local SQLite database"}
     >
       <div className={styles.leftGroup}>
         <div className={styles.dotWrapper}>
@@ -241,7 +253,7 @@ export function SyncStatusIndicator({ isCollapsed = false }: SyncStatusProps): R
           isOnline ? styles.badgeOnline : styles.badgeOffline
         )}
       >
-        {isSyncing ? 'SYNC' : isOnline ? 'ONLINE' : 'CACHED'}
+        {badgeLabel}
       </div>
     </div>
   );

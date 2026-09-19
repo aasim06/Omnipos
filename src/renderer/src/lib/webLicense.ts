@@ -25,8 +25,8 @@ export function getBrowserDeviceName(): string {
 }
 
 export function getWebLicenseApiBase(): string {
-  // Check env first
   const envUrl =
+    (import.meta as any).env?.VITE_LICENSE_SERVER_URL ||
     (import.meta as any).env?.VITE_CLOUD_API_URL ||
     (import.meta as any).env?.VITE_API_URL ||
     'https://omni-server-seven.vercel.app';

@@ -9,6 +9,14 @@ export interface SyncState {
   pendingCount: number;
   lastSyncedAt: Date | null;
   lastError: string | null;
+  isCloudSyncEnabled: boolean;
+}
+
+export function isCloudSyncEnabled(): boolean {
+  const envFlag = (import.meta as any).env?.VITE_CLOUD_SYNC_ENABLED;
+  if (envFlag === 'false' || envFlag === false) return false;
+  if (envFlag === 'true' || envFlag === true) return true;
+  return !!(import.meta as any).env?.VITE_CLOUD_API_URL;
 }
 
 type SyncListener = (state: SyncState) => void;
@@ -28,7 +36,9 @@ class SyncEngine {
         this.isOnline = true;
         this.consecutiveFailures = 0;
         this.notify();
-        this.syncNow();
+        if (isCloudSyncEnabled()) {
+          this.syncNow();
+        }
       });
 
       window.addEventListener('offline', () => {
@@ -36,8 +46,10 @@ class SyncEngine {
         this.notify();
       });
 
-      // Periodic check with smart progressive backoff
-      this.scheduleNextSync(15000);
+      // Periodic check only when cloud sync is explicitly enabled
+      if (isCloudSyncEnabled()) {
+        this.scheduleNextSync(15000);
+      }
     }
   }
 
@@ -46,7 +58,7 @@ class SyncEngine {
       clearTimeout(this.syncTimeout);
       this.syncTimeout = null;
     }
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !isCloudSyncEnabled()) return;
 
     let delay = delayMs;
     if (delay === undefined) {
@@ -89,6 +101,7 @@ class SyncEngine {
       pendingCount: 0,
       lastSyncedAt: this.lastSyncedAt,
       lastError: this.lastError,
+      isCloudSyncEnabled: isCloudSyncEnabled(),
     };
   }
 
@@ -100,6 +113,7 @@ class SyncEngine {
       pendingCount,
       lastSyncedAt: this.lastSyncedAt,
       lastError: this.lastError,
+      isCloudSyncEnabled: isCloudSyncEnabled(),
     };
     this.listeners.forEach((listener) => listener(state));
   }
@@ -113,6 +127,11 @@ class SyncEngine {
     action: SyncQueueItem['action'],
     payload: any
   ): Promise<void> {
+    // In pure offline-first mode, all data lives locally in SQLite/IndexedDB
+    if (!isCloudSyncEnabled()) {
+      return;
+    }
+
     await offlineDb.syncQueue.add({
       entity,
       entityId,
@@ -153,6 +172,14 @@ class SyncEngine {
    */
   public async syncNow(): Promise<void> {
     if (this.isSyncing) return;
+    if (!isCloudSyncEnabled()) {
+      // Offline-first mode is active, no cloud requests needed
+      this.isOnline = true;
+      this.isSyncing = false;
+      this.lastError = null;
+      await this.notify();
+      return;
+    }
     this.isSyncing = true;
     this.lastError = null;
     await this.notify();
