@@ -2,7 +2,7 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 
 export const useAdminSettingsStyles = makeStyles({
   container: {
-    padding: '28px 32px',
+    padding: '28px 32px 80px 32px',
     height: '100%',
     boxSizing: 'border-box',
     display: 'flex',
@@ -147,7 +147,7 @@ export const useAdminSettingsStyles = makeStyles({
     borderRightColor: tokens.colorNeutralStroke1,
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
+    overflow: 'visible',
     boxSizing: 'border-box',
   },
   cardHeader: {
@@ -161,6 +161,8 @@ export const useAdminSettingsStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     boxSizing: 'border-box',
     width: '100%',
+    borderTopLeftRadius: tokens.borderRadiusMedium,
+    borderTopRightRadius: tokens.borderRadiusMedium,
   },
   cardHeaderBetween: {
     display: 'flex',

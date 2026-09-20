@@ -81,6 +81,10 @@ export interface StoreSettings {
   paymentQrType?: 'easypaisa' | 'jazzcash' | 'raast' | 'bank' | 'upi' | 'custom';
   paymentQrImage?: string;
   showPaymentQrOnInvoice?: boolean;
+  receiptLanguage?: 'english' | 'urdu' | 'bilingual';
+  storeNameUrdu?: string;
+  headerNoteUrdu?: string;
+  footerNoteUrdu?: string;
 }
 
 const defaultSettings: StoreSettings = {
@@ -99,6 +103,10 @@ const defaultSettings: StoreSettings = {
   paymentQrType: 'raast',
   paymentQrImage: '',
   showPaymentQrOnInvoice: true,
+  receiptLanguage: 'english',
+  storeNameUrdu: '',
+  headerNoteUrdu: 'تازہ اور معیاری اشیاء کی ضمانت',
+  footerNoteUrdu: 'تشریف آوری کا شکریہ! خریدا ہوا مال واپس یا تبدیل نہیں ہو سکتا۔',
 };
 
 const ROLE_OPTIONS = [
@@ -813,6 +821,57 @@ export function AdminSettingsView(): React.JSX.Element {
                 onChange={(e) => setSettings({ ...settings, footerNote: e.target.value })}
                 placeholder="Thank you for your visit!"
               />
+
+              <Divider style={{ margin: '14px 0 10px 0' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <Text weight="semibold" size={300}>Receipt Print Language / رسید کی زبان</Text>
+                {settings.receiptLanguage && settings.receiptLanguage !== 'english' && (
+                  <Badge appearance="tint" color="success">
+                    {settings.receiptLanguage === 'urdu' ? 'اردو رسید فعال ہے' : 'Bilingual Active'}
+                  </Badge>
+                )}
+              </div>
+
+              <CustomSelect
+                label="Thermal Print Language"
+                value={settings.receiptLanguage || 'english'}
+                onChange={(val) => setSettings({ ...settings, receiptLanguage: val as any })}
+                options={[
+                  { value: 'english', label: 'English (Standard LTR Receipt)' },
+                  { value: 'urdu', label: 'اردو (Full Urdu Receipt - RTL)' },
+                  { value: 'bilingual', label: 'Bilingual (English + اردو دونوں)' },
+                ]}
+              />
+
+              {(settings.receiptLanguage === 'urdu' || settings.receiptLanguage === 'bilingual') && (
+                <div style={{ marginTop: '12px', padding: '12px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <Text weight="semibold" size={200} style={{ color: '#334155' }}>
+                    اردو رسید کے لیے اضافی معلومات (اختیاری):
+                  </Text>
+
+                  <CustomInput
+                    label="دکان کا نام (اردو میں)"
+                    value={settings.storeNameUrdu || ''}
+                    onChange={(e) => setSettings({ ...settings, storeNameUrdu: e.target.value })}
+                    placeholder="مثلاً: المدینہ سپر مارٹ اینڈ کیفے"
+                  />
+
+                  <CustomInput
+                    label="اردو ہیڈر سلوگن (Header Slogan)"
+                    value={settings.headerNoteUrdu || ''}
+                    onChange={(e) => setSettings({ ...settings, headerNoteUrdu: e.target.value })}
+                    placeholder="مثلاً: تازہ اور معیاری اشیاء کی ضمانت"
+                  />
+
+                  <CustomInput
+                    label="اردو فوٹر پالیسی نوٹ (Footer Note)"
+                    value={settings.footerNoteUrdu || ''}
+                    onChange={(e) => setSettings({ ...settings, footerNoteUrdu: e.target.value })}
+                    placeholder="مثلاً: تشریف آوری کا شکریہ! خریدا ہوا مال واپس نہیں ہو سکتا۔"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

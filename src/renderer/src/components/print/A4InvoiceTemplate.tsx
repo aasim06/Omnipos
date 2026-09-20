@@ -102,7 +102,7 @@ const useStyles = makeStyles({
     borderRadius: '4px',
     padding: '40px 48px',
     boxSizing: 'border-box',
-    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+    fontFamily: "'Noto Sans Arabic', 'Segoe UI', Tahoma, 'Urdu Typesetting', Inter, system-ui, -apple-system, sans-serif",
     fontSize: '12px',
     lineHeight: 1.5,
   },
@@ -623,6 +623,11 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
                     <div className={styles.lineNameText}>
                       {line.name}
                     </div>
+                    {line.nameUrdu && line.nameUrdu !== line.name && (
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', marginTop: '2px' }}>
+                        {line.nameUrdu}
+                      </div>
+                    )}
                     {line.variantLabel && (
                       <div className={styles.lineSpecText}>
                         Spec: {line.variantLabel}

@@ -4,6 +4,7 @@ export interface Product {
   id: string;
   module: ModuleKey;
   name: string;
+  nameUrdu?: string;
   description?: string;
   costPrice?: number; // PKR purchase cost per unit
   price: number; // PKR retail selling price per unit
@@ -51,6 +52,7 @@ export interface ProductVariant {
 export interface CartLine {
   productId: string;
   name: string;
+  nameUrdu?: string;
   unitPrice: number;
   quantity: number;
   variantLabel?: string;

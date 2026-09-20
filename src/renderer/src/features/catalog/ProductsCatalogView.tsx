@@ -60,6 +60,7 @@ import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext'
 /* ── Zod Schemas ───────────────────────────────────────────────────── */
 const productSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters'),
+  nameUrdu: z.string().optional(),
   module: z.enum(['fastfood', 'minimart']),
   category: z.string().min(1, 'Category is required'),
   price: z.coerce.number().positive('Retail selling price must be greater than 0'),
@@ -285,6 +286,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     const firstCat = categories.find((c) => c.module === defaultMod)?.name || 'General';
     productForm.reset({
       name: '',
+      nameUrdu: '',
       module: defaultMod,
       category: firstCat,
       price: undefined,
@@ -304,6 +306,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     setImagePreview(prod.imageBase64 || prod.imageUrl || null);
     productForm.reset({
       name: prod.name,
+      nameUrdu: prod.nameUrdu || '',
       module: prod.module,
       category: prod.category,
       price: prod.price,
@@ -323,6 +326,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     const prod: Product = {
       id: editingProduct ? editingProduct.id : uid('prod_'),
       name: data.name.trim(),
+      nameUrdu: data.nameUrdu?.trim() || undefined,
       module: data.module,
       category: data.category || 'General',
       price: data.price,
@@ -1283,6 +1287,22 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                           value={field.value || ''}
                           onChange={field.onChange}
                           error={productForm.formState.errors.name?.message}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  {/* Optional Urdu Name */}
+                  <div>
+                    <Controller
+                      control={productForm.control}
+                      name="nameUrdu"
+                      render={({ field }) => (
+                        <CustomInput
+                          label="Urdu Name / نام اردو میں (اختیاری)"
+                          placeholder="مثلاً: کرسپی زنگر برگر یا باسمتی چاول"
+                          value={field.value || ''}
+                          onChange={field.onChange}
                         />
                       )}
                     />

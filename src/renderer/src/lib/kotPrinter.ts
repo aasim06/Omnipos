@@ -24,13 +24,14 @@ export function generateKotHtml(order: Order, options?: KotPrintOptions): string
 
   const linesHtml = (order.lines || [])
     .map(
-      (line) => `
+      (line: any) => `
       <tr style="border-bottom: 1px dashed #000;">
         <td style="padding: 6px 0; font-size: 16px; font-weight: 900; vertical-align: top; width: 32px;">
           ${line.quantity}x
         </td>
         <td style="padding: 6px 0; font-size: 15px; font-weight: 700; line-height: 1.3;">
           ${line.name}
+          ${line.nameUrdu && line.nameUrdu.trim() !== line.name.trim() ? `<div style="font-size: 14px; font-weight: 800; color: #000; margin-top: 1px;">${line.nameUrdu}</div>` : ''}
           ${line.variantLabel ? `<div style="font-size: 13px; font-weight: 600; color: #333;">• Variant: ${line.variantLabel}</div>` : ''}
           ${line.notes ? `<div style="font-size: 13px; font-style: italic; font-weight: 800; background: #eee; padding: 2px 4px; border-radius: 3px; margin-top: 2px;">NOTE: ${line.notes}</div>` : ''}
         </td>
@@ -56,7 +57,7 @@ export function generateKotHtml(order: Order, options?: KotPrintOptions): string
           padding: 0;
         }
         html, body {
-          font-family: 'Courier New', Courier, monospace, system-ui;
+          font-family: 'Noto Sans Arabic', 'Segoe UI', Tahoma, 'Urdu Typesetting', 'Courier New', Courier, monospace, system-ui, sans-serif;
           width: 66mm;
           max-width: 66mm;
           margin: 0;

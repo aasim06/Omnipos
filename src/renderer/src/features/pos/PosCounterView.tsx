@@ -703,7 +703,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
   const [splitKhataAmount, setSplitKhataAmount] = useState<number | ''>('');
   const [selectedKhataId, setSelectedKhataId] = useState<string>('');
 
-  const storeSettings = React.useMemo(() => {
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(() => {
     return storage.getItem<StoreSettings>(KEYS.storeSettings, {
       storeName: module === 'fastfood' ? 'OMNIPOS RESTAURANT' : 'OMNIPOS RETAIL',
       phone: '+92 300 1234567',
@@ -715,8 +715,43 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
       drawerKick: true,
       currency: 'PKR',
       taxPercent: 0,
+      receiptLanguage: 'english',
     });
+  });
+
+  const [modalReceiptLang, setModalReceiptLang] = useState<'english' | 'urdu' | 'bilingual'>('english');
+
+  const refreshStoreSettings = React.useCallback(() => {
+    const updated = storage.getItem<StoreSettings>(KEYS.storeSettings, {
+      storeName: module === 'fastfood' ? 'OMNIPOS RESTAURANT' : 'OMNIPOS RETAIL',
+      phone: '+92 300 1234567',
+      address: '',
+      headerNote: 'Order Fresh • Eat Fresh',
+      footerNote: 'Thank you for shopping with us!',
+      paperWidth: '80mm',
+      autoCut: true,
+      drawerKick: true,
+      currency: 'PKR',
+      taxPercent: 0,
+      receiptLanguage: 'english',
+    });
+    setStoreSettings(updated);
+    return updated;
   }, [module]);
+
+  // Sync settings when window regains focus or when receipt modal opens
+  React.useEffect(() => {
+    const handleFocus = () => refreshStoreSettings();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [refreshStoreSettings]);
+
+  React.useEffect(() => {
+    if (showReceiptModal) {
+      const fresh = refreshStoreSettings();
+      setModalReceiptLang(fresh.receiptLanguage || 'english');
+    }
+  }, [showReceiptModal, refreshStoreSettings]);
 
   /* Fast Food Specific: Order Type & Routing */
   const [orderType, setOrderType] = useState<FastFoodOrderType>('dine-in');
@@ -1332,6 +1367,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
         {
           productId: product.id,
           name: product.name,
+          nameUrdu: product.nameUrdu,
           unitPrice,
           quantity: qty,
           variantLabel,
@@ -4933,120 +4969,253 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   <Receipt20Regular />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: '14px', color: F.textPrimary, lineHeight: 1.2 }}>
-                    Receipt & Invoice
+                  <div style={{ fontWeight: 800, fontSize: '13.5px', color: F.textPrimary, lineHeight: 1.2 }}>
+                    {modalReceiptLang === 'urdu' ? 'رسید اور انوائس' : modalReceiptLang === 'bilingual' ? 'Receipt & Invoice / رسید' : 'Receipt & Invoice'}
                   </div>
                   <div style={{ fontSize: '11px', color: F.textMuted }}>
                     Order #{lastOrder.id.slice(-6).toUpperCase()} • {lastOrder.orderType?.toUpperCase() || 'TAKEAWAY'}
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => setShowReceiptModal(false)}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  color: F.textMuted,
-                  padding: '6px',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Dismiss20Regular />
-              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                {/* Language Switcher */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: isDark ? '#262626' : '#F1F5F9',
+                    borderRadius: '6px',
+                    padding: '2px',
+                    gap: '2px',
+                    border: `1px solid ${isDark ? '#404040' : '#E2E8F0'}`,
+                  }}
+                >
+                  {(['english', 'urdu', 'bilingual'] as const).map((lang) => {
+                    const isActive = modalReceiptLang === lang;
+                    const label = lang === 'english' ? 'English' : lang === 'urdu' ? 'اردو' : 'دونوں';
+                    return (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => setModalReceiptLang(lang)}
+                        style={{
+                          border: 'none',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          fontSize: '10.5px',
+                          fontWeight: isActive ? 700 : 500,
+                          cursor: 'pointer',
+                          backgroundColor: isActive ? '#E51937' : 'transparent',
+                          color: isActive ? '#FFFFFF' : (isDark ? '#CBD5E1' : '#475569'),
+                          transition: 'all 0.15s ease',
+                        }}
+                        title={lang === 'english' ? 'English Receipt' : lang === 'urdu' ? 'اردو رسید' : 'Bilingual Receipt'}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setShowReceiptModal(false)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: F.textMuted,
+                    padding: '6px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Dismiss20Regular />
+                </button>
+              </div>
             </div>
 
             {/* Thermal Receipt Paper Card Preview */}
-            <div
-              style={{
-                padding: '14px 18px',
-                backgroundColor: isDark ? '#141414' : '#F1F5F9',
-                overflowY: 'auto',
-                flex: 1,
-                minHeight: 0,
-              }}
-            >
-              <div
-                style={{
-                  padding: '14px 16px',
-                  backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                  fontFamily: 'Courier New, Courier, monospace, system-ui',
-                  fontSize: '12px',
-                  lineHeight: 1.45,
-                  color: isDark ? '#EDEDED' : '#1E293B',
-                  borderRadius: '10px',
-                  border: `1px dashed ${isDark ? '#3E3E3E' : '#CBD5E1'}`,
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-                  maxHeight: '260px',
-                  overflowY: 'auto',
-                }}
-              >
-                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px', color: isDark ? '#FFFFFF' : '#0F172A' }}>
-                  {module === 'fastfood' ? 'OMNIPOS COUNTER' : 'OMNIPOS SUPERMARKET'}
-                </div>
-                <div style={{ textAlign: 'center', fontSize: '10.5px', color: isDark ? '#999' : '#64748B', marginTop: '1px' }}>
-                  {module === 'fastfood' ? 'Order Fresh • Eat Fresh' : 'Fresh Daily • Best Wholesale Prices'}
-                </div>
-                <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                  <span>ORDER: #{lastOrder.id.slice(-6).toUpperCase()}</span>
-                  <span>{new Date(lastOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-                <div style={{ fontWeight: 'bold', color: isDark ? '#FFF' : '#0F172A', marginTop: '2px', fontSize: '11.5px' }}>
-                  {lastOrder.orderType === 'dine-in' ? tableNo : `TOKEN: #${tokenNo}`}
-                  {lastOrder.customerName ? ` • ${lastOrder.customerName}` : ''}
-                </div>
-                <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
-                {lastOrder.lines.map((line, idx) => (
-                  <div key={`${line.productId}-${idx}`} style={{ marginBottom: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 600 }}>{line.quantity}x {line.name} {line.variantLabel ? `(${line.variantLabel})` : ''}</span>
-                      <span style={{ fontWeight: 700 }}>PKR {(line.unitPrice * line.quantity).toLocaleString()}</span>
+            {(() => {
+              const isUrdu = modalReceiptLang === 'urdu';
+              const isBilingual = modalReceiptLang === 'bilingual';
+              const isRtl = isUrdu;
+              const currencySymbol = isUrdu ? 'روپے' : (storeSettings.currency || 'PKR');
+
+              const defaultStoreName = module === 'fastfood' ? 'OMNIPOS COUNTER' : 'OMNIPOS SUPERMARKET';
+              const previewStoreName = isUrdu
+                ? (storeSettings.storeNameUrdu || storeSettings.storeName || defaultStoreName)
+                : (storeSettings.storeName || defaultStoreName);
+              const previewStoreNameSub = isBilingual ? storeSettings.storeNameUrdu : undefined;
+
+              const defaultHeader = module === 'fastfood' ? 'Order Fresh • Eat Fresh' : 'Fresh Daily • Best Wholesale Prices';
+              const previewHeader = isUrdu
+                ? (storeSettings.headerNoteUrdu || storeSettings.headerNote || defaultHeader)
+                : isBilingual && storeSettings.headerNoteUrdu
+                ? `${storeSettings.headerNote || defaultHeader} • ${storeSettings.headerNoteUrdu}`
+                : (storeSettings.headerNote || defaultHeader);
+
+              const defaultFooter = 'Thank you for shopping with us!';
+              const previewFooter = isUrdu
+                ? (storeSettings.footerNoteUrdu || storeSettings.footerNote || 'تشریف آوری کا شکریہ! خریدا ہوا مال واپس یا تبدیل نہیں ہو سکتا۔')
+                : (storeSettings.footerNote || defaultFooter);
+              const previewFooterSub = isBilingual ? storeSettings.footerNoteUrdu : undefined;
+
+              const orderTimeStr = new Date(lastOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const previewOrderLabel = isUrdu ? 'رسید نمبر:' : isBilingual ? 'Order / رسید:' : 'ORDER:';
+              const previewTokenLabel =
+                lastOrder.orderType === 'dine-in'
+                  ? (isUrdu ? `میز نمبر: ${tableNo}` : isBilingual ? `Table / میز: ${tableNo}` : `TABLE: ${tableNo}`)
+                  : lastOrder.orderType === 'takeaway'
+                  ? (isUrdu ? `ٹوکن نمبر: #${tokenNo}` : isBilingual ? `Token / ٹوکن: #${tokenNo}` : `TOKEN: #${tokenNo}`)
+                  : (isUrdu ? 'ڈیلیوری (DELIVERY)' : isBilingual ? 'Delivery / ڈیلیوری' : 'DELIVERY');
+
+              const previewCustomer = lastOrder.customerName
+                ? (isUrdu
+                    ? (lastOrder.customerName === 'Walk-In Customer' ? 'عام گاہک' : lastOrder.customerName)
+                    : lastOrder.customerName)
+                : '';
+
+              const totalQty = lastOrder.lines.reduce((s, l) => s + l.quantity, 0);
+              const subtotal = lastOrder.lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
+              const discountAmt = lastOrder.discountPercent && lastOrder.discountPercent > 0
+                ? Math.round((subtotal * lastOrder.discountPercent) / 100)
+                : 0;
+
+              return (
+                <div
+                  style={{
+                    padding: '14px 18px',
+                    backgroundColor: isDark ? '#141414' : '#F1F5F9',
+                    overflowY: 'auto',
+                    flex: 1,
+                    minHeight: 0,
+                  }}
+                >
+                  <div
+                    dir={isRtl ? 'rtl' : 'ltr'}
+                    style={{
+                      padding: '14px 16px',
+                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                      fontFamily: isUrdu || isBilingual
+                        ? `'Noto Sans Arabic', 'Urdu Typesetting', 'Segoe UI', Tahoma, Courier New, monospace, system-ui`
+                        : 'Courier New, Courier, monospace, system-ui',
+                      fontSize: '12px',
+                      lineHeight: 1.45,
+                      color: isDark ? '#EDEDED' : '#1E293B',
+                      borderRadius: '10px',
+                      border: `1px dashed ${isDark ? '#3E3E3E' : '#CBD5E1'}`,
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+                      maxHeight: '280px',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '15px', color: isDark ? '#FFFFFF' : '#0F172A', wordBreak: 'break-word' }}>
+                      {previewStoreName}
                     </div>
-                    {line.notes && (
-                      <div style={{ fontSize: '10px', color: '#F59E0B', paddingLeft: '8px' }}>
-                        * {line.notes}
+                    {previewStoreNameSub && (
+                      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: '13px', color: isDark ? '#EEE' : '#1E293B', marginTop: '1px' }}>
+                        {previewStoreNameSub}
                       </div>
                     )}
-                  </div>
-                ))}
-                <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: isDark ? '#AAA' : '#64748B' }}>
-                  <span>Total Items:</span>
-                  <span>{lastOrder.lines.reduce((s, l) => s + l.quantity, 0)} units</span>
-                </div>
-                {lastOrder.discountPercent && lastOrder.discountPercent > 0 ? (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#10B981', marginTop: '2px' }}>
-                    <span>Discount ({lastOrder.discountPercent}%):</span>
-                    <span>
-                      - PKR {Math.round((lastOrder.lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0) * lastOrder.discountPercent) / 100).toLocaleString()}
-                    </span>
-                  </div>
-                ) : null}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '14px', marginTop: '4px', color: isDark ? '#FFF' : '#0F172A' }}>
-                  <span>NET TOTAL:</span>
-                  <span style={{ color: F.accentRed }}>PKR {lastOrder.totalAmount?.toLocaleString()}</span>
-                </div>
-                {paymentMode === 'cash' && typeof tenderedAmount === 'number' && tenderedAmount >= (lastOrder.totalAmount || 0) && (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginTop: '4px' }}>
-                      <span>Cash Tendered:</span>
-                      <span>PKR {tenderedAmount.toLocaleString()}</span>
+                    {storeSettings.address && (
+                      <div style={{ textAlign: 'center', fontSize: '10.5px', color: isDark ? '#AAA' : '#64748B', marginTop: '1px' }}>
+                        {storeSettings.address}
+                      </div>
+                    )}
+                    {storeSettings.phone && (
+                      <div style={{ textAlign: 'center', fontSize: '10.5px', color: isDark ? '#AAA' : '#64748B' }}>
+                        {isUrdu ? 'فون:' : 'Tel:'} {storeSettings.phone}
+                      </div>
+                    )}
+                    <div style={{ textAlign: 'center', fontSize: '10.5px', color: isDark ? '#999' : '#64748B', marginTop: '2px', fontStyle: 'italic' }}>
+                      {previewHeader}
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold', color: '#10B981', marginTop: '1px' }}>
-                      <span>Change Due:</span>
-                      <span>PKR {(tenderedAmount - (lastOrder.totalAmount || 0)).toLocaleString()}</span>
+
+                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
+
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '13px', color: isDark ? '#FFF' : '#0F172A', padding: '3px 0', backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC', borderRadius: '4px', border: `1px dashed ${isDark ? '#555' : '#E2E8F0'}` }}>
+                      {previewTokenLabel}
+                      {previewCustomer ? ` • ${previewCustomer}` : ''}
                     </div>
-                  </>
-                )}
-                <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '10px', color: isDark ? '#888' : '#94A3B8' }}>
-                  Thank you for shopping with us!
+
+                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                      <span>{previewOrderLabel} #{lastOrder.id.slice(-6).toUpperCase()}</span>
+                      <span>{orderTimeStr}</span>
+                    </div>
+
+                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
+
+                    {lastOrder.lines.map((line, idx) => {
+                      const lineDisplayName = isUrdu
+                        ? (line.nameUrdu || line.name)
+                        : isBilingual && line.nameUrdu && line.nameUrdu.trim() !== line.name.trim()
+                        ? `${line.name} (${line.nameUrdu})`
+                        : line.name;
+
+                      return (
+                        <div key={`${line.productId}-${idx}`} style={{ marginBottom: '5px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                            <span style={{ fontWeight: 600, flex: 1, wordBreak: 'break-word' }}>
+                              {line.quantity}x {lineDisplayName} {line.variantLabel ? `(${line.variantLabel})` : ''}
+                            </span>
+                            <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              {currencySymbol} {(line.unitPrice * line.quantity).toLocaleString()}
+                            </span>
+                          </div>
+                          {line.notes && (
+                            <div style={{ fontSize: '10px', color: '#F59E0B', paddingRight: isRtl ? '8px' : 0, paddingLeft: !isRtl ? '8px' : 0 }}>
+                              * {line.notes}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: isDark ? '#AAA' : '#64748B' }}>
+                      <span>{isUrdu ? 'کل اشیاء:' : isBilingual ? 'Total Items / کل آئٹمز:' : 'Total Items:'}</span>
+                      <span>{totalQty} {isUrdu ? 'عدد' : 'units'}</span>
+                    </div>
+
+                    {discountAmt > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#10B981', marginTop: '2px' }}>
+                        <span>{isUrdu ? `رعایت (${lastOrder.discountPercent}%):` : isBilingual ? `Discount / رعایت (${lastOrder.discountPercent}%):` : `Discount (${lastOrder.discountPercent}%):`}</span>
+                        <span>- {currencySymbol} {discountAmt.toLocaleString()}</span>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '14px', marginTop: '4px', color: isDark ? '#FFF' : '#0F172A' }}>
+                      <span>{isUrdu ? 'کل واجب الادا:' : isBilingual ? 'NET TOTAL / کل رقم:' : 'NET TOTAL:'}</span>
+                      <span style={{ color: F.accentRed }}>{currencySymbol} {lastOrder.totalAmount?.toLocaleString()}</span>
+                    </div>
+
+                    {paymentMode === 'cash' && typeof tenderedAmount === 'number' && tenderedAmount >= (lastOrder.totalAmount || 0) && (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginTop: '4px' }}>
+                          <span>{isUrdu ? 'وصول شدہ رقم:' : isBilingual ? 'Tendered / وصول:' : 'Cash Tendered:'}</span>
+                          <span>{currencySymbol} {tenderedAmount.toLocaleString()}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold', color: '#10B981', marginTop: '1px' }}>
+                          <span>{isUrdu ? 'بقایا رقم:' : isBilingual ? 'Change / بقایا:' : 'Change Due:'}</span>
+                          <span>{currencySymbol} {(tenderedAmount - (lastOrder.totalAmount || 0)).toLocaleString()}</span>
+                        </div>
+                      </>
+                    )}
+
+                    <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '10px', color: isDark ? '#888' : '#94A3B8', wordBreak: 'break-word' }}>
+                      <div>{previewFooter}</div>
+                      {previewFooterSub && <div style={{ marginTop: '2px' }}>{previewFooterSub}</div>}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Action Buttons Footer */}
             <div
@@ -5063,17 +5232,22 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
               {/* Primary Action Button: Print Customer Receipt */}
               <button
                 onClick={() => {
+                  const freshSettings = refreshStoreSettings();
+                  const isUrduLang = modalReceiptLang === 'urdu';
+                  const isBilingualLang = modalReceiptLang === 'bilingual';
                   const tableOrToken =
                     lastOrder.orderType === 'dine-in'
-                      ? `TABLE: ${tableNo}`
+                      ? (isUrduLang ? `میز نمبر: ${tableNo}` : isBilingualLang ? `Table / میز: ${tableNo}` : `TABLE: ${tableNo}`)
                       : lastOrder.orderType === 'takeaway'
-                      ? `TOKEN: #${tokenNo}`
-                      : 'DELIVERY';
+                      ? (isUrduLang ? `ٹوکن نمبر: #${tokenNo}` : isBilingualLang ? `Token / ٹوکن: #${tokenNo}` : `TOKEN: #${tokenNo}`)
+                      : (isUrduLang ? 'ڈیلیوری (DELIVERY)' : isBilingualLang ? 'Delivery / ڈیلیوری' : 'DELIVERY');
+
                   void printCustomerReceipt(lastOrder, {
                     tableOrToken,
-                    storeSettings,
+                    storeSettings: freshSettings,
                     paymentMode,
                     tenderedAmount: typeof tenderedAmount === 'number' ? tenderedAmount : undefined,
+                    language: modalReceiptLang,
                   });
                   setShowReceiptModal(false);
                 }}
@@ -5086,7 +5260,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                   color: '#FFFFFF',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  fontFamily: F.font,
+                  fontFamily: modalReceiptLang === 'urdu' ? `'Noto Sans Arabic', ${F.font}` : F.font,
                   fontSize: '13.5px',
                   display: 'flex',
                   alignItems: 'center',
@@ -5097,7 +5271,13 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                 }}
               >
                 <Print20Regular style={{ width: 19, height: 19 }} />
-                <span>Print Thermal Receipt (Customer)</span>
+                <span>
+                  {modalReceiptLang === 'urdu'
+                    ? 'تھرمل رسید پرنٹ کریں (Print Receipt)'
+                    : modalReceiptLang === 'bilingual'
+                    ? 'Print Thermal Receipt (اردو + English)'
+                    : 'Print Thermal Receipt (Customer)'}
+                </span>
               </button>
 
               {/* Secondary Actions Row */}

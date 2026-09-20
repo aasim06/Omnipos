@@ -31,6 +31,9 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
   },
+  containerOpen: {
+    zIndex: 1000,
+  },
   triggerBox: {
     position: 'relative',
     display: 'flex',
@@ -198,8 +201,13 @@ const useStyles = makeStyles({
     boxShadow: tokens.shadow8,
     maxHeight: '240px',
     overflowY: 'auto',
-    zIndex: 100,
+    zIndex: 1000,
     padding: '4px',
+  },
+  dropdownPopoverUp: {
+    top: 'auto',
+    bottom: 'calc(100% + 4px)',
+    boxShadow: '0 -6px 20px rgba(0, 0, 0, 0.15)',
   },
   noOptions: {
     padding: '8px 10px',
@@ -276,6 +284,7 @@ export function CustomSelect({
 }: CustomSelectProps): React.JSX.Element {
   const styles = useStyles();
   const [isOpen, setIsOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Normalize options array into object format
@@ -299,10 +308,25 @@ export function CustomSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Smart drop-up detection when space below is tight
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 200 && rect.top > spaceBelow) {
+        setDropUp(true);
+      } else {
+        setDropUp(false);
+      }
+    } else {
+      setDropUp(false);
+    }
+  }, [isOpen]);
+
   return (
     <div
       ref={containerRef}
-      className={mergeClasses(styles.container, className)}
+      className={mergeClasses(styles.container, isOpen && styles.containerOpen, className)}
     >
       {/* Label */}
       {label && (
@@ -381,7 +405,7 @@ export function CustomSelect({
 
       {/* Sleek Custom Dropdown Menu Popover */}
       {isOpen && (
-        <div className={styles.dropdownPopover}>
+        <div className={mergeClasses(styles.dropdownPopover, dropUp && styles.dropdownPopoverUp)}>
           {normalizedOptions.length === 0 ? (
             <div className={styles.noOptions}>
               No options available
