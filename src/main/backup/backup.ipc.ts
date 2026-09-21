@@ -8,6 +8,7 @@ import { getPosDbPath, getPrisma, disconnectPrisma, initializeDatabase } from '.
 import { copyDirRecursive, writeBackupZip } from './backup-zip';
 import { getImagesRoot } from './images-paths';
 import { sanitizeProduct, sanitizeCategory } from '../backend/routes';
+import { getLicenseApiBase, getSavedKey, getHardwareId, getDeviceName } from '../license/license.ipc';
 
 interface BackupHistory {
   lastBackup?: string;
@@ -47,12 +48,97 @@ function ensureExtension(filePath: string, preferredExt: 'zip' | 'db'): string {
   return `${filePath}.${preferredExt}`;
 }
 
+/**
+ * Upload local backup (.zip / .db) to Central Cloud Server Vault
+ */
+export async function uploadBackupToCloud(
+  finalPath: string,
+  backupType: string = 'auto',
+): Promise<{ ok: boolean; message?: string; cloudId?: string }> {
+  try {
+    const key = getSavedKey();
+    if (!key) {
+      console.log('[Backup Cloud Sync] No active license key found, skipping cloud backup.');
+      return { ok: false, message: 'No license key configured' };
+    }
+
+    const hwid = getHardwareId();
+    const deviceName = getDeviceName();
+    const isZip = finalPath.toLowerCase().endsWith('.zip');
+    const fileName = basename(finalPath);
+    const fileBuffer = readFileSync(finalPath);
+
+    const formData = new FormData();
+    const blob = new Blob([fileBuffer], {
+      type: isZip ? 'application/zip' : 'application/octet-stream',
+    });
+    formData.append('file', blob, fileName);
+    formData.append('key', key);
+    formData.append('hwid', hwid);
+    formData.append('deviceName', deviceName);
+    formData.append('backupType', backupType);
+
+    // If running in development and local omnipos-server (port 4000) is online, prefer it
+    let targetBase = getLicenseApiBase();
+    if (!app.isPackaged) {
+      try {
+        const ping = await fetch('http://localhost:4000/api/health', {
+          method: 'GET',
+          signal: AbortSignal.timeout(1000),
+        });
+        if (ping.ok) {
+          targetBase = 'http://localhost:4000/api';
+        }
+      } catch {
+        /* fallback to default targetBase */
+      }
+    }
+
+    const uploadUrl = `${targetBase}/backup/upload`;
+    console.log(`[Backup Cloud Sync] Uploading ${fileName} (${fileBuffer.length} bytes) to ${uploadUrl}...`);
+
+    const res = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'X-License-Key': key,
+      },
+      body: formData,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log('[Backup Cloud Sync] Cloud vault accepted backup:', data);
+      return { ok: true, message: 'Cloud backup synced successfully', cloudId: data?.data?.id };
+    } else {
+      const err = await res.json().catch(() => ({}));
+      console.warn('[Backup Cloud Sync] Server returned non-200:', res.status, err);
+      return { ok: false, message: err.message || `Server returned ${res.status}` };
+    }
+  } catch (err: any) {
+    console.warn('[Backup Cloud Sync] Upload network error:', err.message);
+    return { ok: false, message: err.message };
+  }
+}
+
 export function registerBackupIpc(): void {
   ipcMain.removeHandler('backup:get-status');
   ipcMain.removeHandler('backup:create');
   ipcMain.removeHandler('backup:restore');
   ipcMain.removeHandler('backup:flush-sync');
   ipcMain.removeHandler('backup:export-json');
+  ipcMain.removeHandler('backup:sync-cloud');
+
+  /**
+   * Sync Latest Backup to Central Cloud Vault
+   */
+  ipcMain.handle('backup:sync-cloud', async (_event, filePath?: string) => {
+    const history = readBackupHistory();
+    const targetFile = filePath || history.lastBackupPath;
+    if (!targetFile || !existsSync(targetFile)) {
+      return { ok: false, error: 'No recent backup file found to sync' };
+    }
+    return await uploadBackupToCloud(targetFile, 'manual');
+  });
 
   /**
    * Get Database Status & Stats
@@ -201,12 +287,22 @@ export function registerBackupIpc(): void {
       });
 
       console.log(`[Backup IPC] System backup successfully created at: ${finalPath} (${stats.size} bytes)`);
+
+      // ── Auto-sync to Central Cloud Vault ──
+      let cloudSync: { ok: boolean; message?: string; cloudId?: string } | undefined;
+      try {
+        cloudSync = await uploadBackupToCloud(finalPath, options?.promptDialog !== false ? 'manual' : 'auto');
+      } catch (syncErr: any) {
+        console.warn('[Backup IPC] Cloud auto-sync warning:', syncErr);
+      }
+
       return {
         ok: true,
         path: finalPath,
         size: stats.size,
         mode: isZip ? 'full' : 'db',
         timestamp: new Date().toISOString(),
+        cloudSync,
       };
     } catch (err: any) {
       console.error('[Backup IPC] Failed to create backup:', err);

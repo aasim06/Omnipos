@@ -15,7 +15,7 @@ const DEFAULT_SERVER_URL =
   process.env.API_BASE_URL ||
   'https://omni-server-seven.vercel.app';
 
-function getLicenseApiBase(): string {
+export function getLicenseApiBase(): string {
   const base = DEFAULT_SERVER_URL.trim().replace(/\/+$/, '');
   return base.endsWith('/api') ? base : `${base}/api`;
 }
