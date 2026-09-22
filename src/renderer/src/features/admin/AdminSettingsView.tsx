@@ -53,11 +53,15 @@ import {
   Warning20Regular,
   ArrowClockwise20Regular,
   DocumentTableSearch20Regular,
+  Location20Regular,
+  Open20Regular,
+  Star20Filled,
 } from '@fluentui/react-icons';
 import { posApi } from '@/lib/api';
 import { clearAllLocalData } from '@/lib/offlineDb';
 import { storage, KEYS } from '@/lib/storage';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { generateQrDataUrl } from '@/lib/qrCode';
 import {
   userStorage,
   AppUser,
@@ -85,6 +89,9 @@ export interface StoreSettings {
   storeNameUrdu?: string;
   headerNoteUrdu?: string;
   footerNoteUrdu?: string;
+  googleMapsUrl?: string;
+  showGoogleMapQrOnReceipt?: boolean;
+  googleQrAction?: 'review' | 'map';
 }
 
 const defaultSettings: StoreSettings = {
@@ -107,6 +114,9 @@ const defaultSettings: StoreSettings = {
   storeNameUrdu: '',
   headerNoteUrdu: 'تازہ اور معیاری اشیاء کی ضمانت',
   footerNoteUrdu: 'تشریف آوری کا شکریہ! خریدا ہوا مال واپس یا تبدیل نہیں ہو سکتا۔',
+  googleMapsUrl: '',
+  showGoogleMapQrOnReceipt: false,
+  googleQrAction: 'review',
 };
 
 const ROLE_OPTIONS = [
@@ -124,6 +134,17 @@ export function AdminSettingsView(): React.JSX.Element {
     storage.getItem<StoreSettings>(KEYS.storeSettings, defaultSettings)
   );
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [googleQrPreview, setGoogleQrPreview] = useState<string>('');
+
+  useEffect(() => {
+    if (settings.googleMapsUrl && settings.googleMapsUrl.trim()) {
+      generateQrDataUrl(settings.googleMapsUrl.trim(), { width: 140, margin: 1 })
+        .then((url) => setGoogleQrPreview(url))
+        .catch(() => setGoogleQrPreview(''));
+    } else {
+      setGoogleQrPreview('');
+    }
+  }, [settings.googleMapsUrl]);
   const [printTestMsg, setPrintTestMsg] = useState('');
   const [isLicenseOpen, setIsLicenseOpen] = useState(false);
   const [licenseKey, setLicenseKey] = useState('');
@@ -327,6 +348,22 @@ export function AdminSettingsView(): React.JSX.Element {
     await posApi.printReceipt();
     setPrintTestMsg('Test print dispatched!');
     setTimeout(() => setPrintTestMsg(''), 3500);
+  };
+
+  const handleOpenGoogleBusinessRegistration = () => {
+    window.open('https://business.google.com/create', '_blank');
+  };
+
+  const handleTestGoogleMapsUrl = () => {
+    if (!settings.googleMapsUrl || !settings.googleMapsUrl.trim()) {
+      notifyWarning('Please enter a Google Maps URL first.');
+      return;
+    }
+    let url = settings.googleMapsUrl.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`;
+    }
+    window.open(url, '_blank');
   };
 
   const handleActivateLicense = async () => {
@@ -963,6 +1000,151 @@ export function AdminSettingsView(): React.JSX.Element {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* CARD: Google Business Profile & Google Maps */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.cardIconBox} style={{ background: '#EEF2FF', color: '#4F46E5' }}>
+                <Location20Regular className={styles.icon20} />
+              </div>
+              <div className={styles.headerTextCol}>
+                <Body1 className={styles.headerTitle}>Google Business Profile &amp; Maps</Body1>
+                <Caption1 className={styles.headerSubtitle}>
+                  List your business on Google Maps &amp; print Google Review QR codes on customer receipts
+                </Caption1>
+              </div>
+            </div>
+
+            <div className={styles.cardBody}>
+              {/* Step 1: Guided Onboarding Callout Banner */}
+              <div
+                style={{
+                  padding: '14px 16px',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ maxWidth: '460px' }}>
+                  <Text weight="bold" size={300} style={{ color: '#0F172A', display: 'block' }}>
+                    List your business on Google Maps
+                  </Text>
+                  <Caption1 style={{ color: '#475569', display: 'block', marginTop: '4px', lineHeight: '1.4' }}>
+                    Apni dukan ko Google Maps par muft register karein taakay naye local customers aap ko easily find kar sakein aur receipts par QR code scan kar ke 5-star Google review de sakein.
+                  </Caption1>
+                </div>
+                <Button
+                  appearance="primary"
+                  icon={<Open20Regular />}
+                  onClick={handleOpenGoogleBusinessRegistration}
+                  className={styles.primaryRedButton}
+                >
+                  Register on Google Maps
+                </Button>
+              </div>
+
+              <Divider style={{ margin: '14px 0 10px 0' }} />
+
+              {/* Toggle: Print Google QR on Receipts */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div>
+                  <Body2 style={{ fontWeight: 600, color: '#0F172A' }}>Print Google Review / Maps QR on Receipts</Body2>
+                  <Caption1 style={{ color: '#64748B', display: 'block' }}>
+                    Customers can scan this QR from thermal bill or invoice to leave a review or view location
+                  </Caption1>
+                </div>
+                <Switch
+                  checked={settings.showGoogleMapQrOnReceipt ?? false}
+                  onChange={(_, data) => setSettings({ ...settings, showGoogleMapQrOnReceipt: data.checked })}
+                />
+              </div>
+
+              {/* Google Maps URL Input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                  <div style={{ flex: 1 }}>
+                    <CustomInput
+                      label="Google Maps / Google Review Link (URL)"
+                      value={settings.googleMapsUrl || ''}
+                      onChange={(e) => setSettings({ ...settings, googleMapsUrl: e.target.value })}
+                      placeholder="e.g. https://maps.app.goo.gl/... or https://g.page/r/.../review"
+                    />
+                  </div>
+                  <Button
+                    appearance="outline"
+                    onClick={handleTestGoogleMapsUrl}
+                    disabled={!settings.googleMapsUrl?.trim()}
+                    style={{ height: '36px', marginBottom: '1px' }}
+                  >
+                    Test Link
+                  </Button>
+                </div>
+                <Caption2 style={{ color: '#64748B' }}>
+                  Tip: Google Maps app mein apni shop open karein, &quot;Share&quot; ya &quot;Ask for reviews&quot; pe click kar ke link yahan paste karein.
+                </Caption2>
+              </div>
+
+              {/* QR Code Action Type Selector */}
+              <CustomSelect
+                label="QR Code Purpose on Receipts"
+                value={settings.googleQrAction || 'review'}
+                onChange={(val) => setSettings({ ...settings, googleQrAction: val as any })}
+                options={[
+                  { value: 'review', label: 'Rate & Review us on Google (5-Star Rating Boost)' },
+                  { value: 'map', label: 'Locate us on Google Maps (Store Navigation & Directions)' },
+                ]}
+              />
+
+              {/* Live Preview Box */}
+              {settings.googleMapsUrl && googleQrPreview && (
+                <div
+                  style={{
+                    marginTop: '10px',
+                    padding: '14px',
+                    background: '#F8FAFC',
+                    borderRadius: '8px',
+                    border: '1px dashed #CBD5E1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                  }}
+                >
+                  <img
+                    src={googleQrPreview}
+                    alt="Google QR Preview"
+                    style={{
+                      width: '84px',
+                      height: '84px',
+                      background: '#FFF',
+                      padding: '4px',
+                      borderRadius: '6px',
+                      border: '1px solid #E2E8F0',
+                    }}
+                  />
+                  <div>
+                    <Badge appearance="tint" color="success" style={{ marginBottom: '4px' }}>
+                      Live Receipt QR Preview
+                    </Badge>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+                      {settings.googleQrAction === 'map' ? (
+                        'Locate us on Google Maps'
+                      ) : (
+                        'Rate us on Google Maps'
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+                      Yeh QR code customer ke thermal receipt aur invoice ke bottom par print hoga.
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

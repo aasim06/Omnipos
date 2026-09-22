@@ -107,11 +107,11 @@ export async function uploadBackupToCloud(
     });
 
     if (res.ok) {
-      const data = await res.json();
+      const data = (await res.json()) as any;
       console.log('[Backup Cloud Sync] Cloud vault accepted backup:', data);
       return { ok: true, message: 'Cloud backup synced successfully', cloudId: data?.data?.id };
     } else {
-      const err = await res.json().catch(() => ({}));
+      const err = (await res.json().catch(() => ({}))) as any;
       console.warn('[Backup Cloud Sync] Server returned non-200:', res.status, err);
       return { ok: false, message: err.message || `Server returned ${res.status}` };
     }

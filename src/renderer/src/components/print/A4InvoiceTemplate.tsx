@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { makeStyles, mergeClasses } from '@fluentui/react-components';
 import { Order } from '@shared/types';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { formatPKR } from '@/lib/utils';
-import { Printer, X, Receipt } from 'lucide-react';
+import { Printer, X, Receipt, MapPin, Star } from 'lucide-react';
+import { generateQrDataUrl } from '@/lib/qrCode';
 
 interface A4InvoiceTemplateProps {
   order: Order;
@@ -461,6 +462,18 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
   onPrint,
 }) => {
   const styles = useStyles();
+  const [googleQrDataUrl, setGoogleQrDataUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (storeSettings?.showGoogleMapQrOnReceipt !== false && storeSettings?.googleMapsUrl) {
+      generateQrDataUrl(storeSettings.googleMapsUrl, { width: 120, margin: 1 })
+        .then(setGoogleQrDataUrl)
+        .catch(() => setGoogleQrDataUrl(''));
+    } else {
+      setGoogleQrDataUrl('');
+    }
+  }, [storeSettings?.showGoogleMapQrOnReceipt, storeSettings?.googleMapsUrl]);
+
   const storeName = storeSettings?.storeName || 'OmniPos Store & Solutions';
   const storePhone = storeSettings?.phone || '+92 300 1234567';
   const storeAddress = storeSettings?.address || 'Main Commercial Area';
@@ -716,6 +729,40 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
                   </div>
                   <div style={{ fontSize: '10.5px', color: '#334155' }}>
                     <strong>Account / Raast ID:</strong> {storeSettings.paymentQrNumber}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {storeSettings?.showGoogleMapQrOnReceipt !== false && storeSettings?.googleMapsUrl && googleQrDataUrl && (
+              <div
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '6px',
+                  backgroundColor: '#F8FAFC',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                <img
+                  src={googleQrDataUrl}
+                  alt="Google Review QR"
+                  style={{ width: '56px', height: '56px', objectFit: 'contain', border: '1px solid #CBD5E1', borderRadius: '4px', backgroundColor: '#FFFFFF' }}
+                />
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    {storeSettings.googleQrAction === 'map' ? (
+                      <><MapPin size={12} color="#2563EB" /> FIND US ON GOOGLE MAPS</>
+                    ) : (
+                      <><Star size={12} fill="#F59E0B" color="#F59E0B" /> RATE US ON GOOGLE</>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px' }}>
+                    {storeSettings.googleQrAction === 'map'
+                      ? 'Scan with phone camera for store location & directions'
+                      : 'Scan QR with phone camera to leave a 5-star review'}
                   </div>
                 </div>
               </div>

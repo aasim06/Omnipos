@@ -75,6 +75,7 @@ import { A4InvoiceTemplate } from '@/components/print/A4InvoiceTemplate';
 import { storage, KEYS } from '@/lib/storage';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { useAppToast } from '@/context/AppNotificationContext';
+import { generateQrDataUrl } from '@/lib/qrCode';
 
 /* ─── Fluent UI 2 Desktop Design Tokens (Dynamic Light / Dark) ───── */
 function getTokens(isDark: boolean) {
@@ -720,6 +721,17 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
   });
 
   const [modalReceiptLang, setModalReceiptLang] = useState<'english' | 'urdu' | 'bilingual'>('english');
+  const [modalGoogleQrDataUrl, setModalGoogleQrDataUrl] = useState<string>('');
+
+  React.useEffect(() => {
+    if (storeSettings.showGoogleMapQrOnReceipt !== false && storeSettings.googleMapsUrl) {
+      generateQrDataUrl(storeSettings.googleMapsUrl, { width: 100, margin: 1 })
+        .then(setModalGoogleQrDataUrl)
+        .catch(() => setModalGoogleQrDataUrl(''));
+    } else {
+      setModalGoogleQrDataUrl('');
+    }
+  }, [storeSettings.showGoogleMapQrOnReceipt, storeSettings.googleMapsUrl]);
 
   const refreshStoreSettings = React.useCallback(() => {
     const updated = storage.getItem<StoreSettings>(KEYS.storeSettings, {
@@ -5208,6 +5220,24 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                       </>
                     )}
 
+                    {storeSettings.showGoogleMapQrOnReceipt !== false && storeSettings.googleMapsUrl && modalGoogleQrDataUrl && (
+                      <div style={{ textAlign: 'center', margin: '10px 0 4px', paddingTop: '8px', borderTop: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }}>
+                        <div style={{ fontSize: '10.5px', fontWeight: 800, color: isDark ? '#E2E8F0' : '#0F172A' }}>
+                          {storeSettings.googleQrAction === 'map'
+                            ? (isUrdu ? 'گوگل میپ پر لوکیشن' : isBilingual ? 'Locate on Google Maps / لوکیشن' : 'Locate us on Google Maps')
+                            : (isUrdu ? 'گوگل پر ریٹنگ دیں' : isBilingual ? 'Rate Us on Google / ریٹنگ دیں' : 'Rate us on Google Maps')}
+                        </div>
+                        <img
+                          src={modalGoogleQrDataUrl}
+                          alt="Google Review QR"
+                          style={{ width: '80px', height: '80px', margin: '4px auto', display: 'block', background: '#FFF', padding: '2px', borderRadius: '4px' }}
+                        />
+                        <div style={{ fontSize: '8.5px', color: isDark ? '#888' : '#64748B' }}>
+                          {isUrdu ? 'موبائل کیمرہ سے اسکین کریں' : isBilingual ? 'Scan with phone / اسکین کریں' : 'Scan with phone camera'}
+                        </div>
+                      </div>
+                    )}
+
                     <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '10px', color: isDark ? '#888' : '#94A3B8', wordBreak: 'break-word' }}>
                       <div>{previewFooter}</div>
                       {previewFooterSub && <div style={{ marginTop: '2px' }}>{previewFooterSub}</div>}
@@ -5330,8 +5360,11 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
                     const phone = (lastOrder.customerPhone || customerPhone || '').replace(/[^0-9]/g, '');
                     const phoneWithCountry = phone.startsWith('92') ? phone : phone.startsWith('0') ? `92${phone.slice(1)}` : `92${phone}`;
                     const itemsText = (lastOrder.lines || []).map((l) => `• ${l.quantity}x ${l.name} - PKR ${(l.quantity * l.unitPrice).toLocaleString()}`).join('\n');
+                    const googleLinkText = storeSettings.googleMapsUrl
+                      ? `\n-----------------------------------\n${storeSettings.googleQrAction === 'map' ? 'Locate us on Google Maps:' : 'Rate us on Google:'}\n${storeSettings.googleMapsUrl}`
+                      : '';
                     const text = encodeURIComponent(
-                      `*${storeSettings.storeName || 'OMNIPOS STORE'}*\n${storeSettings.address ? `${storeSettings.address}\n` : ''}Phone: ${storeSettings.phone || ''}\n-----------------------------------\n*INVOICE RECEIPT* (#${lastOrder.id.slice(-6).toUpperCase()})\nDate: ${new Date(lastOrder.createdAt).toLocaleDateString()} ${new Date(lastOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n-----------------------------------\n${itemsText}\n-----------------------------------\n*Net Total:* PKR ${(lastOrder.totalAmount || 0).toLocaleString()}\n*Payment Mode:* ${(lastOrder.paymentMode || 'PAID').toUpperCase()}\n-----------------------------------\n${storeSettings.footerNote || 'Thank you for shopping with us!'}`
+                      `*${storeSettings.storeName || 'OMNIPOS STORE'}*\n${storeSettings.address ? `${storeSettings.address}\n` : ''}Phone: ${storeSettings.phone || ''}\n-----------------------------------\n*INVOICE RECEIPT* (#${lastOrder.id.slice(-6).toUpperCase()})\nDate: ${new Date(lastOrder.createdAt).toLocaleDateString()} ${new Date(lastOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n-----------------------------------\n${itemsText}\n-----------------------------------\n*Net Total:* PKR ${(lastOrder.totalAmount || 0).toLocaleString()}\n*Payment Mode:* ${(lastOrder.paymentMode || 'PAID').toUpperCase()}\n-----------------------------------\n${storeSettings.footerNote || 'Thank you for shopping with us!'}${googleLinkText}`
                     );
                     if (phone.length >= 7) {
                       window.open(`https://wa.me/${phoneWithCountry}?text=${text}`, '_blank');

@@ -3,16 +3,17 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 export const useFastFoodDashboardStyles = makeStyles({
   root: {
     paddingTop: '24px',
-    paddingBottom: '24px',
+    paddingBottom: '48px',
     paddingLeft: '32px',
     paddingRight: '32px',
-    minHeight: '100%',
+    height: '100%',
     boxSizing: 'border-box',
     fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     display: 'flex',
     flexDirection: 'column',
     rowGap: '24px',
     overflowY: 'auto',
+    overflowX: 'hidden',
   },
   rootDark: {
     backgroundColor: '#0D0E11',

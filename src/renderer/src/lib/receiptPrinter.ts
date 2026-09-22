@@ -1,6 +1,7 @@
 import { Order } from './types';
 import { posApi } from './api';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
+import { generateQrDataUrl } from './qrCode';
 
 export interface ReceiptPrintOptions {
   tableOrToken?: string;
@@ -10,6 +11,7 @@ export interface ReceiptPrintOptions {
   tenderedAmount?: number;
   currency?: string;
   language?: 'english' | 'urdu' | 'bilingual';
+  googleQrDataUrl?: string;
 }
 
 /**
@@ -242,6 +244,28 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
       padding: 3px 0;
       margin-top: 3px;
     }
+    .google-qr-box {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px dashed #666;
+      text-align: center;
+    }
+    .google-qr-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+    .google-qr-sub {
+      font-size: 8.5px;
+      color: #555;
+      margin-top: 2px;
+    }
+    .google-qr-img {
+      width: 95px;
+      height: 95px;
+      margin: 4px auto 2px auto;
+      display: block;
+    }
     .footer {
       margin-top: 8px;
       text-align: center;
@@ -339,6 +363,41 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
     }
   </table>
 
+  <!-- Google Review / Maps QR Code (if configured) -->
+  ${(() => {
+    const showGoogleQr =
+      options?.storeSettings?.showGoogleMapQrOnReceipt !== false &&
+      !!(options?.googleQrDataUrl || options?.storeSettings?.googleMapsUrl);
+
+    if (!showGoogleQr || !options?.googleQrDataUrl) return '';
+
+    const isMapAction = options?.storeSettings?.googleQrAction === 'map';
+    const qrTitle = isMapAction
+      ? isUrdu
+        ? 'گوگل میپ پر ہماری لوکیشن دیکھیں'
+        : isBilingual
+        ? 'Locate on Google Maps / گوگل لوکیشن'
+        : 'Locate us on Google Maps'
+      : isUrdu
+      ? 'گوگل پر ہمیں ریٹنگ دیں'
+      : isBilingual
+      ? 'Rate Us on Google / گوگل پر ریٹنگ دیں'
+      : 'Rate us on Google Maps';
+
+    const qrSub = isUrdu
+      ? 'موبائل کیمرہ سے کیو آر کوڈ اسکین کریں'
+      : isBilingual
+      ? 'Scan with phone camera / کیمرہ سے اسکین کریں'
+      : 'Scan with camera to review us';
+
+    return `
+  <div class="google-qr-box">
+    <div class="google-qr-title">${qrTitle}</div>
+    <img class="google-qr-img" src="${options.googleQrDataUrl}" alt="Google Maps QR" />
+    <div class="google-qr-sub">${qrSub}</div>
+  </div>`;
+  })()}
+
   <!-- Footer -->
   <div class="footer">
     <div>${footerNote}</div>
@@ -352,6 +411,22 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
  * Direct print of Customer Thermal Receipt
  */
 export async function printCustomerReceipt(order: Order, options?: ReceiptPrintOptions): Promise<boolean> {
-  const html = generateCustomerReceiptHtml(order, options);
+  let googleQrDataUrl = options?.googleQrDataUrl;
+  const showGoogleQr =
+    options?.storeSettings?.showGoogleMapQrOnReceipt !== false &&
+    !!options?.storeSettings?.googleMapsUrl;
+
+  if (showGoogleQr && !googleQrDataUrl && options?.storeSettings?.googleMapsUrl) {
+    try {
+      googleQrDataUrl = await generateQrDataUrl(options.storeSettings.googleMapsUrl, {
+        width: 130,
+        margin: 1,
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const html = generateCustomerReceiptHtml(order, { ...options, googleQrDataUrl });
   return await posApi.printReceipt({ html });
 }

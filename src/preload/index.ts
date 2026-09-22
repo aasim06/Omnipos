@@ -124,8 +124,8 @@ try {
 }
 
 // Whenever network reconnects, check and perform today's automated cloud backup
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
+if (typeof (globalThis as any).window !== 'undefined') {
+  (globalThis as any).window.addEventListener('online', () => {
     ipcRenderer.invoke('backup:trigger-daily-check').catch(() => {});
   });
 }
