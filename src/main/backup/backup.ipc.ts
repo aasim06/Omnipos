@@ -14,6 +14,7 @@ interface BackupHistory {
   lastBackup?: string;
   lastBackupPath?: string;
   lastBackupSize?: number;
+  lastDailyCloudBackupDate?: string;
 }
 
 function getBackupHistoryPath(): string {
@@ -120,6 +121,154 @@ export async function uploadBackupToCloud(
   }
 }
 
+/**
+ * Generate a local system backup ZIP without opening a dialog
+ */
+export async function generateLocalBackupZip(customFilename?: string): Promise<{ finalPath: string; size: number }> {
+  const dbPath = getPosDbPath();
+  if (!existsSync(dbPath)) {
+    throw new Error('Database file does not exist yet.');
+  }
+
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+  const filename = customFilename || `Omnipos_Backup_${stamp}.zip`;
+  const backupDir = join(app.getPath('userData'), 'backups');
+  if (!existsSync(backupDir)) {
+    mkdirSync(backupDir, { recursive: true });
+  }
+
+  const finalPath = join(backupDir, filename);
+  await writeBackupZip(finalPath);
+  const stats = statSync(finalPath);
+
+  saveBackupHistory({
+    ...readBackupHistory(),
+    lastBackup: new Date().toISOString(),
+    lastBackupPath: finalPath,
+    lastBackupSize: stats.size,
+  });
+
+  return { finalPath, size: stats.size };
+}
+
+let isDailySyncInProgress = false;
+
+/**
+ * Once-a-day Automated Cloud Backup
+ * Triggered on app startup, periodic timer, or network reconnect event.
+ * Checks if today's backup is already done; if not and internet is connected, performs backup and uploads to cloud vault.
+ */
+export async function checkAndPerformDailyCloudBackup(): Promise<{ executed: boolean; reason?: string; cloudId?: string }> {
+  if (isDailySyncInProgress) {
+    return { executed: false, reason: 'Daily sync already in progress' };
+  }
+
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const history = readBackupHistory();
+
+  // If today's backup has already been synced to the cloud, skip
+  if (history.lastDailyCloudBackupDate === today) {
+    return { executed: false, reason: 'Already backed up to cloud today' };
+  }
+
+  const key = getSavedKey();
+  if (!key) {
+    return { executed: false, reason: 'No license key configured' };
+  }
+
+  const dbPath = getPosDbPath();
+  if (!existsSync(dbPath)) {
+    return { executed: false, reason: 'Database file does not exist yet' };
+  }
+
+  isDailySyncInProgress = true;
+  try {
+    // 1. Probe internet & server connection
+    let targetBase = getLicenseApiBase();
+    if (!app.isPackaged) {
+      try {
+        const ping = await fetch('http://localhost:4000/api/health', {
+          method: 'GET',
+          signal: AbortSignal.timeout(1500),
+        });
+        if (ping.ok) targetBase = 'http://localhost:4000/api';
+      } catch {}
+    }
+
+    try {
+      const probe = await fetch(`${targetBase}/backup/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(4000),
+      });
+      if (!probe.ok) {
+        return { executed: false, reason: `Server health returned status ${probe.status}` };
+      }
+    } catch (netErr: any) {
+      // Offline / Internet not reachable right now
+      return { executed: false, reason: `Offline or server unreachable: ${netErr.message}` };
+    }
+
+    console.log(`[Daily Auto Backup] Internet connection verified! Starting once-a-day backup for ${today}...`);
+
+    // 2. Generate local system backup archive
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+    const { finalPath, size } = await generateLocalBackupZip(`Omnipos_DailyAuto_${today}_${stamp}.zip`);
+
+    // 3. Upload to cloud vault
+    const uploadRes = await uploadBackupToCloud(finalPath, 'daily_auto');
+
+    if (uploadRes.ok) {
+      const currentHistory = readBackupHistory();
+      saveBackupHistory({
+        ...currentHistory,
+        lastBackup: new Date().toISOString(),
+        lastBackupPath: finalPath,
+        lastBackupSize: size,
+        lastDailyCloudBackupDate: today,
+      });
+
+      console.log(`[Daily Auto Backup] SUCCESS: Today's backup (${today}) vaulted to cloud (ID: ${uploadRes.cloudId})`);
+      return { executed: true, cloudId: uploadRes.cloudId };
+    } else {
+      console.warn(`[Daily Auto Backup] Cloud upload failed: ${uploadRes.message}`);
+      return { executed: false, reason: uploadRes.message };
+    }
+  } catch (err: any) {
+    console.error('[Daily Auto Backup] Unexpected error:', err);
+    return { executed: false, reason: err.message };
+  } finally {
+    isDailySyncInProgress = false;
+  }
+}
+
+let dailyBackupSchedulerTimer: NodeJS.Timeout | null = null;
+
+/**
+ * Initializes the background scheduler that checks for internet connectivity
+ * and runs today's backup once internet connects.
+ */
+export function initDailyCloudBackupScheduler(): void {
+  if (dailyBackupSchedulerTimer) {
+    clearInterval(dailyBackupSchedulerTimer);
+  }
+
+  // 1. Initial check 15 seconds after app startup
+  setTimeout(() => {
+    void checkAndPerformDailyCloudBackup().catch(() => {});
+  }, 15000);
+
+  // 2. Periodic check every 10 minutes:
+  // If today's backup is not done yet (e.g. net reconnected), it will perform it.
+  // If today's backup is already done, it simply skips in 0ms without hitting the network.
+  dailyBackupSchedulerTimer = setInterval(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const history = readBackupHistory();
+    if (history.lastDailyCloudBackupDate !== today) {
+      void checkAndPerformDailyCloudBackup().catch(() => {});
+    }
+  }, 10 * 60 * 1000);
+}
+
 export function registerBackupIpc(): void {
   ipcMain.removeHandler('backup:get-status');
   ipcMain.removeHandler('backup:create');
@@ -127,6 +276,17 @@ export function registerBackupIpc(): void {
   ipcMain.removeHandler('backup:flush-sync');
   ipcMain.removeHandler('backup:export-json');
   ipcMain.removeHandler('backup:sync-cloud');
+  ipcMain.removeHandler('backup:trigger-daily-check');
+
+  // Start background daily auto backup watcher
+  initDailyCloudBackupScheduler();
+
+  /**
+   * Manual or Network Event Trigger for Daily Check
+   */
+  ipcMain.handle('backup:trigger-daily-check', async () => {
+    return await checkAndPerformDailyCloudBackup();
+  });
 
   /**
    * Sync Latest Backup to Central Cloud Vault

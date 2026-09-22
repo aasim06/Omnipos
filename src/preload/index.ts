@@ -52,6 +52,7 @@ export interface PosApi {
     getStatus: () => Promise<{ dbPath: string; dbSize: number; lastBackup?: string | null; lastBackupPath?: string | null; lastBackupSize?: number | null }>;
     flushSync: (data?: { products?: any[]; categories?: any[] }) => Promise<{ ok: boolean; productsFlushed?: number; categoriesFlushed?: number; error?: string }>;
     syncCloud: (filePath?: string) => Promise<{ ok: boolean; message?: string; cloudId?: string; error?: string }>;
+    triggerDailyCheck: () => Promise<{ executed: boolean; reason?: string; cloudId?: string }>;
   };
   update: PosUpdateApi;
 }
@@ -79,6 +80,7 @@ const posApi: PosApi = {
     getStatus: () => ipcRenderer.invoke('backup:get-status'),
     flushSync: (data) => ipcRenderer.invoke('backup:flush-sync', data),
     syncCloud: (filePath) => ipcRenderer.invoke('backup:sync-cloud', filePath),
+    triggerDailyCheck: () => ipcRenderer.invoke('backup:trigger-daily-check'),
   },
   update: {
     getVersion: () => ipcRenderer.invoke('app:get-version'),
@@ -120,3 +122,11 @@ try {
 } catch (error) {
   console.error('Failed to expose posApi in main world:', error);
 }
+
+// Whenever network reconnects, check and perform today's automated cloud backup
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    ipcRenderer.invoke('backup:trigger-daily-check').catch(() => {});
+  });
+}
+
