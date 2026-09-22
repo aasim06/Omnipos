@@ -96,7 +96,6 @@ export async function uploadBackupToCloud(
     }
 
     const uploadUrl = `${targetBase}/backup/upload`;
-    console.log(`[Backup Cloud Sync] Uploading ${fileName} (${fileBuffer.length} bytes) to ${uploadUrl}...`);
 
     const res = await fetch(uploadUrl, {
       method: 'POST',
@@ -108,7 +107,6 @@ export async function uploadBackupToCloud(
 
     if (res.ok) {
       const data = (await res.json()) as any;
-      console.log('[Backup Cloud Sync] Cloud vault accepted backup:', data);
       return { ok: true, message: 'Cloud backup synced successfully', cloudId: data?.data?.id };
     } else {
       const err = (await res.json().catch(() => ({}))) as any;
@@ -208,8 +206,6 @@ export async function checkAndPerformDailyCloudBackup(): Promise<{ executed: boo
       return { executed: false, reason: `Offline or server unreachable: ${netErr.message}` };
     }
 
-    console.log(`[Daily Auto Backup] Internet connection verified! Starting once-a-day backup for ${today}...`);
-
     // 2. Generate local system backup archive
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
     const { finalPath, size } = await generateLocalBackupZip(`Omnipos_DailyAuto_${today}_${stamp}.zip`);
@@ -227,7 +223,6 @@ export async function checkAndPerformDailyCloudBackup(): Promise<{ executed: boo
         lastDailyCloudBackupDate: today,
       });
 
-      console.log(`[Daily Auto Backup] SUCCESS: Today's backup (${today}) vaulted to cloud (ID: ${uploadRes.cloudId})`);
       return { executed: true, cloudId: uploadRes.cloudId };
     } else {
       console.warn(`[Daily Auto Backup] Cloud upload failed: ${uploadRes.message}`);
