@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom';
 import {
   Button,
   Badge,
@@ -39,6 +39,7 @@ import { useProductDetailsStyles } from './productDetails.styles';
 export function ProductDetailsView(): React.JSX.Element {
   const styles = useProductDetailsStyles();
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams<{ id?: string }>();
   const queryClient = useQueryClient();
   const { notifySuccess, notifyError } = useAppToast();
@@ -72,6 +73,39 @@ export function ProductDetailsView(): React.JSX.Element {
 
   const productId = params.id || (products.length > 0 ? products[0].id : '');
   const product: Product | null = products.find((p: Product) => p.id === productId) || null;
+
+  const fromState = (location.state as any)?.from as string | undefined;
+  const searchParams = new URLSearchParams(location.search);
+  const returnUrlParam = searchParams.get('returnUrl');
+
+  const handleBack = () => {
+    if (fromState) {
+      navigate(fromState);
+    } else if (returnUrlParam) {
+      navigate(returnUrlParam);
+    } else if (window.history.length > 1) {
+      navigate(-1);
+    } else if (product?.module === 'fastfood') {
+      navigate('/catalog/fastfood');
+    } else if (product?.module === 'minimart') {
+      navigate('/catalog/omnimart');
+    } else {
+      navigate('/catalog');
+    }
+  };
+
+  const backLabel = React.useMemo(() => {
+    const target = fromState || returnUrlParam;
+    if (target) {
+      if (target.includes('/catalog/fastfood')) return 'Back to Fast Food Menu';
+      if (target.includes('/catalog/omnimart')) return 'Back to Mart Items';
+      if (target.includes('/inventory')) return 'Back to Inventory';
+      if (target.includes('/catalog')) return 'Back to Catalog';
+    }
+    if (product?.module === 'fastfood') return 'Back to Fast Food Menu';
+    if (product?.module === 'minimart') return 'Back to Mart Items';
+    return 'Back';
+  }, [fromState, returnUrlParam, product]);
 
   // Edit form state
   const [editName, setEditName] = useState('');
@@ -156,7 +190,7 @@ export function ProductDetailsView(): React.JSX.Element {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setIsDeleteDialogOpen(false);
       notifySuccess('Product deleted successfully');
-      navigate('/catalog');
+      handleBack();
     },
     onError: (err: any) => {
       notifyError(err?.message || 'Failed to delete product');
@@ -210,18 +244,16 @@ export function ProductDetailsView(): React.JSX.Element {
         <div className={styles.topBar}>
           <button
             type="button"
-            onClick={() => navigate('/catalog')}
+            onClick={handleBack}
             className={styles.backButton}
           >
-            <ArrowLeft20Regular /> Back to Catalog
+            <ArrowLeft20Regular /> {backLabel}
           </button>
         </div>
         <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748B' }}>
           <h3>Product Not Found</h3>
           <p>The product you are looking for does not exist or has been removed.</p>
-          <Button appearance="primary" onClick={() => navigate('/catalog')}>
-            Return to Products Catalog
-          </Button>
+          <Button appearance="primary" onClick={handleBack}>{backLabel}</Button>
         </div>
       </div>
     );
@@ -244,10 +276,10 @@ export function ProductDetailsView(): React.JSX.Element {
       <div className={styles.topBar}>
         <button
           type="button"
-          onClick={() => navigate('/catalog')}
+          onClick={handleBack}
           className={styles.backButton}
         >
-          <ArrowLeft20Regular /> Back to Catalog
+          <ArrowLeft20Regular /> {backLabel}
         </button>
 
         <div className={styles.actionsGroup}>

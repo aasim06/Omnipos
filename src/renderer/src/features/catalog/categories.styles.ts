@@ -21,7 +21,10 @@ export const getAccentBadgeStyle = (accentColor: string): React.CSSProperties =>
 
 export const useCategoriesStyles = makeStyles({
   container: {
-    padding: '20px 24px',
+    paddingTop: 0,
+    paddingRight: '24px',
+    paddingBottom: '20px',
+    paddingLeft: '24px',
     height: '100%',
     boxSizing: 'border-box',
     display: 'flex',
@@ -32,13 +35,23 @@ export const useCategoriesStyles = makeStyles({
     overflowX: 'hidden',
   },
   pageHeader: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 30,
+    backgroundColor: tokens.colorNeutralBackground2,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    paddingTop: '20px',
     paddingBottom: '16px',
+    paddingLeft: '24px',
+    paddingRight: '24px',
+    marginLeft: '-24px',
+    marginRight: '-24px',
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
     borderBottomColor: tokens.colorNeutralStroke1,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
   headerTitle: {
     fontWeight: 800,

@@ -2,7 +2,10 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 
 export const useCustomersStyles = makeStyles({
   container: {
-    padding: '24px 28px',
+    paddingTop: 0,
+    paddingRight: '28px',
+    paddingBottom: '24px',
+    paddingLeft: '28px',
     height: '100%',
     boxSizing: 'border-box',
     display: 'flex',
@@ -12,11 +15,25 @@ export const useCustomersStyles = makeStyles({
     overflowY: 'auto',
   },
   header: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 30,
+    backgroundColor: tokens.colorNeutralBackground2,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: '12px',
+    paddingTop: '20px',
+    paddingBottom: '16px',
+    paddingLeft: '28px',
+    paddingRight: '28px',
+    marginLeft: '-28px',
+    marginRight: '-28px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: tokens.colorNeutralStroke1,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
   headerLeft: {
     display: 'flex',

@@ -10,6 +10,8 @@ import {
   ProgressBar,
   mergeClasses,
   Button,
+  Skeleton,
+  SkeletonItem,
 } from '@fluentui/react-components';
 import {
   ArrowTrendingLines24Regular,
@@ -25,11 +27,10 @@ import {
   CheckmarkCircle20Filled,
   Info16Regular,
 } from '@fluentui/react-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { resolveApiUrl } from '@/lib/api';
 import { offlineDb } from '@/lib/offlineDb';
 import { formatPKR } from '@/lib/utils';
-import { ReportsPageSkeleton } from '@/components/skeletons/PageSkeletons';
 
 import { useReportsAnalyticsStyles, useStyles } from './reportsAnalytics.styles';
 
@@ -69,8 +70,9 @@ export function ReportsAnalyticsView(): React.JSX.Element {
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
 
-  const { data: report, isLoading, refetch } = useQuery({
+  const { data: report, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['analytics-report', dateFilter, customStart, customEnd],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const { start, end } = getDateRange(dateFilter, customStart, customEnd);
       const startMs = start.getTime();
@@ -243,9 +245,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
     document.body.removeChild(link);
   };
 
-  if (isLoading) {
-    return <ReportsPageSkeleton />;
-  }
+  const isInitialLoading = isLoading && !report;
 
   return (
     <div className={styles.container}>
@@ -265,13 +265,20 @@ export function ReportsAnalyticsView(): React.JSX.Element {
             appearance="subtle"
             icon={<ArrowDownload20Regular />}
             onClick={handleExportCsv}
+            disabled={isInitialLoading}
             title="Export summary to CSV Excel"
           >
             Export CSV
           </Button>
-          <Badge appearance="tint" color={netProfit >= 0 ? 'success' : 'danger'} size="large">
-            {netProfit >= 0 ? `Profitable (${netMarginPct}%)` : `Loss (${netMarginPct}%)`}
-          </Badge>
+          {isInitialLoading ? (
+            <Skeleton animation="wave">
+              <SkeletonItem shape="rectangle" style={{ width: '110px', height: '28px', borderRadius: '14px' }} />
+            </Skeleton>
+          ) : (
+            <Badge appearance="tint" color={netProfit >= 0 ? 'success' : 'danger'} size="large">
+              {netProfit >= 0 ? `Profitable (${netMarginPct}%)` : `Loss (${netMarginPct}%)`}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -351,15 +358,31 @@ export function ReportsAnalyticsView(): React.JSX.Element {
         )}
       </div>
 
+      {/* Subtle Progress Bar on background fetch/recalculation */}
+      {isFetching && (
+        <div style={{ height: '3px', marginTop: '6px', marginBottom: '2px', borderRadius: '2px', overflow: 'hidden' }}>
+          <ProgressBar thickness="medium" color="brand" />
+        </div>
+      )}
+
       {/* P&L Statement Grid */}
-      <div className={styles.pnlGrid}>
+      <div className={styles.pnlGrid} style={{ opacity: isFetching ? 0.75 : 1, transition: 'opacity 0.2s ease' }}>
         <div className={styles.metricCard}>
           <div className={styles.metricHeader}>
             <ShoppingBag24Regular className={styles.salesIcon} />
             <Caption1 className={styles.metricLabel}>Total Gross Sales</Caption1>
           </div>
-          <Subtitle1 className={styles.salesValue}>{formatPKR(grossSales)}</Subtitle1>
-          <Caption1 className={styles.metricSubtext}>From {totalOrders} completed orders</Caption1>
+          {isInitialLoading ? (
+            <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+              <SkeletonItem shape="rectangle" style={{ width: '130px', height: '26px', borderRadius: '4px' }} />
+              <SkeletonItem shape="rectangle" style={{ width: '90px', height: '14px', borderRadius: '3px' }} />
+            </Skeleton>
+          ) : (
+            <>
+              <Subtitle1 className={styles.salesValue}>{formatPKR(grossSales)}</Subtitle1>
+              <Caption1 className={styles.metricSubtext}>From {totalOrders} completed orders</Caption1>
+            </>
+          )}
         </div>
 
         <div className={styles.metricCard}>
@@ -367,18 +390,36 @@ export function ReportsAnalyticsView(): React.JSX.Element {
             <ArrowCounterclockwise24Regular className={styles.refundIcon} />
             <Caption1 className={styles.metricLabel}>Sales Returns &amp; Refunds</Caption1>
           </div>
-          <Subtitle1 className={styles.refundValue}>- {formatPKR(totalRefunds)}</Subtitle1>
-          <Caption1 className={styles.metricSubtext}>{totalRefundsCount} processed returns</Caption1>
+          {isInitialLoading ? (
+            <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+              <SkeletonItem shape="rectangle" style={{ width: '130px', height: '26px', borderRadius: '4px' }} />
+              <SkeletonItem shape="rectangle" style={{ width: '90px', height: '14px', borderRadius: '3px' }} />
+            </Skeleton>
+          ) : (
+            <>
+              <Subtitle1 className={styles.refundValue}>- {formatPKR(totalRefunds)}</Subtitle1>
+              <Caption1 className={styles.metricSubtext}>{totalRefundsCount} processed returns</Caption1>
+            </>
+          )}
         </div>
 
-        {totalDiscounts > 0 && (
+        {(totalDiscounts > 0 || isInitialLoading) && (
           <div className={styles.metricCard}>
             <div className={styles.metricHeader}>
               <Tag24Regular className={styles.refundIcon} />
               <Caption1 className={styles.metricLabel}>Discounts Granted</Caption1>
             </div>
-            <Subtitle1 className={styles.refundValue}>- {formatPKR(totalDiscounts)}</Subtitle1>
-            <Caption1 className={styles.metricSubtext}>Subtracted from customer gross bills</Caption1>
+            {isInitialLoading ? (
+              <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                <SkeletonItem shape="rectangle" style={{ width: '130px', height: '26px', borderRadius: '4px' }} />
+                <SkeletonItem shape="rectangle" style={{ width: '90px', height: '14px', borderRadius: '3px' }} />
+              </Skeleton>
+            ) : (
+              <>
+                <Subtitle1 className={styles.refundValue}>- {formatPKR(totalDiscounts)}</Subtitle1>
+                <Caption1 className={styles.metricSubtext}>Subtracted from customer gross bills</Caption1>
+              </>
+            )}
           </div>
         )}
 
@@ -387,8 +428,17 @@ export function ReportsAnalyticsView(): React.JSX.Element {
             <ShoppingBag24Regular className={styles.salesIcon} />
             <Caption1 className={styles.metricLabel}>Net Realized Sales</Caption1>
           </div>
-          <Subtitle1 className={styles.salesValue}>{formatPKR(netSales)}</Subtitle1>
-          <Caption1 className={styles.metricSubtext}>Gross sales minus returns</Caption1>
+          {isInitialLoading ? (
+            <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+              <SkeletonItem shape="rectangle" style={{ width: '130px', height: '26px', borderRadius: '4px' }} />
+              <SkeletonItem shape="rectangle" style={{ width: '90px', height: '14px', borderRadius: '3px' }} />
+            </Skeleton>
+          ) : (
+            <>
+              <Subtitle1 className={styles.salesValue}>{formatPKR(netSales)}</Subtitle1>
+              <Caption1 className={styles.metricSubtext}>Gross sales minus returns</Caption1>
+            </>
+          )}
         </div>
 
         <div className={styles.metricCard}>
@@ -401,10 +451,19 @@ export function ReportsAnalyticsView(): React.JSX.Element {
               </Badge>
             </div>
           </div>
-          <Subtitle1 className={styles.cogsValue}>- {formatPKR(cogs)}</Subtitle1>
-          <Caption1 className={styles.metricSubtext}>
-            {isRealCostUsed ? 'Calculated from product cost prices' : 'Direct raw material / wholesale estimate'}
-          </Caption1>
+          {isInitialLoading ? (
+            <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+              <SkeletonItem shape="rectangle" style={{ width: '130px', height: '26px', borderRadius: '4px' }} />
+              <SkeletonItem shape="rectangle" style={{ width: '90px', height: '14px', borderRadius: '3px' }} />
+            </Skeleton>
+          ) : (
+            <>
+              <Subtitle1 className={styles.cogsValue}>- {formatPKR(cogs)}</Subtitle1>
+              <Caption1 className={styles.metricSubtext}>
+                {isRealCostUsed ? 'Calculated from product cost prices' : 'Direct raw material / wholesale estimate'}
+              </Caption1>
+            </>
+          )}
         </div>
 
         <div className={styles.metricCard}>
@@ -412,8 +471,17 @@ export function ReportsAnalyticsView(): React.JSX.Element {
             <Money24Regular className={styles.expenseIcon} />
             <Caption1 className={styles.metricLabel}>Operational Expenses</Caption1>
           </div>
-          <Subtitle1 className={styles.expenseValue}>- {formatPKR(expenses)}</Subtitle1>
-          <Caption1 className={styles.metricSubtext}>Rent, utilities, staff &amp; petty cash</Caption1>
+          {isInitialLoading ? (
+            <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+              <SkeletonItem shape="rectangle" style={{ width: '130px', height: '26px', borderRadius: '4px' }} />
+              <SkeletonItem shape="rectangle" style={{ width: '90px', height: '14px', borderRadius: '3px' }} />
+            </Skeleton>
+          ) : (
+            <>
+              <Subtitle1 className={styles.expenseValue}>- {formatPKR(expenses)}</Subtitle1>
+              <Caption1 className={styles.metricSubtext}>Rent, utilities, staff &amp; petty cash</Caption1>
+            </>
+          )}
         </div>
 
         <div
@@ -430,17 +498,26 @@ export function ReportsAnalyticsView(): React.JSX.Element {
               Clean Net Profit (Earnings)
             </Caption1>
           </div>
-          <Subtitle1 className={netProfit >= 0 ? styles.netProfitValueSuccess : styles.netProfitValueDanger}>
-            {formatPKR(netProfit)}
-          </Subtitle1>
-          <Caption1 className={styles.metricSubtext}>
-            Net Margin: <strong>{netMarginPct}%</strong> take-home
-          </Caption1>
+          {isInitialLoading ? (
+            <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+              <SkeletonItem shape="rectangle" style={{ width: '130px', height: '26px', borderRadius: '4px' }} />
+              <SkeletonItem shape="rectangle" style={{ width: '90px', height: '14px', borderRadius: '3px' }} />
+            </Skeleton>
+          ) : (
+            <>
+              <Subtitle1 className={netProfit >= 0 ? styles.netProfitValueSuccess : styles.netProfitValueDanger}>
+                {formatPKR(netProfit)}
+              </Subtitle1>
+              <Caption1 className={styles.metricSubtext}>
+                Net Margin: <strong>{netMarginPct}%</strong> take-home
+              </Caption1>
+            </>
+          )}
         </div>
       </div>
 
       {/* Breakdown Cards */}
-      <div className={styles.sectionGrid}>
+      <div className={styles.sectionGrid} style={{ opacity: isFetching ? 0.75 : 1, transition: 'opacity 0.2s ease' }}>
         {/* Top Selling Items */}
         <div className={styles.sectionCard}>
           <div className={styles.sectionTitleRow}>
@@ -449,7 +526,19 @@ export function ReportsAnalyticsView(): React.JSX.Element {
             </Body1>
           </div>
 
-          {topItems.length === 0 ? (
+          {isInitialLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} animation="wave" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <SkeletonItem shape="rectangle" style={{ width: '150px', height: '16px', borderRadius: '4px' }} />
+                    <SkeletonItem shape="rectangle" style={{ width: '100px', height: '12px', borderRadius: '3px' }} />
+                  </div>
+                  <SkeletonItem shape="rectangle" style={{ width: '64px', height: '24px', borderRadius: '12px' }} />
+                </Skeleton>
+              ))}
+            </div>
+          ) : topItems.length === 0 ? (
             <Body1 className={styles.emptyText}>No items sold in this date period.</Body1>
           ) : (
             <div className={styles.rankingList}>
@@ -480,37 +569,56 @@ export function ReportsAnalyticsView(): React.JSX.Element {
             </Body1>
           </div>
 
-          <div className={styles.ratioStack}>
-            <div>
-              <div className={styles.ratioHeaderRow}>
-                <Caption1 className={styles.ratioLabel}>Gross Margin (Sales vs COGS)</Caption1>
-                <Caption1 className={styles.ratioValueDefault}>{grossMarginPct}%</Caption1>
-              </div>
-              <ProgressBar
-                value={netSales > 0 ? Math.min(1, Math.max(0, (netSales - cogs) / netSales)) : 0}
-                color="brand"
-              />
+          {isInitialLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+              <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <SkeletonItem shape="rectangle" style={{ width: '160px', height: '14px', borderRadius: '4px' }} />
+                  <SkeletonItem shape="rectangle" style={{ width: '40px', height: '14px', borderRadius: '4px' }} />
+                </div>
+                <SkeletonItem shape="rectangle" style={{ width: '100%', height: '8px', borderRadius: '4px' }} />
+              </Skeleton>
+              <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <SkeletonItem shape="rectangle" style={{ width: '180px', height: '14px', borderRadius: '4px' }} />
+                  <SkeletonItem shape="rectangle" style={{ width: '40px', height: '14px', borderRadius: '4px' }} />
+                </div>
+                <SkeletonItem shape="rectangle" style={{ width: '100%', height: '8px', borderRadius: '4px' }} />
+              </Skeleton>
             </div>
+          ) : (
+            <div className={styles.ratioStack}>
+              <div>
+                <div className={styles.ratioHeaderRow}>
+                  <Caption1 className={styles.ratioLabel}>Gross Margin (Sales vs COGS)</Caption1>
+                  <Caption1 className={styles.ratioValueDefault}>{grossMarginPct}%</Caption1>
+                </div>
+                <ProgressBar
+                  value={netSales > 0 ? Math.min(1, Math.max(0, (netSales - cogs) / netSales)) : 0}
+                  color="brand"
+                />
+              </div>
 
-            <div>
-              <div className={styles.ratioHeaderRow}>
-                <Caption1 className={styles.ratioLabel}>Net Profit Margin (Final Take Home)</Caption1>
-                <Caption1 className={netProfit >= 0 ? styles.ratioValueSuccess : styles.ratioValueDanger}>
-                  {netMarginPct}%
+              <div>
+                <div className={styles.ratioHeaderRow}>
+                  <Caption1 className={styles.ratioLabel}>Net Profit Margin (Final Take Home)</Caption1>
+                  <Caption1 className={netProfit >= 0 ? styles.ratioValueSuccess : styles.ratioValueDanger}>
+                    {netMarginPct}%
+                  </Caption1>
+                </div>
+                <ProgressBar
+                  value={netSales > 0 ? Math.min(1, Math.max(0, netProfit / netSales)) : 0}
+                  color={netProfit >= 0 ? 'success' : 'error'}
+                />
+              </div>
+
+              <div className={styles.formulaBox}>
+                <Caption1 className={styles.formulaText}>
+                  Formula: Net Profit = Net Realized Sales ({formatPKR(netSales)}) - {isRealCostUsed ? 'Actual' : 'Estimated'} COGS ({formatPKR(cogs)}) - Expenses ({formatPKR(expenses)}).
                 </Caption1>
               </div>
-              <ProgressBar
-                value={netSales > 0 ? Math.min(1, Math.max(0, netProfit / netSales)) : 0}
-                color={netProfit >= 0 ? 'success' : 'error'}
-              />
             </div>
-
-            <div className={styles.formulaBox}>
-              <Caption1 className={styles.formulaText}>
-                Formula: Net Profit = Net Realized Sales ({formatPKR(netSales)}) - {isRealCostUsed ? 'Actual' : 'Estimated'} COGS ({formatPKR(cogs)}) - Expenses ({formatPKR(expenses)}).
-              </Caption1>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

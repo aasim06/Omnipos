@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -39,6 +39,7 @@ import { useInventoryDashboardStyles, useStyles } from './inventoryDashboard.sty
 export function InventoryDashboardView(): React.JSX.Element {
   const styles = useInventoryDashboardStyles();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch Products: Offline-First Cache (<5ms)
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
@@ -447,7 +448,7 @@ export function InventoryDashboardView(): React.JSX.Element {
                     border: `1px solid ${isExp ? '#F9D9DC' : '#FCE3A1'}`,
                     cursor: 'pointer'
                   }}
-                  onClick={() => navigate(`/catalog/products/${prod.id}`)}
+                  onClick={() => navigate(`/catalog/products/${prod.id}`, { state: { from: location.pathname + location.search } })}
                 >
                   <div>
                     <strong style={{ fontSize: '13.5px', color: '#323130', display: 'block' }}>

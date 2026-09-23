@@ -2,7 +2,10 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 
 export const useProductDetailsStyles = makeStyles({
   container: {
-    padding: '24px 32px',
+    paddingTop: 0,
+    paddingRight: '32px',
+    paddingBottom: '24px',
+    paddingLeft: '32px',
     height: '100%',
     boxSizing: 'border-box',
     display: 'flex',
@@ -13,11 +16,25 @@ export const useProductDetailsStyles = makeStyles({
     overflowX: 'hidden',
   },
   topBar: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 30,
+    backgroundColor: tokens.colorNeutralBackground2,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: '16px',
     flexWrap: 'wrap',
+    paddingTop: '20px',
+    paddingBottom: '16px',
+    paddingLeft: '32px',
+    paddingRight: '32px',
+    marginLeft: '-32px',
+    marginRight: '-32px',
+    borderBottomWidth: '1px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: tokens.colorNeutralStroke1,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
   backButton: {
     display: 'flex',

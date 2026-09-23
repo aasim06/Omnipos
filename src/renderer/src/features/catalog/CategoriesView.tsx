@@ -35,7 +35,7 @@ import {
   Camera,
   Package,
 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -116,11 +116,13 @@ export function CategoriesView(): React.JSX.Element {
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
     queryKey: ['categories'],
+    placeholderData: keepPreviousData,
     queryFn: () => posApi.fetchCategories(),
   });
 
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
     queryKey: ['products'],
+    placeholderData: keepPreviousData,
     queryFn: () => posApi.fetchProducts(),
   });
 
@@ -260,7 +262,7 @@ export function CategoriesView(): React.JSX.Element {
     createCategoryMutation.mutate(data);
   };
 
-  if (isLoadingCategories || isLoadingProducts) {
+  if ((isLoadingCategories || isLoadingProducts) && categories.length === 0) {
     return <TablePageSkeleton />;
   }
 

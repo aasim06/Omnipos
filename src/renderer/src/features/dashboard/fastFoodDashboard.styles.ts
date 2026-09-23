@@ -2,7 +2,7 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 
 export const useFastFoodDashboardStyles = makeStyles({
   root: {
-    paddingTop: '24px',
+    paddingTop: 0,
     paddingBottom: '48px',
     paddingLeft: '32px',
     paddingRight: '32px',
@@ -26,20 +26,31 @@ export const useFastFoodDashboardStyles = makeStyles({
 
   // Header & Module Tabs
   header: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 30,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
     columnGap: '16px',
     rowGap: '16px',
+    paddingTop: '20px',
     paddingBottom: '16px',
+    paddingLeft: '32px',
+    paddingRight: '32px',
+    marginLeft: '-32px',
+    marginRight: '-32px',
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
   headerDark: {
+    backgroundColor: '#0D0E11',
     borderBottomColor: 'rgba(255, 255, 255, 0.07)',
   },
   headerLight: {
+    backgroundColor: '#F8FAFC',
     borderBottomColor: 'rgba(0, 0, 0, 0.08)',
   },
   headerTitleRow: {

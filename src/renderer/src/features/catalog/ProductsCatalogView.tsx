@@ -864,7 +864,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                     <div
                       className={styles.liveCardContent}
                       style={{ cursor: 'pointer' }}
-                      onClick={() => navigate(`/catalog/products/${p.id}`)}
+                      onClick={() => navigate(`/catalog/products/${p.id}`, { state: { from: location.pathname + location.search } })}
                       title="Click to view product details"
                     >
                       <div>
@@ -1008,7 +1008,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                               <Body1
                                 className={styles.prodTitle}
                                 style={{ cursor: 'pointer' }}
-                                onClick={() => navigate(`/catalog/products/${p.id}`)}
+                                onClick={() => navigate(`/catalog/products/${p.id}`, { state: { from: location.pathname + location.search } })}
                                 title="Click to view product details"
                               >
                                 {p.name}
@@ -1132,7 +1132,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                               type="button"
                               className={styles.actionBtn}
                               style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
-                              onClick={() => navigate(`/catalog/products/${p.id}`)}
+                              onClick={() => navigate(`/catalog/products/${p.id}`, { state: { from: location.pathname + location.search } })}
                               title="View Product Details"
                             >
                               <Eye20Regular style={{ width: 15, height: 15 }} />

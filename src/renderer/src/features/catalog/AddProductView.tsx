@@ -30,7 +30,7 @@ import {
   Checkmark16Filled,
   Calendar20Regular,
 } from '@fluentui/react-icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -502,6 +502,7 @@ export function AddProductView(): React.JSX.Element {
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: ['categories'],
+    placeholderData: keepPreviousData,
     queryFn: () => posApi.fetchCategories(),
   });
 
@@ -2213,7 +2214,7 @@ export function AddProductView(): React.JSX.Element {
     saveProductMutation.mutate(data);
   };
 
-  if (isLoading) {
+  if (isLoading && categories.length === 0) {
     return <TablePageSkeleton />;
   }
 

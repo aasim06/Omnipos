@@ -37,7 +37,10 @@ export type SheetLayout = 'a4_40' | 'a4_24' | 'a4_65' | 'thermal_50x25' | 'therm
 
 const useStyles = makeStyles({
   container: {
-    padding: '24px',
+    paddingTop: 0,
+    paddingRight: '24px',
+    paddingBottom: '24px',
+    paddingLeft: '24px',
     height: '100%',
     boxSizing: 'border-box',
     display: 'flex',
@@ -47,13 +50,23 @@ const useStyles = makeStyles({
     overflowY: 'auto',
   },
   header: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 30,
+    backgroundColor: tokens.colorNeutralBackground2,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: '20px',
     paddingBottom: '16px',
+    paddingLeft: '24px',
+    paddingRight: '24px',
+    marginLeft: '-24px',
+    marginRight: '-24px',
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
     borderBottomColor: tokens.colorNeutralStroke2,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
   headerLeft: {
     display: 'flex',
