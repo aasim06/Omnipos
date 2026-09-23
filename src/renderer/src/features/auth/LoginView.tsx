@@ -631,14 +631,6 @@ export function LoginView(): React.JSX.Element {
                   <label htmlFor="login-password" className={styles.fieldLabel}>
                     Enter Password
                   </label>
-                  <button
-                    type="button"
-                    onClick={fillAdminCredentials}
-                    className={styles.fieldHelperLink}
-                    title="Click to fill default admin credentials"
-                  >
-                    Default: admin / admin123
-                  </button>
                 </div>
                 <div className={styles.inputWrapper}>
                   <input

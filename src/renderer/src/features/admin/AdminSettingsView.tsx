@@ -541,28 +541,7 @@ export function AdminSettingsView(): React.JSX.Element {
           >
             Add New Cashier / Staff
           </Button>
-        ) : activeTab === 'updates' ? (
-          isUpdateReady ? (
-            <Button
-              appearance="primary"
-              icon={<ArrowSync20Regular />}
-              onClick={installUpdate}
-              className={styles.updateInstallBtn}
-            >
-              Restart &amp; Install Update
-            </Button>
-          ) : (
-            <Button
-              appearance="primary"
-              icon={<ArrowSync20Regular />}
-              disabled={isChecking || isDownloading}
-              onClick={handleManualCheckUpdate}
-              className={styles.saveButton}
-            >
-              {isChecking ? 'Checking…' : isDownloading ? `Downloading (${downloadProgress}%)` : 'Check for Updates'}
-            </Button>
-          )
-        ) : (
+        ) : activeTab === 'updates' ? null : (
           <Button
             appearance="primary"
             icon={saveSuccess ? <Checkmark20Filled /> : <Save20Regular />}
@@ -639,7 +618,7 @@ export function AdminSettingsView(): React.JSX.Element {
             </Badge>
           ) : isDownloading ? (
             <Badge appearance="tint" color="brand">
-              {downloadProgress}%
+              Downloading
             </Badge>
           ) : (
             <Badge
@@ -1549,24 +1528,26 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
             </div>
 
-            {isUpdateReady ? (
-              <Button
-                appearance="primary"
-                icon={<ArrowSync20Regular />}
-                onClick={installUpdate}
-                className={styles.updateInstallBtn}
-              >
-                Restart &amp; Install Now
-              </Button>
+            {isDownloading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Spinner size="extra-tiny" />
+                <Caption1 style={{ color: tokens.colorNeutralForeground2, fontWeight: 600 }}>
+                  Downloading update in background…
+                </Caption1>
+              </div>
+            ) : isUpdateReady ? (
+              <Badge appearance="filled" color="success">
+                Update Ready
+              </Badge>
             ) : (
               <Button
                 appearance="primary"
                 icon={<ArrowSync20Regular />}
-                disabled={isChecking || isDownloading}
+                disabled={isChecking}
                 onClick={handleManualCheckUpdate}
                 className={mergeClasses(styles.primaryRedButton, styles.headerActionBtn)}
               >
-                {isChecking ? 'Checking…' : isDownloading ? `Downloading (${downloadProgress}%)` : 'Check for Updates'}
+                {isChecking ? 'Checking…' : 'Check for Updates'}
               </Button>
             )}
           </div>
