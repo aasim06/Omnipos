@@ -11,7 +11,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     fontFamily: "'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif",
     display: 'flex',
     flexDirection: 'column',
-    rowGap: '24px',
+    rowGap: '16px',
     overflowY: 'auto',
     overflowX: 'hidden',
   },
@@ -349,9 +349,9 @@ export const useFastFoodDashboardStyles = makeStyles({
   // KPI Metrics Grid & Cards
   kpiGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-    columnGap: '16px',
-    rowGap: '16px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    columnGap: '12px',
+    rowGap: '12px',
   },
   kpiCard: {
     borderRadius: '8px',
@@ -433,8 +433,6 @@ export const useFastFoodDashboardStyles = makeStyles({
   kpiTitle: {
     fontSize: '12px',
     fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
   },
   kpiIconRed: {
     width: '36px',
@@ -1438,7 +1436,6 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   orderTypeTag: {
     fontSize: '11px',
-    textTransform: 'uppercase',
     paddingTop: '1px',
     paddingBottom: '1px',
     paddingLeft: '6px',
