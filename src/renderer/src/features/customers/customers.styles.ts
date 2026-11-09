@@ -161,8 +161,6 @@ export const useCustomersStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     fontWeight: 600,
     fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   td: {

@@ -1,3 +1,4 @@
+import { KpiTile, PageHeader } from '@/components/win11';
 import React, { useState, useMemo } from 'react';
 import {
   makeStyles,
@@ -381,71 +382,40 @@ export function CustomersView(): React.JSX.Element {
 
   return (
     <div className={styles.container}>
-      {/* ── Page Header ── */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <div className={styles.headerLeftRow}>
-            <PeopleCommunity24Regular className={styles.headerIconRed} />
-            <span className={styles.title}>Customers &amp; Sales Returns</span>
-          </div>
-          <span className={styles.subtitle}>
-            Customer directory, purchase logs, credit khata &amp; instant product refunds with automated inventory restock
-          </span>
-        </div>
+      {/* ── Page header (Windows 11) ── */}
+      <PageHeader
+        title="Customers"
+        subtitle="Customer directory, purchase history, khata and sales returns"
+        actions={
+          <>
+            <Button
+              appearance="secondary"
+              icon={<ArrowCounterclockwise20Regular />}
+              onClick={() => {
+                setSelectedOrderForRefund(null);
+                setRefundSearchQuery('');
+                setIsRefundModalOpen(true);
+              }}
+            >
+              Process return
+            </Button>
+            <Button appearance="primary" icon={<Add20Regular />} onClick={() => setIsAddCustomerOpen(true)}>
+              Add customer
+            </Button>
+          </>
+        }
+      />
 
-        <div className={styles.headerActions}>
-          <Button
-            className={styles.refundHeaderBtn}
-            icon={<ArrowCounterclockwise20Regular />}
-            onClick={() => {
-              setSelectedOrderForRefund(null);
-              setRefundSearchQuery('');
-              setIsRefundModalOpen(true);
-            }}
-          >
-            Process Refund / Return
-          </Button>
-          <Button
-            className={styles.primaryBtn}
-            icon={<Add20Regular />}
-            onClick={() => setIsAddCustomerOpen(true)}
-          >
-            Add New Customer
-          </Button>
-        </div>
-      </div>
-
-      {/* ── Stat Cards ── */}
+      {/* ── Key numbers ── */}
       <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <div className={mergeClasses(styles.statIconBox, styles.statIconBoxRed)}>
-            <PeopleCommunity24Regular className={styles.icon22} />
-          </div>
-          <div className={styles.statContent}>
-            <span className={styles.statValue}>{totalCustomerCount}</span>
-            <span className={styles.statLabel}>Total Customers</span>
-          </div>
-        </div>
-
-        <div className={styles.statCard}>
-          <div className={mergeClasses(styles.statIconBox, styles.statIconBoxAmber)}>
-            <Money20Regular className={styles.icon22} />
-          </div>
-          <div className={styles.statContent}>
-            <span className={styles.statValue}>{formatPKR(totalKhataDebt)}</span>
-            <span className={styles.statLabel}>Total Khata Receivables</span>
-          </div>
-        </div>
-
-        <div className={styles.statCard}>
-          <div className={mergeClasses(styles.statIconBox, styles.statIconBoxBlue)}>
-            <ArrowCounterclockwise20Regular className={styles.icon22} />
-          </div>
-          <div className={styles.statContent}>
-            <span className={styles.statValue}>{formatPKR(totalRefundAmount)}</span>
-            <span className={styles.statLabel}>Total Sales Returns Processed</span>
-          </div>
-        </div>
+        <KpiTile label="Customers" value={totalCustomerCount} icon={<PeopleCommunity24Regular />} />
+        <KpiTile
+          label="Khata receivables"
+          value={formatPKR(totalKhataDebt)}
+          tone={totalKhataDebt > 0 ? 'warning' : 'neutral'}
+          icon={<Money20Regular />}
+        />
+        <KpiTile label="Sales returns" value={formatPKR(totalRefundAmount)} icon={<ArrowCounterclockwise20Regular />} />
       </div>
 
       {/* ── Tabs: Customers List vs Refunds History ── */}

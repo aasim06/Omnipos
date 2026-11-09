@@ -1,3 +1,4 @@
+import { KpiTile, PageHeader } from '@/components/win11';
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -397,69 +398,29 @@ export function QuotationsView(): React.JSX.Element {
 
   return (
     <div className={styles.container}>
-      {/* ── Page Header ── */}
-      <div className={styles.pageHeader}>
-        <div className={styles.headerLeft}>
-          <div className={styles.iconBox}>
-            <DocumentBulletList24Regular />
-          </div>
-          <div>
-            <Subtitle1 className={styles.titleBold}>Quotations & Price Estimates</Subtitle1>
-            <div>
-              <Caption1 className={styles.captionMuted}>
-                Generate estimates, print formal A4 quotes, and convert to sale with 1-click
-              </Caption1>
-            </div>
-          </div>
-        </div>
+      {/* ── Page header (Windows 11) ── */}
+      <PageHeader
+        title="Quotations"
+        subtitle="Price estimates, printed A4 quotes and one-click conversion to a sale"
+        actions={
+          <Button appearance="primary" icon={<Add20Regular />} onClick={openNewQuotationModal}>
+            New quotation
+          </Button>
+        }
+      />
 
-        <Button
-          appearance="primary"
-          icon={<Add20Regular />}
-          onClick={openNewQuotationModal}
-          className={styles.btnPrimaryRed}
-        >
-          + Create Quotation
-        </Button>
-      </div>
-
-      {/* ── KPI Metric Cards ── */}
+      {/* ── Key numbers ── */}
       <div className={styles.kpiGrid}>
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiTitle}>
-            <DocumentBulletList20Filled className={styles.iconSky} /> Total Estimates
-          </div>
-          <div className={styles.kpiValue}>{kpiStats.totalCount}</div>
-          <div className={styles.kpiSub}>Total Pipeline: {formatPKR(kpiStats.totalValue)}</div>
-        </div>
-
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiTitle}>
-            <Timer20Regular className={styles.iconAmber} /> Pending Quotes
-          </div>
-          <div className={styles.kpiValue}>{kpiStats.pending}</div>
-          <div className={styles.kpiSub}>Awaiting client confirmation</div>
-        </div>
-
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiTitle}>
-            <CheckmarkCircle20Regular className={styles.iconEmerald} /> Converted to Sales
-          </div>
-          <div className={mergeClasses(styles.kpiValue, styles.kpiValueEmerald)}>
-            {kpiStats.converted}
-          </div>
-          <div className={styles.kpiSub}>{kpiStats.conversionRate}% conversion rate</div>
-        </div>
-
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiTitle}>
-            <Money20Regular className={styles.iconRed} /> Pipeline Value
-          </div>
-          <div className={mergeClasses(styles.kpiValue, styles.kpiValueRed)}>
-            {formatPKR(kpiStats.totalValue)}
-          </div>
-          <div className={styles.kpiSub}>Estimated gross potential</div>
-        </div>
+        <KpiTile label="Estimates" value={kpiStats.totalCount} icon={<DocumentBulletList20Filled />} footer={<span>Pipeline {formatPKR(kpiStats.totalValue)}</span>} />
+        <KpiTile label="Pending" value={kpiStats.pending} icon={<Timer20Regular />} footer={<span>Awaiting customer confirmation</span>} />
+        <KpiTile
+          label="Converted"
+          value={kpiStats.converted}
+          tone={kpiStats.converted > 0 ? 'success' : 'neutral'}
+          icon={<CheckmarkCircle20Regular />}
+          footer={<span>{kpiStats.conversionRate}% conversion rate</span>}
+        />
+        <KpiTile label="Pipeline value" value={formatPKR(kpiStats.totalValue)} icon={<Money20Regular />} footer={<span>Total of all estimates</span>} />
       </div>
 
       {/* ── Filter & Search Bar ── */}
