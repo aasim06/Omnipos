@@ -1665,6 +1665,31 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
       setShowReceiptModal(true);
       playSuccessChime();
       setTimeout(() => setIsSuccess(false), 3000);
+
+      // ── Auto-print receipt immediately on Confirm Order ──
+      try {
+        const freshSettings = refreshStoreSettings();
+        const currentLang = modalReceiptLang || freshSettings.receiptLanguage || 'english';
+        const isUrduLang = currentLang === 'urdu';
+        const isBilingualLang = currentLang === 'bilingual';
+        const currentToken = orderType === 'takeaway' ? tokenNo : undefined;
+        const tableOrToken =
+          savedOrder.orderType === 'dine-in'
+            ? (isUrduLang ? `میز نمبر: ${tableNo}` : isBilingualLang ? `Table / میز: ${tableNo}` : `TABLE: ${tableNo}`)
+            : savedOrder.orderType === 'takeaway'
+            ? (isUrduLang ? `ٹوکن نمبر: #${currentToken || 1}` : isBilingualLang ? `Token / ٹوکن: #${currentToken || 1}` : `TOKEN: #${currentToken || 1}`)
+            : (isUrduLang ? 'ڈیلیوری (DELIVERY)' : isBilingualLang ? 'Delivery / ڈیلیوری' : 'DELIVERY');
+
+        void printCustomerReceipt(savedOrder, {
+          tableOrToken,
+          storeSettings: freshSettings,
+          paymentMode: savedOrder.paymentMode || paymentMode,
+          tenderedAmount: typeof tenderedAmount === 'number' ? tenderedAmount : undefined,
+          language: currentLang,
+        });
+      } catch (printErr) {
+        console.warn('[Auto-Print] Error during auto print on confirm:', printErr);
+      }
     },
   });
 
@@ -4928,6 +4953,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
       {/* ── Modal: Thermal Receipt Preview Modal ── */}
       {showReceiptModal && lastOrder && (
         <div
+          onClick={() => setShowReceiptModal(false)}
           style={{
             position: 'fixed',
             inset: 0,
@@ -4939,6 +4965,7 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
           }}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               width: '450px',
               maxWidth: '92vw',
@@ -5247,205 +5274,56 @@ export function PosCounterView({ module, modeType }: PosCounterProps): React.JSX
               );
             })()}
 
-            {/* Action Buttons Footer */}
+            {/* Modal Footer: Simple close button & status */}
             <div
               style={{
-                padding: '14px 18px',
+                padding: '12px 18px',
                 borderTop: `1px solid ${F.border}`,
                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#FAFAFA',
                 display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 flexShrink: 0,
               }}
             >
-              {/* Primary Action Button: Print Customer Receipt */}
-              <button
-                onClick={() => {
-                  const freshSettings = refreshStoreSettings();
-                  const isUrduLang = modalReceiptLang === 'urdu';
-                  const isBilingualLang = modalReceiptLang === 'bilingual';
-                  const tableOrToken =
-                    lastOrder.orderType === 'dine-in'
-                      ? (isUrduLang ? `میز نمبر: ${tableNo}` : isBilingualLang ? `Table / میز: ${tableNo}` : `TABLE: ${tableNo}`)
-                      : lastOrder.orderType === 'takeaway'
-                      ? (isUrduLang ? `ٹوکن نمبر: #${tokenNo}` : isBilingualLang ? `Token / ٹوکن: #${tokenNo}` : `TOKEN: #${tokenNo}`)
-                      : (isUrduLang ? 'ڈیلیوری (DELIVERY)' : isBilingualLang ? 'Delivery / ڈیلیوری' : 'DELIVERY');
-
-                  void printCustomerReceipt(lastOrder, {
-                    tableOrToken,
-                    storeSettings: freshSettings,
-                    paymentMode,
-                    tenderedAmount: typeof tenderedAmount === 'number' ? tenderedAmount : undefined,
-                    language: modalReceiptLang,
-                  });
-                  setShowReceiptModal(false);
-                }}
+              <div
                 style={{
-                  width: '100%',
-                  height: '42px',
-                  borderRadius: '9px',
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #E51937 0%, #B91C1C 100%)',
-                  color: '#FFFFFF',
-                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '12.5px',
+                  color: '#10B981',
+                  fontWeight: 600,
+                  fontFamily: F.font,
+                }}
+              >
+                <CheckmarkCircle20Filled style={{ width: 17, height: 17 }} />
+                <span>رسید پرنٹر پر خودکار پرنٹ ہو رہی ہے...</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowReceiptModal(false)}
+                style={{
+                  padding: '0 20px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  border: `1px solid ${F.border}`,
+                  backgroundColor: isDark ? '#262626' : '#FFFFFF',
+                  color: F.textPrimary,
                   cursor: 'pointer',
-                  fontFamily: modalReceiptLang === 'urdu' ? `'Noto Sans Arabic', ${F.font}` : F.font,
-                  fontSize: '13.5px',
+                  fontFamily: F.font,
+                  fontSize: '12.5px',
+                  fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 14px rgba(229, 25, 55, 0.32)',
-                  letterSpacing: '0.2px',
+                  gap: '6px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                 }}
               >
-                <Print20Regular style={{ width: 19, height: 19 }} />
-                <span>
-                  {modalReceiptLang === 'urdu'
-                    ? 'تھرمل رسید پرنٹ کریں (Print Receipt)'
-                    : modalReceiptLang === 'bilingual'
-                    ? 'Print Thermal Receipt (اردو + English)'
-                    : 'Print Thermal Receipt (Customer)'}
-                </span>
+                <span>Close / بند کریں</span>
               </button>
-
-              {/* Secondary Actions Row */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: module === 'fastfood' ? '1fr 1fr 1fr auto' : '1fr 1fr auto',
-                  gap: '8px',
-                  alignItems: 'center',
-                }}
-              >
-                {module === 'fastfood' && (
-                  <button
-                    onClick={() => {
-                      const tableOrToken =
-                        lastOrder.orderType === 'dine-in'
-                          ? `TABLE: ${tableNo}`
-                          : lastOrder.orderType === 'takeaway'
-                          ? `TOKEN: #${tokenNo}`
-                          : 'DELIVERY';
-                      void printKitchenKot(lastOrder, {
-                        tableOrToken,
-                        storeName: storeSettings.storeName,
-                      });
-                    }}
-                    style={{
-                      height: '36px',
-                      borderRadius: '8px',
-                      border: isDark ? '1px solid #7C2D12' : '1px solid #FED7AA',
-                      backgroundColor: isDark ? '#27170E' : '#FFF7ED',
-                      color: isDark ? '#FB923C' : '#C2410C',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontFamily: F.font,
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px',
-                    }}
-                    title="Print ticket for Kitchen / Chef only"
-                  >
-                    <Food20Regular style={{ width: 17, height: 17 }} />
-                    <span>Print KOT</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => {
-                    const phone = (lastOrder.customerPhone || customerPhone || '').replace(/[^0-9]/g, '');
-                    const phoneWithCountry = phone.startsWith('92') ? phone : phone.startsWith('0') ? `92${phone.slice(1)}` : `92${phone}`;
-                    const itemsText = (lastOrder.lines || []).map((l) => `• ${l.quantity}x ${l.name} - PKR ${(l.quantity * l.unitPrice).toLocaleString()}`).join('\n');
-                    const googleLinkText = storeSettings.googleMapsUrl
-                      ? `\n-----------------------------------\n${storeSettings.googleQrAction === 'map' ? 'Locate us on Google Maps:' : 'Rate us on Google:'}\n${storeSettings.googleMapsUrl}`
-                      : '';
-                    const text = encodeURIComponent(
-                      `*${storeSettings.storeName || 'OMNIPOS STORE'}*\n${storeSettings.address ? `${storeSettings.address}\n` : ''}Phone: ${storeSettings.phone || ''}\n-----------------------------------\n*INVOICE RECEIPT* (#${lastOrder.id.slice(-6).toUpperCase()})\nDate: ${new Date(lastOrder.createdAt).toLocaleDateString()} ${new Date(lastOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n-----------------------------------\n${itemsText}\n-----------------------------------\n*Net Total:* PKR ${(lastOrder.totalAmount || 0).toLocaleString()}\n*Payment Mode:* ${(lastOrder.paymentMode || 'PAID').toUpperCase()}\n-----------------------------------\n${storeSettings.footerNote || 'Thank you for shopping with us!'}${googleLinkText}`
-                    );
-                    if (phone.length >= 7) {
-                      window.open(`https://wa.me/${phoneWithCountry}?text=${text}`, '_blank');
-                    } else {
-                      const entered = window.prompt('Enter customer WhatsApp number (e.g. 03001234567):', '');
-                      if (entered) {
-                        const clean = entered.replace(/[^0-9]/g, '');
-                        const withCode = clean.startsWith('92') ? clean : clean.startsWith('0') ? `92${clean.slice(1)}` : `92${clean}`;
-                        window.open(`https://wa.me/${withCode}?text=${text}`, '_blank');
-                      }
-                    }
-                  }}
-                  style={{
-                    height: '36px',
-                    borderRadius: '8px',
-                    border: isDark ? '1px solid #065F46' : '1px solid #A7F3D0',
-                    backgroundColor: isDark ? '#064E3B' : '#ECFDF5',
-                    color: isDark ? '#34D399' : '#059669',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontFamily: F.font,
-                    fontSize: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                  }}
-                  title="Share digital invoice on WhatsApp"
-                >
-                  <Phone20Regular style={{ width: 15, height: 15 }} />
-                  <span>WhatsApp</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowA4Invoice(true);
-                  }}
-                  style={{
-                    height: '36px',
-                    borderRadius: '8px',
-                    border: isDark ? '1px solid #0369A1' : '1px solid #BAE6FD',
-                    backgroundColor: isDark ? '#082F49' : '#F0F9FF',
-                    color: isDark ? '#38BDF8' : '#0284C7',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontFamily: F.font,
-                    fontSize: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                  }}
-                  title="Print commercial full page A4 invoice"
-                >
-                  <DocumentText20Regular style={{ width: 16, height: 16 }} />
-                  <span>A4 Invoice</span>
-                </button>
-
-                <button
-                  onClick={() => setShowReceiptModal(false)}
-                  style={{
-                    padding: '0 16px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    border: `1px solid ${F.border}`,
-                    backgroundColor: isDark ? '#262626' : '#FFFFFF',
-                    color: F.textPrimary,
-                    cursor: 'pointer',
-                    fontFamily: F.font,
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                  }}
-                >
-                  <Checkmark20Regular style={{ width: 15, height: 15 }} />
-                  <span>Done</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>

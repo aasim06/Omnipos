@@ -2,6 +2,7 @@ import { Order } from './types';
 import { posApi } from './api';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { generateQrDataUrl } from './qrCode';
+import { storage, KEYS } from './storage';
 
 export interface ReceiptPrintOptions {
   tableOrToken?: string;
@@ -49,7 +50,7 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
   const currency = isUrdu ? 'روپے' : options?.currency || 'PKR';
 
   const is58mm = options?.storeSettings?.paperWidth === '58mm';
-  const targetWidth = is58mm ? '48mm' : '66mm';
+  const targetWidth = is58mm ? '48mm' : '72mm';
 
   let rawType = (order.orderType || 'takeaway').toLowerCase();
   let tableOrToken = options?.tableOrToken;
@@ -152,27 +153,29 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
   <style>
     @page {
       margin: 0;
-      size: auto;
+      size: ${is58mm ? '58mm 297mm' : '80mm 297mm'};
     }
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      color: #000000 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     html, body {
-      font-family: ${fontStack};
+      font-family: Arial, "Segoe UI", Tahoma, sans-serif;
       direction: ${isRtl ? 'rtl' : 'ltr'};
-      width: ${targetWidth};
+      width: 100%;
       max-width: ${targetWidth};
-      margin: 0;
+      margin: 0 auto;
       padding: 2mm 1mm 4mm 1mm;
-      color: #000;
-      background: #fff;
-      font-size: 11.5px;
+      color: #000000 !important;
+      background: #ffffff !important;
+      font-size: 13px;
+      font-weight: 700;
       line-height: 1.35;
       overflow-x: hidden;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
     }
     .header {
       text-align: center;
@@ -182,34 +185,36 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
       word-break: break-word;
     }
     .store-name {
-      font-size: 15px;
+      font-size: 17px;
       font-weight: 900;
       letter-spacing: 0.3px;
       word-break: break-word;
     }
     .store-sub {
-      font-size: 10px;
-      color: #222;
+      font-size: 11.5px;
+      color: #000;
+      font-weight: 700;
       margin-top: 1.5px;
       word-break: break-word;
     }
     .token-box {
-      border: 1.5px dashed #000;
-      padding: 5px;
-      margin: 5px 0;
+      border: 2px solid #000;
+      padding: 6px;
+      margin: 6px 0;
       text-align: center;
     }
     .token-num {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 900;
       letter-spacing: 0.5px;
     }
     .meta-table {
       width: 100%;
       table-layout: fixed;
-      font-size: 10.5px;
+      font-size: 12px;
+      font-weight: 700;
       margin-bottom: 5px;
-      border-bottom: 1px dashed #000;
+      border-bottom: 1.5px solid #000;
       padding-bottom: 3px;
     }
     .meta-table td {
@@ -223,8 +228,8 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
       margin: 4px 0;
     }
     .items-head {
-      border-bottom: 1.5px solid #000;
-      font-size: 10.5px;
+      border-bottom: 2px solid #000;
+      font-size: 12px;
       font-weight: 900;
       text-transform: uppercase;
     }
@@ -232,32 +237,33 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
       width: 100%;
       table-layout: fixed;
       margin-top: 5px;
-      border-top: 1.5px solid #000;
+      border-top: 2px solid #000;
       padding-top: 3px;
-      font-size: 11.5px;
+      font-size: 13px;
+      font-weight: 700;
     }
     .grand-total {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 900;
-      border-top: 1px dashed #000;
-      border-bottom: 1.5px solid #000;
-      padding: 3px 0;
-      margin-top: 3px;
+      border-top: 1.5px solid #000;
+      border-bottom: 2px solid #000;
+      padding: 4px 0;
+      margin-top: 4px;
     }
     .google-qr-box {
       margin-top: 8px;
       padding-top: 6px;
-      border-top: 1px dashed #666;
+      border-top: 1.5px solid #000;
       text-align: center;
     }
     .google-qr-title {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 800;
       letter-spacing: 0.3px;
     }
     .google-qr-sub {
-      font-size: 8.5px;
-      color: #555;
+      font-size: 10px;
+      color: #000;
       margin-top: 2px;
     }
     .google-qr-img {
@@ -269,9 +275,10 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
     .footer {
       margin-top: 8px;
       text-align: center;
-      font-size: 10px;
-      color: #333;
-      border-top: 1px dashed #666;
+      font-size: 11px;
+      font-weight: 700;
+      color: #000;
+      border-top: 1.5px solid #000;
       padding-top: 5px;
       word-break: break-word;
     }
@@ -403,6 +410,9 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
     <div>${footerNote}</div>
     <div style="font-size: 9px; color: #888; margin-top: 4px;">${L.poweredBy}</div>
   </div>
+
+  <!-- Feed space for cutter / tear-bar clearance -->
+  <div style="height: 18mm; min-height: 50px;"></div>
 </body>
 </html>`;
 }
@@ -411,14 +421,18 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
  * Direct print of Customer Thermal Receipt
  */
 export async function printCustomerReceipt(order: Order, options?: ReceiptPrintOptions): Promise<boolean> {
+  const storeSettings =
+    options?.storeSettings ||
+    storage.getItem<StoreSettings>(KEYS.storeSettings, {} as any);
+
   let googleQrDataUrl = options?.googleQrDataUrl;
   const showGoogleQr =
-    options?.storeSettings?.showGoogleMapQrOnReceipt !== false &&
-    !!options?.storeSettings?.googleMapsUrl;
+    storeSettings?.showGoogleMapQrOnReceipt !== false &&
+    !!storeSettings?.googleMapsUrl;
 
-  if (showGoogleQr && !googleQrDataUrl && options?.storeSettings?.googleMapsUrl) {
+  if (showGoogleQr && !googleQrDataUrl && storeSettings?.googleMapsUrl) {
     try {
-      googleQrDataUrl = await generateQrDataUrl(options.storeSettings.googleMapsUrl, {
+      googleQrDataUrl = await generateQrDataUrl(storeSettings.googleMapsUrl, {
         width: 130,
         margin: 1,
       });
@@ -427,6 +441,243 @@ export async function printCustomerReceipt(order: Order, options?: ReceiptPrintO
     }
   }
 
-  const html = generateCustomerReceiptHtml(order, { ...options, googleQrDataUrl });
-  return await posApi.printReceipt({ html });
+  const html = generateCustomerReceiptHtml(order, {
+    ...options,
+    storeSettings,
+    googleQrDataUrl,
+  });
+
+  return await posApi.printReceipt({
+    html,
+    printerName: storeSettings?.receiptPrinterName,
+    silent: storeSettings?.silentPrint ?? true,
+  });
+}
+
+/**
+ * Generate standard 80mm / 58mm Thermal Printer Test Receipt HTML
+ */
+export function generateTestReceiptHtml(
+  settings?: Partial<StoreSettings>,
+  targetType: 'receipt' | 'kot' = 'receipt',
+): string {
+  const is58mm = settings?.paperWidth === '58mm';
+  const targetWidth = is58mm ? '48mm' : '72mm';
+  const storeName = settings?.storeName || 'OMNIPOS POS SYSTEM';
+  const now = new Date();
+  const dateStr = now.toLocaleDateString();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const printerName =
+    targetType === 'receipt'
+      ? settings?.receiptPrinterName || 'Auto-Detected Thermal Printer'
+      : settings?.kotPrinterName || settings?.receiptPrinterName || 'Auto-Detected KOT Printer';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>OmniPOS Printer Test</title>
+  <style>
+    @page {
+      margin: 0;
+      size: ${is58mm ? '58mm 297mm' : '80mm 297mm'};
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      color: #000000 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      font-family: Arial, "Segoe UI", Tahoma, sans-serif;
+      width: 100%;
+      max-width: ${targetWidth};
+      margin: 0 auto;
+      padding: 2mm 1mm;
+      color: #000000 !important;
+      background: #ffffff !important;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+      overflow-x: hidden;
+    }
+    .header {
+      text-align: center;
+      padding-bottom: 5px;
+      margin-bottom: 5px;
+      border-bottom: 2px solid #000;
+    }
+    .store-name {
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 0.3px;
+    }
+    .badge {
+      border: 2px solid #000;
+      padding: 6px;
+      margin: 6px 0;
+      text-align: center;
+      font-weight: 900;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-weight: 700;
+      margin: 6px 0;
+      border-bottom: 2px solid #000;
+      padding-bottom: 4px;
+    }
+    .info-table td {
+      padding: 2px 0;
+    }
+    .label {
+      font-weight: 900;
+      width: 45%;
+    }
+    .val {
+      text-align: right;
+      font-weight: 700;
+      word-break: break-all;
+    }
+    .section-title {
+      font-weight: 900;
+      font-size: 13px;
+      margin-top: 8px;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      border-bottom: 1.5px solid #000;
+    }
+    .test-pattern {
+      font-family: monospace;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.4;
+      margin: 3px 0;
+    }
+    .align-left { text-align: left; }
+    .align-center { text-align: center; }
+    .align-right { text-align: right; }
+    .bold { font-weight: 900; }
+    .inverse {
+      background: #000;
+      color: #fff !important;
+      padding: 3px 6px;
+      font-weight: 900;
+      display: inline-block;
+      margin: 3px 0;
+    }
+    .urdu-text {
+      font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', Tahoma, sans-serif;
+      direction: rtl;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 900;
+      margin: 6px 0;
+    }
+    .footer {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      border-top: 2px solid #000;
+      padding-top: 6px;
+    }
+    .feed-space {
+      height: 20mm;
+      min-height: 60px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="store-name">${storeName}</div>
+    ${settings?.address ? `<div style="font-size: 9.5px; margin-top: 2px;">${settings.address}</div>` : ''}
+    ${settings?.phone ? `<div style="font-size: 9.5px;">Tel: ${settings.phone}</div>` : ''}
+  </div>
+
+  <div class="badge">
+    *** THERMAL TEST (${targetType === 'receipt' ? 'RECEIPT' : 'KITCHEN KOT'}) ***
+  </div>
+
+  <table class="info-table">
+    <tr>
+      <td class="label">Date:</td>
+      <td class="val">${dateStr}</td>
+    </tr>
+    <tr>
+      <td class="label">Time:</td>
+      <td class="val">${timeStr}</td>
+    </tr>
+    <tr>
+      <td class="label">Printer:</td>
+      <td class="val">${printerName}</td>
+    </tr>
+    <tr>
+      <td class="label">Roll Width:</td>
+      <td class="val">${settings?.paperWidth || '80mm'}</td>
+    </tr>
+    <tr>
+      <td class="label">Auto-Cut:</td>
+      <td class="val">${settings?.autoCut ? 'Enabled (Full Cut)' : 'Disabled'}</td>
+    </tr>
+    <tr>
+      <td class="label">Cash Drawer:</td>
+      <td class="val">${settings?.drawerKick ? 'Enabled (24V Kick)' : 'Disabled'}</td>
+    </tr>
+    <tr>
+      <td class="label">Silent Mode:</td>
+      <td class="val">${settings?.silentPrint !== false ? 'Enabled (Direct)' : 'Disabled (Prompt)'}</td>
+    </tr>
+  </table>
+
+  <div class="section-title">1. Alignment &amp; Font Test</div>
+  <div class="test-pattern align-left">Left: [OK] ABCDEFGHIJKLMNOPQRSTUVWXYZ</div>
+  <div class="test-pattern align-center">Center: [OK] 1234567890</div>
+  <div class="test-pattern align-right">Right: [OK] abcdefghijklmnopqrstuvwxyz</div>
+  <div class="test-pattern bold">Bold Text Test: [PASSED] 100% OK</div>
+  <div style="text-align: center; margin: 4px 0;">
+    <span class="inverse"> INVERTED WHITE ON BLACK </span>
+  </div>
+
+  <div class="section-title">2. Urdu / Bilingual Test</div>
+  <div class="urdu-text">تھرمل پرنٹر ٹیسٹ کامیاب ہے</div>
+  <div style="text-align: center; font-size: 10px; color: #333;">Thermal Printer Test Successful</div>
+
+  <div class="footer">
+    <div style="font-weight: bold; font-size: 11px;">OmniPOS Hardware Engine</div>
+    <div style="font-size: 9px; margin-top: 2px;">If this ticket printed cleanly, your printer is 100% ready!</div>
+  </div>
+
+  <!-- Feed space so ticket passes cutter/tear bar -->
+  <div class="feed-space"></div>
+</body>
+</html>`;
+}
+
+/**
+ * Direct print of Thermal Printer Test Ticket
+ */
+export async function printTestReceipt(
+  settings?: Partial<StoreSettings>,
+  targetType: 'receipt' | 'kot' = 'receipt',
+): Promise<boolean> {
+  const currentSettings =
+    settings || storage.getItem<StoreSettings>(KEYS.storeSettings, {} as any);
+
+  const html = generateTestReceiptHtml(currentSettings, targetType);
+  const targetPrinter =
+    targetType === 'receipt'
+      ? currentSettings?.receiptPrinterName
+      : currentSettings?.kotPrinterName || currentSettings?.receiptPrinterName;
+
+  return await posApi.printReceipt({
+    html,
+    printerName: targetPrinter,
+    silent: currentSettings?.silentPrint ?? true,
+  });
 }

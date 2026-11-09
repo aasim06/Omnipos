@@ -62,6 +62,7 @@ import { clearAllLocalData } from '@/lib/offlineDb';
 import { storage, KEYS } from '@/lib/storage';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { generateQrDataUrl } from '@/lib/qrCode';
+import { printTestReceipt } from '@/lib/receiptPrinter';
 import {
   userStorage,
   AppUser,
@@ -92,6 +93,9 @@ export interface StoreSettings {
   googleMapsUrl?: string;
   showGoogleMapQrOnReceipt?: boolean;
   googleQrAction?: 'review' | 'map';
+  receiptPrinterName?: string;
+  kotPrinterName?: string;
+  silentPrint?: boolean;
 }
 
 const defaultSettings: StoreSettings = {
@@ -117,6 +121,9 @@ const defaultSettings: StoreSettings = {
   googleMapsUrl: '',
   showGoogleMapQrOnReceipt: false,
   googleQrAction: 'review',
+  receiptPrinterName: '',
+  kotPrinterName: '',
+  silentPrint: true,
 };
 
 const ROLE_OPTIONS = [
@@ -146,6 +153,24 @@ export function AdminSettingsView(): React.JSX.Element {
     }
   }, [settings.googleMapsUrl]);
   const [printTestMsg, setPrintTestMsg] = useState('');
+  const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; isDefault?: boolean }>>([]);
+  const [loadingPrinters, setLoadingPrinters] = useState(false);
+
+  const fetchPrinters = async () => {
+    setLoadingPrinters(true);
+    try {
+      const list = await posApi.getPrinters();
+      setInstalledPrinters(list || []);
+    } catch (err) {
+      console.warn('[AdminSettings] Failed to fetch printers:', err);
+    } finally {
+      setLoadingPrinters(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrinters();
+  }, []);
   const [isLicenseOpen, setIsLicenseOpen] = useState(false);
   const [licenseKey, setLicenseKey] = useState('');
   const [cloudUrl, setCloudUrl] = useState('https://omni-server-seven.vercel.app');
@@ -343,11 +368,24 @@ export function AdminSettingsView(): React.JSX.Element {
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  const handleTestPrint = async () => {
-    setPrintTestMsg('Sending test print…');
-    await posApi.printReceipt();
-    setPrintTestMsg('Test print dispatched!');
-    setTimeout(() => setPrintTestMsg(''), 3500);
+  const handleTestPrint = async (targetType: 'receipt' | 'kot' = 'receipt') => {
+    const printerLabel =
+      targetType === 'receipt'
+        ? settings.receiptPrinterName || 'Auto-Detected Thermal'
+        : settings.kotPrinterName || settings.receiptPrinterName || 'Auto-Detected KOT';
+
+    setPrintTestMsg(`Sending test print to ${printerLabel}…`);
+    try {
+      const success = await printTestReceipt(settings, targetType);
+      if (success) {
+        setPrintTestMsg(`✓ Test print sent to ${printerLabel}!`);
+      } else {
+        setPrintTestMsg(`⚠ Print failed. Check printer connection or Windows driver.`);
+      }
+    } catch (err: any) {
+      setPrintTestMsg(`❌ Error: ${err?.message || 'Print dispatch failed'}`);
+    }
+    setTimeout(() => setPrintTestMsg(''), 6000);
   };
 
   const handleOpenGoogleBusinessRegistration = () => {
@@ -1183,6 +1221,48 @@ export function AdminSettingsView(): React.JSX.Element {
             </div>
 
             <div className={styles.cardBody}>
+              {/* Printer Hardware Selection */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <CustomSelect
+                      label="Customer Receipt Thermal Printer"
+                      value={settings.receiptPrinterName || ''}
+                      onChange={(val) => setSettings({ ...settings, receiptPrinterName: val })}
+                      options={[
+                        { value: '', label: '⚡ Auto-Detect Thermal Printer (XP-80 / Bixolon / ESC-POS)' },
+                        ...installedPrinters.map((p) => ({
+                          value: p.name,
+                          label: `${p.name}${p.isDefault ? ' [System Default]' : ''}`,
+                        })),
+                      ]}
+                    />
+                  </div>
+                  <Button
+                    appearance="subtle"
+                    icon={<ArrowClockwise20Regular />}
+                    onClick={fetchPrinters}
+                    title="Refresh Printer List"
+                    disabled={loadingPrinters}
+                  />
+                </div>
+
+                <CustomSelect
+                  label="Kitchen KOT Ticket Printer"
+                  value={settings.kotPrinterName || ''}
+                  onChange={(val) => setSettings({ ...settings, kotPrinterName: val })}
+                  options={[
+                    { value: '', label: '⚡ Same as Receipt Printer' },
+                    ...installedPrinters.map((p) => ({
+                      value: p.name,
+                      label: `${p.name}${p.isDefault ? ' [System Default]' : ''}`,
+                    })),
+                  ]}
+                />
+              </div>
+
+              <Divider />
+
               <div className={styles.formRow}>
                 <Caption1 className={styles.paperWidthLabel}>Paper Roll Width</Caption1>
                 <div className={styles.segmentedGroup}>
@@ -1207,6 +1287,21 @@ export function AdminSettingsView(): React.JSX.Element {
                     58mm Compact
                   </button>
                 </div>
+              </div>
+
+              <Divider />
+
+              <div className={styles.switchRow}>
+                <div className={styles.switchLabel}>
+                  <Body2 className={styles.switchRowTitle}>Silent Print (Direct ESC/POS)</Body2>
+                  <Caption1 className={styles.switchRowDesc}>
+                    Prints directly to thermal paper without opening print dialog
+                  </Caption1>
+                </div>
+                <Switch
+                  checked={settings.silentPrint !== false}
+                  onChange={(_, d) => setSettings({ ...settings, silentPrint: d.checked })}
+                />
               </div>
 
               <Divider />
@@ -1241,15 +1336,24 @@ export function AdminSettingsView(): React.JSX.Element {
 
               <Divider />
 
-              <div className={styles.testPrintRow}>
-                <Button
-                  appearance="outline"
-                  icon={<Print24Regular />}
-                  onClick={handleTestPrint}
-                  className={styles.testPrintBtn}
-                >
-                  Send Test Print
-                </Button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <Button
+                    appearance="primary"
+                    icon={<Print24Regular />}
+                    onClick={() => handleTestPrint('receipt')}
+                    className={styles.testPrintBtn}
+                  >
+                    Test Receipt Feed &amp; Print
+                  </Button>
+                  <Button
+                    appearance="outline"
+                    icon={<Print24Regular />}
+                    onClick={() => handleTestPrint('kot')}
+                  >
+                    Test Kitchen KOT Feed
+                  </Button>
+                </div>
                 {printTestMsg && (
                   <Caption1 className={styles.testPrintSuccess}>{printTestMsg}</Caption1>
                 )}
