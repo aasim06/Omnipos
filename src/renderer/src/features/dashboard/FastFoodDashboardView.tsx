@@ -21,7 +21,7 @@ import {
   Ribbon20Filled,
   Trophy20Filled,
 } from '@fluentui/react-icons';
-import { mergeClasses } from '@fluentui/react-components';
+import { mergeClasses, tokens } from '@fluentui/react-components';
 import { useAppTheme } from '@/theme/AppProviders';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { offlineDb, LocalOrder } from '@/lib/offlineDb';
@@ -105,7 +105,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
     cardBorder: isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.08)',
     textPrimary: isDark ? '#FFFFFF' : '#0F172A',
     textSecondary: isDark ? '#94A3B8' : '#64748B',
-    textMuted: isDark ? '#64748B' : '#94A3B8',
+    textMuted: isDark ? '#9A9A9A' : '#8A8A8A',
     red: '#E51937',
     redGlow: 'rgba(229, 25, 55, 0.35)',
     green: '#10B981',
@@ -479,7 +479,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
             PKR {metrics.totalRevenue.toLocaleString()}
           </div>
           {metrics.totalDiscounts > 0 && (
-            <div style={{ fontSize: '11px', color: '#10B981', fontWeight: 600, marginTop: '2px' }}>
+            <div style={{ fontSize: '12px', color: tokens.colorStatusSuccessForeground1, fontWeight: 600, marginTop: '2px' }}>
               Discounts: -PKR {metrics.totalDiscounts.toLocaleString()}
             </div>
           )}
@@ -609,23 +609,20 @@ export function FastFoodDashboardView(): React.JSX.Element {
               <defs>
                 {/* Standard Laser Red Bar Gradient */}
                 <linearGradient id="laserBarGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FF334B" />
-                  <stop offset="50%" stopColor="#E51937" />
-                  <stop offset="100%" stopColor="#8A0C1D" />
+                  <stop offset="0%" stopColor="#E51937" />
+                  <stop offset="100%" stopColor="#E51937" />
                 </linearGradient>
 
                 {/* Peak Rush Amber/Fire Gradient */}
                 <linearGradient id="peakRushGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#F59E0B" />
-                  <stop offset="40%" stopColor="#EF4444" />
-                  <stop offset="100%" stopColor="#7F0916" />
+                  <stop offset="0%" stopColor="#F7630C" />
+                  <stop offset="100%" stopColor="#F7630C" />
                 </linearGradient>
 
                 {/* Hovered Bar Bright Laser Gradient */}
                 <linearGradient id="hoverBarGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#FFFFFF" />
-                  <stop offset="25%" stopColor="#FF4D63" />
-                  <stop offset="100%" stopColor="#B91C1C" />
+                  <stop offset="0%" stopColor="#C6172E" />
+                  <stop offset="100%" stopColor="#C6172E" />
                 </linearGradient>
 
                 {/* Subtle Grid Pattern */}
@@ -653,7 +650,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                     x={columnChart.padLeft - 8}
                     y={tick.y + 3.5}
                     textAnchor="end"
-                    fill={isDark ? '#64748B' : '#94A3B8'}
+                    fill={isDark ? '#9A9A9A' : '#8A8A8A'}
                     fontSize="9.5"
                     fontWeight="600"
                   >
@@ -679,7 +676,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                       y={columnChart.padTop}
                       width={col.trackW}
                       height={columnChart.chartH}
-                      rx="6"
+                      rx="4"
                       fill={isHovered ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)') : 'transparent'}
                       className={styles.columnTrack}
                     />
@@ -692,16 +689,9 @@ export function FastFoodDashboardView(): React.JSX.Element {
                           y={col.barY}
                           width={col.barWidth}
                           height={col.barH}
-                          rx="5"
+                          rx="3"
                           fill={isHovered ? 'url(#hoverBarGrad)' : col.isPeak ? 'url(#peakRushGrad)' : 'url(#laserBarGrad)'}
                           className={styles.columnBar}
-                          filter={
-                            isHovered
-                              ? 'drop-shadow(0 0 12px #E51937)'
-                              : col.isPeak
-                              ? 'drop-shadow(0 0 8px rgba(229, 25, 55, 0.35))'
-                              : 'drop-shadow(0 2px 6px rgba(229, 25, 55, 0.3))'
-                          }
                         />
 
                         {/* Top Glowing Edge Cap (Pill) */}
@@ -712,7 +702,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                           height="2.5"
                           rx="1.25"
                           fill="#FFFFFF"
-                          opacity={isHovered ? 0.95 : col.isPeak ? 0.75 : 0.55}
+                          opacity={0}
                         />
 
                         {/* Exact Orders Number on top of column */}
@@ -720,9 +710,9 @@ export function FastFoodDashboardView(): React.JSX.Element {
                           x={col.xCenter}
                           y={col.barY - 6}
                           textAnchor="middle"
-                          fill={isHovered ? '#FFFFFF' : col.isPeak ? '#F59E0B' : (isDark ? '#94A3B8' : '#64748B')}
+                          fill={isHovered ? (isDark ? '#FFFFFF' : '#1A1A1A') : col.isPeak ? '#F7630C' : (isDark ? '#CFCFCF' : '#5D5D5D')}
                           fontSize="10.5"
-                          fontWeight={isHovered || col.isPeak ? 900 : 700}
+                          fontWeight={isHovered || col.isPeak ? 600 : 400}
                         >
                           {col.orders}
                         </text>
@@ -735,7 +725,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                         cx={col.xCenter}
                         cy={columnChart.padTop + columnChart.chartH - 2}
                         r="2"
-                        fill={isDark ? '#64748B' : '#94A3B8'}
+                        fill={isDark ? '#9A9A9A' : '#8A8A8A'}
                       />
                     )}
 
@@ -744,9 +734,9 @@ export function FastFoodDashboardView(): React.JSX.Element {
                       x={col.xCenter}
                       y={columnChart.height - 12}
                       textAnchor="middle"
-                      fill={isHovered ? (isDark ? '#FFFFFF' : '#0F172A') : col.isCurrentHour ? '#10B981' : col.isPeak ? '#E51937' : (isDark ? '#64748B' : '#94A3B8')}
+                      fill={isHovered ? (isDark ? '#FFFFFF' : '#0F172A') : col.isCurrentHour ? '#10B981' : col.isPeak ? '#E51937' : (isDark ? '#9A9A9A' : '#8A8A8A')}
                       fontSize="10"
-                      fontWeight={isHovered || col.isPeak || col.isCurrentHour ? 800 : 600}
+                      fontWeight={isHovered || col.isPeak || col.isCurrentHour ? 600 : 400}
                     >
                       {col.label}
                     </text>
@@ -855,7 +845,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
           <div className={styles.donutSvgWrap}>
             <svg width="180" height="180" viewBox="0 0 180 180" className={styles.donutSvg}>
               {/* Background Track */}
-              <circle cx="90" cy="90" r="70" fill="none" stroke={isDark ? '#27272A' : '#E2E8F0'} strokeWidth="18" />
+              <circle cx="90" cy="90" r="70" fill="none" stroke={isDark ? '#333333' : '#EBEBEB'} strokeWidth="18" />
 
               {/* Segment 1: Dine-In (Red) */}
               <circle
