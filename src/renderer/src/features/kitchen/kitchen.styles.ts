@@ -67,7 +67,7 @@ export const useKitchenStyles = makeStyles({
     width: '8px',
     height: '8px',
     borderRadius: '50%',
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     boxShadow: 'none',
     animationName: {
       '0%': { transform: 'scale(0.95)', opacity: '0.8' },
@@ -82,7 +82,7 @@ export const useKitchenStyles = makeStyles({
     width: '8px',
     height: '8px',
     borderRadius: '50%',
-    backgroundColor: '#10B981',
+    backgroundColor: tokens.colorStatusSuccessBackground3,
     boxShadow: 'none',
     flexShrink: 0,
   },
@@ -200,7 +200,7 @@ export const useKitchenStyles = makeStyles({
     fontSize: '18px',
     width: '18px',
     height: '18px',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   timerIconClear: {
     fontSize: '18px',
@@ -248,7 +248,7 @@ export const useKitchenStyles = makeStyles({
     color: tokens.colorNeutralForeground1,
   },
   addItemBtn: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
     fontWeight: 600,
     padding: '4px 10px',
   },
@@ -280,14 +280,14 @@ export const useKitchenStyles = makeStyles({
     fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
-    color: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    color: tokens.colorBrandForeground1,
+    backgroundColor: tokens.colorStatusDangerBackground1,
     border: '1px solid rgba(229, 25, 55, 0.25)',
     padding: '2px 8px',
     borderRadius: '6px',
   },
   deleteIcon: {
-    color: '#EF4444',
+    color: tokens.colorStatusDangerForeground1,
   },
   removeItemBtn: {
     minWidth: 'auto',
@@ -320,7 +320,7 @@ export const useKitchenStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   sendTicketBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     borderRadius: '8px',
     fontWeight: 600,
@@ -349,7 +349,7 @@ export const useKitchenStyles = makeStyles({
     backgroundColor: 'rgba(16, 124, 65, 0.08)',
   },
   ticketHeaderCooking: {
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    backgroundColor: tokens.colorStatusWarningBackground1,
   },
   ticketHeaderDefault: {
     backgroundColor: tokens.colorNeutralBackground1,
@@ -371,17 +371,17 @@ export const useKitchenStyles = makeStyles({
   timeUrgent: {
     fontSize: '11px',
     fontWeight: 600,
-    color: '#EF4444',
+    color: tokens.colorStatusDangerForeground1,
   },
   timeWarning: {
     fontSize: '11px',
     fontWeight: 600,
-    color: '#F59E0B',
+    color: tokens.colorStatusWarningForeground1,
   },
   timeGood: {
     fontSize: '11px',
     fontWeight: 600,
-    color: '#10B981',
+    color: tokens.colorStatusSuccessForeground1,
   },
   ticketTimeSub: {
     color: tokens.colorNeutralForeground2,
@@ -399,7 +399,7 @@ export const useKitchenStyles = makeStyles({
     fontSize: '12px',
   },
   itemNotes: {
-    color: '#D97706',
+    color: tokens.colorStatusWarningForeground1,
     fontStyle: 'italic',
     display: 'block',
     fontSize: '12px',
@@ -418,12 +418,12 @@ export const useKitchenStyles = makeStyles({
     gap: '8px',
   },
   btnStartCooking: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     borderRadius: '6px',
   },
   btnMarkReady: {
-    backgroundColor: '#107C41',
-    borderTopColor: '#107C41', borderBottomColor: '#107C41', borderLeftColor: '#107C41', borderRightColor: '#107C41',
+    backgroundColor: tokens.colorStatusSuccessBackground3,
+    borderTopColor: tokens.colorStatusSuccessBorder1, borderBottomColor: tokens.colorStatusSuccessBorder1, borderLeftColor: tokens.colorStatusSuccessBorder1, borderRightColor: tokens.colorStatusSuccessBorder1,
     borderRadius: '6px',
   },
   btnMarkServed: {
