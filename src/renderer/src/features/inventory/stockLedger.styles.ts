@@ -78,21 +78,21 @@ export const useStockLedgerStyles = makeStyles({
     fontSize: '26px',
     fontWeight: 600,
     marginTop: '6px',
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     display: 'block',
   },
   kpiValueDanger: {
     fontSize: '26px',
     fontWeight: 600,
     marginTop: '6px',
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
     display: 'block',
   },
   kpiValueBrand: {
     fontSize: '26px',
     fontWeight: 600,
     marginTop: '6px',
-    color: '#0078D4',
+    color: tokens.colorPaletteBlueForeground2,
     display: 'block',
   },
   kpiSubtext: {
@@ -106,15 +106,15 @@ export const useStockLedgerStyles = makeStyles({
     gap: '8px',
   },
   filterIcon: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   filterTitle: {
     fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   filterBadge: {
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-    color: '#E51937',
+    backgroundColor: tokens.colorStatusDangerBackground1,
+    color: tokens.colorBrandForeground1,
   },
   filterRight: {
     display: 'flex',
@@ -129,7 +129,7 @@ export const useStockLedgerStyles = makeStyles({
     minWidth: '140px',
   },
   printBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#ffffff',
     fontWeight: 600,
     boxShadow: 'none',
@@ -175,23 +175,23 @@ export const useStockLedgerStyles = makeStyles({
   },
   qtyIn: {
     fontWeight: 600,
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     fontSize: '14px',
   },
   qtyOut: {
     fontWeight: 600,
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
     fontSize: '14px',
   },
   impactValIn: {
     textAlign: 'right',
     fontWeight: 600,
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
   },
   impactValOut: {
     textAlign: 'right',
     fontWeight: 600,
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   actionBtnDelete: {
     width: '30px',
@@ -208,7 +208,7 @@ export const useStockLedgerStyles = makeStyles({
     borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
   },
   iconDelete: {
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   scopeRow: {
     display: 'flex',
@@ -261,7 +261,7 @@ export const useStockLedgerStyles = makeStyles({
     transition: 'all 0.12s ease',
   },
   scopeBtnActive: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     fontWeight: 600,
   },
@@ -297,12 +297,12 @@ export const useStockLedgerStyles = makeStyles({
   icon14Red: {
     width: '14px',
     height: '14px',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   icon14Blue: {
     width: '14px',
     height: '14px',
-    color: '#2563EB',
+    color: tokens.colorPaletteBlueForeground2,
   },
 });
 

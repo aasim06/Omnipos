@@ -419,7 +419,7 @@ export function InventoryDashboardView(): React.JSX.Element {
         <div className={styles.sectionCard} style={{ borderLeft: '4px solid #D97706' }}>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionHeaderLeft}>
-              <Calendar20Regular style={{ color: '#D97706', fontSize: '20px' }} />
+              <Calendar20Regular style={{ color: tokens.colorStatusWarningForeground1, fontSize: '20px' }} />
               <Subtitle2 className={styles.sectionTitle}>
                 Expiring Soon &amp; Batch Expiry Alerts
               </Subtitle2>
@@ -427,7 +427,7 @@ export function InventoryDashboardView(): React.JSX.Element {
                 {expiringProducts.length} items
               </Badge>
             </div>
-            <Caption1 style={{ color: '#605E5C' }}>
+            <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
               Products requiring immediate markdown, clearance sale, or vendor return
             </Caption1>
           </div>
@@ -451,10 +451,10 @@ export function InventoryDashboardView(): React.JSX.Element {
                   onClick={() => navigate(`/catalog/products/${prod.id}`, { state: { from: location.pathname + location.search } })}
                 >
                   <div>
-                    <strong style={{ fontSize: '13.5px', color: '#323130', display: 'block' }}>
+                    <strong style={{ fontSize: '13.5px', color: tokens.colorNeutralForeground1, display: 'block' }}>
                       {prod.name}
                     </strong>
-                    <Caption1 style={{ color: '#605E5C' }}>
+                    <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
                       {prod.batchNumber ? `Batch: #${prod.batchNumber} • ` : ''}Stock: {prod.openingStock || 0} {prod.unit || 'PCS'}
                     </Caption1>
                   </div>

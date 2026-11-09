@@ -70,7 +70,7 @@ export const useVendorsStyles = makeStyles({
   },
   saveBtn: {
     height: '38px',
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     borderRadius: tokens.borderRadiusMedium,
     fontWeight: 600,
@@ -86,7 +86,7 @@ export const useVendorsStyles = makeStyles({
     whiteSpace: 'nowrap',
     transition: 'all 0.15s ease',
     ':hover': {
-      backgroundColor: '#C6172E',
+      backgroundColor: tokens.colorBrandBackgroundHover,
     },
   },
   filterBar: {
@@ -138,8 +138,7 @@ export const useVendorsStyles = makeStyles({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    backdropFilter: 'blur(3px)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Win11 smoke layer, no blur,
     zIndex: 1000,
     display: 'flex',
     justifyContent: 'flex-end',
@@ -256,12 +255,12 @@ export const useVendorsStyles = makeStyles({
   tdBalanceDebit: {
     textAlign: 'right',
     fontWeight: 600,
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   tdBalanceCredit: {
     textAlign: 'right',
     fontWeight: 600,
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
   },
   actionBtnsRow: {
     display: 'flex',
@@ -297,10 +296,10 @@ export const useVendorsStyles = makeStyles({
     minWidth: '30px',
     padding: 0,
     borderRadius: '6px',
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    backgroundColor: tokens.colorStatusDangerBackground1,
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.25)', borderBottomColor: 'rgba(229, 25, 55, 0.25)', borderLeftColor: 'rgba(229, 25, 55, 0.25)', borderRightColor: 'rgba(229, 25, 55, 0.25)',
+    borderTopColor: tokens.colorStatusDangerBorder1, borderBottomColor: tokens.colorStatusDangerBorder1, borderLeftColor: tokens.colorStatusDangerBorder1, borderRightColor: tokens.colorStatusDangerBorder1,
   },
   actionBtnDelete: {
     width: '30px',
@@ -314,22 +313,22 @@ export const useVendorsStyles = makeStyles({
     borderTopColor: 'rgba(209, 52, 56, 0.25)', borderBottomColor: 'rgba(209, 52, 56, 0.25)', borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
   },
   iconStockIn: {
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     width: '16px',
     height: '16px',
   },
   iconPrint: {
-    color: '#0078D4',
+    color: tokens.colorPaletteBlueForeground2,
     width: '16px',
     height: '16px',
   },
   iconEdit: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
     width: '16px',
     height: '16px',
   },
   iconDelete: {
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
     width: '16px',
     height: '16px',
   },
@@ -354,7 +353,7 @@ export const useVendorsStyles = makeStyles({
     overflow: 'hidden',
   },
   drawerSaveBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
   },
   printModalSurface: {
     maxWidth: '480px',
@@ -479,7 +478,7 @@ export const useVendorsStyles = makeStyles({
     height: '38px',
     padding: '0 22px',
     borderRadius: '6px',
-    backgroundColor: '#0078D4',
+    backgroundColor: tokens.colorPaletteBlueBorderActive,
     whiteSpace: 'nowrap',
     fontWeight: 600,
   },

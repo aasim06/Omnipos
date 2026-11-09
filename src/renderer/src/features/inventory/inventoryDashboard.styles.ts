@@ -60,8 +60,8 @@ export const useInventoryDashboardStyles = makeStyles({
     transition: 'all 0.15s ease',
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground3,
-      borderTopColor: '#E51937', borderBottomColor: '#E51937',
-      borderLeftColor: '#E51937', borderRightColor: '#E51937',
+      borderTopColor: tokens.colorCompoundBrandStroke, borderBottomColor: tokens.colorCompoundBrandStroke,
+      borderLeftColor: tokens.colorCompoundBrandStroke, borderRightColor: tokens.colorCompoundBrandStroke,
       transform: 'translateY(-2px)',
       boxShadow: tokens.shadow8,
     },
@@ -90,7 +90,7 @@ export const useInventoryDashboardStyles = makeStyles({
     marginBottom: '8px',
     borderLeftWidth: '3px',
     borderLeftStyle: 'solid',
-    borderLeftColor: '#D13438',
+    borderLeftColor: tokens.colorStatusDangerBorder1,
   },
   cardSubtitle: {
     color: tokens.colorNeutralForeground2,
@@ -106,19 +106,19 @@ export const useInventoryDashboardStyles = makeStyles({
     fontSize: '28px',
     fontWeight: 600,
     marginTop: '8px',
-    color: '#0078D4',
+    color: tokens.colorPaletteBlueForeground2,
   },
   cardMetricNumGreen: {
     fontSize: '28px',
     fontWeight: 600,
     marginTop: '8px',
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
   },
   cardMetricNumRed: {
     fontSize: '28px',
     fontWeight: 600,
     marginTop: '8px',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   cardHint: {
     color: tokens.colorNeutralForeground3,
@@ -133,29 +133,29 @@ export const useInventoryDashboardStyles = makeStyles({
     gap: '12px',
   },
   quickLinkIconGreen: {
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     backgroundColor: 'rgba(16, 124, 65, 0.1)',
     padding: '10px',
     borderRadius: '8px',
     display: 'inline-flex',
   },
   quickLinkIconRed: {
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
     backgroundColor: 'rgba(209, 52, 56, 0.1)',
     padding: '10px',
     borderRadius: '8px',
     display: 'inline-flex',
   },
   quickLinkIconBlue: {
-    color: '#0078D4',
+    color: tokens.colorPaletteBlueForeground2,
     backgroundColor: 'rgba(0, 120, 212, 0.1)',
     padding: '10px',
     borderRadius: '8px',
     display: 'inline-flex',
   },
   quickLinkIconBrand: {
-    color: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    color: tokens.colorBrandForeground1,
+    backgroundColor: tokens.colorStatusDangerBackground1,
     padding: '10px',
     borderRadius: '8px',
     display: 'inline-flex',
@@ -183,7 +183,7 @@ export const useInventoryDashboardStyles = makeStyles({
     gap: '8px',
   },
   warningIcon: {
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   sectionTitle: {
     fontWeight: 600,
@@ -191,7 +191,7 @@ export const useInventoryDashboardStyles = makeStyles({
   },
   reorderAllBtn: {
     fontWeight: 600,
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   emptyText: {
     padding: '24px',
@@ -219,7 +219,7 @@ export const useInventoryDashboardStyles = makeStyles({
     fontWeight: 600,
   },
   restockBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#fff',
     fontSize: '11px',
     padding: '4px 10px',
@@ -250,12 +250,12 @@ export const useInventoryDashboardStyles = makeStyles({
   movementCostIn: {
     fontSize: '12px',
     fontWeight: 600,
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
   },
   movementCostOut: {
     fontSize: '12px',
     fontWeight: 600,
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   distributionTitle: {
     fontWeight: 600,
@@ -358,7 +358,7 @@ export const useInventoryDashboardStyles = makeStyles({
     transitionTimingFunction: 'ease',
   },
   scopeBtnActive: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     fontWeight: 600,
   },
@@ -375,12 +375,12 @@ export const useInventoryDashboardStyles = makeStyles({
   icon15Red: {
     width: '15px',
     height: '15px',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   icon15Blue: {
     width: '15px',
     height: '15px',
-    color: '#2563EB',
+    color: tokens.colorPaletteBlueForeground2,
   },
   icon15Neutral: {
     width: '15px',

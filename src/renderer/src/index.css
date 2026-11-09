@@ -227,6 +227,31 @@ select {
     height: auto !important;
     background: #ffffff !important;
   }
+
+  /* Paper is always light: when printing from dark mode, force the theme tokens
+     that screens use for text, surfaces and strokes to their light-theme values. */
+  .fui-FluentProvider {
+    --colorNeutralForeground1: #1A1A1A !important;
+    --colorNeutralForeground2: #5D5D5D !important;
+    --colorNeutralForeground3: #8A8A8A !important;
+    --colorNeutralForeground4: #A0A0A0 !important;
+    --colorNeutralBackground1: #FFFFFF !important;
+    --colorNeutralBackground2: #FFFFFF !important;
+    --colorNeutralBackground3: #F5F5F5 !important;
+    --colorNeutralBackground4: #F0F0F0 !important;
+    --colorNeutralBackground5: #EBEBEB !important;
+    --colorNeutralStroke1: #D1D1D1 !important;
+    --colorNeutralStroke2: #E0E0E0 !important;
+    --colorNeutralStrokeAccessible: #616161 !important;
+    --colorBrandForeground1: #C6172E !important;
+    --colorBrandForeground2: #A71527 !important;
+    --colorStatusSuccessForeground1: #0E700E !important;
+    --colorStatusWarningForeground1: #BC4B09 !important;
+    --colorStatusDangerForeground1: #B10E1C !important;
+    --colorPaletteBlueForeground2: #115EA3 !important;
+    color: #1A1A1A !important;
+    background-color: #FFFFFF !important;
+  }
 }
 
 /* ── UI Animation Keyframes ── */

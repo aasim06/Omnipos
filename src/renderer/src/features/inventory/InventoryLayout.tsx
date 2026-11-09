@@ -69,7 +69,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
   },
   arrowUpIcon: {
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   stockOutBtn: {
     borderRadius: '8px',
@@ -89,7 +89,7 @@ const useStyles = makeStyles({
     borderRightColor: tokens.colorNeutralStroke1,
   },
   stockInBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     borderRadius: '8px',
     fontWeight: 600,
@@ -159,8 +159,8 @@ export function InventoryLayout(): React.JSX.Element {
             icon={<Receipt20Regular />}
             onClick={() => setIsPurchaseBillOpen(true)}
             style={{
-              borderColor: '#0078D4',
-              color: '#0078D4',
+              borderColor: tokens.colorPaletteBlueBorderActive,
+              color: tokens.colorPaletteBlueForeground2,
               fontWeight: 600,
               borderRadius: '8px',
               fontSize: '13px',
