@@ -117,13 +117,15 @@ Goal: the app should feel like a native Windows 11 desktop app (Fluent 2 / WinUI
 All 8 modals (variant picker, kitchen notes, held orders, receipt preview, A4 invoice, weight scale, wholesale numpad, expanded cart) → Fluent `Dialog` with Win11 **ContentDialog** look: 8px radius, title 20px Subtitle, footer with grey band, buttons right-aligned, no blur backdrop. Held orders → right side **Drawer** (Win11 panel).
 
 ### 3.6 Code structure (needed to make the redesign safe)
-`PosCounterView.tsx` is 6,411 lines with inline styles. Split it while redesigning:
-- `pos/PosLayout.tsx` (3 zones + splitter)
-- `pos/CommandBar.tsx`, `pos/CategoryPivot.tsx`, `pos/ProductGrid.tsx`, `pos/ProductList.tsx`
-- `pos/order/OrderPane.tsx`, `OrderHeader.tsx`, `OrderLineList.tsx`, `OrderSummary.tsx`, `PaymentFlyout.tsx`, `DiscountFlyout.tsx`
-- `pos/dialogs/*` (one file per modal)
-- `pos/pos.styles.ts` with `makeStyles` (same pattern the other features already use)
-- Business logic (cart state, printing, sync) stays as is — only moves into a `usePosCart` hook. **No behaviour changes.**
+`PosCounterView.tsx` was 6,411 lines with inline styles. **Done in P3** (moved verbatim, no behaviour change):
+- `pos/usePosCounter.tsx`: all state, queries, effects and handlers (hook order unchanged); components get its result as `pos`
+- `pos/PosCounterView.tsx`: the screen (72 lines) — catalog pane + order pane + dialogs
+- `pos/catalog/`: `CatalogPane`, `TerminalModeBar`, `CatalogHeader`, `ScannerBar`, `MealBuilderCard`, `ProductCatalog`, `FastFoodVisualCard`
+- `pos/order/`: `OrderPane`, `OrderPaneHeader`, `OrderDetails`, `OrderLineList`, `OrderFooter`
+- `pos/dialogs/`: one file per modal (8)
+- `pos/posTokens.ts`, `pos/posIcons.tsx`, `pos/posTypes.ts`
+
+Still to do in P4 while redesigning: replace `getTokens()` inline styles with `makeStyles` + Fluent tokens, merge `TerminalModeBar` + `CatalogHeader` + `ScannerBar` into one CommandBar, split `OrderFooter` into a sticky summary + flyouts.
 
 ---
 
