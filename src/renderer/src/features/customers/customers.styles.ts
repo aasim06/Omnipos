@@ -42,7 +42,7 @@ export const useCustomersStyles = makeStyles({
   },
   title: {
     fontSize: '22px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   subtitle: {
@@ -57,9 +57,9 @@ export const useCustomersStyles = makeStyles({
   primaryBtn: {
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     border: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+    boxShadow: 'none',
     ':hover': {
       backgroundColor: '#be123c',
       color: '#FFFFFF',
@@ -68,7 +68,7 @@ export const useCustomersStyles = makeStyles({
   refundHeaderBtn: {
     backgroundColor: '#2563EB',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     border: 'none',
     boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)',
     ':hover': {
@@ -85,7 +85,7 @@ export const useCustomersStyles = makeStyles({
   },
   statCard: {
     padding: '16px 20px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     display: 'flex',
@@ -96,7 +96,7 @@ export const useCustomersStyles = makeStyles({
   statIconBox: {
     width: '42px',
     height: '42px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -108,7 +108,7 @@ export const useCustomersStyles = makeStyles({
   },
   statValue: {
     fontSize: '20px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   statLabel: {
@@ -120,7 +120,7 @@ export const useCustomersStyles = makeStyles({
   // Card Panel
   card: {
     padding: '20px 24px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     boxShadow: tokens.shadow2,
@@ -159,7 +159,7 @@ export const useCustomersStyles = makeStyles({
     padding: '12px 16px',
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground2,
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
@@ -246,7 +246,7 @@ export const useCustomersStyles = makeStyles({
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
     cursor: 'pointer',
-    fontWeight: 700,
+    fontWeight: 600,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -260,7 +260,7 @@ export const useCustomersStyles = makeStyles({
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
     borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   headerLeftRow: {
     display: 'flex',
@@ -311,7 +311,7 @@ export const useCustomersStyles = makeStyles({
   viewTabBtn: {
     padding: '8px 18px',
     borderRadius: '6px',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     cursor: 'pointer',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
@@ -362,11 +362,11 @@ export const useCustomersStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
   },
   customerNameBold: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   phoneCell: {
     display: 'inline-flex',
@@ -384,11 +384,11 @@ export const useCustomersStyles = makeStyles({
     fontWeight: 600,
   },
   blueSpentText: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#0078D4',
   },
   amberDebtText: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#D97706',
   },
   greenZeroText: {
@@ -400,7 +400,7 @@ export const useCustomersStyles = makeStyles({
   },
   tableSubtitle: {
     fontSize: '13px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   tableSubCount: {
@@ -412,7 +412,7 @@ export const useCustomersStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
   },
   orderIdBlue: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#2563EB',
   },
   itemsCol: {
@@ -425,7 +425,7 @@ export const useCustomersStyles = makeStyles({
     color: tokens.colorNeutralForeground1,
   },
   refundAmountDanger: {
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#D13438',
     fontSize: '14px',
   },
@@ -475,7 +475,7 @@ export const useCustomersStyles = makeStyles({
     borderRadius: '8px',
     backgroundColor: 'rgba(16, 124, 65, 0.12)',
     color: '#107C41',
-    fontWeight: 700,
+    fontWeight: 600,
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: 'rgba(16, 124, 65, 0.3)', borderBottomColor: 'rgba(16, 124, 65, 0.3)',
@@ -484,7 +484,7 @@ export const useCustomersStyles = makeStyles({
   stepHeading: {
     marginBottom: '8px',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
   },
   orderScrollList: {
@@ -521,7 +521,7 @@ export const useCustomersStyles = makeStyles({
     gap: '8px',
   },
   orderIdTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#2563EB',
     fontSize: '13px',
   },
@@ -539,7 +539,7 @@ export const useCustomersStyles = makeStyles({
   },
   orderTotalBold: {
     fontSize: '14px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
@@ -567,7 +567,7 @@ export const useCustomersStyles = makeStyles({
   changeOrderBtn: {
     fontSize: '11px',
     color: '#E51937',
-    fontWeight: 700,
+    fontWeight: 600,
     backgroundColor: 'transparent',
     borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
     cursor: 'pointer',
@@ -575,7 +575,7 @@ export const useCustomersStyles = makeStyles({
   },
   step2Heading: {
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
     marginBottom: '8px',
   },
@@ -589,7 +589,7 @@ export const useCustomersStyles = makeStyles({
     flexBasis: '0%',
   },
   itemName13: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     display: 'block',
   },
@@ -607,11 +607,11 @@ export const useCustomersStyles = makeStyles({
     textAlign: 'right',
   },
   returnCostActive: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#D13438',
   },
   returnCostInactive: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
   },
   reasonGrid: {
@@ -645,7 +645,7 @@ export const useCustomersStyles = makeStyles({
   },
   totalRefundVal: {
     fontSize: '18px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#D13438',
   },
   dialogActionsTop16: {

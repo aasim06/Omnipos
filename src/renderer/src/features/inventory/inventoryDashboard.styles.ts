@@ -98,25 +98,25 @@ export const useInventoryDashboardStyles = makeStyles({
   },
   cardMetricNum: {
     fontSize: '28px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '8px',
     color: tokens.colorNeutralForeground1,
   },
   cardMetricNumBlue: {
     fontSize: '28px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '8px',
     color: '#0078D4',
   },
   cardMetricNumGreen: {
     fontSize: '28px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '8px',
     color: '#107C41',
   },
   cardMetricNumRed: {
     fontSize: '28px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '8px',
     color: '#E51937',
   },
@@ -161,7 +161,7 @@ export const useInventoryDashboardStyles = makeStyles({
     display: 'inline-flex',
   },
   quickLinkTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
@@ -186,7 +186,7 @@ export const useInventoryDashboardStyles = makeStyles({
     color: '#D13438',
   },
   sectionTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   reorderAllBtn: {
@@ -216,7 +216,7 @@ export const useInventoryDashboardStyles = makeStyles({
     gap: '10px',
   },
   badgeBold: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   restockBtn: {
     backgroundColor: '#E51937',
@@ -258,7 +258,7 @@ export const useInventoryDashboardStyles = makeStyles({
     color: '#D13438',
   },
   distributionTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     marginBottom: '16px',
     display: 'block',
@@ -282,7 +282,7 @@ export const useInventoryDashboardStyles = makeStyles({
     alignItems: 'center',
   },
   catCardTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     color: tokens.colorNeutralForeground1,
   },
@@ -321,7 +321,7 @@ export const useInventoryDashboardStyles = makeStyles({
   },
   scopeLabel: {
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
@@ -360,14 +360,14 @@ export const useInventoryDashboardStyles = makeStyles({
   scopeBtnActive: {
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeBtnBadge: {
     fontSize: '10px',
     padding: '1px 6px',
     borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeBtnBadgeActive: {
     backgroundColor: 'rgba(255,255,255,0.25)',
@@ -407,7 +407,7 @@ export const useInventoryDashboardStyles = makeStyles({
     padding: '1px 6px',
     borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeRight: {
     display: 'flex',

@@ -43,7 +43,7 @@ export const useAddProductStyles = makeStyles({
     borderRadius: '8px',
   },
   headerTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '20px',
     color: tokens.colorNeutralForeground1,
     margin: 0,
@@ -124,7 +124,7 @@ export const useAddProductStyles = makeStyles({
     border: 'none',
     color: '#E51937',
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
     padding: '0 2px',
     display: 'inline-flex',
@@ -134,7 +134,7 @@ export const useAddProductStyles = makeStyles({
   newCategoryLink: {
     fontSize: '12px',
     color: '#E51937',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   fullWidth: {
@@ -164,7 +164,7 @@ export const useAddProductStyles = makeStyles({
   },
   presetsTitle: {
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
     whiteSpace: 'nowrap',
   },
@@ -191,7 +191,7 @@ export const useAddProductStyles = makeStyles({
   },
   pricingTypeLabel: {
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
     display: 'flex',
     alignItems: 'center',
@@ -226,7 +226,7 @@ export const useAddProductStyles = makeStyles({
   pricingTypeBtnActive: {
     backgroundColor: '#E51937',
     color: '#FFFFFF !important',
-    fontWeight: 700,
+    fontWeight: 600,
     borderTopColor: '#E51937',
     borderBottomColor: '#E51937',
     borderLeftColor: '#E51937',
@@ -239,7 +239,7 @@ export const useAddProductStyles = makeStyles({
     borderBottomStyle: 'solid',
     borderLeftStyle: 'solid',
     borderRightStyle: 'solid',
-    boxShadow: '0 2px 10px rgba(229, 25, 55, 0.35)',
+    boxShadow: 'none',
     ':hover': {
       backgroundColor: '#be123c',
       color: '#FFFFFF !important',
@@ -255,7 +255,7 @@ export const useAddProductStyles = makeStyles({
   // Variants Section
   variantSectionBox: {
     padding: '16px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
@@ -272,12 +272,12 @@ export const useAddProductStyles = makeStyles({
   },
   variantProfileTag: {
     fontSize: '10px',
-    fontWeight: 800,
+    fontWeight: 600,
     padding: '2px 7px',
     borderRadius: '4px',
   },
   variantHeaderLabel: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13.5px',
   },
   variantCustomBtn: {
@@ -316,7 +316,7 @@ export const useAddProductStyles = makeStyles({
     marginBottom: '8px',
   },
   variantTableCaption: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
   },
   variantColumnHeaderRow: {
@@ -326,7 +326,7 @@ export const useAddProductStyles = makeStyles({
     alignItems: 'center',
     padding: '4px 8px',
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     textTransform: 'uppercase',
     letterSpacing: '0.4px',
@@ -348,7 +348,7 @@ export const useAddProductStyles = makeStyles({
     border: `1px solid ${tokens.colorNeutralStroke1}`,
   },
   variantRowLabel: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '12.5px',
   },
   variantDeleteBtn: {
@@ -357,7 +357,7 @@ export const useAddProductStyles = makeStyles({
 
   // Media / Right Column
   mediaHeaderTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13.5px',
     color: tokens.colorNeutralForeground1,
     marginBottom: '4px',
@@ -400,7 +400,7 @@ export const useAddProductStyles = makeStyles({
   },
   previewTitle: {
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
     textTransform: 'uppercase',
     marginBottom: '8px',
@@ -446,7 +446,7 @@ export const useAddProductStyles = makeStyles({
     backgroundColor: 'rgba(0,0,0,0.65)',
     color: '#ffffff',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   previewDetailsWrap: {
     height: '76px',
@@ -457,7 +457,7 @@ export const useAddProductStyles = makeStyles({
   },
   previewProductTitle: {
     fontSize: '12px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -471,7 +471,7 @@ export const useAddProductStyles = makeStyles({
   },
   previewVariantBadge: {
     fontSize: '8.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     padding: '0 4px',
     borderRadius: '3px',
     backgroundColor: 'rgba(229, 25, 55, 0.12)',
@@ -493,7 +493,7 @@ export const useAddProductStyles = makeStyles({
   },
   previewPriceText: {
     fontSize: '13px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
   },
   previewModuleText: {
@@ -513,7 +513,7 @@ export const useAddProductStyles = makeStyles({
   },
   proTipTitle: {
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
@@ -528,7 +528,7 @@ export const useAddProductStyles = makeStyles({
   dialogSurface: {
     maxWidth: '460px',
     width: '92vw',
-    borderRadius: '16px',
+    borderRadius: '8px',
     padding: '24px',
     boxSizing: 'border-box',
     backgroundColor: tokens.colorNeutralBackground1,
@@ -559,7 +559,7 @@ export const useAddProductStyles = makeStyles({
   dialogIconBox: {
     width: '36px',
     height: '36px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(229, 25, 55, 0.12)',
     display: 'flex',
     alignItems: 'center',
@@ -568,7 +568,7 @@ export const useAddProductStyles = makeStyles({
   },
   dialogTitleText: {
     fontSize: '17px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   dialogSubtitleText: {
@@ -598,7 +598,7 @@ export const useAddProductStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#ffffff',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     padding: '0 20px',
     ':hover': {
       backgroundColor: '#be123c',
@@ -618,7 +618,7 @@ export const useAddProductStyles = makeStyles({
   },
   requiredStar: {
     color: '#E51937',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   flexShrink0: {
     flexShrink: 0,
@@ -643,7 +643,7 @@ export const useAddProductStyles = makeStyles({
 
   /* ── Industry Profile Classes ── */
   presetChipSelectedFood: {
-    fontWeight: 800,
+    fontWeight: 600,
     borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderRightColor: '#E51937',
@@ -651,7 +651,7 @@ export const useAddProductStyles = makeStyles({
     color: '#E51937',
   },
   presetChipSelectedApparel: {
-    fontWeight: 800,
+    fontWeight: 600,
     borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: '#8b5cf6', borderBottomColor: '#8b5cf6', borderLeftColor: '#8b5cf6', borderRightColor: '#8b5cf6',
@@ -659,7 +659,7 @@ export const useAddProductStyles = makeStyles({
     color: '#8b5cf6',
   },
   presetChipSelectedFootwear: {
-    fontWeight: 800,
+    fontWeight: 600,
     borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: '#3b82f6', borderBottomColor: '#3b82f6', borderLeftColor: '#3b82f6', borderRightColor: '#3b82f6',
@@ -667,7 +667,7 @@ export const useAddProductStyles = makeStyles({
     color: '#3b82f6',
   },
   presetChipSelectedHardware: {
-    fontWeight: 800,
+    fontWeight: 600,
     borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: '#f59e0b', borderBottomColor: '#f59e0b', borderLeftColor: '#f59e0b', borderRightColor: '#f59e0b',
@@ -675,7 +675,7 @@ export const useAddProductStyles = makeStyles({
     color: '#f59e0b',
   },
   presetChipSelectedStandard: {
-    fontWeight: 800,
+    fontWeight: 600,
     borderTopWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderRightWidth: '1.5px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: '#64748b', borderBottomColor: '#64748b', borderLeftColor: '#64748b', borderRightColor: '#64748b',
@@ -729,7 +729,7 @@ export const useAddProductStyles = makeStyles({
   },
   apStyle_4: {
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
@@ -814,7 +814,7 @@ export const useAddProductStyles = makeStyles({
     height: '20px',
   },
   apStyle_24: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13.5px',
     color: tokens.colorNeutralForeground1,
   },
@@ -844,7 +844,7 @@ export const useAddProductStyles = makeStyles({
   },
   apStyle_29: {
     fontSize: '12px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   apStyle_30: {
@@ -883,7 +883,7 @@ export const useAddProductStyles = makeStyles({
   },
   apStyle_43: {
     fontSize: '13px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     marginBottom: '8px',
   },
@@ -907,7 +907,7 @@ export const useAddProductStyles = makeStyles({
   apStyle_47: {
     marginTop: '16px',
     padding: '14px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground2,
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
@@ -932,7 +932,7 @@ export const useAddProductStyles = makeStyles({
   },
   apStyle_49: {
     fontSize: '13px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   apStyle_50: {
@@ -973,7 +973,7 @@ export const useAddProductStyles = makeStyles({
     borderBottomStyle: 'none',
     borderLeftStyle: 'none',
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   apStyle_54: {
@@ -984,14 +984,14 @@ export const useAddProductStyles = makeStyles({
   apStyle_55: {
     display: 'block',
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     marginBottom: '4px',
     color: tokens.colorNeutralForeground2,
   },
   apStyle_56: {
     marginTop: '16px',
     padding: '16px 18px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground2,
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
@@ -1036,12 +1036,12 @@ export const useAddProductStyles = makeStyles({
   },
   apStyle_60: {
     fontSize: '14px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   apStyle_61: {
     fontSize: '10.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     padding: '2px 8px',
     borderRadius: '6px',
     backgroundColor: 'rgba(229, 25, 55, 0.12)',
@@ -1111,11 +1111,11 @@ export const useAddProductStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     color: tokens.colorNeutralForeground1,
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   apStyle_68: {
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
@@ -1142,7 +1142,7 @@ export const useAddProductStyles = makeStyles({
     backgroundColor: 'rgba(229, 25, 55, 0.1)',
     color: '#E51937',
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   apStyle_71: {
@@ -1203,7 +1203,7 @@ export const useAddProductStyles = makeStyles({
   },
   apStyle_79: {
     fontSize: '13px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   apStyle_80: {
     display: 'flex',
@@ -1251,7 +1251,7 @@ export const useAddProductStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground1,
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   apStyle_84: {
@@ -1314,7 +1314,7 @@ export const useAddProductStyles = makeStyles({
     borderBottomStyle: 'none',
     borderLeftStyle: 'none',
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   apStyle_92: {
@@ -1327,7 +1327,7 @@ export const useAddProductStyles = makeStyles({
     borderBottomStyle: 'none',
     borderLeftStyle: 'none',
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   apStyle_93: {
@@ -1340,7 +1340,7 @@ export const useAddProductStyles = makeStyles({
     borderBottomStyle: 'none',
     borderLeftStyle: 'none',
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   apStyle_94: {
@@ -1360,7 +1360,7 @@ export const useAddProductStyles = makeStyles({
   },
   apStyle_97: {
     fontSize: '13px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     marginBottom: '8px',
     display: 'flex',
@@ -1434,7 +1434,7 @@ export const useAddProductStyles = makeStyles({
     color: '#E51937',
   },
   apStyle_107: {
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
     display: 'inline-flex',
     alignItems: 'center',
@@ -1495,7 +1495,7 @@ export const useAddProductStyles = makeStyles({
     textAlign: 'center',
     padding: '1px 0',
     fontSize: '7.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#E51937',
     backgroundColor: 'rgba(229, 25, 55, 0.1)',
     borderRadius: '2px',
@@ -1508,7 +1508,7 @@ export const useAddProductStyles = makeStyles({
   },
   apStyle_125: {
     fontSize: '7.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
   },
   apStyle_126: {
@@ -1526,7 +1526,7 @@ export const useAddProductStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#fff',
     fontSize: '7px',
-    fontWeight: 700,
+    fontWeight: 600,
     padding: '1px 3px',
     borderRadius: '2px',
   },
@@ -1535,7 +1535,7 @@ export const useAddProductStyles = makeStyles({
   },
   apStyle_129: {
     fontSize: '12px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#10B981',
     display: 'flex',
     alignItems: 'baseline',
@@ -1559,7 +1559,7 @@ export const useAddProductStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#ffffff',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'default',
   },
   apStyle_132: {
@@ -1576,7 +1576,7 @@ export const useAddProductStyles = makeStyles({
     borderLeftStyle: 'none',
     color: '#E51937',
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
     padding: 0,
   },
@@ -1608,7 +1608,7 @@ export const useAddProductStyles = makeStyles({
   },
   apStyle_136: {
     fontSize: '10.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
   },
   apStyle_137: {
@@ -1633,7 +1633,7 @@ export const useAddProductStyles = makeStyles({
   },
 
   apDeptBadgeFastFood: {
-    fontSize: '11px', fontWeight: 700, paddingTop: '4px', paddingBottom: '4px', paddingLeft: '12px', paddingRight: '12px', borderRadius: '12px',
+    fontSize: '11px', fontWeight: 600, paddingTop: '4px', paddingBottom: '4px', paddingLeft: '12px', paddingRight: '12px', borderRadius: '8px',
     backgroundColor: 'rgba(229, 25, 55, 0.12)', color: '#E51937',
     borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: 'rgba(229, 25, 55, 0.25)',
     borderRightWidth: '1px', borderRightStyle: 'solid', borderRightColor: 'rgba(229, 25, 55, 0.25)',
@@ -1641,7 +1641,7 @@ export const useAddProductStyles = makeStyles({
     borderLeftWidth: '1px', borderLeftStyle: 'solid', borderLeftColor: 'rgba(229, 25, 55, 0.25)',
   },
   apDeptBadgeMinimart: {
-    fontSize: '11px', fontWeight: 700, paddingTop: '4px', paddingBottom: '4px', paddingLeft: '12px', paddingRight: '12px', borderRadius: '12px',
+    fontSize: '11px', fontWeight: 600, paddingTop: '4px', paddingBottom: '4px', paddingLeft: '12px', paddingRight: '12px', borderRadius: '8px',
     backgroundColor: 'rgba(2, 132, 199, 0.12)', color: '#0284C7',
     borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: 'rgba(2, 132, 199, 0.25)',
     borderRightWidth: '1px', borderRightStyle: 'solid', borderRightColor: 'rgba(2, 132, 199, 0.25)',
@@ -1649,13 +1649,13 @@ export const useAddProductStyles = makeStyles({
     borderLeftWidth: '1px', borderLeftStyle: 'solid', borderLeftColor: 'rgba(2, 132, 199, 0.25)',
   },
   apDeptCardBase: {
-    display: 'flex', alignItems: 'center', columnGap: '14px', rowGap: '14px', paddingTop: '14px', paddingBottom: '14px', paddingLeft: '18px', paddingRight: '18px', borderRadius: '10px', boxSizing: 'border-box',
+    display: 'flex', alignItems: 'center', columnGap: '14px', rowGap: '14px', paddingTop: '14px', paddingBottom: '14px', paddingLeft: '18px', paddingRight: '18px', borderRadius: '8px', boxSizing: 'border-box',
     cursor: 'pointer', textAlign: 'left', transitionProperty: 'all', transitionDuration: '0.15s', transitionTimingFunction: 'ease',
     borderTopWidth: '2px', borderTopStyle: 'solid', borderRightWidth: '2px', borderRightStyle: 'solid', borderBottomWidth: '2px', borderBottomStyle: 'solid', borderLeftWidth: '2px', borderLeftStyle: 'solid',
   },
   apDeptCardFastFoodActive: {
     borderTopColor: '#E51937', borderRightColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.09)', boxShadow: '0 4px 14px rgba(229, 25, 55, 0.18)',
+    backgroundColor: 'rgba(229, 25, 55, 0.09)', boxShadow: 'none',
   },
   apDeptCardFastFoodInactive: {
     borderTopColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2, borderLeftColor: tokens.colorNeutralStroke2,
@@ -1670,10 +1670,10 @@ export const useAddProductStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground2, boxShadow: 'none',
   },
   apDeptIconBase: {
-    width: '44px', height: '44px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    width: '44px', height: '44px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   apDeptIconFastFoodActive: {
-    backgroundColor: '#E51937', color: '#FFFFFF', boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+    backgroundColor: '#E51937', color: '#FFFFFF', boxShadow: 'none',
   },
   apDeptIconFastFoodInactive: {
     backgroundColor: tokens.colorNeutralBackground3, color: tokens.colorNeutralForeground2, boxShadow: 'none',
@@ -1685,7 +1685,7 @@ export const useAddProductStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3, color: tokens.colorNeutralForeground2, boxShadow: 'none',
   },
   apDeptTextTitleBase: {
-    fontWeight: 800, fontSize: '14px',
+    fontWeight: 600, fontSize: '14px',
   },
   apDeptTextTitleFastFoodActive: {
     color: '#E51937',
@@ -1714,11 +1714,11 @@ export const useAddProductStyles = makeStyles({
   },
   apChipBadgeActive: {
     fontSize: '10.5px', paddingTop: '1px', paddingBottom: '1px', paddingLeft: '5px', paddingRight: '5px', borderRadius: '4px',
-    backgroundColor: '#E51937', color: '#ffffff', fontWeight: 700,
+    backgroundColor: '#E51937', color: '#ffffff', fontWeight: 600,
   },
   apChipBadgeInactive: {
     fontSize: '10.5px', paddingTop: '1px', paddingBottom: '1px', paddingLeft: '5px', paddingRight: '5px', borderRadius: '4px',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', fontWeight: 700,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', fontWeight: 600,
   },
   apGridChipBase: {
     paddingTop: '8px', paddingBottom: '8px', paddingLeft: '10px', paddingRight: '10px', borderRadius: '8px', boxSizing: 'border-box',
@@ -1728,7 +1728,7 @@ export const useAddProductStyles = makeStyles({
   },
   apGridChipActive: {
     borderTopColor: '#E51937', borderRightColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.14)', color: '#ffffff', boxShadow: '0 0 10px rgba(229, 25, 55, 0.25)',
+    backgroundColor: 'rgba(229, 25, 55, 0.14)', color: '#ffffff', boxShadow: 'none',
   },
   apGridChipInactive: {
     borderTopColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1,
@@ -1736,8 +1736,8 @@ export const useAddProductStyles = makeStyles({
   },
 
   // 3. Simple toggles
-  apPriceNumGreen: { fontSize: '14px', fontWeight: 800, color: '#10b981' },
-  apPriceNumAmber: { fontSize: '14px', fontWeight: 800, color: '#f59e0b' },
+  apPriceNumGreen: { fontSize: '14px', fontWeight: 600, color: '#10b981' },
+  apPriceNumAmber: { fontSize: '14px', fontWeight: 600, color: '#f59e0b' },
   apBtnSelectActive: { backgroundColor: '#E51937', color: '#FFFFFF', borderTopColor: '#E51937', borderRightColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderTopWidth: '1.5px', borderRightWidth: '1.5px', borderBottomWidth: '1.5px', borderLeftWidth: '1.5px', borderTopStyle: 'solid', borderRightStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', boxSizing: 'border-box' },
   apBtnSelectTextWhite: { color: '#FFFFFF' },
   apBtnSelectStrokeWhite: { stroke: '#FFFFFF', color: '#FFFFFF' },
@@ -1763,7 +1763,7 @@ export const useAddProductStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1, color: tokens.colorNeutralForeground2,
   },
   apAccentWrapCard: {
-    paddingTop: '12px', paddingBottom: '12px', paddingLeft: '16px', paddingRight: '16px', borderRadius: '10px',
+    paddingTop: '12px', paddingBottom: '12px', paddingLeft: '16px', paddingRight: '16px', borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground2,
     borderTopWidth: '1px', borderTopStyle: 'solid', borderRightWidth: '1px', borderRightStyle: 'solid', borderBottomWidth: '1px', borderBottomStyle: 'solid', borderLeftWidth: '1px', borderLeftStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2, borderLeftColor: tokens.colorNeutralStroke2,
@@ -1781,25 +1781,25 @@ export const useAddProductStyles = makeStyles({
     borderRadius: '4px', overflow: 'hidden', marginTop: '5px',
   },
   apPreviewTabFirst: {
-    paddingTop: '2px', paddingBottom: '1px', paddingLeft: '1px', paddingRight: '1px', textAlign: 'center', backgroundColor: '#E51937', color: '#FFFFFF', fontSize: '8.5px', fontWeight: 700, lineHeight: 1.1,
+    paddingTop: '2px', paddingBottom: '1px', paddingLeft: '1px', paddingRight: '1px', textAlign: 'center', backgroundColor: '#E51937', color: '#FFFFFF', fontSize: '8.5px', fontWeight: 600, lineHeight: 1.1,
   },
   apPreviewTabOther: {
-    paddingTop: '2px', paddingBottom: '1px', paddingLeft: '1px', paddingRight: '1px', textAlign: 'center', backgroundColor: 'transparent', color: tokens.colorNeutralForeground3, fontSize: '8.5px', fontWeight: 700, lineHeight: 1.1,
+    paddingTop: '2px', paddingBottom: '1px', paddingLeft: '1px', paddingRight: '1px', textAlign: 'center', backgroundColor: 'transparent', color: tokens.colorNeutralForeground3, fontSize: '8.5px', fontWeight: 600, lineHeight: 1.1,
   },
   apRupeesQuickBadge: {
-    textAlign: 'center', paddingTop: '1px', paddingBottom: '1px', paddingLeft: 0, paddingRight: 0, fontSize: '7.5px', fontWeight: 700, color: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.1)', borderRadius: '2px',
+    textAlign: 'center', paddingTop: '1px', paddingBottom: '1px', paddingLeft: 0, paddingRight: 0, fontSize: '7.5px', fontWeight: 600, color: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.1)', borderRadius: '2px',
   },
   apRupeesLabel: {
-    fontSize: '7.5px', fontWeight: 800, color: '#E51937',
+    fontSize: '7.5px', fontWeight: 600, color: '#E51937',
   },
   apRupeesInputMock: {
     flexGrow: 1, flexShrink: 1, flexBasis: 0, height: '14px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '2px', fontSize: '7.5px', paddingLeft: '3px', paddingRight: '3px', display: 'flex', alignItems: 'center', color: tokens.colorNeutralForeground3,
   },
   apRupeesAddBtn: {
-    backgroundColor: '#E51937', color: '#ffffff', fontSize: '7px', fontWeight: 700, paddingTop: '1px', paddingBottom: '1px', paddingLeft: '3px', paddingRight: '3px', borderRadius: '2px',
+    backgroundColor: '#E51937', color: '#ffffff', fontSize: '7px', fontWeight: 600, paddingTop: '1px', paddingBottom: '1px', paddingLeft: '3px', paddingRight: '3px', borderRadius: '2px',
   },
   apPreviewPriceRow: {
-    fontSize: '12px', fontWeight: 800, color: '#10B981', display: 'flex', alignItems: 'baseline',
+    fontSize: '12px', fontWeight: 600, color: '#10B981', display: 'flex', alignItems: 'baseline',
   },
   apRupeesSaleNotice: {
     marginTop: '4px', paddingTop: '10px', paddingBottom: '10px', paddingLeft: '14px', paddingRight: '14px', borderRadius: '8px', backgroundColor: 'rgba(229, 25, 55, 0.08)',
@@ -1810,7 +1810,7 @@ export const useAddProductStyles = makeStyles({
     display: 'flex', alignItems: 'center', columnGap: '10px', rowGap: '10px', fontSize: '12.5px', color: tokens.colorNeutralForeground1,
   },
   apSanitaryLink: {
-    marginLeft: '8px', fontSize: '11px', fontWeight: 700,
+    marginLeft: '8px', fontSize: '11px', fontWeight: 600,
   },
   apRemCard1: {
     display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: tokens.colorNeutralBackground1, padding: '16px 20px', borderRadius: tokens.borderRadiusMedium,
@@ -1834,7 +1834,7 @@ export const useAddProductStyles = makeStyles({
     width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#0284C7', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   apRemSectionCard16: {
-    marginTop: '16px', padding: '16px 18px', borderRadius: '12px', backgroundColor: tokens.colorNeutralBackground2,
+    marginTop: '16px', padding: '16px 18px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground2,
     borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: tokens.colorNeutralStroke1,
     borderRightWidth: '1px', borderRightStyle: 'solid', borderRightColor: tokens.colorNeutralStroke1,
     borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: tokens.colorNeutralStroke1,
@@ -1849,7 +1849,7 @@ export const useAddProductStyles = makeStyles({
     width: '36px', height: '36px', borderRadius: '8px', backgroundColor: 'rgba(229, 25, 55, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   apRemPillRedBorder: {
-    fontSize: '10.5px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', backgroundColor: 'rgba(229, 25, 55, 0.12)', color: '#E51937',
+    fontSize: '10.5px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', backgroundColor: 'rgba(229, 25, 55, 0.12)', color: '#E51937',
     borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: 'rgba(229, 25, 55, 0.3)',
     borderRightWidth: '1px', borderRightStyle: 'solid', borderRightColor: 'rgba(229, 25, 55, 0.3)',
     borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: 'rgba(229, 25, 55, 0.3)',
@@ -1868,7 +1868,7 @@ export const useAddProductStyles = makeStyles({
     borderRightWidth: '1px', borderRightStyle: 'solid', borderRightColor: tokens.colorNeutralStroke1,
     borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: tokens.colorNeutralStroke1,
     borderLeftWidth: '1px', borderLeftStyle: 'solid', borderLeftColor: tokens.colorNeutralStroke1,
-    backgroundColor: tokens.colorNeutralBackground1, color: tokens.colorNeutralForeground1, fontSize: '12px', fontWeight: 700,
+    backgroundColor: tokens.colorNeutralBackground1, color: tokens.colorNeutralForeground1, fontSize: '12px', fontWeight: 600,
   },
   apRemBtnRedOutline: {
     padding: '3px 9px', borderRadius: '6px',
@@ -1876,7 +1876,7 @@ export const useAddProductStyles = makeStyles({
     borderRightWidth: '1px', borderRightStyle: 'solid', borderRightColor: 'rgba(229, 25, 55, 0.4)',
     borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: 'rgba(229, 25, 55, 0.4)',
     borderLeftWidth: '1px', borderLeftStyle: 'solid', borderLeftColor: 'rgba(229, 25, 55, 0.4)',
-    backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+    backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
   },
   apRemBtnNeutralOutline: {
     padding: '3px 9px', borderRadius: '6px',
@@ -1903,7 +1903,7 @@ export const useAddProductStyles = makeStyles({
     borderRightWidth: '1px', borderRightStyle: 'solid', borderRightColor: tokens.colorNeutralStroke1,
     borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: tokens.colorNeutralStroke1,
     borderLeftWidth: '1px', borderLeftStyle: 'solid', borderLeftColor: tokens.colorNeutralStroke1,
-    backgroundColor: tokens.colorNeutralBackground3, color: tokens.colorNeutralForeground1, fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+    backgroundColor: tokens.colorNeutralBackground3, color: tokens.colorNeutralForeground1, fontSize: '11px', fontWeight: 600, cursor: 'pointer',
   },
   apRemBoxRedTranslucent: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', padding: '10px 14px', borderRadius: '8px',
@@ -1923,11 +1923,11 @@ export const useAddProductStyles = makeStyles({
   },
   apRemBtnRedPillSmall: {
     display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px', borderRadius: '4px', borderTopStyle: 'none', borderRightStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none',
-    backgroundColor: '#E51937', color: '#ffffff', fontSize: '10px', fontWeight: 700, cursor: 'default',
+    backgroundColor: '#E51937', color: '#ffffff', fontSize: '10px', fontWeight: 600, cursor: 'default',
   },
   apRemLinkRedPlain: {
     background: 'none', borderTopStyle: 'none', borderRightStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none',
-    color: '#E51937', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer', padding: 0,
+    color: '#E51937', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', padding: 0,
   },
   apRemBadgeStroke1: {
     fontSize: '10.5px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', backgroundColor: tokens.colorNeutralBackground1,

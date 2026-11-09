@@ -1813,7 +1813,7 @@ export function StockInView(): React.JSX.Element {
               <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />
             )}
             <span>{activeModule === 'fastfood' ? 'Kitchen Inventory Inflows' : 'Store Inventory Inflows'}</span>
-            <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
+            <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 600 }}>
               {stockInMovements.length}
             </span>
           </div>

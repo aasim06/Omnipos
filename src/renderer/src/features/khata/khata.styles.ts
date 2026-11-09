@@ -41,7 +41,7 @@ export const useKhataStyles = makeStyles({
   statCard: {
     backgroundColor: tokens.colorNeutralBackground1,
     padding: '18px 20px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
@@ -49,7 +49,7 @@ export const useKhataStyles = makeStyles({
   },
   tableCard: {
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: '12px',
+    borderRadius: '8px',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
@@ -68,7 +68,7 @@ export const useKhataStyles = makeStyles({
   },
 
   headerTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '20px',
     color: tokens.colorNeutralForeground1,
     margin: 0,
@@ -83,7 +83,7 @@ export const useKhataStyles = makeStyles({
   addCustomerBtn: {
     backgroundColor: '#E51937',
     borderRadius: tokens.borderRadiusMedium,
-    fontWeight: 700,
+    fontWeight: 600,
     ':hover': {
       backgroundColor: '#C6172E',
     },
@@ -95,7 +95,7 @@ export const useKhataStyles = makeStyles({
   },
   statVal: {
     fontSize: '28px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '6px',
     display: 'block',
     color: tokens.colorNeutralForeground1,
@@ -140,7 +140,7 @@ export const useKhataStyles = makeStyles({
   thProfile: {
     padding: '14px 20px',
     width: '27%',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11.5px',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
@@ -149,7 +149,7 @@ export const useKhataStyles = makeStyles({
   thContact: {
     padding: '14px 16px',
     width: '18%',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11.5px',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
@@ -158,7 +158,7 @@ export const useKhataStyles = makeStyles({
   thUsage: {
     padding: '14px 16px',
     width: '20%',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11.5px',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
@@ -167,7 +167,7 @@ export const useKhataStyles = makeStyles({
   thDebt: {
     padding: '14px 16px',
     width: '14%',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11.5px',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
@@ -177,7 +177,7 @@ export const useKhataStyles = makeStyles({
     padding: '14px 20px',
     width: '21%',
     textAlign: 'right',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11.5px',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
@@ -206,7 +206,7 @@ export const useKhataStyles = makeStyles({
   profileAvatar: {
     width: '42px',
     height: '42px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     background: 'linear-gradient(135deg, rgba(229, 25, 55, 0.12) 0%, rgba(229, 25, 55, 0.04) 100%)',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
@@ -216,7 +216,7 @@ export const useKhataStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'center',
     color: '#E51937',
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '14px',
     flexShrink: 0,
   },
@@ -230,14 +230,14 @@ export const useKhataStyles = makeStyles({
     flexWrap: 'wrap',
   },
   profileName: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '14px',
     color: tokens.colorNeutralForeground1,
   },
   profileBadge: {
     textTransform: 'uppercase',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   profileAddressRow: {
     display: 'flex',
@@ -294,7 +294,7 @@ export const useKhataStyles = makeStyles({
     fontSize: '11.5px',
   },
   usagePercent: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
   },
   usagePercentOver: {
@@ -332,7 +332,7 @@ export const useKhataStyles = makeStyles({
     display: 'inline-block',
     padding: '4px 10px',
     borderRadius: '8px',
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '13px',
     width: 'fit-content',
   },
@@ -396,7 +396,7 @@ export const useKhataStyles = makeStyles({
     backgroundColor: '#ECFDF5',
     color: '#047857',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },
@@ -413,7 +413,7 @@ export const useKhataStyles = makeStyles({
     backgroundColor: '#FEF2F2',
     color: '#DC2626',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },
@@ -462,7 +462,7 @@ export const useKhataStyles = makeStyles({
     maxWidth: '520px',
   },
   dialogTitleBold: {
-    fontWeight: 800,
+    fontWeight: 600,
   },
   dialogContent: {
     display: 'flex',
@@ -495,12 +495,12 @@ export const useKhataStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#FFFFFF',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     padding: '9px 22px',
     minWidth: '140px',
     whiteSpace: 'nowrap',
     borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+    boxShadow: 'none',
     ':hover': {
       backgroundColor: '#C6172E',
     },
@@ -515,7 +515,7 @@ export const useKhataStyles = makeStyles({
     borderRadius: '8px',
   },
   selectedCustTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   selectedCustSub: {
     color: tokens.colorNeutralForeground2,
@@ -528,7 +528,7 @@ export const useKhataStyles = makeStyles({
     backgroundColor: '#107C41',
     color: '#FFFFFF',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     padding: '9px 22px',
     minWidth: '160px',
     whiteSpace: 'nowrap',
@@ -542,18 +542,18 @@ export const useKhataStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#FFFFFF',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     padding: '9px 22px',
     minWidth: '160px',
     whiteSpace: 'nowrap',
     borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+    boxShadow: 'none',
     ':hover': {
       backgroundColor: '#C6172E',
     },
   },
   passbookSurface: {
-    borderRadius: '16px',
+    borderRadius: '8px',
     maxWidth: '920px',
     minWidth: '780px',
     width: '92vw',
@@ -587,7 +587,7 @@ export const useKhataStyles = makeStyles({
     gap: '10px',
   },
   passbookTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '20px',
     margin: 0,
     padding: 0,
@@ -596,7 +596,7 @@ export const useKhataStyles = makeStyles({
   },
   passbookStatusBadge: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     padding: '3px 10px',
     borderRadius: '9999px',
     whiteSpace: 'nowrap',
@@ -636,7 +636,7 @@ export const useKhataStyles = makeStyles({
   passbookWhatsAppBtn: {
     backgroundColor: '#25D366',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     borderRadius: '8px',
     borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
     boxShadow: '0 2px 8px rgba(37, 211, 102, 0.25)',
@@ -653,7 +653,7 @@ export const useKhataStyles = makeStyles({
   },
   passbookStatCard: {
     padding: '12px 14px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground3,
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
@@ -665,7 +665,7 @@ export const useKhataStyles = makeStyles({
   },
   passbookStatCardAlert: {
     padding: '12px 14px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(229, 25, 55, 0.08)',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
@@ -677,42 +677,42 @@ export const useKhataStyles = makeStyles({
   },
   passbookStatTitle: {
     color: tokens.colorNeutralForeground3,
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     whiteSpace: 'nowrap',
   },
   passbookStatTitleAlert: {
     color: '#EF4444',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     whiteSpace: 'nowrap',
   },
   passbookStatVal: {
     fontSize: '16px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     fontFamily: tokens.fontFamilyMonospace,
     whiteSpace: 'nowrap',
   },
   passbookStatValRed: {
     fontSize: '16px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#EF4444',
     fontFamily: tokens.fontFamilyMonospace,
     whiteSpace: 'nowrap',
   },
   passbookStatValGreen: {
     fontSize: '16px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#10B981',
     fontFamily: tokens.fontFamilyMonospace,
     whiteSpace: 'nowrap',
   },
   passbookStatValNet: {
     fontSize: '18px',
-    fontWeight: 900,
+    fontWeight: 600,
     color: '#E51937',
     fontFamily: tokens.fontFamilyMonospace,
     whiteSpace: 'nowrap',
@@ -734,7 +734,7 @@ export const useKhataStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
   },
   passbookTableCard: {
-    borderRadius: '10px',
+    borderRadius: '8px',
     overflow: 'hidden',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
@@ -756,7 +756,7 @@ export const useKhataStyles = makeStyles({
   },
   passbookThDate: {
     padding: '12px 14px',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     color: tokens.colorNeutralForeground2,
@@ -765,7 +765,7 @@ export const useKhataStyles = makeStyles({
   },
   passbookThDesc: {
     padding: '12px 14px',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     color: tokens.colorNeutralForeground2,
@@ -774,7 +774,7 @@ export const useKhataStyles = makeStyles({
   passbookThDebit: {
     padding: '12px 14px',
     textAlign: 'right',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     color: tokens.colorNeutralForeground2,
@@ -784,7 +784,7 @@ export const useKhataStyles = makeStyles({
   passbookThCredit: {
     padding: '12px 14px',
     textAlign: 'right',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     color: tokens.colorNeutralForeground2,
@@ -794,7 +794,7 @@ export const useKhataStyles = makeStyles({
   passbookThBal: {
     padding: '12px 14px',
     textAlign: 'right',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     color: tokens.colorNeutralForeground2,
@@ -826,7 +826,7 @@ export const useKhataStyles = makeStyles({
     padding: '12px 14px',
   },
   passbookDescTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     fontSize: '13px',
     whiteSpace: 'nowrap',
@@ -847,7 +847,7 @@ export const useKhataStyles = makeStyles({
   passbookTdBal: {
     padding: '12px 14px',
     textAlign: 'right',
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '13px',
     fontFamily: tokens.fontFamilyMonospace,
     color: tokens.colorNeutralForeground1,
@@ -865,7 +865,7 @@ export const useKhataStyles = makeStyles({
     padding: '4px 10px',
     borderRadius: '6px',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     fontFamily: tokens.fontFamilyMonospace,
     whiteSpace: 'nowrap',
   },
@@ -881,7 +881,7 @@ export const useKhataStyles = makeStyles({
     padding: '4px 10px',
     borderRadius: '6px',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     fontFamily: tokens.fontFamilyMonospace,
     whiteSpace: 'nowrap',
   },

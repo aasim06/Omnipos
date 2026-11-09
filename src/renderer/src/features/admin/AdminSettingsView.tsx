@@ -1041,7 +1041,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   padding: '14px 16px',
                   backgroundColor: '#F8FAFC',
                   border: '1px solid #E2E8F0',
-                  borderRadius: '10px',
+                  borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -1149,7 +1149,7 @@ export function AdminSettingsView(): React.JSX.Element {
                     <Badge appearance="tint" color="success" style={{ marginBottom: '4px' }}>
                       Live Receipt QR Preview
                     </Badge>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>
                       {settings.googleQrAction === 'map' ? (
                         'Locate us on Google Maps'
                       ) : (
@@ -1660,7 +1660,7 @@ export function AdminSettingsView(): React.JSX.Element {
             {/* Version & Channel Information Banner */}
             <div className={styles.updateStatusBanner}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: '15px', color: tokens.colorNeutralForeground1, marginBottom: '4px' }}>
+                <div style={{ fontWeight: 600, fontSize: '15px', color: tokens.colorNeutralForeground1, marginBottom: '4px' }}>
                   Current Installed Version
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1702,7 +1702,7 @@ export function AdminSettingsView(): React.JSX.Element {
                         ? `Downloading installer: ${progressInfo.label}`
                         : 'Downloading update package…'}
                   </span>
-                  <span style={{ fontWeight: 700, color: '#E51937' }}>
+                  <span style={{ fontWeight: 600, color: '#E51937' }}>
                     {downloadProgress}%
                   </span>
                 </div>
@@ -1738,7 +1738,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <CheckmarkCircle20Filled style={{ color: '#16A34A', fontSize: '24px' }} />
                   <div>
-                    <div style={{ fontWeight: 700, color: '#15803D', fontSize: '14px' }}>
+                    <div style={{ fontWeight: 600, color: '#15803D', fontSize: '14px' }}>
                       Update Downloaded &amp; Ready to Apply!
                     </div>
                     <div style={{ fontSize: '12px', color: '#166534', marginTop: '2px' }}>
@@ -1788,7 +1788,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                     <ArrowSync20Regular style={{ color: '#E51937' }} />
-                    <Body1 style={{ fontWeight: 700 }}>Automated Background Updates</Body1>
+                    <Body1 style={{ fontWeight: 600 }}>Automated Background Updates</Body1>
                   </div>
                   <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.6 }}>
                     Omnipos automatically checks for updates silently in the background every 4 hours. When a new release tag is created on GitHub, the installer is staged without interrupting your POS cashier operations.
@@ -1800,7 +1800,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                     <ShieldCheckmark20Regular style={{ color: '#107C41' }} />
-                    <Body1 style={{ fontWeight: 700 }}>Data Safety Guarantee</Body1>
+                    <Body1 style={{ fontWeight: 600 }}>Data Safety Guarantee</Body1>
                   </div>
                   <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.6 }}>
                     Upgrades will never wipe or reset your SQLite database, local products, sales records, customer khatas, or store configuration. All business records remain completely intact.

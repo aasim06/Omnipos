@@ -889,8 +889,8 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                             {p.category} • {p.module === 'fastfood' ? 'Fast Food' : 'Omnimart'}
                             {p.expiryDate && (() => {
                               const diff = Math.ceil((new Date(p.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                              if (diff < 0) return <span style={{ color: '#D13438', fontWeight: 700, marginLeft: 4 }}>• EXPIRED</span>;
-                              if (diff <= 30) return <span style={{ color: '#D97706', fontWeight: 700, marginLeft: 4 }}>• Exp: {diff}d</span>;
+                              if (diff < 0) return <span style={{ color: '#D13438', fontWeight: 600, marginLeft: 4 }}>• EXPIRED</span>;
+                              if (diff <= 30) return <span style={{ color: '#D97706', fontWeight: 600, marginLeft: 4 }}>• Exp: {diff}d</span>;
                               return null;
                             })()}
                           </div>
@@ -1044,7 +1044,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                                       fontSize: '10.5px',
                                       padding: '1px 6px',
                                       borderRadius: '4px',
-                                      fontWeight: 700,
+                                      fontWeight: 600,
                                       backgroundColor: isExp ? '#FDF3F4' : isSoon ? '#FFF8E6' : '#F1F9F4',
                                       color: isExp ? '#D13438' : isSoon ? '#D97706' : '#107C41',
                                       border: `1px solid ${isExp ? '#F9D9DC' : isSoon ? '#FCE3A1' : '#CEEAD6'}`

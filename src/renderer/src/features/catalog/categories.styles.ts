@@ -54,7 +54,7 @@ export const useCategoriesStyles = makeStyles({
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
   headerTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '20px',
     color: tokens.colorNeutralForeground1,
     margin: 0,
@@ -88,7 +88,7 @@ export const useCategoriesStyles = makeStyles({
     alignItems: 'center',
     gap: '8px',
     fontSize: '15px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     marginBottom: '12px',
   },
@@ -109,7 +109,7 @@ export const useCategoriesStyles = makeStyles({
     gap: '16px',
   },
   categoryCard: {
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow4,
     padding: '16px 20px',
@@ -131,7 +131,7 @@ export const useCategoriesStyles = makeStyles({
   tagIconBox: {
     width: '38px',
     height: '38px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -147,7 +147,7 @@ export const useCategoriesStyles = makeStyles({
     gap: '3px',
   },
   categoryTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     fontSize: '14.5px',
   },
@@ -159,7 +159,7 @@ export const useCategoriesStyles = makeStyles({
   },
   profileBadge: {
     fontSize: '9.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     padding: '1px 6px',
     borderRadius: '4px',
   },
@@ -175,7 +175,7 @@ export const useCategoriesStyles = makeStyles({
   dialogSurface: {
     maxWidth: '480px',
     width: '92vw',
-    borderRadius: '16px',
+    borderRadius: '8px',
     padding: '24px',
     boxSizing: 'border-box',
     backgroundColor: tokens.colorNeutralBackground1,
@@ -206,7 +206,7 @@ export const useCategoriesStyles = makeStyles({
   dialogIconBox: {
     width: '36px',
     height: '36px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(229, 25, 55, 0.12)',
     display: 'flex',
     alignItems: 'center',
@@ -215,7 +215,7 @@ export const useCategoriesStyles = makeStyles({
   },
   dialogTitleText: {
     fontSize: '17px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   dialogSubtitleText: {
@@ -266,7 +266,7 @@ export const useCategoriesStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#ffffff',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     padding: '0 20px',
     ':hover': {
       backgroundColor: '#be123c',
@@ -278,7 +278,7 @@ export const useCategoriesStyles = makeStyles({
     maxWidth: '1040px',
     width: '95vw',
     maxHeight: '90vh',
-    borderRadius: '16px',
+    borderRadius: '8px',
     padding: '24px',
     boxSizing: 'border-box',
     backgroundColor: tokens.colorNeutralBackground1,
@@ -304,7 +304,7 @@ export const useCategoriesStyles = makeStyles({
   templateIconBox: {
     width: '42px',
     height: '42px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(229, 25, 55, 0.12)',
     display: 'flex',
     alignItems: 'center',
@@ -314,7 +314,7 @@ export const useCategoriesStyles = makeStyles({
   },
   templateDialogTitle: {
     fontSize: '18px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   templateDialogSubtitle: {
@@ -328,7 +328,7 @@ export const useCategoriesStyles = makeStyles({
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
     border: '1px solid rgba(16, 185, 129, 0.3)',
     color: '#059669',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     marginBottom: '16px',
   },
@@ -339,7 +339,7 @@ export const useCategoriesStyles = makeStyles({
     paddingBottom: '10px',
   },
   templateCard: {
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground2,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     padding: '16px',
@@ -378,7 +378,7 @@ export const useCategoriesStyles = makeStyles({
     justifyContent: 'space-between',
   },
   templateCardTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '13.5px',
     color: tokens.colorNeutralForeground1,
     lineHeight: '1.3',
@@ -406,7 +406,7 @@ export const useCategoriesStyles = makeStyles({
     borderRadius: '6px',
   },
   specLabel: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
   },
   specValue: {
@@ -423,7 +423,7 @@ export const useCategoriesStyles = makeStyles({
   },
   chipsTitle: {
     fontSize: '10.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
@@ -472,7 +472,7 @@ export const useCategoriesStyles = makeStyles({
     borderLeftStyle: 'none', borderRightStyle: 'none',
     color: '#E51937',
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
     padding: 0,
   },
@@ -498,7 +498,7 @@ export const useCategoriesStyles = makeStyles({
   },
   presetChipLabel: {
     fontSize: '10.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
   },
   presetUnitChip: {

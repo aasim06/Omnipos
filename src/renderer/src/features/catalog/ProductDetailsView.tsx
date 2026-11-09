@@ -454,13 +454,13 @@ export function ProductDetailsView(): React.JSX.Element {
                     const finalVariantPrice = v.price !== undefined ? v.price : price + (v.priceDelta || 0);
                     return (
                       <tr key={v.id}>
-                        <td className={styles.td} style={{ fontWeight: 700 }}>
+                        <td className={styles.td} style={{ fontWeight: 600 }}>
                           {v.label}
                         </td>
                         <td className={styles.td} style={{ textAlign: 'right', color: '#64748B' }}>
                           {v.priceDelta > 0 ? `+${formatPKR(v.priceDelta)}` : 'Base'}
                         </td>
-                        <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700, color: '#E51937' }}>
+                        <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600, color: '#E51937' }}>
                           {formatPKR(finalVariantPrice)}
                         </td>
                         <td className={styles.td} style={{ textAlign: 'right' }}>
@@ -503,7 +503,7 @@ export function ProductDetailsView(): React.JSX.Element {
 
               {product.tags && product.tags.length > 0 && (
                 <div>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', display: 'block', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B', display: 'block', marginBottom: '6px' }}>
                     MENU TAGS
                   </span>
                   <div className={styles.tagList}>
@@ -518,7 +518,7 @@ export function ProductDetailsView(): React.JSX.Element {
 
               {product.allergens && product.allergens.length > 0 && (
                 <div>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#DC2626', display: 'block', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#DC2626', display: 'block', marginBottom: '6px' }}>
                     ALLERGEN WARNINGS
                   </span>
                   <div className={styles.tagList}>
@@ -621,7 +621,7 @@ export function ProductDetailsView(): React.JSX.Element {
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A' }}>
                       Order #{ord.id.slice(-6).toUpperCase()}
                     </span>
                     <span style={{ fontSize: '11px', color: '#64748B' }}>
@@ -630,7 +630,7 @@ export function ProductDetailsView(): React.JSX.Element {
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#10B981' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#10B981' }}>
                       {formatPKR(ord.total)}
                     </div>
                     <div style={{ fontSize: '10.5px', color: '#64748B' }}>
@@ -703,7 +703,7 @@ export function ProductDetailsView(): React.JSX.Element {
 
             {/* Dual Units Edit Fields */}
             <div style={{ borderTop: '1px solid #E1DFDD', paddingTop: '10px', marginTop: '4px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#0078D4', display: 'block', marginBottom: '6px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#0078D4', display: 'block', marginBottom: '6px' }}>
                 Dual Units (Wholesale / Retail)
               </span>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -741,7 +741,7 @@ export function ProductDetailsView(): React.JSX.Element {
             {/* Batch & Expiry Edit Fields */}
             <div style={{ borderTop: '1px solid #E1DFDD', paddingTop: '10px', marginTop: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#D97706' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#D97706' }}>
                   Batch &amp; Expiry Tracking
                 </span>
                 <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>

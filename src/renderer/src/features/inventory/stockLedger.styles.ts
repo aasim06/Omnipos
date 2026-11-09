@@ -47,7 +47,7 @@ export const useStockLedgerStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground2,
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -69,28 +69,28 @@ export const useStockLedgerStyles = makeStyles({
   },
   kpiValueDefault: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '6px',
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
   kpiValueSuccess: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '6px',
     color: '#107C41',
     display: 'block',
   },
   kpiValueDanger: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '6px',
     color: '#D13438',
     display: 'block',
   },
   kpiValueBrand: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '6px',
     color: '#0078D4',
     display: 'block',
@@ -109,7 +109,7 @@ export const useStockLedgerStyles = makeStyles({
     color: '#E51937',
   },
   filterTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   filterBadge: {
@@ -132,7 +132,7 @@ export const useStockLedgerStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#ffffff',
     fontWeight: 600,
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+    boxShadow: 'none',
     borderRadius: '6px',
   },
   thRight: {
@@ -154,10 +154,10 @@ export const useStockLedgerStyles = makeStyles({
     display: 'block',
   },
   badgeBold: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   productName: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
@@ -174,23 +174,23 @@ export const useStockLedgerStyles = makeStyles({
     textAlign: 'center',
   },
   qtyIn: {
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#107C41',
     fontSize: '14px',
   },
   qtyOut: {
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#D13438',
     fontSize: '14px',
   },
   impactValIn: {
     textAlign: 'right',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#107C41',
   },
   impactValOut: {
     textAlign: 'right',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#D13438',
   },
   actionBtnDelete: {
@@ -229,7 +229,7 @@ export const useStockLedgerStyles = makeStyles({
   },
   scopeLabel: {
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
@@ -263,14 +263,14 @@ export const useStockLedgerStyles = makeStyles({
   scopeBtnActive: {
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeBtnBadge: {
     fontSize: '10px',
     padding: '1px 5px',
     borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeBtnBadgeActive: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',

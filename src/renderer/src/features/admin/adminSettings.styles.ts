@@ -34,7 +34,7 @@ export const useAdminSettingsStyles = makeStyles({
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
   pageTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '20px',
     color: tokens.colorNeutralForeground1,
     margin: 0,
@@ -51,12 +51,12 @@ export const useAdminSettingsStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#FFFFFF',
     borderRadius: tokens.borderRadiusMedium,
-    fontWeight: 700,
+    fontWeight: 600,
     whiteSpace: 'nowrap',
     flexShrink: 0,
     padding: '0 18px',
     height: '38px',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.3)',
+    boxShadow: 'none',
     ':hover': {
       backgroundColor: '#C4122C',
       color: '#FFFFFF',
@@ -97,7 +97,7 @@ export const useAdminSettingsStyles = makeStyles({
     borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1, borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
     backgroundColor: tokens.colorNeutralBackground1,
     color: tokens.colorNeutralForeground1,
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
@@ -113,7 +113,7 @@ export const useAdminSettingsStyles = makeStyles({
     borderTopColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderRightColor: '#E51937',
     backgroundColor: 'rgba(229, 25, 55, 0.08)',
     color: '#E51937',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.12)',
+    boxShadow: 'none',
   },
   tabIcon: {
     width: '18px',
@@ -124,7 +124,7 @@ export const useAdminSettingsStyles = makeStyles({
     color: '#E51937',
   },
   tabBadge: {
-    fontWeight: 700,
+    fontWeight: 600,
     whiteSpace: 'nowrap',
     backgroundColor: 'rgba(229, 25, 55, 0.12)',
     color: '#E51937',
@@ -132,7 +132,7 @@ export const useAdminSettingsStyles = makeStyles({
   tabBadgeActive: {
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     whiteSpace: 'nowrap',
   },
   grid: {
@@ -269,7 +269,7 @@ export const useAdminSettingsStyles = makeStyles({
     gap: '8px',
   },
   headerTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
     lineHeight: '20px',
@@ -325,7 +325,7 @@ export const useAdminSettingsStyles = makeStyles({
   segmentedItemActive: {
     backgroundColor: tokens.colorNeutralBackground1,
     color: tokens.colorNeutralForeground1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   segmentedItemInactive: {
     backgroundColor: 'transparent',
@@ -383,7 +383,7 @@ export const useAdminSettingsStyles = makeStyles({
   },
   th: {
     padding: '12px 16px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
     fontSize: '11px',
     textTransform: 'uppercase',
@@ -415,7 +415,7 @@ export const useAdminSettingsStyles = makeStyles({
     gap: '10px',
   },
   userName: {
-    fontWeight: 700,
+    fontWeight: 600,
     display: 'block',
     color: tokens.colorNeutralForeground1,
   },
@@ -425,13 +425,13 @@ export const useAdminSettingsStyles = makeStyles({
   },
   usernamePill: {
     fontFamily: 'monospace',
-    fontWeight: 700,
+    fontWeight: 600,
     backgroundColor: tokens.colorNeutralBackground3,
     padding: '2px 6px',
     borderRadius: '4px',
   },
   roleBadge: {
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     fontSize: '10px',
   },
@@ -498,7 +498,7 @@ export const useAdminSettingsStyles = makeStyles({
     lineHeight: 1.6,
   },
   engineTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
@@ -564,7 +564,7 @@ export const useAdminSettingsStyles = makeStyles({
     height: '18px',
   },
   statusTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
@@ -617,7 +617,7 @@ export const useAdminSettingsStyles = makeStyles({
     marginBottom: '8px',
   },
   permMatrixTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     color: tokens.colorNeutralForeground1,
   },
@@ -664,7 +664,7 @@ export const useAdminSettingsStyles = makeStyles({
   },
   permItemTitle: {
     fontSize: '13px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   permItemDesc: {
@@ -690,7 +690,7 @@ export const useAdminSettingsStyles = makeStyles({
   dialogSubmitBtn: {
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     whiteSpace: 'nowrap',
     flexShrink: 0,
     padding: '0 24px',
@@ -710,7 +710,7 @@ export const useAdminSettingsStyles = makeStyles({
     gap: '10px',
   },
   userBannerName: {
-    fontWeight: 700,
+    fontWeight: 600,
     display: 'block',
     fontSize: '13px',
     color: tokens.colorNeutralForeground1,
@@ -817,7 +817,7 @@ export const useAdminSettingsStyles = makeStyles({
     gap: '8px',
   },
   boldTitle15: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '15px',
   },
   mutedTextLineHeight: {
@@ -833,7 +833,7 @@ export const useAdminSettingsStyles = makeStyles({
   primaryBlueBtn: {
     backgroundColor: '#0078D4',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     ':hover': {
       backgroundColor: '#106EBE',
       color: '#FFFFFF',
@@ -850,7 +850,7 @@ export const useAdminSettingsStyles = makeStyles({
     width: '100%',
     borderTopColor: '#D97706', borderBottomColor: '#D97706', borderLeftColor: '#D97706', borderRightColor: '#D97706',
     color: '#D97706',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   helpTipBanner: {
     padding: '14px 18px',
@@ -876,7 +876,7 @@ export const useAdminSettingsStyles = makeStyles({
   dialogSurface460: {
     maxWidth: '540px',
     width: '100%',
-    borderRadius: '16px',
+    borderRadius: '8px',
     boxShadow: '0 20px 40px -8px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(220, 38, 38, 0.12)',
     borderTopWidth: '4px',
     borderTopStyle: 'solid',
@@ -891,7 +891,7 @@ export const useAdminSettingsStyles = makeStyles({
   restoreIconBox: {
     width: '40px',
     height: '40px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: '#FEF2F2',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
@@ -910,7 +910,7 @@ export const useAdminSettingsStyles = makeStyles({
   },
   restoreModalTitle: {
     fontSize: '17px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#111827',
     lineHeight: '1.25',
   },
@@ -925,7 +925,7 @@ export const useAdminSettingsStyles = makeStyles({
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: '#FFDCD5', borderBottomColor: '#FFDCD5', borderLeftColor: '#FFDCD5', borderRightColor: '#FFDCD5',
-    borderRadius: '10px',
+    borderRadius: '8px',
     padding: '14px 16px',
     display: 'flex',
     flexDirection: 'column',
@@ -1005,7 +1005,7 @@ export const useAdminSettingsStyles = makeStyles({
     padding: '0 20px',
     height: '38px',
     border: 'none',
-    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)',
+    boxShadow: 'none',
     ':hover': {
       background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
       color: '#FFFFFF',
@@ -1041,7 +1041,7 @@ export const useAdminSettingsStyles = makeStyles({
   },
   updateVersionTag: {
     fontFamily: 'monospace',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '14px',
     padding: '4px 10px',
     borderRadius: '6px',
@@ -1051,7 +1051,7 @@ export const useAdminSettingsStyles = makeStyles({
   updateInstallBtn: {
     backgroundColor: '#16A34A !important',
     color: '#FFFFFF !important',
-    fontWeight: '700',
+    fontWeight: '600',
     padding: '0 24px',
     height: '42px',
     borderRadius: tokens.borderRadiusMedium,

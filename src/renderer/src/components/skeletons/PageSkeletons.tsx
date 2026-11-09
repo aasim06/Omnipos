@@ -277,10 +277,10 @@ const useStyles = makeStyles({
   r4: { borderRadius: '4px' },
   r6: { borderRadius: '6px' },
   r8: { borderRadius: '8px' },
-  r10: { borderRadius: '10px' },
-  r11: { borderRadius: '11px' },
-  r14: { borderRadius: '14px' },
-  r16: { borderRadius: '16px' },
+  r10: { borderRadius: '8px' },
+  r11: { borderRadius: '8px' },
+  r14: { borderRadius: '8px' },
+  r16: { borderRadius: '8px' },
 });
 
 /* ── 1. POS Counter Page Skeleton (Fastfood & Minimart) ─────────────── */

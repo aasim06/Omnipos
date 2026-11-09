@@ -41,7 +41,7 @@ export const useQuotationsStyles = makeStyles({
   iconBox: {
     width: '46px',
     height: '46px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(229, 25, 55, 0.08)',
     display: 'flex',
     alignItems: 'center',
@@ -55,7 +55,7 @@ export const useQuotationsStyles = makeStyles({
   },
   kpiCard: {
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: '12px',
+    borderRadius: '8px',
     padding: '16px 18px',
     borderTopWidth: '1px', borderRightWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px',
     borderTopStyle: 'solid', borderRightStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid',
@@ -75,7 +75,7 @@ export const useQuotationsStyles = makeStyles({
   },
   kpiValue: {
     fontSize: '22px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   kpiSub: {
@@ -143,7 +143,7 @@ export const useQuotationsStyles = makeStyles({
   },
   tableCard: {
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: '12px',
+    borderRadius: '8px',
     borderTopWidth: '1px', borderRightWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px',
     borderTopStyle: 'solid', borderRightStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2, borderLeftColor: tokens.colorNeutralStroke2,
@@ -159,7 +159,7 @@ export const useQuotationsStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     padding: '12px 16px',
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
@@ -194,13 +194,13 @@ export const useQuotationsStyles = makeStyles({
   dialogSurface: {
     maxWidth: '850px',
     width: '100%',
-    borderRadius: '14px',
+    borderRadius: '8px',
     padding: '24px',
     maxHeight: '92vh',
     overflowY: 'auto',
   },
   titleBold: {
-    fontWeight: 800,
+    fontWeight: 600,
   },
   captionMuted: {
     color: tokens.colorNeutralForeground3,
@@ -208,7 +208,7 @@ export const useQuotationsStyles = makeStyles({
   btnPrimaryRed: {
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     borderRadius: '8px',
   },
   iconSky: {
@@ -253,7 +253,7 @@ export const useQuotationsStyles = makeStyles({
     marginBottom: '8px',
   },
   emptyTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '14px',
     color: tokens.colorNeutralForeground2,
   },
@@ -263,7 +263,7 @@ export const useQuotationsStyles = makeStyles({
     marginTop: '2px',
   },
   quoteNumberText: {
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
   },
   moduleMuted: {
@@ -271,7 +271,7 @@ export const useQuotationsStyles = makeStyles({
     color: tokens.colorNeutralForeground4,
   },
   customerNameBold: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   customerPhoneMuted: {
     fontSize: '11px',
@@ -294,14 +294,14 @@ export const useQuotationsStyles = makeStyles({
   },
   totalPriceCell: {
     textAlign: 'right',
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '13px',
   },
   statusPill: {
     fontSize: '11px',
     padding: '3px 10px',
     borderRadius: '999px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
   },
   statusConverted: {
@@ -356,7 +356,7 @@ export const useQuotationsStyles = makeStyles({
   },
   dialogTitleText: {
     fontSize: '17px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   dialogSubText: {
@@ -383,13 +383,13 @@ export const useQuotationsStyles = makeStyles({
     marginBottom: '10px',
   },
   itemsSectionTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '13.5px',
     color: tokens.colorNeutralForeground1,
   },
   addCustomBtn: {
     color: '#E51937',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   searchScannerContainer: {
     marginBottom: '14px',
@@ -432,7 +432,7 @@ export const useQuotationsStyles = makeStyles({
     padding: '6px 12px',
     borderRadius: '6px',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
@@ -549,7 +549,7 @@ export const useQuotationsStyles = makeStyles({
     borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
     textAlign: 'center',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   tdRate: {
     padding: '6px 12px',
@@ -565,12 +565,12 @@ export const useQuotationsStyles = makeStyles({
     borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
     textAlign: 'right',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   tdLineTotal: {
     padding: '6px 12px',
     textAlign: 'right',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
   },
   tdDeleteCol: {
@@ -586,7 +586,7 @@ export const useQuotationsStyles = makeStyles({
   },
   bottomTotalsBar: {
     backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: '10px',
+    borderRadius: '8px',
     padding: '14px 18px',
     display: 'flex',
     justifyContent: 'space-between',
@@ -644,7 +644,7 @@ export const useQuotationsStyles = makeStyles({
     borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
     textAlign: 'right',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   grandTotalRow: {
     display: 'flex',
@@ -654,7 +654,7 @@ export const useQuotationsStyles = makeStyles({
     borderTopStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke2,
     fontSize: '15px',
-    fontWeight: 900,
+    fontWeight: 600,
     color: '#E51937',
   },
   dialogActionsRow: {
@@ -665,7 +665,7 @@ export const useQuotationsStyles = makeStyles({
   btnSaveFinalize: {
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
   },
 });
 

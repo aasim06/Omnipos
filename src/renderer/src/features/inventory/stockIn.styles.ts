@@ -24,7 +24,7 @@ export const useStockInStyles = makeStyles({
   },
   cardTitle: {
     fontSize: '14px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
     letterSpacing: '-0.2px',
@@ -101,14 +101,14 @@ export const useStockInStyles = makeStyles({
   },
   detailStatLabel: {
     fontSize: '10.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     color: tokens.colorNeutralForeground3,
     letterSpacing: '0.4px',
   },
   detailStatVal: {
     fontSize: '14px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   row2: {
@@ -122,7 +122,7 @@ export const useStockInStyles = makeStyles({
   },
   fieldLabel: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.6px',
     color: tokens.colorNeutralForeground2,
@@ -141,7 +141,7 @@ export const useStockInStyles = makeStyles({
   },
   lineTotalValue: {
     fontSize: '14px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#107C41',
   },
   saveBtn: {
@@ -149,10 +149,10 @@ export const useStockInStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#FFFFFF',
     borderRadius: tokens.borderRadiusMedium,
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     border: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+    boxShadow: 'none',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -187,7 +187,7 @@ export const useStockInStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground2,
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.6px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -297,7 +297,7 @@ export const useStockInStyles = makeStyles({
   },
   productName: {
     fontSize: '15px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   productMetaRow: {
@@ -310,7 +310,7 @@ export const useStockInStyles = makeStyles({
   },
   skuCode: {
     color: tokens.colorNeutralForeground1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   productActionWrap: {
     display: 'flex',
@@ -347,7 +347,7 @@ export const useStockInStyles = makeStyles({
   },
   variantsTitle: {
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
     textTransform: 'uppercase',
     letterSpacing: '0.4px',
@@ -426,7 +426,7 @@ export const useStockInStyles = makeStyles({
     gap: '8px',
   },
   variantLabelBadge: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '13px',
     color: '#E51937',
   },
@@ -445,11 +445,11 @@ export const useStockInStyles = makeStyles({
   },
   stockValZero: {
     color: '#DC2626',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   stockValNormal: {
     color: '#15803D',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   variantInputRow: {
     display: 'flex',
@@ -459,14 +459,14 @@ export const useStockInStyles = makeStyles({
   },
   variantInputPlus: {
     fontSize: '12px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
   },
   variantNumberInput: {
     width: '64px',
     height: '28px',
     textAlign: 'center',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     borderRadius: '4px',
     borderTopWidth: '1px', borderBottomWidth: '1px',
@@ -527,7 +527,7 @@ export const useStockInStyles = makeStyles({
     gap: '12px',
   },
   emptyCategoryNoticeTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     color: '#92400e',
   },
@@ -539,7 +539,7 @@ export const useStockInStyles = makeStyles({
   percentSuffix: {
     fontSize: '11px',
     color: tokens.colorNeutralForeground3,
-    fontWeight: 700,
+    fontWeight: 600,
     paddingRight: '4px',
   },
   discountPill: {
@@ -588,7 +588,7 @@ export const useStockInStyles = makeStyles({
   },
   tdRightGreen: {
     textAlign: 'right',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#107C41',
   },
   emptyTd: {
@@ -597,12 +597,12 @@ export const useStockInStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
   },
   logProdName: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
   badgeBold: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   reasonText: {
     color: tokens.colorNeutralForeground1,
@@ -687,7 +687,7 @@ export const useStockInStyles = makeStyles({
     display: 'inline-flex',
   },
   drawerHeaderTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
@@ -712,7 +712,7 @@ export const useStockInStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#FFFFFF',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     borderTopStyle: 'none', borderBottomStyle: 'none',
     borderLeftStyle: 'none', borderRightStyle: 'none',
     ':hover': {
@@ -720,7 +720,7 @@ export const useStockInStyles = makeStyles({
     },
   },
   printDialogSurface: {
-    borderRadius: '14px',
+    borderRadius: '8px',
     width: '680px',
     maxWidth: '96vw',
     padding: '24px',
@@ -733,7 +733,7 @@ export const useStockInStyles = makeStyles({
     marginBottom: '16px',
   },
   printModalTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     margin: 0,
     fontSize: '18px',
@@ -748,7 +748,7 @@ export const useStockInStyles = makeStyles({
     backgroundColor: '#FFFFFF',
     color: '#111827',
     padding: '20px 22px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     borderTopWidth: '1px', borderBottomWidth: '1px',
     borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid',
@@ -784,11 +784,11 @@ export const useStockInStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontWeight: 900,
+    fontWeight: 600,
     fontSize: '15px',
   },
   brandName: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '16px',
     color: '#111827',
     lineHeight: 1.1,
@@ -805,7 +805,7 @@ export const useStockInStyles = makeStyles({
   },
   invTitle: {
     fontSize: '14px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
@@ -833,7 +833,7 @@ export const useStockInStyles = makeStyles({
   },
   supplierTag: {
     fontSize: '9.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
@@ -841,7 +841,7 @@ export const useStockInStyles = makeStyles({
   },
   storeTag: {
     fontSize: '9.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#15803D',
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
@@ -849,7 +849,7 @@ export const useStockInStyles = makeStyles({
   },
   partyName: {
     fontSize: '13.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#0F172A',
     marginBottom: '3px',
   },
@@ -871,14 +871,14 @@ export const useStockInStyles = makeStyles({
     borderRadius: '4px',
     padding: '3px 8px',
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#991B1B',
   },
   verifiedTag: {
     marginTop: '8px',
     fontSize: '10.5px',
     color: '#15803D',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   slipTable: {
     width: '100%',
@@ -897,14 +897,14 @@ export const useStockInStyles = makeStyles({
   slipTh: {
     padding: '7px 10px',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     color: '#334155',
   },
   slipThNum: {
     padding: '7px 10px',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     textAlign: 'center',
     color: '#334155',
@@ -913,7 +913,7 @@ export const useStockInStyles = makeStyles({
   slipThLeft: {
     padding: '7px 10px',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     textAlign: 'left',
     color: '#334155',
@@ -921,7 +921,7 @@ export const useStockInStyles = makeStyles({
   slipThRate: {
     padding: '7px 10px',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     textAlign: 'right',
     color: '#334155',
@@ -930,7 +930,7 @@ export const useStockInStyles = makeStyles({
   slipThQty: {
     padding: '7px 10px',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     textAlign: 'center',
     color: '#334155',
@@ -939,7 +939,7 @@ export const useStockInStyles = makeStyles({
   slipThDiscount: {
     padding: '7px 10px',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     textAlign: 'right',
     color: '#334155',
@@ -948,7 +948,7 @@ export const useStockInStyles = makeStyles({
   slipThTotal: {
     padding: '7px 10px',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     textAlign: 'right',
     color: '#334155',
@@ -971,7 +971,7 @@ export const useStockInStyles = makeStyles({
     fontSize: '11.5px',
   },
   slipProdTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#0F172A',
   },
   slipProdNote: {
@@ -995,7 +995,7 @@ export const useStockInStyles = makeStyles({
     borderBottomColor: '#E2E8F0',
     fontSize: '11.5px',
     textAlign: 'center',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#15803D',
   },
   slipTdDiscount: {
@@ -1014,7 +1014,7 @@ export const useStockInStyles = makeStyles({
     borderBottomColor: '#E2E8F0',
     fontSize: '11.5px',
     textAlign: 'right',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#0F172A',
   },
   calcWrap: {
@@ -1055,7 +1055,7 @@ export const useStockInStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
     fontSize: '12.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#0F172A',
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
@@ -1087,7 +1087,7 @@ export const useStockInStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
     fontSize: '11.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#991B1B',
     backgroundColor: '#FEF2F2',
     borderTopWidth: '1px', borderBottomWidth: '1px',
@@ -1148,7 +1148,7 @@ export const useStockInStyles = makeStyles({
     padding: '0 22px',
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     borderRadius: '8px',
     borderTopStyle: 'none', borderBottomStyle: 'none',
     borderLeftStyle: 'none', borderRightStyle: 'none',
@@ -1157,7 +1157,7 @@ export const useStockInStyles = makeStyles({
     alignItems: 'center',
     gap: '8px',
     cursor: 'pointer',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+    boxShadow: 'none',
     ':hover': {
       backgroundColor: '#C6172E',
     },
@@ -1176,7 +1176,7 @@ export const useStockInStyles = makeStyles({
   },
   scopeLabel: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
@@ -1215,14 +1215,14 @@ export const useStockInStyles = makeStyles({
   scopeBtnActive: {
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeBtnBadge: {
     fontSize: '10px',
     padding: '1px 5px',
     borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeBtnBadgeActive: {
     backgroundColor: 'rgba(255,255,255,0.25)',

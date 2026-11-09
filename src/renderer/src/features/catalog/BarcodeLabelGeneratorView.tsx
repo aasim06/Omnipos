@@ -74,7 +74,7 @@ const useStyles = makeStyles({
     gap: '14px',
   },
   headerTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
   },
   headerSubtitle: {
     color: tokens.colorNeutralForeground3,
@@ -82,7 +82,7 @@ const useStyles = makeStyles({
   iconBox: {
     width: '46px',
     height: '46px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(229, 25, 55, 0.08)',
     display: 'flex',
     alignItems: 'center',
@@ -92,7 +92,7 @@ const useStyles = makeStyles({
   printBtn: {
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     borderRadius: '8px',
   },
   mainLayout: {
@@ -103,7 +103,7 @@ const useStyles = makeStyles({
   },
   controlPanel: {
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: '12px',
+    borderRadius: '8px',
     ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
     padding: '20px',
     display: 'flex',
@@ -113,7 +113,7 @@ const useStyles = makeStyles({
   },
   sectionTitle: {
     fontSize: '13px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     marginBottom: '8px',
     textTransform: 'uppercase',
@@ -127,12 +127,12 @@ const useStyles = makeStyles({
   },
   queueCountText: {
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
   },
   totalStickersBadge: {
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
   },
   emptyQueueText: {
@@ -163,7 +163,7 @@ const useStyles = makeStyles({
   },
   queueItemName: {
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     whiteSpace: 'nowrap',
     overflowX: 'hidden',
     textOverflow: 'ellipsis',
@@ -184,7 +184,7 @@ const useStyles = makeStyles({
     ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
     textAlign: 'center',
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   deleteBtn: {
     borderTopStyle: 'none',
@@ -217,7 +217,7 @@ const useStyles = makeStyles({
   },
   previewCard: {
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: '12px',
+    borderRadius: '8px',
     ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
     padding: '20px',
     boxShadow: tokens.shadow2,
@@ -231,7 +231,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
   },
   previewTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '13px',
     color: tokens.colorNeutralForeground1,
   },
@@ -264,7 +264,7 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
   },
   emptyPreviewTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13.5px',
     color: tokens.colorNeutralForeground2,
   },
@@ -291,7 +291,7 @@ const useStyles = makeStyles({
   },
   stickerStoreName: {
     fontSize: '7.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.4px',
     color: '#000000',
@@ -302,7 +302,7 @@ const useStyles = makeStyles({
     width: '100%',
   },
   stickerProductName: {
-    fontWeight: 700,
+    fontWeight: 600,
     lineHeight: 1.1,
     whiteSpace: 'nowrap',
     overflowX: 'hidden',
@@ -325,7 +325,7 @@ const useStyles = makeStyles({
     paddingLeft: '4px',
     paddingRight: '4px',
     boxSizing: 'border-box',
-    fontWeight: 700,
+    fontWeight: 600,
     lineHeight: 1,
   },
   stickerSku: {
@@ -335,7 +335,7 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   stickerPrice: {
-    fontWeight: 900,
+    fontWeight: 600,
     color: '#000000',
     whiteSpace: 'nowrap',
   },

@@ -4445,13 +4445,13 @@ export function AddProductView(): React.JSX.Element {
             )}
 
             {/* ── Feature: Dual Units / Wholesale vs Retail ── */}
-            <div style={{ marginTop: '20px', padding: '16px', borderRadius: '10px', backgroundColor: '#F8F9FA', border: '1px solid #E1DFDD' }}>
+            <div style={{ marginTop: '20px', padding: '16px', borderRadius: '8px', backgroundColor: '#F8F9FA', border: '1px solid #E1DFDD' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <Boxes size={18} color="#0078D4" />
-                <span style={{ fontWeight: 700, fontSize: '14px', color: '#323130' }}>
+                <span style={{ fontWeight: 600, fontSize: '14px', color: '#323130' }}>
                   Dual Units / Unit Conversion (Wholesale vs Retail)
                 </span>
-                <span style={{ fontSize: '11px', backgroundColor: '#EFF6FC', color: '#0078D4', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                <span style={{ fontSize: '11px', backgroundColor: '#EFF6FC', color: '#0078D4', padding: '2px 8px', borderRadius: '8px', fontWeight: 600 }}>
                   Box ➔ Pieces
                 </span>
               </div>
@@ -4517,11 +4517,11 @@ export function AddProductView(): React.JSX.Element {
             </div>
 
             {/* ── Feature: Batch Number, Expiry & Manufacturing Dates ── */}
-            <div style={{ marginTop: '16px', padding: '16px', borderRadius: '10px', backgroundColor: '#FDFCF7', border: '1px solid #F2E8A2' }}>
+            <div style={{ marginTop: '16px', padding: '16px', borderRadius: '8px', backgroundColor: '#FDFCF7', border: '1px solid #F2E8A2' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Calendar20Regular style={{ color: '#D97706' }} />
-                  <span style={{ fontWeight: 700, fontSize: '14px', color: '#323130' }}>
+                  <span style={{ fontWeight: 600, fontSize: '14px', color: '#323130' }}>
                     Batch Number &amp; Expiry Tracking
                   </span>
                 </div>

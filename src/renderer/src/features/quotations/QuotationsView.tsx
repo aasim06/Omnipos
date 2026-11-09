@@ -883,7 +883,7 @@ export function QuotationsView(): React.JSX.Element {
                               }}
                               className={styles.inputSpecUnit}
                               style={{
-                                fontWeight: 700,
+                                fontWeight: 600,
                                 color: '#E51937',
                                 backgroundColor: 'rgba(229, 25, 55, 0.05)',
                                 borderTopColor: '#FECACA', borderBottomColor: '#FECACA',

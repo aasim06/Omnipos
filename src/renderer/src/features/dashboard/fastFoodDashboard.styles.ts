@@ -61,7 +61,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   headerTitle: {
     margin: 0,
     fontSize: '24px',
-    fontWeight: 900,
+    fontWeight: 600,
     letterSpacing: '-0.02em',
   },
   liveBadge: {
@@ -88,14 +88,14 @@ export const useFastFoodDashboardStyles = makeStyles({
     borderLeftColor: 'rgba(16, 185, 129, 0.3)',
     color: '#10B981',
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   liveBadgeDot: {
     width: '7px',
     height: '7px',
     borderRadius: '50%',
     backgroundColor: '#10B981',
-    boxShadow: '0 0 8px #10B981',
+    boxShadow: 'none',
   },
   headerSub: {
     marginTop: '4px',
@@ -121,7 +121,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     paddingBottom: '4px',
     paddingLeft: '4px',
     paddingRight: '4px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
     borderRightWidth: '1px',
@@ -159,7 +159,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     borderRightStyle: 'none',
     borderBottomStyle: 'none',
     borderLeftStyle: 'none',
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '13px',
     fontFamily: "'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif",
     cursor: 'pointer',
@@ -170,7 +170,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   tabBtnFastFoodActive: {
     backgroundColor: '#E51937',
     color: '#FFFFFF',
-    boxShadow: '0 4px 14px rgba(229, 25, 55, 0.35)',
+    boxShadow: 'none',
   },
   tabBtnMiniMartActive: {
     backgroundColor: '#2563EB',
@@ -191,8 +191,8 @@ export const useFastFoodDashboardStyles = makeStyles({
     paddingBottom: '1px',
     paddingLeft: '6px',
     paddingRight: '6px',
-    borderRadius: '10px',
-    fontWeight: 800,
+    borderRadius: '8px',
+    fontWeight: 600,
   },
   tabCountBadgeActive: {
     backgroundColor: 'rgba(255,255,255,0.25)',
@@ -215,7 +215,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     paddingLeft: '16px',
     paddingRight: '16px',
     borderRadius: '8px',
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '13px',
     fontFamily: "'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif",
   },
@@ -292,7 +292,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     borderBottomStyle: 'none',
     borderLeftStyle: 'none',
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
     textTransform: 'capitalize',
   },
@@ -354,7 +354,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     rowGap: '16px',
   },
   kpiCard: {
-    borderRadius: '12px',
+    borderRadius: '8px',
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
     borderRightWidth: '1px',
@@ -392,7 +392,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     right: 0,
     height: '3px',
     backgroundColor: '#E51937',
-    boxShadow: '0 0 10px #E51937',
+    boxShadow: 'none',
   },
   laserBlue: {
     position: 'absolute',
@@ -401,7 +401,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     right: 0,
     height: '3px',
     backgroundColor: '#3B82F6',
-    boxShadow: '0 0 10px #3B82F6',
+    boxShadow: 'none',
   },
   laserAmber: {
     position: 'absolute',
@@ -410,7 +410,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     right: 0,
     height: '3px',
     backgroundColor: '#F59E0B',
-    boxShadow: '0 0 10px #F59E0B',
+    boxShadow: 'none',
   },
   laserGreen: {
     position: 'absolute',
@@ -419,7 +419,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     right: 0,
     height: '3px',
     backgroundColor: '#10B981',
-    boxShadow: '0 0 10px #10B981',
+    boxShadow: 'none',
   },
   kpiHeader: {
     display: 'flex',
@@ -428,7 +428,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   kpiTitle: {
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.04em',
   },
@@ -474,7 +474,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   kpiValue: {
     fontSize: '28px',
-    fontWeight: 900,
+    fontWeight: 600,
     marginTop: '12px',
     letterSpacing: '-0.02em',
   },
@@ -498,19 +498,19 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   trendGreen: {
     color: '#10B981',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   trendAmber: {
     color: '#F59E0B',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   dotGreen: {
     color: '#10B981',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   dotAmber: {
     color: '#F59E0B',
-    fontWeight: 700,
+    fontWeight: 600,
   },
 
   // Main Charts Row
@@ -521,7 +521,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     rowGap: '20px',
   },
   columnChartCard: {
-    borderRadius: '14px',
+    borderRadius: '8px',
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
     borderRightWidth: '1px',
@@ -556,12 +556,12 @@ export const useFastFoodDashboardStyles = makeStyles({
   chartTitle: {
     margin: 0,
     fontSize: '16px',
-    fontWeight: 800,
+    fontWeight: 600,
     fontFamily: 'inherit',
   },
   telemetryTag: {
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
     paddingTop: '2px',
     paddingBottom: '2px',
     paddingLeft: '8px',
@@ -594,7 +594,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     borderRadius: '6px',
     backgroundColor: '#27272A',
     color: '#F59E0B',
-    fontWeight: 700,
+    fontWeight: 600,
     display: 'inline-flex',
     alignItems: 'center',
     columnGap: '4px',
@@ -608,7 +608,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     borderRadius: '6px',
     backgroundColor: '#F1F5F9',
     color: '#F59E0B',
-    fontWeight: 700,
+    fontWeight: 600,
     display: 'inline-flex',
     alignItems: 'center',
     columnGap: '4px',
@@ -622,7 +622,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     borderRadius: '6px',
     backgroundColor: '#27272A',
     color: '#E51937',
-    fontWeight: 700,
+    fontWeight: 600,
     display: 'inline-flex',
     alignItems: 'center',
     columnGap: '4px',
@@ -636,7 +636,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     borderRadius: '6px',
     backgroundColor: '#F1F5F9',
     color: '#E51937',
-    fontWeight: 700,
+    fontWeight: 600,
     display: 'inline-flex',
     alignItems: 'center',
     columnGap: '4px',
@@ -676,7 +676,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     paddingBottom: '10px',
     paddingLeft: '14px',
     paddingRight: '14px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     borderTopWidth: '1.5px',
     borderTopStyle: 'solid',
     borderRightWidth: '1.5px',
@@ -692,12 +692,12 @@ export const useFastFoodDashboardStyles = makeStyles({
   chartTooltipDark: {
     backgroundColor: 'rgba(20, 22, 27, 0.96)',
     backdropFilter: 'blur(14px)',
-    boxShadow: '0 10px 28px rgba(0,0,0,0.45), 0 0 14px rgba(229, 25, 55, 0.35)',
+    boxShadow: '0 10px 28px rgba(0,0,0,0.45)',
   },
   chartTooltipLight: {
     backgroundColor: 'rgba(255, 255, 255, 0.96)',
     backdropFilter: 'blur(14px)',
-    boxShadow: '0 10px 28px rgba(0,0,0,0.15), 0 0 14px rgba(229, 25, 55, 0.25)',
+    boxShadow: '0 10px 28px rgba(0,0,0,0.15)',
   },
   tooltipBorderPeak: {
     borderTopColor: '#E51937',
@@ -719,11 +719,11 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   tooltipLabel: {
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   tooltipPeakTagDinner: {
     fontSize: '10px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
     display: 'inline-flex',
     alignItems: 'center',
@@ -731,7 +731,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   tooltipPeakTagLunch: {
     fontSize: '10px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#F59E0B',
     display: 'inline-flex',
     alignItems: 'center',
@@ -739,7 +739,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   tooltipOrders: {
     fontSize: '17px',
-    fontWeight: 900,
+    fontWeight: 600,
     marginTop: '3px',
   },
   tooltipSalesRow: {
@@ -759,7 +759,7 @@ export const useFastFoodDashboardStyles = makeStyles({
 
   // Donut Ring Card
   donutCard: {
-    borderRadius: '14px',
+    borderRadius: '8px',
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
     borderRightWidth: '1px',
@@ -800,12 +800,12 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   donutCenterCount: {
     fontSize: '24px',
-    fontWeight: 900,
+    fontWeight: 600,
     lineHeight: 1,
   },
   donutCenterLabel: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     marginTop: '2px',
   },
   donutLegendList: {
@@ -829,21 +829,21 @@ export const useFastFoodDashboardStyles = makeStyles({
     height: '10px',
     borderRadius: '50%',
     backgroundColor: '#E51937',
-    boxShadow: '0 0 6px #E51937',
+    boxShadow: 'none',
   },
   donutLegendDotAmber: {
     width: '10px',
     height: '10px',
     borderRadius: '50%',
     backgroundColor: '#F59E0B',
-    boxShadow: '0 0 6px #F59E0B',
+    boxShadow: 'none',
   },
   donutLegendDotGreen: {
     width: '10px',
     height: '10px',
     borderRadius: '50%',
     backgroundColor: '#10B981',
-    boxShadow: '0 0 6px #10B981',
+    boxShadow: 'none',
   },
   donutLegendRight: {
     display: 'flex',
@@ -859,7 +859,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     rowGap: '20px',
   },
   kitchenCard: {
-    borderRadius: '14px',
+    borderRadius: '8px',
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
     borderRightWidth: '1px',
@@ -889,16 +889,16 @@ export const useFastFoodDashboardStyles = makeStyles({
   kitchenTitle: {
     margin: 0,
     fontSize: '16px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   kitchenInKitchenBadge: {
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
     paddingTop: '2px',
     paddingBottom: '2px',
     paddingLeft: '8px',
     paddingRight: '8px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
     color: '#F59E0B',
   },
@@ -916,7 +916,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     borderBottomStyle: 'none',
     borderLeftStyle: 'none',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   openKitchenBtnDark: {
@@ -934,7 +934,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     rowGap: '12px',
   },
   stageCard: {
-    borderRadius: '10px',
+    borderRadius: '8px',
     paddingTop: '12px',
     paddingBottom: '12px',
     paddingLeft: '12px',
@@ -995,7 +995,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     alignItems: 'center',
     columnGap: '6px',
     fontSize: '12px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   stageHeaderBlue: {
     color: '#3B82F6',
@@ -1026,7 +1026,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   stageCount: {
     fontSize: '20px',
-    fontWeight: 900,
+    fontWeight: 600,
     marginTop: '8px',
   },
   stageCountAmber: {
@@ -1083,7 +1083,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   noticeTitle: {
     fontSize: '12px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   noticeSub: {
     fontSize: '11px',
@@ -1109,13 +1109,13 @@ export const useFastFoodDashboardStyles = makeStyles({
     backgroundColor: 'transparent',
     color: '#E51937',
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
     cursor: 'pointer',
   },
 
   // Leaderboard
   leaderboardCard: {
-    borderRadius: '14px',
+    borderRadius: '8px',
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
     borderRightWidth: '1px',
@@ -1140,7 +1140,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   leaderboardTitle: {
     margin: 0,
     fontSize: '16px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   leaderboardSub: {
     marginTop: '2px',
@@ -1162,7 +1162,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#FFFFFF',
     fontSize: '11.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   rankedList: {
@@ -1214,7 +1214,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   rankBadge: {
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
     minWidth: '22px',
     display: 'inline-flex',
     alignItems: 'center',
@@ -1237,7 +1237,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   rankedItemName: {
     fontSize: '12.5px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   rankedItemRight: {
     display: 'flex',
@@ -1246,12 +1246,12 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   rankedItemQty: {
     fontSize: '12px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   rankedItemRev: {
     fontSize: '11px',
     color: '#10B981',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   meterTrack: {
     width: '100%',
@@ -1301,7 +1301,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     paddingRight: '20px',
   },
   modalContent: {
-    borderRadius: '14px',
+    borderRadius: '8px',
     borderTopWidth: '1px',
     borderTopStyle: 'solid',
     borderRightWidth: '1px',
@@ -1343,7 +1343,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   modalTitle: {
     margin: 0,
     fontSize: '17px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   currentHourPill: {
     fontSize: '10px',
@@ -1351,10 +1351,10 @@ export const useFastFoodDashboardStyles = makeStyles({
     paddingBottom: '2px',
     paddingLeft: '6px',
     paddingRight: '6px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: '#10B981',
     color: '#FFFFFF',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   modalSub: {
     fontSize: '12px',
@@ -1430,7 +1430,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   },
   orderTicketId: {
     fontSize: '12px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   orderTypeTag: {
     fontSize: '11px',
@@ -1440,7 +1440,7 @@ export const useFastFoodDashboardStyles = makeStyles({
     paddingLeft: '6px',
     paddingRight: '6px',
     borderRadius: '4px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   orderTypeTagDark: {
     backgroundColor: '#27272A',
@@ -1453,14 +1453,14 @@ export const useFastFoodDashboardStyles = makeStyles({
   tokenTag: {
     fontSize: '11px',
     color: '#F59E0B',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   ticketTime: {
     fontSize: '11.5px',
   },
   ticketTotal: {
     fontSize: '13px',
-    fontWeight: 900,
+    fontWeight: 600,
     color: '#10B981',
   },
   ticketItems: {
@@ -1484,7 +1484,7 @@ export const useFastFoodDashboardStyles = makeStyles({
   textSecondaryLight: { color: '#64748B' },
   textPrimaryDark: { color: '#FFFFFF' },
   textPrimaryLight: { color: '#0F172A' },
-  fw800: { fontWeight: 800 },
-  fw700: { fontWeight: 700 },
-  fw900: { fontWeight: 900 },
+  fw800: { fontWeight: 600 },
+  fw700: { fontWeight: 600 },
+  fw900: { fontWeight: 600 },
 });

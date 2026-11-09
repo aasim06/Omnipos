@@ -35,7 +35,7 @@ export const useProductsCatalogStyles = makeStyles({
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
   hudCard: {
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow4,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -50,7 +50,7 @@ export const useProductsCatalogStyles = makeStyles({
     },
   },
   divisionHeroCard: {
-    borderRadius: '14px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow8,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -65,7 +65,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   tableCard: {
     backgroundColor: '#ffffff',
-    borderRadius: '16px',
+    borderRadius: '8px',
     boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02)',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
@@ -112,7 +112,7 @@ export const useProductsCatalogStyles = makeStyles({
     width: 'min(980px, 95vw)',
     minWidth: 'min(800px, 90vw)',
     maxHeight: 'min(92vh, 680px)',
-    borderRadius: '16px',
+    borderRadius: '8px',
     padding: '18px 24px 14px 24px',
     boxShadow: '0 24px 64px rgba(0, 0, 0, 0.45)',
     boxSizing: 'border-box',
@@ -144,14 +144,14 @@ export const useProductsCatalogStyles = makeStyles({
   },
   kpiLabel: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
   },
   kpiValue: {
     fontSize: '26px',
-    fontWeight: 900,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     marginTop: '4px',
     lineHeight: '1.1',
@@ -163,14 +163,14 @@ export const useProductsCatalogStyles = makeStyles({
   },
   kpiValueGreen: {
     fontSize: '24px',
-    fontWeight: 900,
+    fontWeight: 600,
     color: '#10B981',
     marginTop: '4px',
     lineHeight: '1.1',
   },
   kpiValueRed: {
     fontSize: '26px',
-    fontWeight: 900,
+    fontWeight: 600,
     color: '#EF4444',
     marginTop: '4px',
     lineHeight: '1.1',
@@ -178,7 +178,7 @@ export const useProductsCatalogStyles = makeStyles({
   kpiIconFastFood: {
     width: '38px',
     height: '38px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     background: 'rgba(229, 25, 55, 0.12)',
     display: 'flex',
     alignItems: 'center',
@@ -188,7 +188,7 @@ export const useProductsCatalogStyles = makeStyles({
   kpiIconBlue: {
     width: '38px',
     height: '38px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     background: 'rgba(2, 132, 199, 0.12)',
     display: 'flex',
     alignItems: 'center',
@@ -198,7 +198,7 @@ export const useProductsCatalogStyles = makeStyles({
   kpiIconGreen: {
     width: '38px',
     height: '38px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     background: 'rgba(160, 230, 190, 0.15)',
     display: 'flex',
     alignItems: 'center',
@@ -208,7 +208,7 @@ export const useProductsCatalogStyles = makeStyles({
   kpiIconRed: {
     width: '38px',
     height: '38px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     background: 'rgba(239, 68, 68, 0.12)',
     display: 'flex',
     alignItems: 'center',
@@ -218,7 +218,7 @@ export const useProductsCatalogStyles = makeStyles({
   kpiIconPurple: {
     width: '38px',
     height: '38px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     background: 'rgba(168, 85, 247, 0.12)',
     display: 'flex',
     alignItems: 'center',
@@ -233,19 +233,19 @@ export const useProductsCatalogStyles = makeStyles({
   },
   kpiRedText: {
     color: '#E51937',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   kpiBlueText: {
     color: '#0284C7',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   kpiAmberText: {
     color: '#F59E0B',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   kpiManageCatsLink: {
     color: '#A855F7',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   divisionHeroTop: {
@@ -261,28 +261,28 @@ export const useProductsCatalogStyles = makeStyles({
   divisionIconFastFood: {
     width: '48px',
     height: '48px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     background: 'linear-gradient(135deg, #FF1E3C 0%, #990012 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: '#fff',
-    boxShadow: '0 0 16px rgba(229, 25, 55, 0.4)',
+    boxShadow: 'none',
   },
   divisionIconOmnimart: {
     width: '48px',
     height: '48px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     background: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: '#fff',
-    boxShadow: '0 0 16px rgba(14, 165, 233, 0.4)',
+    boxShadow: 'none',
   },
   divisionTitle: {
     fontSize: '18px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   divisionSubtitle: {
@@ -291,7 +291,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   divisionTagFastFood: {
     fontSize: '10.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
     backgroundColor: 'rgba(229, 25, 55, 0.12)',
     padding: '3px 8px',
@@ -300,7 +300,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   divisionTagOmnimart: {
     fontSize: '10.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#0284C7',
     backgroundColor: 'rgba(14, 165, 233, 0.12)',
     padding: '3px 8px',
@@ -320,24 +320,24 @@ export const useProductsCatalogStyles = makeStyles({
   divisionStatHead: {
     fontSize: '10.5px',
     color: tokens.colorNeutralForeground3,
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
   },
   divisionStatNum: {
     fontSize: '18px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     marginTop: '2px',
   },
   divisionStatNumGreen: {
     fontSize: '18px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#10B981',
     marginTop: '2px',
   },
   divisionStatNumBlue: {
     fontSize: '18px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#0284C7',
     marginTop: '2px',
   },
@@ -350,7 +350,7 @@ export const useProductsCatalogStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#ffffff',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     flex: 1,
     ':hover': {
       backgroundColor: '#be123c',
@@ -360,7 +360,7 @@ export const useProductsCatalogStyles = makeStyles({
     backgroundColor: '#0284C7',
     color: '#ffffff',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     flex: 1,
     ':hover': {
       backgroundColor: '#0369a1',
@@ -382,14 +382,14 @@ export const useProductsCatalogStyles = makeStyles({
     gap: '8px',
   },
   headerTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '20px',
     color: tokens.colorNeutralForeground1,
     margin: 0,
   },
   headerBadge: {
     fontSize: '10px',
-    fontWeight: 800,
+    fontWeight: 600,
     padding: '2px 7px',
     borderRadius: '4px',
     backgroundColor: 'rgba(229, 25, 55, 0.15)',
@@ -467,7 +467,7 @@ export const useProductsCatalogStyles = makeStyles({
     gridTemplateColumns: '1fr',
   },
   radarCard: {
-    borderRadius: '12px',
+    borderRadius: '8px',
     padding: '18px 20px',
     background: 'rgba(239, 68, 68, 0.04)',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
@@ -494,13 +494,13 @@ export const useProductsCatalogStyles = makeStyles({
     height: '20px',
   },
   radarTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '14px',
     color: tokens.colorNeutralForeground1,
   },
   radarBadge: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
     color: '#EF4444',
     padding: '2px 7px',
@@ -535,7 +535,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   radarItemName: {
     fontSize: '13px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -552,7 +552,7 @@ export const useProductsCatalogStyles = makeStyles({
     flexShrink: 0,
   },
   radarItemBadge: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '11px',
   },
 
@@ -569,7 +569,7 @@ export const useProductsCatalogStyles = makeStyles({
     gap: '10px',
   },
   liveTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '16px',
     color: tokens.colorNeutralForeground1,
   },
@@ -590,7 +590,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   liveCard: {
     height: '210px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
@@ -635,7 +635,7 @@ export const useProductsCatalogStyles = makeStyles({
     borderRadius: '4px',
     color: '#ffffff',
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   cardStockBadgeAlert: {
     backgroundColor: 'rgba(239, 68, 68, 0.9)',
@@ -667,7 +667,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   cardProdName: {
     fontSize: '13px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -681,7 +681,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   cardVariantTag: {
     fontSize: '9px',
-    fontWeight: 800,
+    fontWeight: 600,
     padding: '0 4px',
     borderRadius: '3px',
     backgroundColor: 'rgba(229, 25, 55, 0.12)',
@@ -707,7 +707,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   cardPrice: {
     fontSize: '14px',
-    fontWeight: 900,
+    fontWeight: 600,
     color: '#E51937',
   },
   cardSku: {
@@ -762,7 +762,7 @@ export const useProductsCatalogStyles = makeStyles({
   thDetails: {
     padding: '14px 18px',
     width: '30%',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
@@ -772,7 +772,7 @@ export const useProductsCatalogStyles = makeStyles({
   thCategory: {
     padding: '14px 14px',
     width: '16%',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
@@ -782,7 +782,7 @@ export const useProductsCatalogStyles = makeStyles({
   thPrice: {
     padding: '14px 14px',
     width: '13%',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
@@ -792,7 +792,7 @@ export const useProductsCatalogStyles = makeStyles({
   thCost: {
     padding: '14px 14px',
     width: '12%',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
@@ -802,7 +802,7 @@ export const useProductsCatalogStyles = makeStyles({
   thStock: {
     padding: '14px 14px',
     width: '15%',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
@@ -812,7 +812,7 @@ export const useProductsCatalogStyles = makeStyles({
   thSku: {
     padding: '14px 14px',
     width: '10%',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
@@ -823,7 +823,7 @@ export const useProductsCatalogStyles = makeStyles({
     padding: '14px 18px',
     width: '10%',
     textAlign: 'right',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
@@ -857,7 +857,7 @@ export const useProductsCatalogStyles = makeStyles({
   prodThumbnailWrap: {
     width: '50px',
     height: '50px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: '#F1F5F9',
     display: 'flex',
     alignItems: 'center',
@@ -881,7 +881,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   prodTitle: {
     fontSize: '14px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#0F172A',
     transition: 'color 0.15s ease',
     ':hover': {
@@ -943,13 +943,13 @@ export const useProductsCatalogStyles = makeStyles({
   },
   priceNumber: {
     fontSize: '15px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#0F172A',
     letterSpacing: '-0.02em',
   },
   currencyTag: {
     fontSize: '10.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#64748B',
     marginLeft: '3px',
   },
@@ -959,7 +959,7 @@ export const useProductsCatalogStyles = makeStyles({
     fontSize: '13px',
   },
   stockBadge: {
-    fontWeight: 700,
+    fontWeight: 600,
     borderRadius: '6px',
   },
   skuCol: {
@@ -1048,7 +1048,7 @@ export const useProductsCatalogStyles = makeStyles({
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: '#E2E8F0', borderBottomColor: '#E2E8F0', borderLeftColor: '#E2E8F0', borderRightColor: '#E2E8F0',
-    borderRadius: '10px',
+    borderRadius: '8px',
     padding: '3px 4px',
     boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
   },
@@ -1105,7 +1105,7 @@ export const useProductsCatalogStyles = makeStyles({
     ':hover': {
       backgroundColor: '#FEF2F2',
       color: '#DC2626',
-      boxShadow: '0 1px 4px rgba(220,38,38,0.12)',
+      boxShadow: 'none',
     },
   },
   deleteIcon: {
@@ -1150,7 +1150,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   dialogTitle: {
     fontSize: '18px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     margin: 0,
   },
@@ -1190,7 +1190,7 @@ export const useProductsCatalogStyles = makeStyles({
   newCategoryLink: {
     fontSize: '11.5px',
     color: '#E51937',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   },
   formColRight: {
@@ -1201,7 +1201,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   uploadCard: {
     backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: '12px',
+    borderRadius: '8px',
     padding: '12px',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
@@ -1211,7 +1211,7 @@ export const useProductsCatalogStyles = makeStyles({
   uploadLabel: {
     display: 'block',
     marginBottom: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '12px',
   },
   hiddenInput: {
@@ -1250,7 +1250,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   attachedTitle: {
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   attachedPath: {
@@ -1297,7 +1297,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   uploadTitle: {
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   uploadSub: {
@@ -1309,7 +1309,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   previewCard: {
     backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: '12px',
+    borderRadius: '8px',
     padding: '12px',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
@@ -1324,7 +1324,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   previewHeadTitle: {
     fontSize: '10.5px',
-    fontWeight: 800,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
     color: tokens.colorNeutralForeground2,
@@ -1335,7 +1335,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   posMockup: {
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: '10px',
+    borderRadius: '8px',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
@@ -1371,7 +1371,7 @@ export const useProductsCatalogStyles = makeStyles({
     padding: '2px 6px',
     borderRadius: '4px',
     fontSize: '9.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
   },
   mockupStockBadge: {
@@ -1383,7 +1383,7 @@ export const useProductsCatalogStyles = makeStyles({
     padding: '2px 6px',
     borderRadius: '4px',
     fontSize: '9.5px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   mockupContent: {
     height: '76px',
@@ -1394,7 +1394,7 @@ export const useProductsCatalogStyles = makeStyles({
     boxSizing: 'border-box',
   },
   mockupName: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '12.5px',
     color: tokens.colorNeutralForeground1,
     overflow: 'hidden',
@@ -1414,13 +1414,13 @@ export const useProductsCatalogStyles = makeStyles({
     fontWeight: 600,
   },
   mockupPriceVal: {
-    fontWeight: 900,
+    fontWeight: 600,
     fontSize: '14.5px',
     color: '#E51937',
   },
   mockupUnitTag: {
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
     backgroundColor: 'rgba(229, 25, 55, 0.1)',
     color: '#E51937',
     padding: '2px 7px',
@@ -1456,12 +1456,12 @@ export const useProductsCatalogStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#FFFFFF',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     padding: '9px 24px',
     minWidth: '150px',
     whiteSpace: 'nowrap',
     borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+    boxShadow: 'none',
     ':hover': {
       backgroundColor: '#C6172E',
     },
@@ -1471,7 +1471,7 @@ export const useProductsCatalogStyles = makeStyles({
   catDialogSurface: {
     maxWidth: '460px',
     width: '92vw',
-    borderRadius: '16px',
+    borderRadius: '8px',
     padding: '24px',
     boxSizing: 'border-box',
     backgroundColor: tokens.colorNeutralBackground1,
@@ -1507,7 +1507,7 @@ export const useProductsCatalogStyles = makeStyles({
   catIconWrap: {
     width: '36px',
     height: '36px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(229, 25, 55, 0.12)',
     display: 'flex',
     alignItems: 'center',
@@ -1516,7 +1516,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   catTitle: {
     fontSize: '17px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   catDialogSub: {
@@ -1554,12 +1554,12 @@ export const useProductsCatalogStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#FFFFFF',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     padding: '9px 22px',
     minWidth: '130px',
     whiteSpace: 'nowrap',
     borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+    boxShadow: 'none',
     ':hover': {
       backgroundColor: '#C6172E',
     },
@@ -1580,7 +1580,7 @@ export const useProductsCatalogStyles = makeStyles({
     borderLeftStyle: 'none', borderRightStyle: 'none',
     color: '#E51937',
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
     padding: 0,
   },
@@ -1606,7 +1606,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   presetChipLabel: {
     fontSize: '10.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
   },
   presetUnitChip: {

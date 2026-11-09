@@ -29,7 +29,7 @@ export const useVendorsStyles = makeStyles({
   },
   cardTitle: {
     fontSize: '14px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
     letterSpacing: '-0.2px',
@@ -41,7 +41,7 @@ export const useVendorsStyles = makeStyles({
   },
   fieldLabel: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.6px',
     color: tokens.colorNeutralForeground2,
@@ -73,10 +73,10 @@ export const useVendorsStyles = makeStyles({
     backgroundColor: '#E51937',
     color: '#FFFFFF',
     borderRadius: tokens.borderRadiusMedium,
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     border: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+    boxShadow: 'none',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -113,7 +113,7 @@ export const useVendorsStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground2,
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.6px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -197,7 +197,7 @@ export const useVendorsStyles = makeStyles({
     height: '16px',
   },
   directoryTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   searchBoxContainer: {
@@ -234,7 +234,7 @@ export const useVendorsStyles = makeStyles({
     gap: '2px',
   },
   vendorNameText: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     fontSize: '13px',
   },
@@ -255,12 +255,12 @@ export const useVendorsStyles = makeStyles({
   },
   tdBalanceDebit: {
     textAlign: 'right',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#D13438',
   },
   tdBalanceCredit: {
     textAlign: 'right',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#107C41',
   },
   actionBtnsRow: {
@@ -339,7 +339,7 @@ export const useVendorsStyles = makeStyles({
     gap: '8px',
   },
   drawerTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     margin: 0,
   },
@@ -359,7 +359,7 @@ export const useVendorsStyles = makeStyles({
   printModalSurface: {
     maxWidth: '480px',
     width: '92vw',
-    borderRadius: '12px',
+    borderRadius: '8px',
     padding: '24px',
   },
   printModalHeader: {
@@ -371,7 +371,7 @@ export const useVendorsStyles = makeStyles({
   printModalTitle: {
     margin: 0,
     fontSize: '18px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   printModalCloseBtn: {
     minWidth: 'auto',
@@ -397,7 +397,7 @@ export const useVendorsStyles = makeStyles({
     marginBottom: '12px',
   },
   slipStoreTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '16px',
     letterSpacing: '1px',
   },
@@ -413,7 +413,7 @@ export const useVendorsStyles = makeStyles({
     justifyContent: 'space-between',
   },
   slipBoldLabel: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   slipInvoicesBox: {
     margin: '10px 0',
@@ -426,7 +426,7 @@ export const useVendorsStyles = makeStyles({
     padding: '8px 0',
   },
   slipInvoicesHeader: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     marginBottom: '4px',
     textTransform: 'uppercase',
@@ -451,7 +451,7 @@ export const useVendorsStyles = makeStyles({
   slipBalanceRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '14px',
   },
   slipFooterSignature: {
