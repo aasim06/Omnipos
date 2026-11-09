@@ -13,6 +13,7 @@ import {
   Receipt20Regular,
 } from '@fluentui/react-icons';
 import { PurchaseBillModal } from './PurchaseBillModal';
+import { PageHeader } from '@/components/win11';
 
 const useStyles = makeStyles({
   layoutContainer: {
@@ -25,6 +26,11 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
 
+  headerWrap: {
+    paddingLeft: '32px',
+    paddingRight: '32px',
+    flexShrink: 0,
+  },
   viewTopBar: {
     padding: '18px 28px',
     backgroundColor: tokens.colorNeutralBackground1,
@@ -41,12 +47,12 @@ const useStyles = makeStyles({
   contentArea: {
     flex: 1,
     minHeight: 0,
-    padding: '24px 28px',
+    padding: '0 32px 32px',
     boxSizing: 'border-box',
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: '16px',
   },
 
   headerLeft: {
@@ -104,28 +110,28 @@ const useStyles = makeStyles({
 
 const pageMeta: Record<string, { title: string; subtitle: string }> = {
   '/inventory': {
-    title: 'Inventory Dashboard',
-    subtitle: 'Real-time stock valuation, reorder alerts, and category distribution',
+    title: 'Inventory',
+    subtitle: 'Stock value, reorder alerts and categories',
   },
   '/inventory/dashboard': {
-    title: 'Inventory Dashboard',
-    subtitle: 'Real-time stock valuation, reorder alerts, and category distribution',
+    title: 'Inventory',
+    subtitle: 'Stock value, reorder alerts and categories',
   },
   '/inventory/stock-in': {
-    title: 'Stock In',
-    subtitle: 'Record Stock In (Receiving Invoice) and audit shipment logs',
+    title: 'Stock in',
+    subtitle: 'Receive stock against an invoice and review deliveries',
   },
   '/inventory/stock-out': {
-    title: 'Stock Out',
-    subtitle: 'Record Stock Out (Damage, Waste & Usage) and audit deduction logs',
+    title: 'Stock out',
+    subtitle: 'Record damage, waste and usage, and review deductions',
   },
   '/inventory/vendors': {
-    title: 'Vendors & Suppliers Management',
-    subtitle: 'Supplier directory, procurement contacts, and account payables',
+    title: 'Vendors',
+    subtitle: 'Suppliers, contacts and amounts payable',
   },
   '/inventory/ledger': {
-    title: 'Stock Movement Ledger',
-    subtitle: 'Complete chronological audit ledger of all inventory inflows and outflows',
+    title: 'Stock ledger',
+    subtitle: 'Every stock movement in and out, newest first',
   },
 };
 
@@ -141,54 +147,29 @@ export function InventoryLayout(): React.JSX.Element {
 
   return (
     <div className={styles.layoutContainer}>
-      {/* ── Sleek Top Header Bar ── */}
-      <div className={styles.viewTopBar}>
-        <div className={styles.headerLeft}>
-          <Subtitle1 as="h1" className={styles.headerTitle}>
-            {meta.title}
-          </Subtitle1>
-          <Caption1 className={styles.headerSubtitle}>
-            {meta.subtitle}
-          </Caption1>
-        </div>
-
-        {/* Top Bar Quick Action Buttons */}
-        <div className={styles.headerActions}>
-          <Button
-            appearance="outline"
-            icon={<Receipt20Regular />}
-            onClick={() => setIsPurchaseBillOpen(true)}
-            style={{
-              borderColor: tokens.colorPaletteBlueBorderActive,
-              color: tokens.colorPaletteBlueForeground2,
-              fontWeight: 600,
-              borderRadius: '8px',
-              fontSize: '13px',
-            }}
-          >
-            + Purchase Bill (Kharidari)
-          </Button>
-          {!isStockOutPage && (
-            <Button
-              appearance="subtle"
-              icon={<ArrowCircleUp20Regular className={styles.arrowUpIcon} />}
-              onClick={() => navigate('/inventory/stock-out')}
-              className={styles.stockOutBtn}
-            >
-              Stock Out
-            </Button>
-          )}
-          {!isStockInPage && (
-            <Button
-              appearance="primary"
-              icon={<Add20Regular />}
-              onClick={() => navigate('/inventory/stock-in')}
-              className={styles.stockInBtn}
-            >
-              + Record Stock In
-            </Button>
-          )}
-        </div>
+      {/* ── Page header (Windows 11) ── */}
+      <div className={styles.headerWrap}>
+        <PageHeader
+          title={meta.title}
+          subtitle={meta.subtitle}
+          actions={
+            <>
+              <Button appearance="secondary" icon={<Receipt20Regular />} onClick={() => setIsPurchaseBillOpen(true)}>
+                Purchase bill
+              </Button>
+              {!isStockOutPage && (
+                <Button appearance="secondary" icon={<ArrowCircleUp20Regular />} onClick={() => navigate('/inventory/stock-out')}>
+                  Stock out
+                </Button>
+              )}
+              {!isStockInPage && (
+                <Button appearance="primary" icon={<Add20Regular />} onClick={() => navigate('/inventory/stock-in')}>
+                  Record stock in
+                </Button>
+              )}
+            </>
+          }
+        />
       </div>
 
       {/* ── Main Dynamic Content Area ── */}

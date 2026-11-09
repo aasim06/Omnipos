@@ -323,8 +323,6 @@ export const useInventoryDashboardStyles = makeStyles({
     fontSize: '11px',
     fontWeight: 600,
     color: tokens.colorNeutralForeground3,
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
   },
   scopeTabList: {
     display: 'inline-flex',

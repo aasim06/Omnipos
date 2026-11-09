@@ -27,7 +27,6 @@ export const useStockOutStyles = makeStyles({
     fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
-    letterSpacing: '-0.2px',
   },
   row1: {
     display: 'grid',
@@ -61,8 +60,6 @@ export const useStockOutStyles = makeStyles({
   fieldLabel: {
     fontSize: '11px',
     fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.6px',
     color: tokens.colorNeutralForeground2,
     marginBottom: '6px',
     display: 'block',
@@ -126,8 +123,6 @@ export const useStockOutStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     fontSize: '11px',
     fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.6px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     whiteSpace: 'nowrap',
   },
@@ -553,8 +548,6 @@ export const useStockOutStyles = makeStyles({
     fontSize: '11px',
     fontWeight: 600,
     color: tokens.colorNeutralForeground3,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
   },
   scopeTabList: {
     display: 'inline-flex',

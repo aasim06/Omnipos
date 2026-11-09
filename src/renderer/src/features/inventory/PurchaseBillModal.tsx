@@ -882,7 +882,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
             <div className={styles.summaryBox}>
               {/* Payment Mode Selector */}
               <div>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2, marginBottom: '8px', textTransform: 'uppercase' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2, marginBottom: '8px' }}>
                   Supplier Payment Mode
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginBottom: '12px' }}>

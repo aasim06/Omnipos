@@ -1,7 +1,9 @@
+import { KpiTile } from '@/components/win11';
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   makeStyles,
+  Link,
   tokens,
   Subtitle1,
   Subtitle2,
@@ -197,51 +199,27 @@ export function InventoryDashboardView(): React.JSX.Element {
         </div>
       </div>  </div>
 
-      {/* ── KPI Metrics Row (5 Connected Cards) ── */}
+      {/* ── Key numbers (Windows 11 cards) ── */}
       <div className={styles.metricsGrid}>
-        <div className={styles.metricCard}>
-          <Caption1 className={styles.cardSubtitle}>Total Catalog Items</Caption1>
-          <Subtitle1 className={styles.cardMetricNum}>
-            {totalStockItems}
-          </Subtitle1>
-          <Caption1 className={styles.cardHint}>Products in database</Caption1>
-        </div>
-
-        <div className={styles.metricCard}>
-          <Caption1 className={styles.cardSubtitle}>Total Units in Stock</Caption1>
-          <Subtitle1 className={styles.cardMetricNumBlue}>
-            {totalUnitsInStock.toLocaleString()}
-          </Subtitle1>
-          <Caption1 className={styles.cardHint}>Live units physically available</Caption1>
-        </div>
-
-        <div className={styles.metricCard}>
-          <Caption1 className={styles.cardSubtitle}>Total Purchase Cost</Caption1>
-          <Subtitle1 className={styles.cardMetricNum}>
-            {formatPKR(totalPurchaseValue)}
-          </Subtitle1>
-          <Caption1 className={styles.cardHint}>Procurement investment</Caption1>
-        </div>
-
-        <div className={styles.metricCard}>
-          <Caption1 className={styles.cardSubtitle}>Retail Selling Valuation</Caption1>
-          <Subtitle1 className={styles.cardMetricNumGreen}>
-            {formatPKR(totalRetailValue)}
-          </Subtitle1>
-          <Caption1 className={styles.cardHint}>
-            Estimated margin: <strong>{profitMarginPercent}%</strong>
-          </Caption1>
-        </div>
-
-        <div className={mergeClasses(styles.metricCard, styles.cursorPointer)} onClick={() => navigate('/inventory/vendors')}>
-          <Caption1 className={styles.cardSubtitle}>Total Vendor Payables</Caption1>
-          <Subtitle1 className={totalVendorPayables > 0 ? styles.cardMetricNumRed : styles.cardMetricNumGreen}>
-            {formatPKR(totalVendorPayables)}
-          </Subtitle1>
-          <Caption1 className={styles.cardHint}>
-            {vendors.filter((v) => (v.openingBalance || 0) > 0).length} suppliers pending &rarr;
-          </Caption1>
-        </div>
+        <KpiTile label="Products" value={totalStockItems} footer={<span>Items in the catalog</span>} />
+        <KpiTile label="Units in stock" value={totalUnitsInStock.toLocaleString()} footer={<span>Available on hand</span>} />
+        <KpiTile label="Purchase cost" value={formatPKR(totalPurchaseValue)} footer={<span>Value at cost price</span>} />
+        <KpiTile
+          label="Retail value"
+          value={formatPKR(totalRetailValue)}
+          tone="success"
+          footer={<span>Estimated margin {profitMarginPercent}%</span>}
+        />
+        <KpiTile
+          label="Vendor payables"
+          value={formatPKR(totalVendorPayables)}
+          tone={totalVendorPayables > 0 ? 'danger' : 'success'}
+          footer={
+            <Link onClick={() => navigate('/inventory/vendors')}>
+              {vendors.filter((v) => (v.openingBalance || 0) > 0).length} suppliers pending
+            </Link>
+          }
+        />
       </div>
 
       {/* ── Quick Hub Links ── */}
@@ -307,7 +285,7 @@ export function InventoryDashboardView(): React.JSX.Element {
             <div className={styles.sectionHeaderLeft}>
               <Warning20Filled className={styles.warningIcon} />
               <Subtitle2 className={styles.sectionTitle}>
-                Low Stock Reorder Alerts
+                Low stock
               </Subtitle2>
               <Badge appearance="filled" color="danger" size="small">
                 {lowStockProducts.length} items
@@ -320,7 +298,7 @@ export function InventoryDashboardView(): React.JSX.Element {
               onClick={() => navigate('/inventory/stock-in')}
               className={styles.reorderAllBtn}
             >
-              Reorder All
+              Reorder all
             </Button>
           </div>
 
@@ -359,7 +337,7 @@ export function InventoryDashboardView(): React.JSX.Element {
         <div className={styles.sectionCard}>
           <div className={styles.sectionHeader}>
             <Subtitle2 className={styles.sectionTitle}>
-              Recent Stock Movements
+              Recent movements
             </Subtitle2>
             <Button
               appearance="subtle"
@@ -474,7 +452,7 @@ export function InventoryDashboardView(): React.JSX.Element {
       {/* ── Category Stock Distribution ── */}
       <div className={styles.sectionCard}>
         <Subtitle2 className={styles.distributionTitle}>
-          Category Stock Distribution
+          Stock by category
         </Subtitle2>
         <div className={styles.distributionGrid}>
           {Object.entries(categoryMap).map(([catName, data]) => {
