@@ -179,7 +179,7 @@ export const useProductDetailsStyles = makeStyles({
     left: 0,
     right: 0,
     height: '3px',
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
   },
   kpiTopStripeGreen: {
     position: 'absolute',
@@ -187,7 +187,7 @@ export const useProductDetailsStyles = makeStyles({
     left: 0,
     right: 0,
     height: '3px',
-    backgroundColor: '#10B981',
+    backgroundColor: tokens.colorStatusSuccessBackground3,
   },
   kpiTopStripeBlue: {
     position: 'absolute',
@@ -195,7 +195,7 @@ export const useProductDetailsStyles = makeStyles({
     left: 0,
     right: 0,
     height: '3px',
-    backgroundColor: '#2563EB',
+    backgroundColor: tokens.colorPaletteBlueBorderActive,
   },
   kpiTopStripeAmber: {
     position: 'absolute',
@@ -203,7 +203,7 @@ export const useProductDetailsStyles = makeStyles({
     left: 0,
     right: 0,
     height: '3px',
-    backgroundColor: '#F59E0B',
+    backgroundColor: tokens.colorStatusWarningBackground3,
   },
   kpiLabel: {
     fontSize: '11.5px',

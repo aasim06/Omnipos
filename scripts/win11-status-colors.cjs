@@ -21,13 +21,13 @@ const dry = args[0] === '--dry';
 const files = dry ? args.slice(1) : args;
 
 const families = [
-  { name: 'success', hex: ['#10b981', '#34d399', '#059669', '#047857', '#22c55e', '#16a34a'], rgb: ['16,185,129', '34,197,94'], tintLight: ['#f0fdf4', '#ecfdf5', '#d1fae5'],
+  { name: 'success', hex: ['#107c41', '#10b981', '#34d399', '#059669', '#047857', '#22c55e', '#16a34a'], rgb: ['16,185,129', '34,197,94'], tintLight: ['#f0fdf4', '#ecfdf5', '#d1fae5', '#a7f3d0', '#bbf7d0', '#dcfce7'],
     fg: 'colorStatusSuccessForeground1', bg: 'colorStatusSuccessBackground1', border: 'colorStatusSuccessBorder1', solid: 'colorStatusSuccessBackground3' },
-  { name: 'warning', hex: ['#f59e0b', '#fbbf24', '#d97706', '#b45309'], rgb: ['245,158,11', '251,191,36'], tintLight: ['#fffbeb', '#fef3c7'],
+  { name: 'warning', hex: ['#f59e0b', '#fbbf24', '#d97706', '#b45309'], rgb: ['245,158,11', '251,191,36'], tintLight: ['#fffbeb', '#fef3c7', '#ffedd5', '#fed7aa', '#fde68a'],
     fg: 'colorStatusWarningForeground1', bg: 'colorStatusWarningBackground1', border: 'colorStatusWarningBorder1', solid: 'colorStatusWarningBackground3' },
-  { name: 'danger', hex: ['#ef4444', '#dc2626', '#b91c1c'], rgb: ['229,25,55', '239,68,68', '220,38,38'], tintLight: ['#fff1f2', '#fef2f2', '#fee2e2', '#ffebef'],
+  { name: 'danger', hex: ['#d13438', '#ef4444', '#dc2626', '#b91c1c'], rgb: ['229,25,55', '239,68,68', '220,38,38'], tintLight: ['#fff1f2', '#fef2f2', '#fee2e2', '#ffebef', '#fecaca', '#fecdd3', '#ffe4e6'],
     fg: 'colorStatusDangerForeground1', bg: 'colorStatusDangerBackground1', border: 'colorStatusDangerBorder1', solid: null },
-  { name: 'info', hex: ['#3b82f6', '#2563eb', '#0ea5e9', '#0284c7', '#1d4ed8'], rgb: ['59,130,246', '37,99,235', '14,165,233'], tintLight: ['#eff6ff', '#dbeafe', '#f0f9ff'],
+  { name: 'info', hex: ['#0078d4', '#3b82f6', '#2563eb', '#0ea5e9', '#0284c7', '#1d4ed8'], rgb: ['59,130,246', '37,99,235', '14,165,233'], tintLight: ['#eff6ff', '#dbeafe', '#f0f9ff', '#bfdbfe', '#e0f2fe'],
     fg: 'colorPaletteBlueForeground2', bg: 'colorPaletteBlueBackground2', border: 'colorPaletteBlueBorderActive', solid: 'colorPaletteBlueBorderActive' },
 ];
 
@@ -67,10 +67,10 @@ for (const file of files) {
   });
   const n = Object.values(counts).reduce((a, b) => a + b, 0);
   total += n;
-  if (n && !/\btokens\b[^\n]*from '@fluentui\/react-components'/.test(text)) {
+  if (n && !/import \{[^}]*\btokens\b[^}]*\} from '@fluentui\/react-components'/.test(text)) {
     const re = /import \{([^}]*)\} from '@fluentui\/react-components';/;
     text = re.test(text)
-      ? text.replace(re, (_, names) => `import {${names.replace(/\s*$/, '')}, tokens } from '@fluentui/react-components';`)
+      ? text.replace(re, (_, names) => `import {${names.replace(/[\s,]*$/, '')}, tokens } from '@fluentui/react-components';`)
       : `import { tokens } from '@fluentui/react-components';\n` + text;
   }
   console.log(`${path.relative(process.cwd(), file)}: ${n} status colours -> tokens`);

@@ -6,8 +6,7 @@ import {
   Subtitle1,
   Caption1,
   Checkbox,
-  shorthands,
-} from '@fluentui/react-components';
+  shorthands } from '@fluentui/react-components';
 import {
   BarcodeScanner24Regular,
   Print20Regular,
@@ -83,7 +82,7 @@ const useStyles = makeStyles({
     width: '46px',
     height: '46px',
     borderRadius: '8px',
-    backgroundColor: 'rgba(229, 25, 55, 0.08)',
+    backgroundColor: tokens.colorStatusDangerBackground1,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -192,7 +191,7 @@ const useStyles = makeStyles({
     borderLeftStyle: 'none',
     borderRightStyle: 'none',
     backgroundColor: 'transparent',
-    color: '#EF4444',
+    color: tokens.colorStatusDangerForeground1,
     cursor: 'pointer',
     padding: 0,
   },

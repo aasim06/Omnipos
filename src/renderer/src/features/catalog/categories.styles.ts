@@ -68,7 +68,7 @@ export const useCategoriesStyles = makeStyles({
     marginTop: '2px',
   },
   primaryBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#ffffff',
     borderRadius: tokens.borderRadiusMedium,
     fontWeight: 600,
@@ -93,7 +93,7 @@ export const useCategoriesStyles = makeStyles({
     marginBottom: '12px',
   },
   sectionIconRed: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
     width: '20px',
     height: '20px',
   },
@@ -101,7 +101,7 @@ export const useCategoriesStyles = makeStyles({
     marginLeft: 'auto',
     fontSize: '12px',
     fontWeight: 600,
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   categoryGrid: {
     display: 'grid',
@@ -168,7 +168,7 @@ export const useCategoriesStyles = makeStyles({
     fontSize: '11.5px',
   },
   deleteActionBtn: {
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
 
   // Modal Dialog
@@ -207,11 +207,11 @@ export const useCategoriesStyles = makeStyles({
     width: '36px',
     height: '36px',
     borderRadius: '8px',
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    backgroundColor: tokens.colorStatusDangerBackground1,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   dialogTitleText: {
     fontSize: '17px',
@@ -263,7 +263,7 @@ export const useCategoriesStyles = makeStyles({
     fontWeight: 600,
   },
   dialogSaveBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#ffffff',
     borderRadius: '8px',
     fontWeight: 600,
@@ -305,11 +305,11 @@ export const useCategoriesStyles = makeStyles({
     width: '42px',
     height: '42px',
     borderRadius: '8px',
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    backgroundColor: tokens.colorStatusDangerBackground1,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
     flexShrink: 0,
   },
   templateDialogTitle: {
@@ -325,9 +325,9 @@ export const useCategoriesStyles = makeStyles({
   successBanner: {
     padding: '10px 16px',
     borderRadius: '8px',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: tokens.colorStatusSuccessBackground1,
     border: '1px solid rgba(16, 185, 129, 0.3)',
-    color: '#059669',
+    color: tokens.colorStatusSuccessForeground1,
     fontWeight: 600,
     fontSize: '13px',
     marginBottom: '16px',
@@ -453,7 +453,7 @@ export const useCategoriesStyles = makeStyles({
     gap: '5px',
   },
   hintCaptionLocked: {
-    color: '#059669',
+    color: tokens.colorStatusSuccessForeground1,
     fontWeight: 600,
   },
   catFormHintRow: {
@@ -470,7 +470,7 @@ export const useCategoriesStyles = makeStyles({
     backgroundColor: 'transparent',
     borderTopStyle: 'none', borderBottomStyle: 'none',
     borderLeftStyle: 'none', borderRightStyle: 'none',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
     fontSize: '11.5px',
     fontWeight: 600,
     cursor: 'pointer',

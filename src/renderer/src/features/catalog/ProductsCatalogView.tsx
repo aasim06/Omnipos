@@ -23,8 +23,7 @@ import {
   DialogActions,
   DialogContent,
   TabList,
-  Tab,
-} from '@fluentui/react-components';
+  Tab } from '@fluentui/react-components';
 import {
   Add20Regular,
   Search20Regular,
@@ -889,8 +888,8 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                             {p.category} • {p.module === 'fastfood' ? 'Fast Food' : 'Omnimart'}
                             {p.expiryDate && (() => {
                               const diff = Math.ceil((new Date(p.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                              if (diff < 0) return <span style={{ color: '#D13438', fontWeight: 600, marginLeft: 4 }}>• EXPIRED</span>;
-                              if (diff <= 30) return <span style={{ color: '#D97706', fontWeight: 600, marginLeft: 4 }}>• Exp: {diff}d</span>;
+                              if (diff < 0) return <span style={{ color: tokens.colorStatusDangerForeground1, fontWeight: 600, marginLeft: 4 }}>• EXPIRED</span>;
+                              if (diff <= 30) return <span style={{ color: tokens.colorStatusWarningForeground1, fontWeight: 600, marginLeft: 4 }}>• Exp: {diff}d</span>;
                               return null;
                             })()}
                           </div>
@@ -999,9 +998,9 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                               {p.imageBase64 || p.imageUrl ? (
                                 <img src={p.imageBase64 || p.imageUrl} alt={p.name} className={styles.cardImg} />
                               ) : isFastFood ? (
-                                <Food24Regular style={{ color: '#E51937', width: 22, height: 22 }} />
+                                <Food24Regular style={{ color: tokens.colorBrandForeground1, width: 22, height: 22 }} />
                               ) : (
-                                <BuildingRetail24Regular style={{ color: '#2563EB', width: 22, height: 22 }} />
+                                <BuildingRetail24Regular style={{ color: tokens.colorPaletteBlueForeground2, width: 22, height: 22 }} />
                               )}
                             </div>
                             <div className={styles.prodTextCol}>
@@ -1022,11 +1021,11 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                               {/* Dual Units / Wholesale Conversion Badge */}
                               {p.primaryUnit && p.conversionRate && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
-                                  <span style={{ fontSize: '10.5px', backgroundColor: '#EFF6FC', color: '#0078D4', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                  <span style={{ fontSize: '10.5px', backgroundColor: '#EFF6FC', color: tokens.colorPaletteBlueForeground2, padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
                                     1 {p.primaryUnit} = {p.conversionRate} {p.secondaryUnit || p.unit || 'Pcs'}
                                   </span>
                                   {p.secondaryPrice !== undefined && (
-                                    <span style={{ fontSize: '10.5px', color: '#605E5C' }}>
+                                    <span style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground2 }}>
                                       (@ {formatPKR(p.secondaryPrice)}/pc)
                                     </span>
                                   )}
@@ -1173,8 +1172,8 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
               <span>Category: {selectedCategory === 'ALL' ? 'All Categories' : selectedCategory}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }} />
-              <span style={{ fontWeight: 600, color: '#0F172A', fontSize: '11.5px' }}>Fast Food POS Active</span>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: tokens.colorStatusSuccessBackground3, display: 'inline-block' }} />
+              <span style={{ fontWeight: 600, color: tokens.colorNeutralForeground1, fontSize: '11.5px' }}>Fast Food POS Active</span>
             </div>
           </div>
         </div>

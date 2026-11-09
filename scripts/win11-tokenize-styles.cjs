@@ -133,9 +133,9 @@ for (const file of files) {
   for (const e of edits.sort((a, b) => b.start - a.start)) out = out.slice(0, e.start) + e.text + out.slice(e.end);
 
   // Make sure `tokens` is imported from @fluentui/react-components.
-  if (edits.length && !/\btokens\b[^\n]*from '@fluentui\/react-components'/.test(out)) {
+  if (edits.length && !/import \{[^}]*\btokens\b[^}]*\} from '@fluentui\/react-components'/.test(out)) {
     const re = /import \{([^}]*)\} from '@fluentui\/react-components';/;
-    if (re.test(out)) out = out.replace(re, (_, names) => `import {${names.replace(/\s*$/, '')}, tokens } from '@fluentui/react-components';`);
+    if (re.test(out)) out = out.replace(re, (_, names) => `import {${names.replace(/[\s,]*$/, '')}, tokens } from '@fluentui/react-components';`);
     else out = `import { tokens } from '@fluentui/react-components';\n` + out;
   }
 
