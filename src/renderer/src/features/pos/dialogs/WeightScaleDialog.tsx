@@ -1,6 +1,7 @@
 import { PosCounterState } from '@/features/pos/usePosCounter';
 import { Add16Filled, Box20Regular, Dismiss20Regular, DrinkToGo24Regular, Money20Regular, Scales20Regular } from '@fluentui/react-icons';
 import { playBeep } from '@/lib/soundFx';
+import { DIALOG_RADIUS, DIALOG_SHADOW, DIALOG_SMOKE, useEscapeToClose } from '@/features/pos/posDialog';
 
 export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
   const {
@@ -19,6 +20,8 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
     handleConfirmWeight,
   } = pos;
 
+  useEscapeToClose(!!weighingProduct, () => setWeighingProduct(null));
+
   return (
     <>
       {weighingProduct && (
@@ -26,7 +29,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: DIALOG_SMOKE,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -38,7 +41,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
               width: '420px',
               backgroundColor: F.bgCard,
               borderRadius: F.radiusMd,
-              boxShadow: F.shadowElevated,
+              boxShadow: DIALOG_SHADOW,
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
@@ -55,7 +58,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                 ) : (
                   <Box20Regular style={{ color: F.accentRed, width: 22, height: 22 }} />
                 )}
-                <span style={{ fontWeight: 800, fontSize: '16px', color: F.textPrimary }}>
+                <span style={{ fontWeight: 600, fontSize: '16px', color: F.textPrimary }}>
                   {isLiquidUnit(weighingProduct.unit)
                     ? 'Liquid Volume Dispenser'
                     : isWeightUnit(weighingProduct.unit)
@@ -84,7 +87,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
               }}
             >
               <div>
-                <div style={{ fontWeight: 800, fontSize: '15px', color: F.textPrimary }}>
+                <div style={{ fontWeight: 600, fontSize: '15px', color: F.textPrimary }}>
                   {weighingProduct.name}
                 </div>
                 <div style={{ fontSize: '12px', color: F.textSecondary, marginTop: '2px' }}>
@@ -114,7 +117,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                   border: 'none',
                   backgroundColor: weightCalcMode === 'weight' ? (isDark ? '#27272A' : '#FFFFFF') : 'transparent',
                   color: weightCalcMode === 'weight' ? F.accentRed : F.textSecondary,
-                  fontWeight: weightCalcMode === 'weight' ? 700 : 500,
+                  fontWeight: weightCalcMode === 'weight' ? 600 : 400,
                   fontSize: '12px',
                   cursor: 'pointer',
                   boxShadow: weightCalcMode === 'weight' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
@@ -141,7 +144,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                   border: 'none',
                   backgroundColor: weightCalcMode === 'rupees' ? (isDark ? '#27272A' : '#FFFFFF') : 'transparent',
                   color: weightCalcMode === 'rupees' ? F.accentRed : F.textSecondary,
-                  fontWeight: weightCalcMode === 'rupees' ? 700 : 500,
+                  fontWeight: weightCalcMode === 'rupees' ? 600 : 400,
                   fontSize: '12px',
                   cursor: 'pointer',
                   boxShadow: weightCalcMode === 'rupees' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
@@ -195,7 +198,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                 return (
                   <>
                     <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '8px' }}>
                         Quick Presets ({isLiquid ? 'Volume / Liters' : isWeight ? 'Weight / Kilograms' : 'Quantity / ' + (weighingProduct.unit || 'Units')})
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: presets.length > 6 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: '6px' }}>
@@ -213,7 +216,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                               border: `1.5px solid ${weightAmount === preset.val ? F.accentRed : F.border}`,
                               backgroundColor: weightAmount === preset.val ? (isDark ? 'rgba(229, 25, 55, 0.15)' : '#FFF1F2') : F.bgCard,
                               color: weightAmount === preset.val ? (isDark ? '#FF4D64' : F.accentRed) : F.textPrimary,
-                              fontWeight: weightAmount === preset.val ? 800 : 500,
+                              fontWeight: weightAmount === preset.val ? 600 : 400,
                               fontSize: '11.5px',
                               cursor: 'pointer',
                               transition: 'all 0.12s ease',
@@ -228,7 +231,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
 
                     {/* Manual Scale / Measure Input */}
                     <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '6px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '6px' }}>
                         {isLiquid ? 'Measured Volume' : isWeight ? 'Weighed Quantity' : 'Selected Quantity'} ({weighingProduct.unit || 'unit'})
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -247,12 +250,12 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                             backgroundColor: F.bgSubtle,
                             color: F.textPrimary,
                             fontSize: '16px',
-                            fontWeight: 800,
+                            fontWeight: 600,
                             outline: 'none',
                             fontFamily: 'monospace',
                           }}
                         />
-                        <span style={{ fontSize: '14px', fontWeight: 700, color: F.textSecondary }}>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: F.textSecondary }}>
                           {weighingProduct.unit || (isLiquid ? 'Liter' : isWeight ? 'kg' : 'PCS')}
                         </span>
                       </div>
@@ -270,10 +273,10 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                         alignItems: 'center',
                       }}
                     >
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: F.textPrimary }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: F.textPrimary }}>
                         Calculated Price:
                       </span>
-                      <span style={{ fontSize: '20px', fontWeight: 900, color: F.accentRed }}>
+                      <span style={{ fontSize: '20px', fontWeight: 600, color: F.accentRed }}>
                         PKR {Math.round(weighingProduct.price * weightAmount).toLocaleString()}
                       </span>
                     </div>
@@ -298,7 +301,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                 return (
                   <>
                     <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '8px' }}>
                         Customer Budget Presets (PKR)
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
@@ -313,7 +316,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                               border: `1.5px solid ${targetRupees === rs ? F.accentRed : F.border}`,
                               backgroundColor: targetRupees === rs ? (isDark ? 'rgba(229, 25, 55, 0.15)' : '#FFF1F2') : F.bgCard,
                               color: targetRupees === rs ? (isDark ? '#FF4D64' : F.accentRed) : F.textPrimary,
-                              fontWeight: targetRupees === rs ? 800 : 500,
+                              fontWeight: targetRupees === rs ? 600 : 400,
                               fontSize: '12px',
                               cursor: 'pointer',
                               transition: 'all 0.12s ease',
@@ -328,11 +331,11 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
 
                     {/* Manual Rupee Budget Input */}
                     <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '6px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '6px' }}>
                         Customer Target Amount (PKR)
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '14px', fontWeight: 800, color: F.accentRed }}>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: F.accentRed }}>
                           PKR
                         </span>
                         <input
@@ -356,7 +359,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                             backgroundColor: F.bgSubtle,
                             color: F.textPrimary,
                             fontSize: '16px',
-                            fontWeight: 800,
+                            fontWeight: 600,
                             outline: 'none',
                             fontFamily: 'monospace',
                           }}
@@ -377,10 +380,10 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: '10.5px', color: F.textSecondary, textTransform: 'uppercase', fontWeight: 700 }}>
+                        <div style={{ fontSize: '10.5px', color: F.textSecondary, textTransform: 'uppercase', fontWeight: 600 }}>
                           Exact {isLiquid ? 'Volume' : 'Weight'} to give:
                         </div>
-                        <div style={{ fontSize: '18px', fontWeight: 900, color: F.accentRed, marginTop: '2px' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 600, color: F.accentRed, marginTop: '2px' }}>
                           {weightAmount} {unit}{' '}
                           <span style={{ fontSize: '13px', fontWeight: 600, color: F.textPrimary }}>
                             ({Math.round(weightAmount * 1000)} {isLiquid ? 'ml' : isWeight ? 'grams' : 'units'})
@@ -388,10 +391,10 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '10.5px', color: F.textSecondary, textTransform: 'uppercase', fontWeight: 700 }}>
+                        <div style={{ fontSize: '10.5px', color: F.textSecondary, textTransform: 'uppercase', fontWeight: 600 }}>
                           Total Bill
                         </div>
-                        <div style={{ fontSize: '18px', fontWeight: 900, color: F.textPrimary, marginTop: '2px' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 600, color: F.textPrimary, marginTop: '2px' }}>
                           PKR {targetRupees.toLocaleString()}
                         </div>
                       </div>
@@ -427,7 +430,7 @@ export function WeightScaleDialog({ pos }: { pos: PosCounterState }) {
                   border: 'none',
                   backgroundColor: F.accentRed,
                   color: '#FFFFFF',
-                  fontWeight: 700,
+                  fontWeight: 600,
                   fontSize: '13px',
                   cursor: 'pointer',
                   display: 'flex',

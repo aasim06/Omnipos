@@ -11,7 +11,7 @@ Goal: the app should feel like a native Windows 11 desktop app (Fluent 2 / WinUI
 | P2 NavigationView sidebar, content layer | Done |
 | P3 POS split into hook + components | Done |
 | P4 POS layout | Done: resizable order pane (splitter, remembered width), one 48px command bar (scanner + search + mode/view switches), 40px category pivot, floating scan InfoBar, featured card optional (off by default), auto-fill product grid, footer with sticky total + flyouts for discount / cash / split / khata, F9 hint on Confirm. **Left for P5:** order details header (customer combobox, order type), 48px line-item rows, `getTokens()` → `makeStyles` |
-| P5 POS dialogs + keyboard | Not started |
+| P5 POS dialogs + keyboard | Done: order header with Win11 command buttons (InfoBadge for held orders, F4 hint), order details restyled (neutral segmented order type, TextBox-style customer field), cart lines as 48px ListView rows, 7 POS dialogs with smoke backdrop (no blur), 8px corners, ContentDialog shadow and Escape to close (top-most only), POS font weights 400/600. Receipt paper preview keeps its print-like bold text. **Not done:** `getTokens()` → `makeStyles` (large, visual-neutral refactor), arrow-key line selection, A4 invoice template (shared, moved to P6) |
 | P6 Other screens | Not started |
 
 ---

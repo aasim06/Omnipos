@@ -65,7 +65,7 @@ export function MealBuilderCard({ pos }: { pos: PosCounterState }) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: F.textPrimary, lineHeight: 1.2 }}>
+                <div style={{ fontSize: '20px', fontWeight: 600, color: F.textPrimary, lineHeight: 1.2 }}>
                   {featured.name}
                 </div>
                 <div style={{ fontSize: '13px', color: F.textSecondary, marginTop: '3px' }}>
@@ -73,7 +73,7 @@ export function MealBuilderCard({ pos }: { pos: PosCounterState }) {
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: F.accentRed }}>
+                <div style={{ fontSize: '22px', fontWeight: 600, color: F.accentRed }}>
                   PKR {((featured.price || 0) * selectedQty).toLocaleString()}
                 </div>
                 <button
@@ -100,7 +100,7 @@ export function MealBuilderCard({ pos }: { pos: PosCounterState }) {
             {/* Real Product Variants (Only if product has actual variants defined in catalog) */}
             {featured.variants && featured.variants.length > 0 && (
               <div>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: F.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: F.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
                   Available Options
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -134,7 +134,7 @@ export function MealBuilderCard({ pos }: { pos: PosCounterState }) {
                 >
                   <Subtract20Regular style={{ width: 14, height: 14 }} />
                 </button>
-                <span style={{ minWidth: '32px', textAlign: 'center', fontSize: '13px', fontWeight: 700, color: F.textPrimary }}>
+                <span style={{ minWidth: '32px', textAlign: 'center', fontSize: '13px', fontWeight: 600, color: F.textPrimary }}>
                   {selectedQty}
                 </span>
                 <button

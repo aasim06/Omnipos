@@ -1,5 +1,6 @@
 import { PosCounterState } from '@/features/pos/usePosCounter';
 import { Dismiss20Regular } from '@fluentui/react-icons';
+import { DIALOG_RADIUS, DIALOG_SHADOW, DIALOG_SMOKE, useEscapeToClose } from '@/features/pos/posDialog';
 
 export function VariantPickerDialog({ pos }: { pos: PosCounterState }) {
   const {
@@ -10,6 +11,8 @@ export function VariantPickerDialog({ pos }: { pos: PosCounterState }) {
     addToCart,
   } = pos;
 
+  useEscapeToClose(!!variantPickerProduct, () => setVariantPickerProduct(null));
+
   return (
     <>
       {variantPickerProduct && (
@@ -17,8 +20,7 @@ export function VariantPickerDialog({ pos }: { pos: PosCounterState }) {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
-            backdropFilter: 'blur(4px)',
+            backgroundColor: DIALOG_SMOKE,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -32,9 +34,9 @@ export function VariantPickerDialog({ pos }: { pos: PosCounterState }) {
               width: '420px',
               maxWidth: '92vw',
               backgroundColor: F.bgCard,
-              borderRadius: F.radiusLg,
+              borderRadius: DIALOG_RADIUS,
               border: `1px solid ${F.border}`,
-              boxShadow: F.shadowElevated,
+              boxShadow: DIALOG_SHADOW,
               padding: '24px',
               display: 'flex',
               flexDirection: 'column',
@@ -43,7 +45,7 @@ export function VariantPickerDialog({ pos }: { pos: PosCounterState }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: '18px', color: F.textPrimary }}>
+                <div style={{ fontWeight: 600, fontSize: '18px', color: F.textPrimary }}>
                   {variantPickerProduct.name}
                 </div>
                 <div style={{ fontSize: '12px', color: F.textSecondary, marginTop: '2px' }}>
@@ -85,7 +87,7 @@ export function VariantPickerDialog({ pos }: { pos: PosCounterState }) {
                     }}
                     style={{
                       padding: '12px 10px',
-                      borderRadius: '10px',
+                      borderRadius: '8px',
                       border: `1.5px solid ${F.border}`,
                       backgroundColor: F.bgSubtle,
                       display: 'flex',
@@ -109,10 +111,10 @@ export function VariantPickerDialog({ pos }: { pos: PosCounterState }) {
                       }
                     }}
                   >
-                    <span style={{ fontSize: '15px', fontWeight: 800, color: F.textPrimary }}>
+                    <span style={{ fontSize: '15px', fontWeight: 600, color: F.textPrimary }}>
                       {v.label}
                     </span>
-                    <span style={{ fontSize: '13px', fontWeight: 800, color: isDark ? '#FF4D64' : F.accentRed }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: isDark ? '#FF4D64' : F.accentRed }}>
                       PKR {finalPrice.toLocaleString()}
                     </span>
                     {(v.stock !== undefined || variantPickerProduct.openingStock !== undefined) && (

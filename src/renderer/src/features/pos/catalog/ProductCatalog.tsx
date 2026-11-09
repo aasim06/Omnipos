@@ -26,7 +26,7 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
     <>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: F.textPrimary }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: F.textPrimary }}>
             {module === 'fastfood' ? 'Menu Items' : 'Store Catalog'} ({filteredProducts.length})
           </div>
           <div style={{ fontSize: '12px', color: F.textMuted }}>
@@ -48,13 +48,13 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px', fontFamily: F.font }}>
               <thead>
                 <tr style={{ backgroundColor: F.bgSubtle, borderBottom: `1px solid ${F.border}`, color: F.textSecondary, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '10px 16px', fontWeight: 700 }}>SKU / Barcode</th>
-                  <th style={{ padding: '10px 16px', fontWeight: 700 }}>Product Name</th>
-                  <th style={{ padding: '10px 16px', fontWeight: 700 }}>Category</th>
-                  <th style={{ padding: '10px 16px', fontWeight: 700 }}>Rack Location</th>
-                  <th style={{ padding: '10px 16px', fontWeight: 700 }}>Stock</th>
-                  <th style={{ padding: '10px 16px', fontWeight: 700 }}>Price</th>
-                  <th style={{ padding: '10px 16px', fontWeight: 700, textAlign: 'right' }}>Action</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>SKU / Barcode</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>Product Name</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>Category</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>Rack Location</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>Stock</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>Price</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600, textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,7 +84,7 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                         <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: '12px', color: F.textMuted }}>
                           {product.skuCode || '—'}
                         </td>
-                        <td style={{ padding: '10px 16px', fontWeight: 700, color: F.textPrimary }}>
+                        <td style={{ padding: '10px 16px', fontWeight: 600, color: F.textPrimary }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span>{product.name}</span>
                             {product.unit && (
@@ -107,9 +107,9 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                               alignItems: 'center',
                               gap: '4px',
                               padding: '2px 8px',
-                              borderRadius: '10px',
+                              borderRadius: '8px',
                               fontSize: '11px',
-                              fontWeight: 700,
+                              fontWeight: 600,
                               backgroundColor: isOut ? '#FEE2E2' : isLowStock ? '#FEF3C7' : '#DCFCE7',
                               color: isOut ? '#EF4444' : isLowStock ? '#D97706' : '#16A34A',
                             }}
@@ -117,7 +117,7 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                             {isOut ? 'OUT OF STOCK' : isFood && (product.openingStock === null || product.openingStock === undefined) ? 'Fresh / Made to Order' : `${product.openingStock ?? '—'} left`}
                           </span>
                         </td>
-                        <td style={{ padding: '10px 16px', fontWeight: 800, color: F.accentRed }}>
+                        <td style={{ padding: '10px 16px', fontWeight: 600, color: F.accentRed }}>
                           PKR {product.price.toLocaleString()}
                         </td>
                         <td style={{ padding: '10px 16px', textAlign: 'right' }}>
@@ -135,7 +135,7 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                                 border: 'none',
                                 backgroundColor: '#10B981',
                                 color: '#FFFFFF',
-                                fontWeight: 700,
+                                fontWeight: 600,
                                 fontSize: '12px',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
@@ -165,7 +165,7 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                                   border: `1px solid ${inCartCount > 0 ? F.accentRed : F.border}`,
                                   backgroundColor: inCartCount > 0 ? F.accentRed : F.bgSubtle,
                                   color: inCartCount > 0 ? '#FFFFFF' : F.textPrimary,
-                                  fontWeight: 700,
+                                  fontWeight: 600,
                                   fontSize: '12px',
                                   cursor: isOut ? 'not-allowed' : 'pointer',
                                   display: 'inline-flex',
@@ -225,7 +225,7 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                   color: F.textMuted,
                 }}
               >
-                <p style={{ fontSize: '15px', fontWeight: 700, color: F.textPrimary, margin: '0 0 6px 0' }}>
+                <p style={{ fontSize: '15px', fontWeight: 600, color: F.textPrimary, margin: '0 0 6px 0' }}>
                   No Products in Catalog
                 </p>
                 <p style={{ fontSize: '13px', margin: 0 }}>

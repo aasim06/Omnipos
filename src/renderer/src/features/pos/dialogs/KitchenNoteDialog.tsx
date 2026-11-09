@@ -1,6 +1,7 @@
 import { PosCounterState } from '@/features/pos/usePosCounter';
 import { Dismiss20Regular } from '@fluentui/react-icons';
 import { playBeep } from '@/lib/soundFx';
+import { DIALOG_RADIUS, DIALOG_SHADOW, DIALOG_SMOKE, useEscapeToClose } from '@/features/pos/posDialog';
 
 export function KitchenNoteDialog({ pos }: { pos: PosCounterState }) {
   const {
@@ -11,6 +12,8 @@ export function KitchenNoteDialog({ pos }: { pos: PosCounterState }) {
     setEditingNoteItem,
   } = pos;
 
+  useEscapeToClose(module === 'fastfood' && !!editingNoteItem, () => setEditingNoteItem(null));
+
   return (
     <>
       {module === 'fastfood' && editingNoteItem && (
@@ -18,7 +21,7 @@ export function KitchenNoteDialog({ pos }: { pos: PosCounterState }) {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: DIALOG_SMOKE,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -31,7 +34,7 @@ export function KitchenNoteDialog({ pos }: { pos: PosCounterState }) {
               backgroundColor: F.bgCard,
               borderRadius: F.radiusMd,
               border: `1px solid ${F.border}`,
-              boxShadow: F.shadowElevated,
+              boxShadow: DIALOG_SHADOW,
               padding: '20px',
               display: 'flex',
               flexDirection: 'column',
@@ -39,7 +42,7 @@ export function KitchenNoteDialog({ pos }: { pos: PosCounterState }) {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontWeight: 800, fontSize: '15px', color: F.textPrimary }}>
+              <div style={{ fontWeight: 600, fontSize: '15px', color: F.textPrimary }}>
                 Kitchen Prep Note / Modifiers
               </div>
               <button
@@ -91,7 +94,7 @@ export function KitchenNoteDialog({ pos }: { pos: PosCounterState }) {
             </div>
 
             <div>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
                 Chef Instruction / Custom Request
               </label>
               <input
@@ -134,7 +137,7 @@ export function KitchenNoteDialog({ pos }: { pos: PosCounterState }) {
                   setEditingNoteItem(null);
                   playBeep();
                 }}
-                style={{ padding: '6px 16px', borderRadius: F.radiusSm, border: 'none', backgroundColor: F.accentRed, color: '#FFFFFF', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+                style={{ padding: '6px 16px', borderRadius: F.radiusSm, border: 'none', backgroundColor: F.accentRed, color: '#FFFFFF', fontWeight: 600, cursor: 'pointer', fontSize: '12px' }}
               >
                 Save Note
               </button>

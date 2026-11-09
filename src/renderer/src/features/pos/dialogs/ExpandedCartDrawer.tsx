@@ -1,6 +1,7 @@
 import { PosCounterState } from '@/features/pos/usePosCounter';
 import { Add20Regular, Checkmark20Regular, Delete20Regular, Dismiss20Regular, NoteEdit20Regular, Person20Regular, ShoppingBag24Regular, Subtract20Regular, Tag20Regular } from '@fluentui/react-icons';
 import { ProductIcon } from '@/features/pos/posIcons';
+import { DIALOG_RADIUS, DIALOG_SHADOW, DIALOG_SMOKE, useEscapeToClose } from '@/features/pos/posDialog';
 
 export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
   const {
@@ -33,6 +34,8 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
     isPending,
   } = pos;
 
+  useEscapeToClose(isCartExpanded, () => setIsCartExpanded(false));
+
   return (
     <>
       {isCartExpanded && (
@@ -51,9 +54,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
             style={{
               position: 'absolute',
               inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.55)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
+              backgroundColor: DIALOG_SMOKE,
               animation: 'fadeIn 0.2s ease-out',
             }}
           />
@@ -66,12 +67,12 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
               maxWidth: '92vw',
               height: '100%',
               backgroundColor: F.bgCard,
-              boxShadow: '-12px 0 45px rgba(0, 0, 0, 0.38)',
+              boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.22)',
               borderLeft: `1px solid ${F.border}`,
               display: 'flex',
               flexDirection: 'column',
               zIndex: 1,
-              animation: 'slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+              animation: 'slideInRight 0.25s cubic-bezier(0, 0, 0, 1)',
             }}
           >
             {/* Drawer Header */}
@@ -103,7 +104,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
                   <ShoppingBag24Regular style={{ width: 18, height: 18 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: '15px', fontWeight: 800, color: F.textPrimary, lineHeight: 1.2 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: F.textPrimary, lineHeight: 1.2 }}>
                     Cart Items Details
                   </div>
                   <div style={{ fontSize: '11px', color: F.textMuted }}>
@@ -195,7 +196,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
                 <span
                   style={{
                     fontSize: '11px',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     color: '#FFFFFF',
                     backgroundColor: F.accentRed,
                     padding: '2px 8px',
@@ -236,7 +237,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
                       alignItems: 'center',
                       gap: '12px',
                       padding: '12px 14px',
-                      borderRadius: '10px',
+                      borderRadius: '8px',
                       backgroundColor: F.bgCanvas,
                       border: `1px solid ${F.borderSubtle}`,
                       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
@@ -276,7 +277,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
 
                     {/* Name, Portion, Unit Price */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '13.5px', fontWeight: 700, color: F.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '13.5px', fontWeight: 600, color: F.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {item.name}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', flexWrap: 'wrap' }}>
@@ -369,7 +370,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
                         title="Click to set custom quantity"
                         style={{
                           fontSize: '13px',
-                          fontWeight: 800,
+                          fontWeight: 600,
                           minWidth: '26px',
                           textAlign: 'center',
                           color: F.textPrimary,
@@ -400,7 +401,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
 
                     {/* Total & Delete */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '85px', justifyContent: 'flex-end' }}>
-                      <div style={{ fontSize: '13.5px', fontWeight: 800, color: F.accentRed, textAlign: 'right' }}>
+                      <div style={{ fontSize: '13.5px', fontWeight: 600, color: F.accentRed, textAlign: 'right' }}>
                         PKR {(item.unitPrice * item.quantity).toLocaleString()}
                       </div>
                       <button
@@ -448,7 +449,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: F.textSecondary }}>
                 <span>Subtotal ({cart.reduce((s, i) => s + i.quantity, 0)} units):</span>
-                <span style={{ fontWeight: 700, color: F.textPrimary }}>PKR {subtotal.toLocaleString()}</span>
+                <span style={{ fontWeight: 600, color: F.textPrimary }}>PKR {subtotal.toLocaleString()}</span>
               </div>
               {discountVal > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#10B981' }}>
@@ -456,7 +457,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
                   <span>- PKR {discountVal.toLocaleString()}</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '16px', fontWeight: 900, borderTop: `1px dashed ${F.border}`, paddingTop: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '16px', fontWeight: 600, borderTop: `1px dashed ${F.border}`, paddingTop: '8px' }}>
                 <span style={{ color: F.textPrimary }}>NET TOTAL:</span>
                 <span style={{ color: F.accentRed, fontSize: '18px' }}>PKR {total.toLocaleString()}</span>
               </div>
@@ -471,7 +472,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
                     border: `1px solid ${F.border}`,
                     backgroundColor: F.bgCard,
                     color: F.textPrimary,
-                    fontWeight: 700,
+                    fontWeight: 600,
                     fontSize: '13px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -497,7 +498,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
                     border: 'none',
                     backgroundColor: cart.length === 0 || isPending ? (isDark ? '#383838' : '#CBD5E1') : F.accentRed,
                     color: '#FFFFFF',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     fontSize: '13px',
                     cursor: cart.length === 0 || isPending ? 'not-allowed' : 'pointer',
                     display: 'flex',

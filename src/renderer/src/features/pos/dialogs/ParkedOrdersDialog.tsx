@@ -1,5 +1,6 @@
 import { PosCounterState } from '@/features/pos/usePosCounter';
 import { Clock20Regular, Delete20Regular, Dismiss20Regular } from '@fluentui/react-icons';
+import { DIALOG_RADIUS, DIALOG_SHADOW, DIALOG_SMOKE, useEscapeToClose } from '@/features/pos/posDialog';
 
 export function ParkedOrdersDialog({ pos }: { pos: PosCounterState }) {
   const {
@@ -13,6 +14,8 @@ export function ParkedOrdersDialog({ pos }: { pos: PosCounterState }) {
     subtotal,
   } = pos;
 
+  useEscapeToClose(showParkedModal, () => setShowParkedModal(false));
+
   return (
     <>
       {showParkedModal && (
@@ -20,7 +23,7 @@ export function ParkedOrdersDialog({ pos }: { pos: PosCounterState }) {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: DIALOG_SMOKE,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -34,7 +37,7 @@ export function ParkedOrdersDialog({ pos }: { pos: PosCounterState }) {
               backgroundColor: F.bgCard,
               borderRadius: F.radiusMd,
               border: `1px solid ${F.border}`,
-              boxShadow: F.shadowElevated,
+              boxShadow: DIALOG_SHADOW,
               padding: '20px',
               display: 'flex',
               flexDirection: 'column',
@@ -44,7 +47,7 @@ export function ParkedOrdersDialog({ pos }: { pos: PosCounterState }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Clock20Regular style={{ color: F.accentRed }} />
-                <span style={{ fontWeight: 800, fontSize: '16px', color: F.textPrimary }}>
+                <span style={{ fontWeight: 600, fontSize: '16px', color: F.textPrimary }}>
                   Held / Parked Orders ({parkedOrders.length})
                 </span>
               </div>
@@ -77,10 +80,10 @@ export function ParkedOrdersDialog({ pos }: { pos: PosCounterState }) {
                   >
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontWeight: 800, fontSize: '14px', color: F.textPrimary }}>
+                        <span style={{ fontWeight: 600, fontSize: '14px', color: F.textPrimary }}>
                           {parked.label}
                         </span>
-                        <span style={{ fontSize: '10px', textTransform: 'uppercase', padding: '2px 6px', borderRadius: '4px', backgroundColor: F.accentRedSubtle, color: F.accentRed, fontWeight: 700 }}>
+                        <span style={{ fontSize: '10px', textTransform: 'uppercase', padding: '2px 6px', borderRadius: '4px', backgroundColor: F.accentRedSubtle, color: F.accentRed, fontWeight: 600 }}>
                           {parked.orderType}
                         </span>
                       </div>
@@ -101,7 +104,7 @@ export function ParkedOrdersDialog({ pos }: { pos: PosCounterState }) {
                           border: 'none',
                           backgroundColor: F.accentRed,
                           color: '#fff',
-                          fontWeight: 700,
+                          fontWeight: 600,
                           fontSize: '12px',
                           cursor: 'pointer',
                         }}

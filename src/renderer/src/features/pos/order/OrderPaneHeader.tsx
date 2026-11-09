@@ -1,6 +1,11 @@
+import React from 'react';
 import { PosCounterState } from '@/features/pos/usePosCounter';
-import { ArrowExpand20Regular, Clock20Regular, Pause20Regular } from '@fluentui/react-icons';
+import { ArrowExpand20Regular, Clock20Regular, Delete20Regular, Pause20Regular } from '@fluentui/react-icons';
 
+/**
+ * Order pane header (Windows 11): title + item count, then subtle command buttons.
+ * Handlers are unchanged (expand drawer, recall parked, hold / KOT with F4, clear).
+ */
 export function OrderPaneHeader({ pos }: { pos: PosCounterState }) {
   const {
     module,
@@ -16,173 +21,150 @@ export function OrderPaneHeader({ pos }: { pos: PosCounterState }) {
     handleClearDiscount,
   } = pos;
 
+  const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
+  const hoverFill = isDark ? 'rgba(255,255,255,0.061)' : 'rgba(0,0,0,0.037)';
+
+  const commandButton = (opts: {
+    onClick: () => void;
+    title: string;
+    icon: React.ReactNode;
+    label?: string;
+    tone?: 'default' | 'danger';
+  }) => (
+    <button
+      type="button"
+      onClick={opts.onClick}
+      title={opts.title}
+      aria-label={opts.title}
+      style={{
+        height: '32px',
+        minWidth: '32px',
+        padding: opts.label ? '0 8px' : 0,
+        borderRadius: '4px',
+        border: 'none',
+        backgroundColor: 'transparent',
+        color: F.textPrimary,
+        fontSize: '13px',
+        fontFamily: F.font,
+        cursor: 'pointer',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '6px',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = hoverFill;
+        if (opts.tone === 'danger') e.currentTarget.style.color = F.accentRed;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = 'transparent';
+        e.currentTarget.style.color = F.textPrimary;
+      }}
+    >
+      {opts.icon}
+      {opts.label && <span>{opts.label}</span>}
+    </button>
+  );
+
   return (
-    <>
-      <div
-        style={{
-          height: '52px',
-          padding: '0 12px',
-          borderBottom: `1px solid ${F.border}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexShrink: 0,
-          gap: '8px',
-        }}
-      >
-        {/* Left: Title & Items Count Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flexShrink: 0 }}>
-          <span style={{ fontSize: '14.5px', fontWeight: 800, color: F.textPrimary, letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}>
-            My Order
-          </span>
-          <span
-            style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              color: F.accentRed,
-              backgroundColor: F.accentRedSubtle,
-              padding: '2.5px 7px',
-              borderRadius: F.radiusSm,
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-              display: 'inline-block',
-              lineHeight: 1.2,
-            }}
-          >
-            {cart.reduce((s, i) => s + i.quantity, 0)} {cart.reduce((s, i) => s + i.quantity, 0) === 1 ? 'item' : 'items'}
-          </span>
-        </div>
-
-        {/* Right: Action Buttons (Expand, Recall, Hold, Clear) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
-          {/* Expand Drawer Button */}
-          {cart.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsCartExpanded(true)}
-              title="Expand cart list with full details (Right drawer view)"
-              style={{
-                height: '29px',
-                padding: '0 8px',
-                borderRadius: F.radiusSm,
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
-                border: `1px solid ${F.border}`,
-                color: F.textPrimary,
-                fontSize: '11px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                transition: 'all 0.12s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.15)' : '#E2E8F0';
-                e.currentTarget.style.color = F.accentRed;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9';
-                e.currentTarget.style.color = F.textPrimary;
-              }}
-            >
-              <ArrowExpand20Regular style={{ width: 13, height: 13, color: F.accentRed, flexShrink: 0 }} />
-              <span>Expand</span>
-            </button>
-          )}
-
-          {/* Recall Parked Orders Button */}
-          {parkedOrders.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowParkedModal(true)}
-              title="View held / parked orders"
-              style={{
-                height: '29px',
-                padding: '0 7px',
-                borderRadius: F.radiusSm,
-                backgroundColor: '#F59E0B',
-                color: '#000000',
-                border: 'none',
-                fontWeight: 800,
-                fontSize: '11px',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)',
-              }}
-            >
-              <Clock20Regular style={{ width: 13, height: 13, flexShrink: 0 }} />
-              <span>Recall ({parkedOrders.length})</span>
-            </button>
-          )}
-
-          {/* Hold / KOT Button */}
-          {cart.length > 0 && (
-            <button
-              type="button"
-              onClick={handleParkOrder}
-              title={module === 'fastfood' ? 'Hold table and send live KOT to Kitchen screen' : 'Hold order without charging to serve next customer'}
-              style={{
-                height: '29px',
-                padding: '0 8px',
-                borderRadius: F.radiusSm,
-                backgroundColor: module === 'fastfood' ? F.accentRedSubtle : F.bgSubtle,
-                border: `1px solid ${module === 'fastfood' ? F.accentRed : F.border}`,
-                color: module === 'fastfood' ? F.accentRed : F.textSecondary,
-                fontWeight: 700,
-                fontSize: '11px',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                transition: 'all 0.12s ease',
-              }}
-            >
-              <Pause20Regular style={{ width: 13, height: 13, flexShrink: 0 }} />
-              <span>{module === 'fastfood' ? 'Hold / KOT' : 'Hold'}</span>
-            </button>
-          )}
-
-          {/* Clear Button */}
-          {cart.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                setCart([]);
-                setTenderedAmount('');
-                handleClearDiscount();
-              }}
-              title="Clear order cart"
-              style={{
-                height: '29px',
-                padding: '0 5px',
-                fontSize: '11px',
-                fontWeight: 600,
-                color: F.textMuted,
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: F.font,
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                display: 'inline-flex',
-                alignItems: 'center',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = F.accentRed)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = F.textMuted)}
-            >
-              Clear
-            </button>
-          )}
-        </div>
+    <div
+      style={{
+        height: '48px',
+        padding: '0 8px 0 16px',
+        borderBottom: `1px solid ${F.borderSubtle}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexShrink: 0,
+        gap: '8px',
+      }}
+    >
+      {/* Title & item count */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+        <span style={{ fontSize: '16px', fontWeight: 600, color: F.textPrimary, whiteSpace: 'nowrap' }}>Order</span>
+        <span
+          style={{
+            fontSize: '12px',
+            lineHeight: '18px',
+            fontWeight: 600,
+            color: F.textSecondary,
+            backgroundColor: F.bgSubtle,
+            padding: '0 8px',
+            borderRadius: '9px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {itemCount} {itemCount === 1 ? 'item' : 'items'}
+        </span>
       </div>
-    </>
+
+      {/* Commands */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+        {parkedOrders.length > 0 &&
+          commandButton({
+            onClick: () => setShowParkedModal(true),
+            title: 'View held / parked orders',
+            icon: (
+              <span style={{ position: 'relative', display: 'flex' }}>
+                <Clock20Regular style={{ width: 16, height: 16 }} />
+                {/* Win11 InfoBadge with the number of held orders */}
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-8px',
+                    minWidth: '16px',
+                    height: '16px',
+                    padding: '0 4px',
+                    boxSizing: 'border-box',
+                    borderRadius: '8px',
+                    backgroundColor: F.accentRed,
+                    color: '#FFFFFF',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    lineHeight: '16px',
+                    textAlign: 'center',
+                  }}
+                >
+                  {parkedOrders.length}
+                </span>
+              </span>
+            ),
+            label: 'Recall',
+          })}
+
+        {cart.length > 0 &&
+          commandButton({
+            onClick: handleParkOrder,
+            title:
+              module === 'fastfood'
+                ? 'Hold table and send live KOT to kitchen screen (F4)'
+                : 'Hold order without charging to serve next customer (F4)',
+            icon: <Pause20Regular style={{ width: 16, height: 16 }} />,
+            label: module === 'fastfood' ? 'Hold / KOT' : 'Hold',
+          })}
+
+        {cart.length > 0 &&
+          commandButton({
+            onClick: () => setIsCartExpanded(true),
+            title: 'Open the full order list',
+            icon: <ArrowExpand20Regular style={{ width: 16, height: 16 }} />,
+          })}
+
+        {cart.length > 0 &&
+          commandButton({
+            onClick: () => {
+              setCart([]);
+              setTenderedAmount('');
+              handleClearDiscount();
+            },
+            title: 'Clear order',
+            icon: <Delete20Regular style={{ width: 16, height: 16 }} />,
+            tone: 'danger',
+          })}
+      </div>
+    </div>
   );
 }

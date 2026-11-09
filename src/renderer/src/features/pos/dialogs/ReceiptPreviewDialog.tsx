@@ -1,5 +1,6 @@
 import { PosCounterState } from '@/features/pos/usePosCounter';
 import { CheckmarkCircle20Filled, Dismiss20Regular, Receipt20Regular } from '@fluentui/react-icons';
+import { DIALOG_SHADOW, DIALOG_SMOKE, useEscapeToClose } from '@/features/pos/posDialog';
 
 export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
   const {
@@ -21,6 +22,8 @@ export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
     subtotal,
   } = pos;
 
+  useEscapeToClose(showReceiptModal && !!lastOrder, () => setShowReceiptModal(false));
+
   return (
     <>
       {showReceiptModal && lastOrder && (
@@ -29,7 +32,7 @@ export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.45)',
+            backgroundColor: DIALOG_SMOKE,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -43,8 +46,8 @@ export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
               maxWidth: '92vw',
               maxHeight: '88vh',
               backgroundColor: F.bgCard,
-              borderRadius: '16px',
-              boxShadow: '0 24px 48px rgba(0, 0, 0, 0.28)',
+              borderRadius: '8px',
+              boxShadow: DIALOG_SHADOW,
               border: `1px solid ${F.border}`,
               overflow: 'hidden',
               display: 'flex',

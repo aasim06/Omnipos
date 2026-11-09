@@ -1,5 +1,6 @@
 import { PosCounterState } from '@/features/pos/usePosCounter';
 import { Dismiss20Regular } from '@fluentui/react-icons';
+import { DIALOG_RADIUS, DIALOG_SHADOW, DIALOG_SMOKE, useEscapeToClose } from '@/features/pos/posDialog';
 
 export function BulkQtyDialog({ pos }: { pos: PosCounterState }) {
   const {
@@ -11,6 +12,8 @@ export function BulkQtyDialog({ pos }: { pos: PosCounterState }) {
     handleApplyCustomQty,
   } = pos;
 
+  useEscapeToClose(!!editingQtyItem, () => setEditingQtyItem(null));
+
   return (
     <>
       {editingQtyItem && (
@@ -18,7 +21,7 @@ export function BulkQtyDialog({ pos }: { pos: PosCounterState }) {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.45)',
+            backgroundColor: DIALOG_SMOKE,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -30,7 +33,7 @@ export function BulkQtyDialog({ pos }: { pos: PosCounterState }) {
               width: '380px',
               backgroundColor: F.bgCard,
               borderRadius: F.radiusMd,
-              boxShadow: F.shadowElevated,
+              boxShadow: DIALOG_SHADOW,
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
@@ -40,7 +43,7 @@ export function BulkQtyDialog({ pos }: { pos: PosCounterState }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: '15px', color: F.textPrimary }}>
+                <div style={{ fontWeight: 600, fontSize: '15px', color: F.textPrimary }}>
                   Set Quantity
                 </div>
                 <div style={{ fontSize: '12px', color: F.textSecondary, marginTop: '2px' }}>
@@ -57,7 +60,7 @@ export function BulkQtyDialog({ pos }: { pos: PosCounterState }) {
 
             {/* Quick Bulk Presets */}
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '8px' }}>
                 Bulk / Pack Multipliers
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
@@ -81,7 +84,7 @@ export function BulkQtyDialog({ pos }: { pos: PosCounterState }) {
                       border: `1px solid ${F.border}`,
                       backgroundColor: F.bgSubtle,
                       color: F.textPrimary,
-                      fontWeight: 700,
+                      fontWeight: 600,
                       fontSize: '12px',
                       cursor: 'pointer',
                     }}
@@ -94,7 +97,7 @@ export function BulkQtyDialog({ pos }: { pos: PosCounterState }) {
 
             {/* Direct Number Input */}
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '6px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: F.textSecondary, textTransform: 'uppercase', marginBottom: '6px' }}>
                 Exact Item Count
               </div>
               <input
@@ -118,7 +121,7 @@ export function BulkQtyDialog({ pos }: { pos: PosCounterState }) {
                   backgroundColor: F.bgSubtle,
                   color: F.textPrimary,
                   fontSize: '18px',
-                  fontWeight: 800,
+                  fontWeight: 600,
                   outline: 'none',
                   fontFamily: 'monospace',
                 }}
@@ -156,7 +159,7 @@ export function BulkQtyDialog({ pos }: { pos: PosCounterState }) {
                   border: 'none',
                   backgroundColor: F.accentRed,
                   color: '#FFFFFF',
-                  fontWeight: 700,
+                  fontWeight: 600,
                   fontSize: '13px',
                   cursor: 'pointer',
                 }}

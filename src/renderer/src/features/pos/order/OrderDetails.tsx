@@ -59,10 +59,11 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
               <span
                 style={{
                   fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#FFFFFF',
-                  backgroundColor: F.accentRed,
-                  padding: '2px 7px',
+                  fontWeight: 600,
+                  color: F.textPrimary,
+                  backgroundColor: F.bgCard,
+                  border: `1px solid ${F.border}`,
+                  padding: '1px 7px',
                   borderRadius: '4px',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
@@ -93,7 +94,7 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: F.accentRed, fontSize: '11px', fontWeight: 700, flexShrink: 0, marginLeft: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: F.textSecondary, fontSize: '12px', flexShrink: 0, marginLeft: '8px' }}>
             <span>Expand</span>
             <ChevronDown20Regular style={{ width: 14, height: 14 }} />
           </div>
@@ -112,8 +113,8 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
         >
           {/* Header: Label and Collapse Button */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '10.5px', fontWeight: 800, color: F.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Order Info & Customer
+            <span style={{ fontSize: '12px', fontWeight: 600, color: F.textSecondary }}>
+              Order details
             </span>
             <button
               type="button"
@@ -149,10 +150,11 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
               }}
               style={{
                 position: 'relative',
-                border: `1px solid ${isCustomerDropdownOpen ? F.accentRed : isDark ? '#4A4A4A' : '#767676'}`,
+                border: `1px solid ${F.border}`,
+                borderBottom: `${isCustomerDropdownOpen ? '2px' : '1px'} solid ${isCustomerDropdownOpen ? F.accentRed : isDark ? 'rgba(255,255,255,0.54)' : 'rgba(0,0,0,0.45)'}`,
                 borderRadius: '4px',
                 backgroundColor: F.bgCard,
-                minHeight: '38px',
+                minHeight: '34px',
                 padding: '4px 10px',
                 display: 'flex',
                 alignItems: 'center',
@@ -172,7 +174,7 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                   padding: '0 4px',
                   fontSize: '11px',
                   fontWeight: 600,
-                  color: isCustomerDropdownOpen ? F.accentRed : isDark ? '#B0B0B0' : '#5F6368',
+                  color: F.textSecondary,
                   lineHeight: 1,
                   pointerEvents: 'none',
                   zIndex: 1,
@@ -290,7 +292,7 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                   backgroundColor: F.bgCard,
                   border: `1px solid ${F.border}`,
                   borderRadius: F.radiusSm,
-                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.28)',
+                  boxShadow: isDark ? '0 8px 16px rgba(0, 0, 0, 0.26)' : '0 8px 16px rgba(0, 0, 0, 0.14)',
                   maxHeight: '220px',
                   overflowY: 'auto',
                   zIndex: 200,
@@ -309,7 +311,7 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                         justifyContent: 'space-between',
                         padding: '7px 10px',
                         borderRadius: F.radiusSm,
-                        backgroundColor: isCur ? (isDark ? 'rgba(229, 25, 55, 0.15)' : '#FEF2F2') : 'transparent',
+                        backgroundColor: isCur ? (isDark ? 'rgba(255,255,255,0.084)' : 'rgba(0,0,0,0.055)') : 'transparent',
                         cursor: 'pointer',
                         transition: 'background-color 0.1s ease',
                       }}
@@ -321,7 +323,7 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                       }}
                     >
                       <div style={{ minWidth: 0, flex: 1, paddingRight: '8px' }}>
-                        <div style={{ fontSize: '12.5px', fontWeight: isCur ? 700 : 600, color: isCur ? F.accentRed : F.textPrimary }}>
+                        <div style={{ fontSize: '12.5px', fontWeight: isCur ? 600 : 400, color: F.textPrimary }}>
                           {cust.name}
                         </div>
                         {cust.phone && (
@@ -333,7 +335,7 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                       <div
                         style={{
                           fontSize: '12px',
-                          fontWeight: 700,
+                          fontWeight: 600,
                           color: (cust.currentDebt || 0) > 0 ? F.accentRed : '#10B981',
                           fontFamily: 'monospace',
                           flexShrink: 0,
@@ -375,10 +377,9 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr 1fr',
                   gap: '4px',
-                  backgroundColor: F.bgCard,
-                  padding: '3px',
-                  borderRadius: F.radiusMd,
-                  border: `1px solid ${F.border}`,
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                  padding: '2px',
+                  borderRadius: '6px',
                 }}
               >
                 <button
@@ -391,10 +392,11 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                     padding: '6px 0',
                     borderRadius: F.radiusSm,
                     border: 'none',
-                    backgroundColor: orderType === 'dine-in' ? F.accentRed : 'transparent',
-                    color: orderType === 'dine-in' ? '#FFFFFF' : F.textSecondary,
-                    fontWeight: orderType === 'dine-in' ? 700 : 500,
-                    fontSize: '12px',
+                    backgroundColor: orderType === 'dine-in' ? F.bgCard : 'transparent',
+                    boxShadow: orderType === 'dine-in' ? (isDark ? '0 0 0 1px rgba(255,255,255,0.08)' : '0 0 0 1px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.08)') : 'none',
+                    color: orderType === 'dine-in' ? F.textPrimary : F.textSecondary,
+                    fontWeight: orderType === 'dine-in' ? 600 : 400,
+                    fontSize: '13px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -417,10 +419,11 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                     padding: '6px 0',
                     borderRadius: F.radiusSm,
                     border: 'none',
-                    backgroundColor: orderType === 'takeaway' ? F.accentRed : 'transparent',
-                    color: orderType === 'takeaway' ? '#FFFFFF' : F.textSecondary,
-                    fontWeight: orderType === 'takeaway' ? 700 : 500,
-                    fontSize: '12px',
+                    backgroundColor: orderType === 'takeaway' ? F.bgCard : 'transparent',
+                    boxShadow: orderType === 'takeaway' ? (isDark ? '0 0 0 1px rgba(255,255,255,0.08)' : '0 0 0 1px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.08)') : 'none',
+                    color: orderType === 'takeaway' ? F.textPrimary : F.textSecondary,
+                    fontWeight: orderType === 'takeaway' ? 600 : 400,
+                    fontSize: '13px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -443,10 +446,11 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                     padding: '6px 0',
                     borderRadius: F.radiusSm,
                     border: 'none',
-                    backgroundColor: orderType === 'delivery' ? F.accentRed : 'transparent',
-                    color: orderType === 'delivery' ? '#FFFFFF' : F.textSecondary,
-                    fontWeight: orderType === 'delivery' ? 700 : 500,
-                    fontSize: '12px',
+                    backgroundColor: orderType === 'delivery' ? F.bgCard : 'transparent',
+                    boxShadow: orderType === 'delivery' ? (isDark ? '0 0 0 1px rgba(255,255,255,0.08)' : '0 0 0 1px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.08)') : 'none',
+                    color: orderType === 'delivery' ? F.textPrimary : F.textSecondary,
+                    fontWeight: orderType === 'delivery' ? 600 : 400,
+                    fontSize: '13px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -463,8 +467,8 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
               {/* Contextual Sub-bar */}
               {orderType === 'dine-in' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', overflowX: 'auto', paddingBottom: '2px' }}>
-                  <span style={{ fontSize: '10.5px', fontWeight: 700, color: F.textMuted, whiteSpace: 'nowrap' }}>
-                    TABLE:
+                  <span style={{ fontSize: '10.5px', fontWeight: 600, color: F.textMuted, whiteSpace: 'nowrap' }}>
+                    Table
                   </span>
                   {['T-1', 'T-2', 'T-3', 'T-4', 'T-5'].map((t) => {
                     const fullT = `Table ${t.replace('T-', '')}`;
@@ -484,7 +488,7 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                           backgroundColor: isCur ? F.accentRedSubtle : F.bgCard,
                           color: isCur ? F.accentRed : F.textSecondary,
                           fontSize: '11px',
-                          fontWeight: isCur ? 700 : 500,
+                          fontWeight: isCur ? 600 : 400,
                           cursor: 'pointer',
                           whiteSpace: 'nowrap',
                         }}
@@ -523,11 +527,11 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                     border: `1px solid ${F.borderSubtle}`,
                   }}
                 >
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary }}>
-                    ASSIGNED TOKEN NUMBER
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: F.textSecondary }}>
+                    Token number
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '15px', fontWeight: 900, color: F.accentRed, fontFamily: 'monospace' }}>
+                    <span style={{ fontSize: '16px', fontWeight: 600, color: F.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
                       #{String(tokenNo).padStart(2, '0')}
                     </span>
                     <button
@@ -587,7 +591,7 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
               }}
             >
               <div>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: F.textPrimary }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: F.textPrimary }}>
                   {selectedCustomer.name}
                 </div>
                 <div style={{ fontSize: '11px', color: F.textSecondary, marginTop: '2px' }}>
@@ -609,14 +613,14 @@ export function OrderDetails({ pos }: { pos: PosCounterState }) {
                     backgroundColor: '#10B981',
                     color: '#FFFFFF',
                     fontSize: '11px',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     cursor: 'pointer',
                   }}
                 >
                   Use Khata
                 </button>
               ) : (
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Checkmark20Filled style={{ width: 14, height: 14 }} />
                   <span>Khata Active</span>
                 </span>
