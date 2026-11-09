@@ -124,7 +124,7 @@ export const useExpensesStyles = makeStyles({
   kpiValueDanger: {
     fontSize: '26px',
     fontWeight: 600,
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
     marginTop: '6px',
     display: 'block',
   },
@@ -146,14 +146,14 @@ export const useExpensesStyles = makeStyles({
     fontSize: '26px',
     fontWeight: 600,
     marginTop: '6px',
-    color: '#0078D4',
+    color: tokens.colorPaletteBlueForeground2,
     display: 'block',
   },
   kpiValueSuccess: {
     fontSize: '26px',
     fontWeight: 600,
     marginTop: '6px',
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     display: 'block',
   },
   actionContent: {
@@ -179,21 +179,21 @@ export const useExpensesStyles = makeStyles({
   actionIconReceipt: {
     width: '28px',
     height: '28px',
-    color: '#0078D4',
+    color: tokens.colorPaletteBlueForeground2,
     flexShrink: 0,
     marginTop: '2px',
   },
   actionIconCashOut: {
     width: '28px',
     height: '28px',
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     flexShrink: 0,
     marginTop: '2px',
   },
   actionIconUpload: {
     width: '28px',
     height: '28px',
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     flexShrink: 0,
     marginTop: '2px',
   },
@@ -205,7 +205,7 @@ export const useExpensesStyles = makeStyles({
     marginTop: '2px',
   },
   btnRecordExpense: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     borderRadius: '8px',
     fontWeight: 600,
@@ -228,11 +228,11 @@ export const useExpensesStyles = makeStyles({
     flexShrink: 0,
   },
   btnCashIn: {
-    backgroundColor: '#107C41',
+    backgroundColor: tokens.colorStatusSuccessBackground3,
     borderRadius: tokens.borderRadiusMedium,
   },
   btnCloseDrawer: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     borderRadius: tokens.borderRadiusMedium,
   },
   historyTitleBox: {
@@ -274,7 +274,7 @@ export const useExpensesStyles = makeStyles({
   },
   expenseAmountText: {
     fontWeight: 600,
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   dialogSurfaceExpense: {
     borderRadius: tokens.borderRadiusLarge,
@@ -315,7 +315,7 @@ export const useExpensesStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
   dialogSubmitExpenseBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     borderRadius: '8px',
     fontWeight: 600,
@@ -326,7 +326,7 @@ export const useExpensesStyles = makeStyles({
     boxShadow: 'none',
   },
   dialogSubmitCashInBtn: {
-    backgroundColor: '#107C41',
+    backgroundColor: tokens.colorStatusSuccessBackground3,
     color: '#FFFFFF',
     borderRadius: '8px',
     fontWeight: 600,

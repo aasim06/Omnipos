@@ -631,7 +631,7 @@ export function QuotationsView(): React.JSX.Element {
                               }
                             }}
                           >
-                            <ShoppingBag20Regular style={{ color: '#E51937' }} />
+                            <ShoppingBag20Regular style={{ color: tokens.colorBrandForeground1 }} />
                           </button>
                         )}
 
@@ -884,10 +884,10 @@ export function QuotationsView(): React.JSX.Element {
                               className={styles.inputSpecUnit}
                               style={{
                                 fontWeight: 600,
-                                color: '#E51937',
-                                backgroundColor: 'rgba(229, 25, 55, 0.05)',
-                                borderTopColor: '#FECACA', borderBottomColor: '#FECACA',
-                                borderLeftColor: '#FECACA', borderRightColor: '#FECACA',
+                                color: tokens.colorBrandForeground1,
+                                backgroundColor: tokens.colorStatusDangerBackground1,
+                                borderTopColor: tokens.colorStatusDangerBorder1, borderBottomColor: tokens.colorStatusDangerBorder1,
+                                borderLeftColor: tokens.colorStatusDangerBorder1, borderRightColor: tokens.colorStatusDangerBorder1,
                                 cursor: 'pointer',
                                 height: '30px',
                               }}
@@ -896,7 +896,7 @@ export function QuotationsView(): React.JSX.Element {
                               {linkedProduct.variants!.map((v) => {
                                 const vPrice = v.price !== undefined ? v.price : (linkedProduct.price + (v.priceDelta || 0));
                                 return (
-                                  <option key={v.id} value={v.label} style={{ color: '#1E293B', fontWeight: 600 }}>
+                                  <option key={v.id} value={v.label} style={{ color: tokens.colorNeutralForeground1, fontWeight: 600 }}>
                                     {v.label} — Rs. {vPrice.toLocaleString()}
                                   </option>
                                 );
@@ -963,8 +963,8 @@ export function QuotationsView(): React.JSX.Element {
                                 }}
                                 style={{
                                   border: 'none',
-                                  background: 'rgba(229, 25, 55, 0.08)',
-                                  color: '#E51937',
+                                  background: tokens.colorStatusDangerBackground1,
+                                  color: tokens.colorBrandForeground1,
                                   cursor: 'pointer',
                                   padding: '4px 6px',
                                   borderRadius: '4px',

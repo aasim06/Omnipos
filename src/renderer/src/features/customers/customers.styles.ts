@@ -55,7 +55,7 @@ export const useCustomersStyles = makeStyles({
     gap: '10px',
   },
   primaryBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     fontWeight: 600,
     border: 'none',
@@ -66,13 +66,13 @@ export const useCustomersStyles = makeStyles({
     },
   },
   refundHeaderBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: tokens.colorPaletteBlueBorderActive,
     color: '#FFFFFF',
     fontWeight: 600,
     border: 'none',
     boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)',
     ':hover': {
-      backgroundColor: '#1d4ed8',
+      backgroundColor: tokens.colorPaletteBlueBorderActive,
       color: '#FFFFFF',
     },
   },
@@ -205,15 +205,15 @@ export const useCustomersStyles = makeStyles({
     height: '30px',
     borderRadius: '6px',
     border: '1px solid rgba(37, 99, 235, 0.3)',
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    backgroundColor: tokens.colorPaletteBlueBackground2,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    color: '#2563EB',
+    color: tokens.colorPaletteBlueForeground2,
     transition: 'all 0.15s ease',
     ':hover': {
-      backgroundColor: '#2563EB',
+      backgroundColor: tokens.colorPaletteBlueBorderActive,
       color: '#FFFFFF',
     },
   },
@@ -268,21 +268,21 @@ export const useCustomersStyles = makeStyles({
     gap: '10px',
   },
   headerIconRed: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
     width: '28px',
     height: '28px',
   },
   statIconBoxRed: {
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
-    color: '#E51937',
+    backgroundColor: tokens.colorStatusDangerBackground1,
+    color: tokens.colorBrandForeground1,
   },
   statIconBoxAmber: {
     backgroundColor: 'rgba(217, 119, 6, 0.12)',
-    color: '#D97706',
+    color: tokens.colorStatusWarningForeground1,
   },
   statIconBoxBlue: {
-    backgroundColor: 'rgba(37, 99, 235, 0.12)',
-    color: '#2563EB',
+    backgroundColor: tokens.colorPaletteBlueBackground2,
+    color: tokens.colorPaletteBlueForeground2,
   },
   icon22: {
     width: '22px',
@@ -326,15 +326,15 @@ export const useCustomersStyles = makeStyles({
   },
   viewTabBtnActiveCustomers: {
     borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
-    borderTopColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderRightColor: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
-    color: '#E51937',
+    borderTopColor: tokens.colorCompoundBrandStroke, borderBottomColor: tokens.colorCompoundBrandStroke, borderLeftColor: tokens.colorCompoundBrandStroke, borderRightColor: tokens.colorCompoundBrandStroke,
+    backgroundColor: tokens.colorStatusDangerBackground1,
+    color: tokens.colorBrandForeground1,
   },
   viewTabBtnActiveRefunds: {
     borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
-    borderTopColor: '#2563EB', borderBottomColor: '#2563EB', borderLeftColor: '#2563EB', borderRightColor: '#2563EB',
-    backgroundColor: 'rgba(37, 99, 235, 0.1)',
-    color: '#2563EB',
+    borderTopColor: tokens.colorPaletteBlueBorderActive, borderBottomColor: tokens.colorPaletteBlueBorderActive, borderLeftColor: tokens.colorPaletteBlueBorderActive, borderRightColor: tokens.colorPaletteBlueBorderActive,
+    backgroundColor: tokens.colorPaletteBlueBackground2,
+    color: tokens.colorPaletteBlueForeground2,
   },
   showingCountText: {
     fontSize: '12px',
@@ -385,14 +385,14 @@ export const useCustomersStyles = makeStyles({
   },
   blueSpentText: {
     fontWeight: 600,
-    color: '#0078D4',
+    color: tokens.colorPaletteBlueForeground2,
   },
   amberDebtText: {
     fontWeight: 600,
-    color: '#D97706',
+    color: tokens.colorStatusWarningForeground1,
   },
   greenZeroText: {
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     fontWeight: 600,
   },
   actionGroupRight: {
@@ -413,7 +413,7 @@ export const useCustomersStyles = makeStyles({
   },
   orderIdBlue: {
     fontWeight: 600,
-    color: '#2563EB',
+    color: tokens.colorPaletteBlueForeground2,
   },
   itemsCol: {
     display: 'flex',
@@ -426,7 +426,7 @@ export const useCustomersStyles = makeStyles({
   },
   refundAmountDanger: {
     fontWeight: 600,
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
     fontSize: '14px',
   },
   dialogSurface480: {
@@ -459,10 +459,10 @@ export const useCustomersStyles = makeStyles({
     gap: '8px',
   },
   blueIcon: {
-    color: '#2563EB',
+    color: tokens.colorPaletteBlueForeground2,
   },
   greenIcon: {
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
   },
   dialogBodyCol16: {
     display: 'flex',
@@ -474,7 +474,7 @@ export const useCustomersStyles = makeStyles({
     padding: '12px 16px',
     borderRadius: '8px',
     backgroundColor: 'rgba(16, 124, 65, 0.12)',
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     fontWeight: 600,
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
@@ -522,7 +522,7 @@ export const useCustomersStyles = makeStyles({
   },
   orderIdTitle: {
     fontWeight: 600,
-    color: '#2563EB',
+    color: tokens.colorPaletteBlueForeground2,
     fontSize: '13px',
   },
   orderMetaSub: {
@@ -552,11 +552,11 @@ export const useCustomersStyles = makeStyles({
     alignItems: 'center',
     padding: '10px 14px',
     borderRadius: '8px',
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    backgroundColor: tokens.colorPaletteBlueBackground2,
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(37, 99, 235, 0.2)', borderBottomColor: 'rgba(37, 99, 235, 0.2)',
-    borderLeftColor: 'rgba(37, 99, 235, 0.2)', borderRightColor: 'rgba(37, 99, 235, 0.2)',
+    borderTopColor: tokens.colorPaletteBlueBorderActive, borderBottomColor: tokens.colorPaletteBlueBorderActive,
+    borderLeftColor: tokens.colorPaletteBlueBorderActive, borderRightColor: tokens.colorPaletteBlueBorderActive,
     marginBottom: '14px',
   },
   orderCustomerMeta: {
@@ -566,7 +566,7 @@ export const useCustomersStyles = makeStyles({
   },
   changeOrderBtn: {
     fontSize: '11px',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
     fontWeight: 600,
     backgroundColor: 'transparent',
     borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
@@ -608,7 +608,7 @@ export const useCustomersStyles = makeStyles({
   },
   returnCostActive: {
     fontWeight: 600,
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   returnCostInactive: {
     fontWeight: 600,
@@ -646,7 +646,7 @@ export const useCustomersStyles = makeStyles({
   totalRefundVal: {
     fontSize: '18px',
     fontWeight: 600,
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   dialogActionsTop16: {
     marginTop: '16px',

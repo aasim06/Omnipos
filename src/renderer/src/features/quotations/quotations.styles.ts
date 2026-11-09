@@ -42,11 +42,11 @@ export const useQuotationsStyles = makeStyles({
     width: '46px',
     height: '46px',
     borderRadius: '8px',
-    backgroundColor: 'rgba(229, 25, 55, 0.08)',
+    backgroundColor: tokens.colorStatusDangerBackground1,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   kpiGrid: {
     display: 'grid',
@@ -135,7 +135,7 @@ export const useQuotationsStyles = makeStyles({
     },
   },
   statusTabActive: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     ':hover': {
       backgroundColor: '#C4122C',
@@ -206,28 +206,28 @@ export const useQuotationsStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
   },
   btnPrimaryRed: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     fontWeight: 600,
     borderRadius: '8px',
   },
   iconSky: {
-    color: '#0284C7',
+    color: tokens.colorPaletteBlueForeground2,
   },
   iconAmber: {
-    color: '#F59E0B',
+    color: tokens.colorStatusWarningForeground1,
   },
   iconEmerald: {
-    color: '#10B981',
+    color: tokens.colorStatusSuccessForeground1,
   },
   kpiValueEmerald: {
-    color: '#10B981',
+    color: tokens.colorStatusSuccessForeground1,
   },
   iconRed: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   kpiValueRed: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   iconMuted: {
     color: tokens.colorNeutralForeground4,
@@ -264,7 +264,7 @@ export const useQuotationsStyles = makeStyles({
   },
   quoteNumberText: {
     fontWeight: 600,
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   moduleMuted: {
     fontSize: '10.5px',
@@ -305,16 +305,16 @@ export const useQuotationsStyles = makeStyles({
     textTransform: 'uppercase',
   },
   statusConverted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    color: '#059669',
+    backgroundColor: tokens.colorStatusSuccessBackground1,
+    color: tokens.colorStatusSuccessForeground1,
   },
   statusSent: {
     backgroundColor: 'rgba(2, 132, 199, 0.12)',
-    color: '#0284C7',
+    color: tokens.colorPaletteBlueForeground2,
   },
   statusPending: {
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    color: '#D97706',
+    backgroundColor: tokens.colorStatusWarningBackground1,
+    color: tokens.colorStatusWarningForeground1,
   },
   actionGroup: {
     display: 'flex',
@@ -322,16 +322,16 @@ export const useQuotationsStyles = makeStyles({
     gap: '4px',
   },
   printIcon: {
-    color: '#0284C7',
+    color: tokens.colorPaletteBlueForeground2,
   },
   convertIcon: {
-    color: '#10B981',
+    color: tokens.colorStatusSuccessForeground1,
   },
   editIcon: {
     color: tokens.colorNeutralForeground3,
   },
   deleteIcon: {
-    color: '#EF4444',
+    color: tokens.colorStatusDangerForeground1,
   },
   dialogHeader: {
     display: 'flex',
@@ -348,11 +348,11 @@ export const useQuotationsStyles = makeStyles({
     width: '36px',
     height: '36px',
     borderRadius: '8px',
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+    backgroundColor: tokens.colorStatusDangerBackground1,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   dialogTitleText: {
     fontSize: '17px',
@@ -388,7 +388,7 @@ export const useQuotationsStyles = makeStyles({
     color: tokens.colorNeutralForeground1,
   },
   addCustomBtn: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
     fontWeight: 600,
   },
   searchScannerContainer: {
@@ -426,7 +426,7 @@ export const useQuotationsStyles = makeStyles({
   scannerIcon: {
     width: '16px',
     height: '16px',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   scannerToast: {
     padding: '6px 12px',
@@ -440,14 +440,14 @@ export const useQuotationsStyles = makeStyles({
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
   },
   scannerToastSuccess: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderTopColor: '#10B981', borderBottomColor: '#10B981', borderLeftColor: '#10B981', borderRightColor: '#10B981',
-    color: '#059669',
+    backgroundColor: tokens.colorStatusSuccessBackground1,
+    borderTopColor: tokens.colorStatusSuccessBorder1, borderBottomColor: tokens.colorStatusSuccessBorder1, borderLeftColor: tokens.colorStatusSuccessBorder1, borderRightColor: tokens.colorStatusSuccessBorder1,
+    color: tokens.colorStatusSuccessForeground1,
   },
   scannerToastError: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    borderTopColor: '#EF4444', borderBottomColor: '#EF4444', borderLeftColor: '#EF4444', borderRightColor: '#EF4444',
-    color: '#DC2626',
+    backgroundColor: tokens.colorStatusDangerBackground1,
+    borderTopColor: tokens.colorStatusDangerBorder1, borderBottomColor: tokens.colorStatusDangerBorder1, borderLeftColor: tokens.colorStatusDangerBorder1, borderRightColor: tokens.colorStatusDangerBorder1,
+    color: tokens.colorStatusDangerForeground1,
   },
   scannerToastIcon: {
     width: '16px',
@@ -571,7 +571,7 @@ export const useQuotationsStyles = makeStyles({
     padding: '6px 12px',
     textAlign: 'right',
     fontWeight: 600,
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   tdDeleteCol: {
     padding: '6px 6px',
@@ -580,7 +580,7 @@ export const useQuotationsStyles = makeStyles({
   deleteLineBtn: {
     borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
     backgroundColor: 'transparent',
-    color: '#EF4444',
+    color: tokens.colorStatusDangerForeground1,
     cursor: 'pointer',
     padding: '4px',
   },
@@ -655,7 +655,7 @@ export const useQuotationsStyles = makeStyles({
     borderTopColor: tokens.colorNeutralStroke2,
     fontSize: '15px',
     fontWeight: 600,
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   dialogActionsRow: {
     display: 'flex',
@@ -663,7 +663,7 @@ export const useQuotationsStyles = makeStyles({
     gap: '10px',
   },
   btnSaveFinalize: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     fontWeight: 600,
   },
