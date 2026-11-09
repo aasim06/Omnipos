@@ -41,8 +41,8 @@ export interface PosLicenseGate {
 const useStyles = makeStyles({
   shellLayout: {
     display: 'flex',
-    width: '100vw',
-    height: '100vh',
+    width: '100%',
+    height: '100%',
     overflow: 'hidden',
   },
   mainContent: {
@@ -52,8 +52,8 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   splashContainer: {
-    width: '100vw',
-    height: '100vh',
+    width: '100%',
+    height: '100%',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',

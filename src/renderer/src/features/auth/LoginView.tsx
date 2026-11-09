@@ -23,8 +23,8 @@ import { useNavigate } from 'react-router-dom';
 const useStyles = makeStyles({
   container: {
     display: 'flex',
-    width: '100vw',
-    height: '100vh',
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#0F172A',

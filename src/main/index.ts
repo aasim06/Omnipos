@@ -1,6 +1,7 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, nativeTheme } from 'electron';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { release } from 'node:os';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
 import { disconnectPrisma, initializeDatabase } from './database/client';
 import { startBackendServer, type BackendServer } from './backend/server';
@@ -45,7 +46,39 @@ ipcMain.handle('app:get-local-api-url', async () => {
   return null;
 });
 
+// ── Windows 11 window chrome ──────────────────────────────────────────
+// Custom title bar (native caption buttons via titleBarOverlay) on Windows,
+// plus the Mica backdrop on Windows 11 22H2+ (build 22621), where DWM supports it.
+const IS_WINDOWS = process.platform === 'win32';
+const WINDOWS_BUILD = IS_WINDOWS ? Number(release().split('.')[2] ?? 0) : 0;
+const SUPPORTS_MICA = IS_WINDOWS && WINDOWS_BUILD >= 22621;
+const TITLE_BAR_HEIGHT = 40;
+
+type ChromeTheme = 'light' | 'dark';
+
+function titleBarOverlayFor(mode: ChromeTheme): Electron.TitleBarOverlayOptions {
+  const solid = mode === 'light' ? '#F3F3F3' : '#202020';
+  return {
+    // With Mica the caption-button strip stays transparent so the backdrop shows through.
+    color: SUPPORTS_MICA ? '#00000000' : solid,
+    symbolColor: mode === 'light' ? '#1A1A1A' : '#FFFFFF',
+    height: TITLE_BAR_HEIGHT,
+  };
+}
+
+// App theme defaults to dark (see AppProviders); the renderer sends the real choice on mount.
+nativeTheme.themeSource = 'dark';
+
+ipcMain.on('window:set-theme', (event, mode: unknown) => {
+  if (mode !== 'light' && mode !== 'dark') return;
+  nativeTheme.themeSource = mode;
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && IS_WINDOWS) win.setTitleBarOverlay(titleBarOverlayFor(mode));
+});
+
 function createWindow(): BrowserWindow {
+  const chromeFlags = [IS_WINDOWS ? 'titlebar' : '', SUPPORTS_MICA ? 'mica' : ''].filter(Boolean).join(',');
+
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -53,12 +86,19 @@ function createWindow(): BrowserWindow {
     minHeight: 640,
     show: false,
     autoHideMenuBar: true,
-    title: 'Omnipos - Advanced Retail & Restaurant POS',
+    title: 'Omnipos',
+    ...(IS_WINDOWS
+      ? { titleBarStyle: 'hidden' as const, titleBarOverlay: titleBarOverlayFor('dark') }
+      : {}),
+    ...(SUPPORTS_MICA
+      ? { backgroundMaterial: 'mica' as const, backgroundColor: '#00000000' }
+      : { backgroundColor: '#202020' }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      additionalArguments: [`--omnipos-chrome=${chromeFlags}`],
     },
   });
 

@@ -20,8 +20,8 @@ import { makeStyles, mergeClasses } from '@fluentui/react-components';
 
 const useStyles = makeStyles({
   fullPage: {
-    minHeight: '100vh',
-    width: '100vw',
+    minHeight: '100%',
+    width: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

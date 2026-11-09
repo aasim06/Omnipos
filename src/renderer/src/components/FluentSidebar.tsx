@@ -164,8 +164,8 @@ const useStyles = makeStyles({
     color: '#E51937',
   },
   nav: {
-    height: '100vh',
-    maxHeight: '100vh',
+    height: '100%',
+    maxHeight: '100%',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',

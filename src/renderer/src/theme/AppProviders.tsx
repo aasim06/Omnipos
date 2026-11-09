@@ -6,20 +6,38 @@ import {
   createDarkTheme,
   BrandVariants,
   makeStyles,
+  mergeClasses,
+  tokens,
 } from '@fluentui/react-components';
-
-const useStyles = makeStyles({
-  rootProvider: {
-    width: '100vw',
-    height: '100vh',
-    display: 'flex',
-    overflow: 'hidden',
-  },
-});
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppNotificationProvider } from '../context/AppNotificationContext';
 import { UpdateProvider } from '../context/UpdateContext';
 import { UpdateBanner } from '../components/UpdateBanner';
+import { TitleBar } from '../components/shell/TitleBar';
+import { getWindowChrome } from '../lib/windowChrome';
+
+const useStyles = makeStyles({
+  // Window frame: title bar on top, app content fills the rest.
+  rootProvider: {
+    width: '100vw',
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  // Mica: keep the frame transparent so the Windows 11 backdrop shows through.
+  rootProviderMica: {
+    backgroundColor: 'transparent',
+  },
+  appBody: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+});
 
 // Microsoft Fluent 2 Red Brand Accent (#E51937)
 const fluentRedBrand: BrandVariants = {
@@ -41,54 +59,60 @@ const fluentRedBrand: BrandVariants = {
   160: '#FEEDF0',
 };
 
-// Fluent UI v9 Mica Light Desktop Theme
-// colorNeutralBackground1 = card container surfaces (#FFFFFF)
-// colorNeutralBackground2 = app frame / Mica base (#F5F5F5)
+// ── Windows 11 (WinUI 3 / Fluent 2) themes ─────────────────────────────
+// Neutral values follow the WinUI 3 colour resources; Omnipos red is used only
+// as the accent (primary buttons, selection indicator, focus).
+//   colorNeutralBackground1 = card / layer surface
+//   colorNeutralBackground2 = app frame (Mica base when Mica is unavailable)
+export const WIN11_FONT =
+  "'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
+
+const win11Shape = {
+  fontFamilyBase: WIN11_FONT,
+  borderRadiusSmall: '2px',
+  borderRadiusMedium: '4px', // ControlCornerRadius (buttons, inputs)
+  borderRadiusLarge: '8px', // OverlayCornerRadius (cards, flyouts)
+  borderRadiusXLarge: '8px', // Dialogs are 8px in Windows 11
+};
+
 export const fluentMicaLightTheme: Theme = {
   ...createLightTheme(fluentRedBrand),
+  ...win11Shape,
   colorBrandBackground: '#E51937',
   colorBrandBackgroundHover: '#C6172E',
   colorBrandBackgroundPressed: '#A71527',
-  colorBrandForeground1: '#E51937',
-  colorBrandForeground2: '#C6172E',
-  // Fluent v9 strict token values:
-  colorNeutralBackground1: '#FFFFFF',  // Card containers / elevated surfaces
-  colorNeutralBackground2: '#F5F5F5',  // App frame base / Mica tint layer
-  colorNeutralBackground3: '#EBEBEB',  // Sidebar rail / segmented control track
-  colorNeutralBackground4: '#E0E0E0',  // Hover surface
-  colorNeutralBackground5: '#D6D6D6',  // Pressed surface
-  colorNeutralStroke1: '#D1D1D1',      // Standard Fluent hairline border
-  colorNeutralStroke2: '#C7C7C7',      // Dividers
-  colorNeutralForeground1: '#1A1A1A',  // Primary text
-  colorNeutralForeground2: '#616161',  // Secondary / subtitle text
-  colorNeutralForeground3: '#8A8A8A',  // Muted / placeholder text
-  fontFamilyBase: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', sans-serif",
-  borderRadiusSmall: '4px',   // Standard Fluent v9 small
-  borderRadiusMedium: '8px',  // Standard Fluent v9 medium (input fields, cards)
-  borderRadiusLarge: '12px',  // Container-level radius
-  borderRadiusXLarge: '16px', // Dialog / panel radius
+  colorBrandForeground1: '#C6172E',
+  colorBrandForeground2: '#A71527',
+  colorNeutralBackground1: '#FFFFFF', // Card / layer
+  colorNeutralBackground2: '#F3F3F3', // SolidBackgroundFillColorBase (Mica light)
+  colorNeutralBackground3: '#EEEEEE', // SolidBackgroundFillColorSecondary
+  colorNeutralBackground4: '#E9E9E9', // Subtle hover
+  colorNeutralBackground5: '#E0E0E0', // Subtle pressed
+  colorNeutralStroke1: '#E0E0E0', // ControlStrokeColorDefault (solid)
+  colorNeutralStroke2: '#EBEBEB', // CardStrokeColorDefault / dividers
+  colorNeutralForeground1: '#1A1A1A', // TextFillColorPrimary
+  colorNeutralForeground2: '#5D5D5D', // TextFillColorSecondary
+  colorNeutralForeground3: '#8A8A8A', // TextFillColorTertiary
 };
 
 export const fluentMicaDarkTheme: Theme = {
   ...createDarkTheme(fluentRedBrand),
+  ...win11Shape,
   colorBrandBackground: '#E51937',
   colorBrandBackgroundHover: '#EC3953',
+  colorBrandBackgroundPressed: '#C6172E',
   colorBrandForeground1: '#F15A70',
-  colorNeutralBackground1: '#16171A',  // Card containers in dark
-  colorNeutralBackground2: '#0F1012',  // App frame / page background in dark
-  colorNeutralBackground3: '#1A1B1F',  // Secondary surface / table header
-  colorNeutralBackground4: '#24252B',  // Hover in dark
-  colorNeutralBackground5: '#2F3038',  // Pressed
-  colorNeutralStroke1: '#26272D',      // Subtle hairline border
-  colorNeutralStroke2: '#33343C',      // Dividers
-  colorNeutralForeground1: '#F8FAFC',  // Primary text
-  colorNeutralForeground2: '#94A3B8',  // Secondary / subtitle text
-  colorNeutralForeground3: '#64748B',  // Muted / placeholder text
-  fontFamilyBase: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', sans-serif",
-  borderRadiusSmall: '4px',
-  borderRadiusMedium: '8px',
-  borderRadiusLarge: '12px',
-  borderRadiusXLarge: '16px',
+  colorBrandForeground2: '#F57B8C',
+  colorNeutralBackground1: '#2B2B2B', // CardBackgroundFillColorDefault over Mica dark
+  colorNeutralBackground2: '#202020', // SolidBackgroundFillColorBase (Mica dark)
+  colorNeutralBackground3: '#272727', // Secondary surface / table header
+  colorNeutralBackground4: '#323232', // Subtle hover
+  colorNeutralBackground5: '#3A3A3A', // Subtle pressed
+  colorNeutralStroke1: '#3A3A3A', // ControlStrokeColorDefault (solid)
+  colorNeutralStroke2: '#333333', // CardStrokeColorDefault / dividers
+  colorNeutralForeground1: '#FFFFFF', // TextFillColorPrimary
+  colorNeutralForeground2: '#CFCFCF', // TextFillColorSecondary
+  colorNeutralForeground3: '#9A9A9A', // TextFillColorTertiary
 };
 
 type ThemeMode = 'light' | 'dark';
@@ -155,11 +179,18 @@ export function AppProviders({ children }: PropsWithChildren): React.JSX.Element
     return 'dark';
   });
 
+  const chrome = getWindowChrome();
+
   React.useEffect(() => {
-    document.documentElement.style.backgroundColor = mode === 'dark' ? '#0F1012' : '#F5F5F5';
-    document.body.style.backgroundColor = mode === 'dark' ? '#0F1012' : '#F5F5F5';
+    // With Mica the page must stay transparent; otherwise paint the Win11 base colour.
+    const frame = chrome.mica ? 'transparent' : mode === 'dark' ? '#202020' : '#F3F3F3';
+    document.documentElement.style.backgroundColor = frame;
+    document.body.style.backgroundColor = frame;
     document.documentElement.setAttribute('data-theme', mode);
-  }, [mode]);
+    document.documentElement.toggleAttribute('data-mica', chrome.mica);
+    // Sync Mica tint + native caption button colours with the app theme.
+    chrome.setTheme(mode);
+  }, [mode, chrome.mica]);
 
   const toggleTheme = () => {
     setMode((prev) => {
@@ -174,13 +205,19 @@ export function AppProviders({ children }: PropsWithChildren): React.JSX.Element
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeContext.Provider value={{ mode, toggleTheme }}>
-        <FluentProvider theme={currentTheme} className={styles.rootProvider}>
-          <AppNotificationProvider>
-            <UpdateProvider>
-              {children}
-              <UpdateBanner />
-            </UpdateProvider>
-          </AppNotificationProvider>
+        <FluentProvider
+          theme={currentTheme}
+          className={mergeClasses(styles.rootProvider, chrome.mica && styles.rootProviderMica)}
+        >
+          <TitleBar />
+          <div className={styles.appBody}>
+            <AppNotificationProvider>
+              <UpdateProvider>
+                {children}
+                <UpdateBanner />
+              </UpdateProvider>
+            </AppNotificationProvider>
+          </div>
         </FluentProvider>
       </ThemeContext.Provider>
     </QueryClientProvider>

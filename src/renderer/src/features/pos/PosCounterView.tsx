@@ -80,29 +80,27 @@ import { generateQrDataUrl } from '@/lib/qrCode';
 /* ─── Fluent UI 2 Desktop Design Tokens (Dynamic Light / Dark) ───── */
 function getTokens(isDark: boolean) {
   return {
-    bgCanvas: isDark ? '#1A1A1A' : '#FAFAFA',      // Soft Mica / Content canvas
-    bgCard: isDark ? '#242424' : '#FFFFFF',        // Pure white or elevated dark card surfaces
-    bgSubtle: isDark ? '#2D2D2D' : '#F3F3F3',      // Neutral gray segment tracks and soft boxes
-    bgHover: isDark ? '#383838' : '#EAEAEA',       // Hover states
-    border: isDark ? '#3D3D3D' : '#E5E5E5',        // Crisp 1px desktop borders
-    borderSubtle: isDark ? '#333333' : '#ECECEC',  // Interior dividers
-    textPrimary: isDark ? '#FFFFFF' : '#1A1A1E',   // High-contrast Windows typography
-    textSecondary: isDark ? '#ABABAB' : '#616161', // Secondary labels
-    textMuted: isDark ? '#7E7E7E' : '#8C8C8C',     // Muted hints
-    accentRed: '#E51937',                          // Strictly reserved red brand accent
+    // Windows 11 (WinUI 3) values — kept in step with theme/AppProviders.tsx.
+    // TODO(P3): replace with Fluent `tokens.*` when the POS view is split up.
+    bgCanvas: isDark ? '#202020' : '#F3F3F3',      // SolidBackgroundFillColorBase
+    bgCard: isDark ? '#2B2B2B' : '#FFFFFF',        // Card / layer surface
+    bgSubtle: isDark ? '#323232' : '#EEEEEE',      // Segment tracks and soft boxes
+    bgHover: isDark ? '#3A3A3A' : '#E9E9E9',       // Subtle hover fill
+    border: isDark ? '#3A3A3A' : '#E0E0E0',        // ControlStroke
+    borderSubtle: isDark ? '#333333' : '#EBEBEB',  // CardStroke / dividers
+    textPrimary: isDark ? '#FFFFFF' : '#1A1A1A',   // TextFillColorPrimary
+    textSecondary: isDark ? '#CFCFCF' : '#5D5D5D', // TextFillColorSecondary
+    textMuted: isDark ? '#9A9A9A' : '#8A8A8A',     // TextFillColorTertiary
+    accentRed: '#E51937',                          // Accent (primary actions only)
     accentRedHover: isDark ? '#EC3953' : '#C6172E',
     accentRedSubtle: isDark ? 'rgba(229, 25, 55, 0.18)' : 'rgba(229, 25, 55, 0.08)',
-    accentGreen: isDark ? '#34A853' : '#107C41',   // Fluent status green
-    radiusSm: '4px',
-    radiusMd: '8px',                              // 8px subtle corner radius on UI cards
-    radiusLg: '12px',
-    shadowCard: isDark
-      ? '0 1px 3px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 0, 0, 0.6)'
-      : '0 1px 3px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0, 0, 0, 0.08)',
-    shadowElevated: isDark
-      ? '0 4px 14px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4)'
-      : '0 4px 14px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)',
-    font: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', sans-serif",
+    accentGreen: isDark ? '#6CCB5F' : '#0F7B0F',   // SystemFillColorSuccess
+    radiusSm: '4px',                               // ControlCornerRadius
+    radiusMd: '8px',                               // OverlayCornerRadius (cards)
+    radiusLg: '8px',
+    shadowCard: isDark ? '0 1px 2px rgba(0, 0, 0, 0.26)' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+    shadowElevated: isDark ? '0 8px 16px rgba(0, 0, 0, 0.26)' : '0 8px 16px rgba(0, 0, 0, 0.14)',
+    font: "'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif",
   };
 }
 
