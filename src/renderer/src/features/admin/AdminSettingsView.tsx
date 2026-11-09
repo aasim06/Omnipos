@@ -591,11 +591,14 @@ export function AdminSettingsView(): React.JSX.Element {
         )}
       </div>
 
-      {/* ── Navigation Tabs ─────────────────────────────────── */}
-      <div className={styles.tabNavContainer}>
+      {/* ── Settings body: section list on the left, content on the right (Windows 11 Settings) ── */}
+      <div className={styles.settingsBody}>
+      {/* ── Section list ─────────────────────────────────── */}
+      <nav className={styles.tabNavContainer} aria-label="Settings sections">
         <button
           type="button"
           onClick={() => setActiveTab('staff')}
+          aria-current={activeTab === 'staff' ? 'page' : undefined}
           className={mergeClasses(styles.tabButton, activeTab === 'staff' && styles.tabButtonActive)}
         >
           <PeopleCommunity24Regular className={mergeClasses(styles.tabIcon, activeTab === 'staff' && styles.tabIconActive)} />
@@ -612,6 +615,7 @@ export function AdminSettingsView(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setActiveTab('profile')}
+          aria-current={activeTab === 'profile' ? 'page' : undefined}
           className={mergeClasses(styles.tabButton, activeTab === 'profile' && styles.tabButtonActive)}
         >
           <BuildingShop24Regular className={mergeClasses(styles.tabIcon, activeTab === 'profile' && styles.tabIconActive)} />
@@ -621,6 +625,7 @@ export function AdminSettingsView(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setActiveTab('hardware')}
+          aria-current={activeTab === 'hardware' ? 'page' : undefined}
           className={mergeClasses(styles.tabButton, activeTab === 'hardware' && styles.tabButtonActive)}
         >
           <Print24Regular className={mergeClasses(styles.tabIcon, activeTab === 'hardware' && styles.tabIconActive)} />
@@ -630,6 +635,7 @@ export function AdminSettingsView(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setActiveTab('backup')}
+          aria-current={activeTab === 'backup' ? 'page' : undefined}
           className={mergeClasses(styles.tabButton, activeTab === 'backup' && styles.tabButtonActive)}
         >
           <Database24Regular className={mergeClasses(styles.tabIcon, activeTab === 'backup' && styles.tabIconActive)} />
@@ -646,6 +652,7 @@ export function AdminSettingsView(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setActiveTab('updates')}
+          aria-current={activeTab === 'updates' ? 'page' : undefined}
           className={mergeClasses(styles.tabButton, activeTab === 'updates' && styles.tabButtonActive)}
         >
           <ArrowSync20Regular className={mergeClasses(styles.tabIcon, activeTab === 'updates' && styles.tabIconActive)} />
@@ -668,8 +675,9 @@ export function AdminSettingsView(): React.JSX.Element {
             </Badge>
           )}
         </button>
-      </div>
+      </nav>
 
+      <div className={styles.settingsContent}>
       {/* ── TAB 1: Staff, Cashiers & Permissions Management (Full Width) ── */}
       {activeTab === 'staff' && (
         <div className={styles.card}>
@@ -899,8 +907,8 @@ export function AdminSettingsView(): React.JSX.Element {
               />
 
               {(settings.receiptLanguage === 'urdu' || settings.receiptLanguage === 'bilingual') && (
-                <div style={{ marginTop: '12px', padding: '12px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <Text weight="semibold" size={200} style={{ color: '#334155' }}>
+                <div style={{ marginTop: '12px', padding: '12px', background: tokens.colorNeutralBackground2, borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <Text weight="semibold" size={200} style={{ color: tokens.colorNeutralForeground2 }}>
                     اردو رسید کے لیے اضافی معلومات (اختیاری):
                   </Text>
 
@@ -1039,7 +1047,7 @@ export function AdminSettingsView(): React.JSX.Element {
               <div
                 style={{
                   padding: '14px 16px',
-                  backgroundColor: '#F8FAFC',
+                  backgroundColor: tokens.colorNeutralBackground2,
                   border: '1px solid #E2E8F0',
                   borderRadius: '8px',
                   display: 'flex',
@@ -1050,10 +1058,10 @@ export function AdminSettingsView(): React.JSX.Element {
                 }}
               >
                 <div style={{ maxWidth: '460px' }}>
-                  <Text weight="bold" size={300} style={{ color: '#0F172A', display: 'block' }}>
+                  <Text weight="bold" size={300} style={{ color: tokens.colorNeutralForeground1, display: 'block' }}>
                     List your business on Google Maps
                   </Text>
-                  <Caption1 style={{ color: '#475569', display: 'block', marginTop: '4px', lineHeight: '1.4' }}>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', marginTop: '4px', lineHeight: '1.4' }}>
                     Apni dukan ko Google Maps par muft register karein taakay naye local customers aap ko easily find kar sakein aur receipts par QR code scan kar ke 5-star Google review de sakein.
                   </Caption1>
                 </div>
@@ -1072,8 +1080,8 @@ export function AdminSettingsView(): React.JSX.Element {
               {/* Toggle: Print Google QR on Receipts */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <div>
-                  <Body2 style={{ fontWeight: 600, color: '#0F172A' }}>Print Google Review / Maps QR on Receipts</Body2>
-                  <Caption1 style={{ color: '#64748B', display: 'block' }}>
+                  <Body2 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>Print Google Review / Maps QR on Receipts</Body2>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block' }}>
                     Customers can scan this QR from thermal bill or invoice to leave a review or view location
                   </Caption1>
                 </div>
@@ -1103,7 +1111,7 @@ export function AdminSettingsView(): React.JSX.Element {
                     Test Link
                   </Button>
                 </div>
-                <Caption2 style={{ color: '#64748B' }}>
+                <Caption2 style={{ color: tokens.colorNeutralForeground2 }}>
                   Tip: Google Maps app mein apni shop open karein, &quot;Share&quot; ya &quot;Ask for reviews&quot; pe click kar ke link yahan paste karein.
                 </Caption2>
               </div>
@@ -1125,7 +1133,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   style={{
                     marginTop: '10px',
                     padding: '14px',
-                    background: '#F8FAFC',
+                    background: tokens.colorNeutralBackground2,
                     borderRadius: '8px',
                     border: '1px dashed #CBD5E1',
                     display: 'flex',
@@ -1149,14 +1157,14 @@ export function AdminSettingsView(): React.JSX.Element {
                     <Badge appearance="tint" color="success" style={{ marginBottom: '4px' }}>
                       Live Receipt QR Preview
                     </Badge>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground1 }}>
                       {settings.googleQrAction === 'map' ? (
                         'Locate us on Google Maps'
                       ) : (
                         'Rate us on Google Maps'
                       )}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+                    <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground2, marginTop: '3px' }}>
                       Yeh QR code customer ke thermal receipt aur invoice ke bottom par print hoga.
                     </div>
                   </div>
@@ -1480,7 +1488,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 <div style={{
                   marginTop: '12px',
                   padding: '12px 16px',
-                  backgroundColor: '#EFF6FF',
+                  backgroundColor: tokens.colorPaletteBlueBackground2,
                   border: '1px solid #BFDBFE',
                   borderRadius: '8px',
                   fontSize: '12.5px',
@@ -1702,7 +1710,7 @@ export function AdminSettingsView(): React.JSX.Element {
                         ? `Downloading installer: ${progressInfo.label}`
                         : 'Downloading update package…'}
                   </span>
-                  <span style={{ fontWeight: 600, color: '#E51937' }}>
+                  <span style={{ fontWeight: 600, color: tokens.colorBrandForeground1 }}>
                     {downloadProgress}%
                   </span>
                 </div>
@@ -1729,14 +1737,14 @@ export function AdminSettingsView(): React.JSX.Element {
                   justifyContent: 'space-between',
                   padding: '16px 20px',
                   borderRadius: tokens.borderRadiusMedium,
-                  backgroundColor: '#DCFCE7',
+                  backgroundColor: tokens.colorStatusSuccessBackground1,
                   border: '1px solid #86EFAC',
                   gap: '16px',
                   flexWrap: 'wrap',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <CheckmarkCircle20Filled style={{ color: '#16A34A', fontSize: '24px' }} />
+                  <CheckmarkCircle20Filled style={{ color: tokens.colorStatusSuccessForeground1, fontSize: '24px' }} />
                   <div>
                     <div style={{ fontWeight: 600, color: '#15803D', fontSize: '14px' }}>
                       Update Downloaded &amp; Ready to Apply!
@@ -1767,12 +1775,12 @@ export function AdminSettingsView(): React.JSX.Element {
                   justifyContent: 'space-between',
                   padding: '14px 18px',
                   borderRadius: tokens.borderRadiusMedium,
-                  backgroundColor: '#FEE2E2',
+                  backgroundColor: tokens.colorStatusDangerBackground1,
                   border: '1px solid #FCA5A5',
                   gap: '12px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#B91C1C' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: tokens.colorStatusDangerForeground1 }}>
                   <Warning20Regular />
                   <span style={{ fontSize: '13px', fontWeight: 600 }}>{updateError}</span>
                 </div>
@@ -1787,7 +1795,7 @@ export function AdminSettingsView(): React.JSX.Element {
               <div className={styles.backupActionCard}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <ArrowSync20Regular style={{ color: '#E51937' }} />
+                    <ArrowSync20Regular style={{ color: tokens.colorBrandForeground1 }} />
                     <Body1 style={{ fontWeight: 600 }}>Automated Background Updates</Body1>
                   </div>
                   <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.6 }}>
@@ -1799,7 +1807,7 @@ export function AdminSettingsView(): React.JSX.Element {
               <div className={styles.backupActionCard}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <ShieldCheckmark20Regular style={{ color: '#107C41' }} />
+                    <ShieldCheckmark20Regular style={{ color: tokens.colorStatusSuccessForeground1 }} />
                     <Body1 style={{ fontWeight: 600 }}>Data Safety Guarantee</Body1>
                   </div>
                   <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.6 }}>
@@ -1819,6 +1827,8 @@ export function AdminSettingsView(): React.JSX.Element {
           </div>
         </div>
       )}
+      </div>
+      </div>
 
       {/* ── MODAL: Restore Database Confirmation Dialog ────── */}
       <Dialog open={isRestoreConfirmOpen} onOpenChange={(_, d) => setIsRestoreConfirmOpen(d.open)}>
@@ -1849,11 +1859,11 @@ export function AdminSettingsView(): React.JSX.Element {
                 </div>
                 <div className={styles.restoreFeaturesList}>
                   <div className={styles.restoreFeatureItem}>
-                    <CheckmarkCircle20Filled style={{ color: '#059669', fontSize: 15 }} />
+                    <CheckmarkCircle20Filled style={{ color: tokens.colorStatusSuccessForeground1, fontSize: 15 }} />
                     <span><strong>Database Tables:</strong> Products, categories, orders, customers &amp; khatas</span>
                   </div>
                   <div className={styles.restoreFeatureItem}>
-                    <CheckmarkCircle20Filled style={{ color: '#059669', fontSize: 15 }} />
+                    <CheckmarkCircle20Filled style={{ color: tokens.colorStatusSuccessForeground1, fontSize: 15 }} />
                     <span><strong>Media Assets:</strong> All saved product images &amp; menu photos</span>
                   </div>
                 </div>
