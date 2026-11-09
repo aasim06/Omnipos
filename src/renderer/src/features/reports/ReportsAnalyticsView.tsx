@@ -272,7 +272,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
           </Button>
           {isInitialLoading ? (
             <Skeleton animation="wave">
-              <SkeletonItem shape="rectangle" style={{ width: '110px', height: '28px', borderRadius: '14px' }} />
+              <SkeletonItem shape="rectangle" style={{ width: '110px', height: '28px', borderRadius: '8px' }} />
             </Skeleton>
           ) : (
             <Badge appearance="tint" color={netProfit >= 0 ? 'success' : 'danger'} size="large">
@@ -292,7 +292,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
           gap: '10px',
           padding: '12px 16px',
           backgroundColor: tokens.colorNeutralBackground1,
-          borderRadius: '10px',
+          borderRadius: '8px',
           border: `1px solid ${tokens.colorNeutralStroke2}`,
           boxShadow: tokens.shadow2,
         }}
@@ -319,7 +319,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
                 backgroundColor: dateFilter === item.key ? 'rgba(229, 25, 55, 0.1)' : 'transparent',
                 color: dateFilter === item.key ? '#E51937' : tokens.colorNeutralForeground1,
                 fontSize: '12px',
-                fontWeight: dateFilter === item.key ? 700 : 500,
+                fontWeight: dateFilter === item.key ? 600 : 400,
                 cursor: 'pointer',
                 transition: 'all 0.12s ease',
               }}
@@ -534,7 +534,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
                     <SkeletonItem shape="rectangle" style={{ width: '150px', height: '16px', borderRadius: '4px' }} />
                     <SkeletonItem shape="rectangle" style={{ width: '100px', height: '12px', borderRadius: '3px' }} />
                   </div>
-                  <SkeletonItem shape="rectangle" style={{ width: '64px', height: '24px', borderRadius: '12px' }} />
+                  <SkeletonItem shape="rectangle" style={{ width: '64px', height: '24px', borderRadius: '8px' }} />
                 </Skeleton>
               ))}
             </div>

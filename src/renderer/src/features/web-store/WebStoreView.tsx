@@ -75,7 +75,7 @@ const useStyles = makeStyles({
     maxWidth: '640px',
   },
   headerTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '20px',
     color: tokens.colorNeutralForeground1,
     margin: 0,
@@ -97,7 +97,7 @@ const useStyles = makeStyles({
     color: tokens.colorBrandForeground1,
   },
   menuTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   menuDesc: {
     color: tokens.colorNeutralForeground3,
@@ -126,7 +126,7 @@ const useStyles = makeStyles({
   },
   skW280H24R4: { width: '280px', height: '24px', borderRadius: '4px' },
   skW380H14R3: { width: '380px', height: '14px', borderRadius: '3px' },
-  skW120H28R14: { width: '120px', height: '28px', borderRadius: '14px' },
+  skW120H28R14: { width: '120px', height: '28px', borderRadius: '8px' },
   skW220H20R4: { width: '220px', height: '20px', borderRadius: '4px' },
   skW340H14R3: { width: '340px', height: '14px', borderRadius: '3px' },
   skW100H56R8: { width: '100%', height: '56px', borderRadius: '8px' },

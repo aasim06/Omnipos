@@ -31,7 +31,7 @@ const useStyles = makeStyles({
     width: '100%',
     backgroundColor: '#1e293b',
     padding: '32px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
     borderTopWidth: '1px',
     borderBottomWidth: '1px',
@@ -60,7 +60,7 @@ const useStyles = makeStyles({
   title: {
     margin: '0 0 8px 0',
     fontSize: '20px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   subtitle: {
     color: '#94a3b8',
@@ -93,7 +93,7 @@ const useStyles = makeStyles({
     borderRightStyle: 'none',
     padding: '10px 20px',
     borderRadius: '6px',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     cursor: 'pointer',
   },

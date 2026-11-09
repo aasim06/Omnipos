@@ -171,10 +171,10 @@ const useStyles = makeStyles({
     transitionDuration: '0.15s',
     transitionTimingFunction: 'ease',
     ':focus': {
-      borderTopColor: '#E51937',
-      borderBottomColor: '#E51937',
-      borderLeftColor: '#E51937',
-      borderRightColor: '#E51937',
+      borderTopColor: tokens.colorCompoundBrandStroke,
+      borderBottomColor: tokens.colorCompoundBrandStroke,
+      borderLeftColor: tokens.colorCompoundBrandStroke,
+      borderRightColor: tokens.colorCompoundBrandStroke,
       boxShadow: '0 0 0 2px rgba(229, 25, 55, 0.15)',
     },
   },
@@ -591,8 +591,8 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                 width: '36px',
                 height: '36px',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(229, 25, 55, 0.12)',
-                color: '#E51937',
+                backgroundColor: tokens.colorStatusDangerBackground1,
+                color: tokens.colorBrandForeground1,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -601,8 +601,8 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
               <Receipt20Regular />
             </div>
             <div>
-              <div style={{ fontSize: '17px', fontWeight: 800 }}>New Purchase Bill (Kharidari Invoice)</div>
-              <Caption1 style={{ color: '#64748B' }}>
+              <div style={{ fontSize: '17px', fontWeight: 600 }}>New Purchase Bill (Kharidari Invoice)</div>
+              <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
                 Multi-item supplier receiving invoice, batch tracking &amp; vendor ledger
               </Caption1>
             </div>
@@ -664,13 +664,13 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
             {/* ── Multi-Item Table ── */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <Subtitle2 style={{ fontWeight: 700 }}>Bill Items ({lines.length})</Subtitle2>
+                <Subtitle2 style={{ fontWeight: 600 }}>Bill Items ({lines.length})</Subtitle2>
                 <Button
                   size="small"
                   appearance="primary"
                   icon={<Add20Regular />}
                   onClick={handleAddLine}
-                  style={{ backgroundColor: '#E51937', color: '#fff' }}
+                  style={{ backgroundColor: tokens.colorBrandBackground, color: '#fff' }}
                 >
                   + Add Item Line
                 </Button>
@@ -707,7 +707,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                           />
                           {hasVariants && linkedProduct && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '3px', flexWrap: 'nowrap' }}>
-                              <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 700, marginRight: '2px' }}>Size:</span>
+                              <span style={{ fontSize: '9px', color: tokens.colorNeutralForeground2, fontWeight: 600, marginRight: '2px' }}>Size:</span>
                               {linkedProduct.variants!.map((v) => {
                                 const isSelected = line.variantId
                                   ? line.variantId === v.id
@@ -721,7 +721,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                                     style={{
                                       padding: '1px 5px',
                                       fontSize: '10px',
-                                      fontWeight: isSelected ? 800 : 500,
+                                      fontWeight: isSelected ? 600 : 400,
                                       borderRadius: '3px',
                                       border: isSelected ? '1px solid #E51937' : '1px solid #CBD5E1',
                                       backgroundColor: isSelected ? '#FEE2E2' : '#F8FAFC',
@@ -800,7 +800,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                         </td>
 
                         {/* Line Total */}
-                        <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, fontSize: '13px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, fontSize: '13px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                           PKR {line.totalCost.toLocaleString()}
                         </td>
 
@@ -832,8 +832,8 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                                   justifyContent: 'center',
                                   borderRadius: '6px',
                                   border: 'none',
-                                  background: 'rgba(229, 25, 55, 0.08)',
-                                  color: '#E51937',
+                                  background: tokens.colorStatusDangerBackground1,
+                                  color: tokens.colorBrandForeground1,
                                   cursor: 'pointer',
                                   transition: 'background-color 0.15s ease',
                                 }}
@@ -882,7 +882,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
             <div className={styles.summaryBox}>
               {/* Payment Mode Selector */}
               <div>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '8px', textTransform: 'uppercase' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2, marginBottom: '8px', textTransform: 'uppercase' }}>
                   Supplier Payment Mode
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginBottom: '12px' }}>
@@ -897,7 +897,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                         border: `1.5px solid ${paymentMode === mode ? '#E51937' : '#CBD5E1'}`,
                         backgroundColor: paymentMode === mode ? 'rgba(229,25,55,0.1)' : '#FFFFFF',
                         color: paymentMode === mode ? '#E51937' : '#334155',
-                        fontWeight: 700,
+                        fontWeight: 600,
                         fontSize: '11.5px',
                         textTransform: 'capitalize',
                         cursor: 'pointer',
@@ -935,24 +935,24 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
               {/* Totals Breakdown */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                  <span style={{ color: '#64748B' }}>Items Subtotal:</span>
+                  <span style={{ color: tokens.colorNeutralForeground2 }}>Items Subtotal:</span>
                   <span style={{ fontWeight: 600 }}>PKR {subtotal.toLocaleString()}</span>
                 </div>
                 {discountAmount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#10B981' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: tokens.colorStatusSuccessForeground1 }}>
                     <span>Supplier Discount:</span>
-                    <span style={{ fontWeight: 700 }}>- PKR {discountAmount.toLocaleString()}</span>
+                    <span style={{ fontWeight: 600 }}>- PKR {discountAmount.toLocaleString()}</span>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 800, borderTop: '1px dashed #CBD5E1', paddingTop: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 600, borderTop: `1px dashed ${tokens.colorNeutralStroke1}`, paddingTop: '6px' }}>
                   <span>NET BILL TOTAL:</span>
-                  <span style={{ color: '#E51937' }}>PKR {grandTotal.toLocaleString()}</span>
+                  <span style={{ color: tokens.colorBrandForeground1 }}>PKR {grandTotal.toLocaleString()}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                  <span style={{ color: '#64748B' }}>Amount Paid:</span>
-                  <span style={{ fontWeight: 700, color: '#10B981' }}>PKR {(Number(paidAmount) || 0).toLocaleString()}</span>
+                  <span style={{ color: tokens.colorNeutralForeground2 }}>Amount Paid:</span>
+                  <span style={{ fontWeight: 600, color: tokens.colorStatusSuccessForeground1 }}>PKR {(Number(paidAmount) || 0).toLocaleString()}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 700 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 600 }}>
                   <span style={{ color: balancePayable > 0 ? '#EF4444' : '#64748B' }}>Balance Payable (Udhaar):</span>
                   <span style={{ color: balancePayable > 0 ? '#EF4444' : '#10B981' }}>PKR {balancePayable.toLocaleString()}</span>
                 </div>
@@ -970,7 +970,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
             icon={<Checkmark20Regular />}
             onClick={handleSaveBill}
             disabled={isSubmitting}
-            style={{ backgroundColor: '#E51937', color: '#FFFFFF', fontWeight: 700 }}
+            style={{ backgroundColor: tokens.colorBrandBackground, color: '#FFFFFF', fontWeight: 600 }}
           >
             {isSubmitting ? 'Saving Bill & Stock...' : 'Confirm & Save Purchase Bill'}
           </Button>

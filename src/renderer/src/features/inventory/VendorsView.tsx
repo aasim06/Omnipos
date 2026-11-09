@@ -368,7 +368,7 @@ export function VendorsView(): React.JSX.Element {
             style={{
               backgroundColor: '#0078D4',
               color: '#FFFFFF',
-              fontWeight: 700,
+              fontWeight: 600,
               borderRadius: '8px',
               fontSize: '13px',
               boxShadow: '0 2px 6px rgba(0, 120, 212, 0.25)',

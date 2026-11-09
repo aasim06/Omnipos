@@ -1474,7 +1474,7 @@ export function StockInView(): React.JSX.Element {
           {selectedCategory !== 'all' && categoryProducts.length === 0 && (
             <div className={styles.emptyCategoryNotice}>
               <div className={styles.emptyCategoryNoticeLeft}>
-                <Warning20Regular style={{ width: 22, height: 22, color: '#D97706', flexShrink: 0 }} />
+                <Warning20Regular style={{ width: 22, height: 22, color: tokens.colorStatusWarningForeground1, flexShrink: 0 }} />
                 <div>
                   <div className={styles.emptyCategoryNoticeTitle}>
                     No products found in category &quot;{selectedCategory}&quot;
@@ -1512,7 +1512,7 @@ export function StockInView(): React.JSX.Element {
                         className={styles.productImg}
                       />
                     ) : (
-                      <Box20Regular style={{ width: 24, height: 24, color: '#94A3B8' }} />
+                      <Box20Regular style={{ width: 24, height: 24, color: tokens.colorNeutralForeground3 }} />
                     )}
                   </div>
                   <div>
@@ -1808,12 +1808,12 @@ export function StockInView(): React.JSX.Element {
 
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorNeutralStroke2}`, fontSize: '12px', fontWeight: 600 }}>
             {activeModule === 'fastfood' ? (
-              <Food24Regular style={{ width: 14, height: 14, color: '#E51937' }} />
+              <Food24Regular style={{ width: 14, height: 14, color: tokens.colorBrandForeground1 }} />
             ) : (
-              <ShoppingBag24Regular style={{ width: 14, height: 14, color: '#2563EB' }} />
+              <ShoppingBag24Regular style={{ width: 14, height: 14, color: tokens.colorPaletteBlueForeground2 }} />
             )}
             <span>{activeModule === 'fastfood' ? 'Kitchen Inventory Inflows' : 'Store Inventory Inflows'}</span>
-            <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 700 }}>
+            <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground1, fontWeight: 600 }}>
               {stockInMovements.length}
             </span>
           </div>
@@ -1955,7 +1955,7 @@ export function StockInView(): React.JSX.Element {
                             {mov.productName}
                           </span>
                           <span className={styles.categoryBadge}>
-                            <Folder20Regular style={{ width: 12, height: 12, color: '#2563EB' }} />
+                            <Folder20Regular style={{ width: 12, height: 12, color: tokens.colorPaletteBlueForeground2 }} />
                             <span>{matchedProd?.category || 'General'}</span>
                           </span>
                         </div>

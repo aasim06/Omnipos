@@ -30,8 +30,24 @@ export interface PosUpdateApi {
   onError: (callback: (error: string) => void) => () => void;
 }
 
+export interface PosWindowChrome {
+  /** Frameless window with a custom renderer-drawn title bar (Windows). */
+  customTitleBar: boolean;
+  /** Mica backdrop is active, so the page background must stay transparent (Windows 11). */
+  mica: boolean;
+  titleBarHeight: number;
+  /** Width reserved on the right for the native min / max / close buttons. */
+  captionButtonsWidth: number;
+  setTheme: (mode: 'light' | 'dark') => void;
+}
+
+const chromeFlags = (
+  process.argv.find((arg) => arg.startsWith('--omnipos-chrome='))?.split('=')[1] ?? ''
+).split(',');
+
 export interface PosApi {
   isElectron: boolean;
+  windowChrome: PosWindowChrome;
   getApiUrl: () => Promise<string | null>;
   getLocalApiUrl: () => Promise<string | null>;
   getLicenseMeta: () => Promise<any>;
@@ -44,7 +60,7 @@ export interface PosApi {
     status: () => Promise<boolean>;
   };
   getPrinters: () => Promise<any[]>;
-  printReceipt: (options?: { printerName?: string; silent?: boolean }) => Promise<{ ok: boolean; error?: string }>;
+  printReceipt: (options?: { printerName?: string; silent?: boolean; html?: string }) => Promise<{ ok: boolean; error?: string }>;
   backup: {
     create: (options?: { promptDialog?: boolean }) => Promise<{ ok: boolean; path?: string; size?: number; cancelled?: boolean; error?: string }>;
     restore: (filePath?: string) => Promise<{ ok: boolean; message?: string; cancelled?: boolean; error?: string }>;
@@ -59,6 +75,13 @@ export interface PosApi {
 
 const posApi: PosApi = {
   isElectron: true,
+  windowChrome: {
+    customTitleBar: chromeFlags.includes('titlebar'),
+    mica: chromeFlags.includes('mica'),
+    titleBarHeight: 40,
+    captionButtonsWidth: 138,
+    setTheme: (mode) => ipcRenderer.send('window:set-theme', mode),
+  },
   getApiUrl: () => ipcRenderer.invoke('app:get-api-url'),
   getLocalApiUrl: () => ipcRenderer.invoke('app:get-local-api-url'),
   getLicenseMeta: () => ipcRenderer.invoke('license:get-meta'),

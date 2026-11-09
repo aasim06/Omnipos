@@ -1,8 +1,11 @@
-/* Microsoft Fluent UI v9 Desktop Base Styles */
-/* colorNeutralBackground1 = #FFFFFF (card containers) */
-/* colorNeutralBackground2 = #F5F5F5 (Mica app frame) */
+/* Windows 11 (WinUI 3 / Fluent 2) desktop base styles */
+/* Colours come from the Fluent theme in theme/AppProviders.tsx via var(--colorXxx). */
 :root {
-  --fluent-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', sans-serif;
+  --fluent-font: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* Windows 11 motion */
+  --win11-ease: cubic-bezier(0, 0, 0, 1);
+  --win11-fast: 167ms;
+  --win11-normal: 250ms;
 }
 
 html, body {
@@ -16,7 +19,7 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Enforce Plus Jakarta Sans across all buttons, inputs, tabs, and Fluent elements */
+/* Same Windows font on all buttons, inputs, tabs and Fluent elements */
 button, input, select, textarea, [role="tab"], .fui-Tab, .fui-Button {
   font-family: var(--fluent-font) !important;
 }
@@ -47,10 +50,10 @@ html, body, #root, main, table, tr, td, th, p, span, h1, h2, h3, h4, h5, h6, inp
   -webkit-user-select: text;
 }
 
-/* Beautiful OmniPos brand accent selection highlight */
+/* Text selection: accent tint, text keeps its own colour (readable in light and dark) */
 ::selection {
-  background-color: rgba(229, 25, 55, 0.35);
-  color: #FFFFFF;
+  background-color: rgba(229, 25, 55, 0.28);
+  color: inherit;
 }
 
 #root {
@@ -59,11 +62,30 @@ html, body, #root, main, table, tr, td, th, p, span, h1, h2, h3, h4, h5, h6, inp
   display: flex;
 }
 
-/* Fluent v9 Windows 11 scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #C7C7C7; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #9E9E9E; }
+/* Windows 11 scrollbar: thin rounded thumb that thickens on hover, no track */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; }
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.36);
+  border: 3.5px solid transparent;
+  border-radius: 10px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.52);
+  border-width: 2px;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.36); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.54); }
+
+/* Keyboard focus: Windows 11 double-ring focus visual */
+/* (inputs are excluded: Fluent inputs draw their own focus underline) */
+:focus-visible:not(input):not(textarea):not(select) {
+  outline: 2px solid var(--colorStrokeFocus2, #000000);
+  outline-offset: 1px;
+}
 
 /* Hide scrollbar utility (MUI Tabs style) */
 .no-scrollbar::-webkit-scrollbar {
@@ -90,8 +112,8 @@ html, body, #root, main, table, tr, td, th, p, span, h1, h2, h3, h4, h5, h6, inp
 }
 
 
-/* ── Universal Premium Frosted Glass Blurry Backdrop for All Modals & Dialogs ── */
-/* Critical Fix: Fluent UI Portal mounts a <FluentProvider> directly on <body> which has an opaque solid background, completely obscuring the page behind it. */
+/* ── Dialog / drawer backdrop: Windows 11 "smoke" layer (plain dim, no blur) ── */
+/* Fluent UI Portal mounts a <FluentProvider> directly on <body> with an opaque background, which would hide the page behind it. */
 body > .fui-FluentProvider,
 body > div[class*="fui-FluentProvider"]:not(#root),
 .fui-Portal,
@@ -103,18 +125,16 @@ body > div[class*="fui-FluentProvider"]:not(#root),
 .fui-OverlayDrawer__backdrop,
 dialog::backdrop,
 [data-fui-backdrop] {
-  background-color: rgba(15, 23, 42, 0.45) !important;
-  backdrop-filter: blur(10px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(160%) !important;
-  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: opacity var(--win11-normal) var(--win11-ease) !important;
 }
 
 [data-theme="dark"] .fui-DialogSurface__backdrop,
 [data-theme="dark"] .fui-OverlayDrawer__backdrop,
 [data-theme="dark"] dialog::backdrop {
-  background-color: rgba(3, 7, 18, 0.55) !important;
-  backdrop-filter: blur(12px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Fluent Sidebar Clean Hidden Scrollbar (Wheel scrollable without scrollbar clutter) */
@@ -128,25 +148,34 @@ dialog::backdrop,
   height: 0 !important;
 }
 
-/* ── Fluent UI Dropdown & Option Brand Red Theme Styling ── */
+/* ── Dropdown / ComboBox list: Windows 11 flyout ── */
+/* Uses the Fluent theme variables, so it follows light/dark automatically. */
 .fui-Dropdown__listbox,
 .fui-Combobox__listbox,
 [role="listbox"] {
-  background-color: #16181f !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background-color: var(--colorNeutralBackground1) !important;
+  border: 1px solid var(--colorNeutralStroke2) !important;
   border-radius: 8px !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7) !important;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.14) !important;
   padding: 4px !important;
   max-height: 280px !important;
 }
 
+[data-theme="dark"] .fui-Dropdown__listbox,
+[data-theme="dark"] .fui-Combobox__listbox,
+[data-theme="dark"] [role="listbox"] {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.26) !important;
+}
+
 [role="option"],
 .fui-Option {
-  border-radius: 6px !important;
-  color: #f1f5f9 !important;
-  font-size: 13px !important;
-  padding: 8px 12px !important;
-  transition: all 0.12s ease !important;
+  position: relative;
+  border-radius: 4px !important;
+  color: var(--colorNeutralForeground1) !important;
+  font-size: 14px !important;
+  min-height: 32px;
+  padding: 6px 12px !important;
+  transition: background-color var(--win11-fast) var(--win11-ease) !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
@@ -156,59 +185,32 @@ dialog::backdrop,
 .fui-Option:hover,
 [role="option"].fui-Option--focus,
 .fui-Option--focus {
-  background-color: rgba(229, 25, 55, 0.18) !important;
-  color: #ffffff !important;
+  background-color: var(--colorNeutralBackground1Hover) !important;
 }
 
+/* Selected item: subtle fill + short accent pill on the left (Windows 11 list style) */
 [role="option"][aria-selected="true"],
 .fui-Option[aria-selected="true"] {
-  background-color: #E51937 !important;
-  color: #ffffff !important;
+  background-color: var(--colorNeutralBackground1Selected) !important;
   font-weight: 600 !important;
 }
 
-[role="option"][aria-selected="true"]:hover,
-.fui-Option[aria-selected="true"]:hover {
-  background-color: #C6172E !important;
-  color: #ffffff !important;
-}
-
-/* Light mode dropdown styling */
-[data-theme="light"] .fui-Dropdown__listbox,
-[data-theme="light"] .fui-Combobox__listbox,
-[data-theme="light"] [role="listbox"] {
-  background-color: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12) !important;
-}
-
-[data-theme="light"] [role="option"],
-[data-theme="light"] .fui-Option {
-  color: #0f172a !important;
-}
-
-[data-theme="light"] [role="option"]:hover,
-[data-theme="light"] .fui-Option:hover,
-[data-theme="light"] [role="option"].fui-Option--focus,
-[data-theme="light"] .fui-Option--focus {
-  background-color: rgba(229, 25, 55, 0.1) !important;
-  color: #0f172a !important;
-}
-
-[data-theme="light"] [role="option"][aria-selected="true"],
-[data-theme="light"] .fui-Option[aria-selected="true"] {
-  background-color: #E51937 !important;
-  color: #ffffff !important;
+[role="option"][aria-selected="true"]::before,
+.fui-Option[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 2px;
+  background-color: #E51937;
 }
 
 /* Fallback for native select */
 select {
   accent-color: #E51937 !important;
-}
-select option:checked,
-select option:hover {
-  background: #E51937 !important;
-  color: #ffffff !important;
 }
 
 /* ── Global Print Media Rules ── */
@@ -224,6 +226,31 @@ select option:hover {
     overflow: visible !important;
     height: auto !important;
     background: #ffffff !important;
+  }
+
+  /* Paper is always light: when printing from dark mode, force the theme tokens
+     that screens use for text, surfaces and strokes to their light-theme values. */
+  .fui-FluentProvider {
+    --colorNeutralForeground1: #1A1A1A !important;
+    --colorNeutralForeground2: #5D5D5D !important;
+    --colorNeutralForeground3: #8A8A8A !important;
+    --colorNeutralForeground4: #A0A0A0 !important;
+    --colorNeutralBackground1: #FFFFFF !important;
+    --colorNeutralBackground2: #FFFFFF !important;
+    --colorNeutralBackground3: #F5F5F5 !important;
+    --colorNeutralBackground4: #F0F0F0 !important;
+    --colorNeutralBackground5: #EBEBEB !important;
+    --colorNeutralStroke1: #D1D1D1 !important;
+    --colorNeutralStroke2: #E0E0E0 !important;
+    --colorNeutralStrokeAccessible: #616161 !important;
+    --colorBrandForeground1: #C6172E !important;
+    --colorBrandForeground2: #A71527 !important;
+    --colorStatusSuccessForeground1: #0E700E !important;
+    --colorStatusWarningForeground1: #BC4B09 !important;
+    --colorStatusDangerForeground1: #B10E1C !important;
+    --colorPaletteBlueForeground2: #115EA3 !important;
+    color: #1A1A1A !important;
+    background-color: #FFFFFF !important;
   }
 }
 

@@ -8,8 +8,7 @@ import {
   DialogTitle,
   DialogBody,
   DialogActions,
-  mergeClasses,
-} from '@fluentui/react-components';
+  mergeClasses, tokens } from '@fluentui/react-components';
 import {
   ArrowLeft20Regular,
   Edit20Regular,
@@ -250,7 +249,7 @@ export function ProductDetailsView(): React.JSX.Element {
             <ArrowLeft20Regular /> {backLabel}
           </button>
         </div>
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748B' }}>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: tokens.colorNeutralForeground2 }}>
           <h3>Product Not Found</h3>
           <p>The product you are looking for does not exist or has been removed.</p>
           <Button appearance="primary" onClick={handleBack}>{backLabel}</Button>
@@ -309,7 +308,7 @@ export function ProductDetailsView(): React.JSX.Element {
 
           <Button
             appearance="subtle"
-            icon={<Delete20Regular style={{ color: '#EF4444' }} />}
+            icon={<Delete20Regular style={{ color: tokens.colorStatusDangerForeground1 }} />}
             onClick={() => setIsDeleteDialogOpen(true)}
           >
             Delete
@@ -454,13 +453,13 @@ export function ProductDetailsView(): React.JSX.Element {
                     const finalVariantPrice = v.price !== undefined ? v.price : price + (v.priceDelta || 0);
                     return (
                       <tr key={v.id}>
-                        <td className={styles.td} style={{ fontWeight: 700 }}>
+                        <td className={styles.td} style={{ fontWeight: 600 }}>
                           {v.label}
                         </td>
-                        <td className={styles.td} style={{ textAlign: 'right', color: '#64748B' }}>
+                        <td className={styles.td} style={{ textAlign: 'right', color: tokens.colorNeutralForeground2 }}>
                           {v.priceDelta > 0 ? `+${formatPKR(v.priceDelta)}` : 'Base'}
                         </td>
-                        <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700, color: '#E51937' }}>
+                        <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600, color: tokens.colorBrandForeground1 }}>
                           {formatPKR(finalVariantPrice)}
                         </td>
                         <td className={styles.td} style={{ textAlign: 'right' }}>
@@ -503,7 +502,7 @@ export function ProductDetailsView(): React.JSX.Element {
 
               {product.tags && product.tags.length > 0 && (
                 <div>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', display: 'block', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorNeutralForeground2, display: 'block', marginBottom: '6px' }}>
                     MENU TAGS
                   </span>
                   <div className={styles.tagList}>
@@ -518,12 +517,12 @@ export function ProductDetailsView(): React.JSX.Element {
 
               {product.allergens && product.allergens.length > 0 && (
                 <div>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#DC2626', display: 'block', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: tokens.colorStatusDangerForeground1, display: 'block', marginBottom: '6px' }}>
                     ALLERGEN WARNINGS
                   </span>
                   <div className={styles.tagList}>
                     {product.allergens.map((a: string) => (
-                      <span key={a} className={styles.tagItem} style={{ color: '#DC2626', backgroundColor: '#FEF2F2', borderColor: '#FECACA' }}>
+                      <span key={a} className={styles.tagItem} style={{ color: tokens.colorStatusDangerForeground1, backgroundColor: tokens.colorStatusDangerBackground1, borderColor: tokens.colorStatusDangerBorder1 }}>
                         {a}
                       </span>
                     ))}
@@ -537,25 +536,25 @@ export function ProductDetailsView(): React.JSX.Element {
           {(product.primaryUnit || product.conversionRate) && (
             <div className={styles.sectionCard}>
               <div className={styles.sectionTitle}>
-                <Box20Regular style={{ width: 18, height: 18, color: '#0078D4' }} /> Wholesale Packaging &amp; Dual Unit Conversion
+                <Box20Regular style={{ width: 18, height: 18, color: tokens.colorPaletteBlueForeground2 }} /> Wholesale Packaging &amp; Dual Unit Conversion
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginTop: '8px' }}>
-                <div style={{ backgroundColor: '#F8F9FA', padding: '10px 12px', borderRadius: '8px', border: '1px solid #EDEBE9' }}>
-                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>WHOLESALE UNIT</span>
-                  <strong style={{ fontSize: '15px', color: '#0078D4' }}>{product.primaryUnit || 'BOX'}</strong>
+                <div style={{ backgroundColor: tokens.colorNeutralBackground3, padding: '10px 12px', borderRadius: '8px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                  <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground2, fontWeight: 600, display: 'block' }}>WHOLESALE UNIT</span>
+                  <strong style={{ fontSize: '15px', color: tokens.colorPaletteBlueForeground2 }}>{product.primaryUnit || 'BOX'}</strong>
                 </div>
-                <div style={{ backgroundColor: '#F8F9FA', padding: '10px 12px', borderRadius: '8px', border: '1px solid #EDEBE9' }}>
-                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>RETAIL UNIT</span>
-                  <strong style={{ fontSize: '15px', color: '#107C41' }}>{product.secondaryUnit || product.unit || 'PCS'}</strong>
+                <div style={{ backgroundColor: tokens.colorNeutralBackground3, padding: '10px 12px', borderRadius: '8px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                  <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground2, fontWeight: 600, display: 'block' }}>RETAIL UNIT</span>
+                  <strong style={{ fontSize: '15px', color: tokens.colorStatusSuccessForeground1 }}>{product.secondaryUnit || product.unit || 'PCS'}</strong>
                 </div>
-                <div style={{ backgroundColor: '#F8F9FA', padding: '10px 12px', borderRadius: '8px', border: '1px solid #EDEBE9' }}>
-                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>CONVERSION RATIO</span>
+                <div style={{ backgroundColor: tokens.colorNeutralBackground3, padding: '10px 12px', borderRadius: '8px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                  <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground2, fontWeight: 600, display: 'block' }}>CONVERSION RATIO</span>
                   <strong style={{ fontSize: '15px' }}>1 {product.primaryUnit || 'BOX'} = {product.conversionRate || 1} {product.secondaryUnit || 'PCS'}</strong>
                 </div>
                 {product.secondaryPrice !== undefined && (
-                  <div style={{ backgroundColor: '#F8F9FA', padding: '10px 12px', borderRadius: '8px', border: '1px solid #EDEBE9' }}>
-                    <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>RETAIL PIECE PRICE</span>
-                    <strong style={{ fontSize: '15px', color: '#D13438' }}>{formatPKR(product.secondaryPrice)}</strong>
+                  <div style={{ backgroundColor: tokens.colorNeutralBackground3, padding: '10px 12px', borderRadius: '8px', border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+                    <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground2, fontWeight: 600, display: 'block' }}>RETAIL PIECE PRICE</span>
+                    <strong style={{ fontSize: '15px', color: tokens.colorStatusDangerForeground1 }}>{formatPKR(product.secondaryPrice)}</strong>
                   </div>
                 )}
               </div>
@@ -567,7 +566,7 @@ export function ProductDetailsView(): React.JSX.Element {
             <div className={styles.sectionCard}>
               <div className={styles.sectionTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Calendar20Regular style={{ width: 18, height: 18, color: '#D97706' }} /> Batch &amp; Expiry Information
+                  <Calendar20Regular style={{ width: 18, height: 18, color: tokens.colorStatusWarningForeground1 }} /> Batch &amp; Expiry Information
                 </div>
                 {product.expiryDate && (() => {
                   const diff = Math.ceil((new Date(product.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -578,17 +577,17 @@ export function ProductDetailsView(): React.JSX.Element {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginTop: '8px' }}>
-                <div style={{ backgroundColor: '#FDFCF7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #F2E8A2' }}>
-                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>BATCH / LOT #</span>
+                <div style={{ backgroundColor: tokens.colorNeutralBackground3, padding: '10px 12px', borderRadius: '8px', border: '1px solid #F2E8A2' }}>
+                  <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground2, fontWeight: 600, display: 'block' }}>BATCH / LOT #</span>
                   <strong style={{ fontSize: '14px', fontFamily: 'monospace' }}>{product.batchNumber || '—'}</strong>
                 </div>
-                <div style={{ backgroundColor: '#FDFCF7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #F2E8A2' }}>
-                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>MFG DATE</span>
+                <div style={{ backgroundColor: tokens.colorNeutralBackground3, padding: '10px 12px', borderRadius: '8px', border: '1px solid #F2E8A2' }}>
+                  <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground2, fontWeight: 600, display: 'block' }}>MFG DATE</span>
                   <strong style={{ fontSize: '14px' }}>{product.mfgDate ? new Date(product.mfgDate).toLocaleDateString() : '—'}</strong>
                 </div>
-                <div style={{ backgroundColor: '#FDFCF7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #F2E8A2' }}>
-                  <span style={{ fontSize: '11px', color: '#605E5C', fontWeight: 600, display: 'block' }}>EXPIRY DATE</span>
-                  <strong style={{ fontSize: '14px', color: '#D97706' }}>{product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '—'}</strong>
+                <div style={{ backgroundColor: tokens.colorNeutralBackground3, padding: '10px 12px', borderRadius: '8px', border: '1px solid #F2E8A2' }}>
+                  <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground2, fontWeight: 600, display: 'block' }}>EXPIRY DATE</span>
+                  <strong style={{ fontSize: '14px', color: tokens.colorStatusWarningForeground1 }}>{product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '—'}</strong>
                 </div>
               </div>
             </div>
@@ -602,7 +601,7 @@ export function ProductDetailsView(): React.JSX.Element {
           </div>
 
           {salesStats.recentOrders.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '30px 10px', color: '#94A3B8', fontSize: '13px' }}>
+            <div style={{ textAlign: 'center', padding: '30px 10px', color: tokens.colorNeutralForeground3, fontSize: '13px' }}>
               No recorded orders for this item yet.
             </div>
           ) : (
@@ -616,24 +615,24 @@ export function ProductDetailsView(): React.JSX.Element {
                     alignItems: 'center',
                     padding: '10px 12px',
                     borderRadius: '8px',
-                    backgroundColor: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
+                    backgroundColor: tokens.colorNeutralBackground2,
+                    border: `1px solid ${tokens.colorNeutralStroke2}`,
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: tokens.colorNeutralForeground1 }}>
                       Order #{ord.id.slice(-6).toUpperCase()}
                     </span>
-                    <span style={{ fontSize: '11px', color: '#64748B' }}>
+                    <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground2 }}>
                       {new Date(ord.date).toLocaleDateString()} • {ord.orderType || 'Takeaway'}
                     </span>
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#10B981' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: tokens.colorStatusSuccessForeground1 }}>
                       {formatPKR(ord.total)}
                     </div>
-                    <div style={{ fontSize: '10.5px', color: '#64748B' }}>
+                    <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground2 }}>
                       {ord.qty} {product.unit || 'units'}
                     </div>
                   </div>
@@ -702,8 +701,8 @@ export function ProductDetailsView(): React.JSX.Element {
             />
 
             {/* Dual Units Edit Fields */}
-            <div style={{ borderTop: '1px solid #E1DFDD', paddingTop: '10px', marginTop: '4px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#0078D4', display: 'block', marginBottom: '6px' }}>
+            <div style={{ borderTop: `1px solid ${tokens.colorNeutralStroke2}`, paddingTop: '10px', marginTop: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: tokens.colorPaletteBlueForeground2, display: 'block', marginBottom: '6px' }}>
                 Dual Units (Wholesale / Retail)
               </span>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -739,9 +738,9 @@ export function ProductDetailsView(): React.JSX.Element {
             </div>
 
             {/* Batch & Expiry Edit Fields */}
-            <div style={{ borderTop: '1px solid #E1DFDD', paddingTop: '10px', marginTop: '4px' }}>
+            <div style={{ borderTop: `1px solid ${tokens.colorNeutralStroke2}`, paddingTop: '10px', marginTop: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#D97706' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: tokens.colorStatusWarningForeground1 }}>
                   Batch &amp; Expiry Tracking
                 </span>
                 <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>

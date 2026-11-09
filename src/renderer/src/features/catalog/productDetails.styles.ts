@@ -65,7 +65,7 @@ export const useProductDetailsStyles = makeStyles({
     gridTemplateColumns: '240px 1fr',
     gap: '28px',
     padding: '24px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow4,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -76,7 +76,7 @@ export const useProductDetailsStyles = makeStyles({
   imageBox: {
     width: '100%',
     height: '240px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     overflow: 'hidden',
     backgroundColor: tokens.colorNeutralBackground3,
     display: 'flex',
@@ -117,7 +117,7 @@ export const useProductDetailsStyles = makeStyles({
   },
   productTitle: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     margin: 0,
     lineHeight: 1.2,
@@ -145,14 +145,14 @@ export const useProductDetailsStyles = makeStyles({
   },
   skuLabel: {
     fontSize: '10px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground4,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
   skuValue: {
     fontSize: '13px',
-    fontWeight: 700,
+    fontWeight: 600,
     fontFamily: 'monospace',
     color: tokens.colorNeutralForeground1,
   },
@@ -162,7 +162,7 @@ export const useProductDetailsStyles = makeStyles({
     gap: '16px',
   },
   kpiCard: {
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow2,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -179,7 +179,7 @@ export const useProductDetailsStyles = makeStyles({
     left: 0,
     right: 0,
     height: '3px',
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
   },
   kpiTopStripeGreen: {
     position: 'absolute',
@@ -187,7 +187,7 @@ export const useProductDetailsStyles = makeStyles({
     left: 0,
     right: 0,
     height: '3px',
-    backgroundColor: '#10B981',
+    backgroundColor: tokens.colorStatusSuccessBackground3,
   },
   kpiTopStripeBlue: {
     position: 'absolute',
@@ -195,7 +195,7 @@ export const useProductDetailsStyles = makeStyles({
     left: 0,
     right: 0,
     height: '3px',
-    backgroundColor: '#2563EB',
+    backgroundColor: tokens.colorPaletteBlueBorderActive,
   },
   kpiTopStripeAmber: {
     position: 'absolute',
@@ -203,7 +203,7 @@ export const useProductDetailsStyles = makeStyles({
     left: 0,
     right: 0,
     height: '3px',
-    backgroundColor: '#F59E0B',
+    backgroundColor: tokens.colorStatusWarningBackground3,
   },
   kpiLabel: {
     fontSize: '11.5px',
@@ -215,7 +215,7 @@ export const useProductDetailsStyles = makeStyles({
   },
   kpiValue: {
     fontSize: '22px',
-    fontWeight: 900,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     lineHeight: 1.1,
   },
@@ -232,7 +232,7 @@ export const useProductDetailsStyles = makeStyles({
     },
   },
   sectionCard: {
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow4,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -243,7 +243,7 @@ export const useProductDetailsStyles = makeStyles({
   },
   sectionTitle: {
     fontSize: '15px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'flex',
     alignItems: 'center',
@@ -257,7 +257,7 @@ export const useProductDetailsStyles = makeStyles({
   th: {
     textAlign: 'left',
     padding: '8px 12px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground3,
@@ -277,7 +277,7 @@ export const useProductDetailsStyles = makeStyles({
   },
   tagItem: {
     padding: '3px 10px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     fontSize: '11px',
     fontWeight: 600,
     backgroundColor: tokens.colorNeutralBackground3,
@@ -305,7 +305,7 @@ export const useProductDetailsStyles = makeStyles({
   kitchenValue: {
     fontSize: '14px',
     color: tokens.colorNeutralForeground1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   loadingWrap: {
     display: 'flex',

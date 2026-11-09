@@ -59,7 +59,7 @@ const useStyles = makeStyles({
     borderBottomColor: tokens.colorNeutralStroke1,
     borderLeftColor: tokens.colorNeutralStroke1,
     borderRightColor: tokens.colorNeutralStroke1,
-    borderRadius: '10px',
+    borderRadius: '8px',
     boxShadow: tokens.shadow16,
     maxHeight: '280px',
     overflowY: 'auto',
@@ -70,7 +70,7 @@ const useStyles = makeStyles({
   dropdownHeader: {
     padding: '6px 10px',
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     textTransform: 'uppercase',
     letterSpacing: '0.04em',
@@ -167,11 +167,11 @@ const useStyles = makeStyles({
   },
   variantBadge: {
     fontSize: '10.5px',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   priceText: {
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorBrandForeground1,
   },
   emptyCategoryWrap: {
@@ -194,7 +194,7 @@ const useStyles = makeStyles({
     gap: '4px',
     padding: '6px 14px',
     fontSize: '11.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: '#ffffff',
     backgroundColor: '#E51937',
     borderTopStyle: 'none',
@@ -244,7 +244,7 @@ const useStyles = makeStyles({
   },
   variantBadgeCount: {
     fontSize: '10.5px',
-    fontWeight: 700,
+    fontWeight: 600,
     backgroundColor: 'rgba(229, 25, 55, 0.1)',
     color: '#E51937',
     padding: '1px 6px',
@@ -569,7 +569,7 @@ export function ProductAutocomplete({
                             </span>
                           )}
                           {matchedVariant && (
-                            <span className={styles.variantBadge} style={{ color: '#E51937', fontWeight: 800 }}>
+                            <span className={styles.variantBadge} style={{ color: '#E51937', fontWeight: 600 }}>
                               Matched: {matchedVariant.label}
                             </span>
                           )}
@@ -607,10 +607,10 @@ export function ProductAutocomplete({
                                 handleSelect(prod, v);
                               }}
                               className={styles.variantSelectPill}
-                              style={isMatchedQuery ? { borderColor: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937', fontWeight: 800 } : undefined}
+                              style={isMatchedQuery ? { borderColor: '#E51937', backgroundColor: 'rgba(229, 25, 55, 0.1)', color: '#E51937', fontWeight: 600 } : undefined}
                               title={`Select ${prod.name} (${v.label}) - PKR ${vPrice.toLocaleString()}`}
                             >
-                              <span style={{ fontWeight: 800 }}>{v.label}</span>
+                              <span style={{ fontWeight: 600 }}>{v.label}</span>
                               <span style={{ opacity: 0.85, fontSize: '10px' }}>
                                 Rs. {vPrice.toLocaleString()}
                               </span>

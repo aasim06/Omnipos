@@ -62,6 +62,7 @@ import { clearAllLocalData } from '@/lib/offlineDb';
 import { storage, KEYS } from '@/lib/storage';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { generateQrDataUrl } from '@/lib/qrCode';
+import { printTestReceipt } from '@/lib/receiptPrinter';
 import {
   userStorage,
   AppUser,
@@ -92,6 +93,9 @@ export interface StoreSettings {
   googleMapsUrl?: string;
   showGoogleMapQrOnReceipt?: boolean;
   googleQrAction?: 'review' | 'map';
+  receiptPrinterName?: string;
+  kotPrinterName?: string;
+  silentPrint?: boolean;
 }
 
 const defaultSettings: StoreSettings = {
@@ -117,6 +121,9 @@ const defaultSettings: StoreSettings = {
   googleMapsUrl: '',
   showGoogleMapQrOnReceipt: false,
   googleQrAction: 'review',
+  receiptPrinterName: '',
+  kotPrinterName: '',
+  silentPrint: true,
 };
 
 const ROLE_OPTIONS = [
@@ -146,6 +153,24 @@ export function AdminSettingsView(): React.JSX.Element {
     }
   }, [settings.googleMapsUrl]);
   const [printTestMsg, setPrintTestMsg] = useState('');
+  const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; isDefault?: boolean }>>([]);
+  const [loadingPrinters, setLoadingPrinters] = useState(false);
+
+  const fetchPrinters = async () => {
+    setLoadingPrinters(true);
+    try {
+      const list = await posApi.getPrinters();
+      setInstalledPrinters(list || []);
+    } catch (err) {
+      console.warn('[AdminSettings] Failed to fetch printers:', err);
+    } finally {
+      setLoadingPrinters(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrinters();
+  }, []);
   const [isLicenseOpen, setIsLicenseOpen] = useState(false);
   const [licenseKey, setLicenseKey] = useState('');
   const [cloudUrl, setCloudUrl] = useState('https://omni-server-seven.vercel.app');
@@ -343,11 +368,24 @@ export function AdminSettingsView(): React.JSX.Element {
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  const handleTestPrint = async () => {
-    setPrintTestMsg('Sending test print…');
-    await posApi.printReceipt();
-    setPrintTestMsg('Test print dispatched!');
-    setTimeout(() => setPrintTestMsg(''), 3500);
+  const handleTestPrint = async (targetType: 'receipt' | 'kot' = 'receipt') => {
+    const printerLabel =
+      targetType === 'receipt'
+        ? settings.receiptPrinterName || 'Auto-Detected Thermal'
+        : settings.kotPrinterName || settings.receiptPrinterName || 'Auto-Detected KOT';
+
+    setPrintTestMsg(`Sending test print to ${printerLabel}…`);
+    try {
+      const success = await printTestReceipt(settings, targetType);
+      if (success) {
+        setPrintTestMsg(`✓ Test print sent to ${printerLabel}!`);
+      } else {
+        setPrintTestMsg(`⚠ Print failed. Check printer connection or Windows driver.`);
+      }
+    } catch (err: any) {
+      setPrintTestMsg(`❌ Error: ${err?.message || 'Print dispatch failed'}`);
+    }
+    setTimeout(() => setPrintTestMsg(''), 6000);
   };
 
   const handleOpenGoogleBusinessRegistration = () => {
@@ -553,11 +591,14 @@ export function AdminSettingsView(): React.JSX.Element {
         )}
       </div>
 
-      {/* ── Navigation Tabs ─────────────────────────────────── */}
-      <div className={styles.tabNavContainer}>
+      {/* ── Settings body: section list on the left, content on the right (Windows 11 Settings) ── */}
+      <div className={styles.settingsBody}>
+      {/* ── Section list ─────────────────────────────────── */}
+      <nav className={styles.tabNavContainer} aria-label="Settings sections">
         <button
           type="button"
           onClick={() => setActiveTab('staff')}
+          aria-current={activeTab === 'staff' ? 'page' : undefined}
           className={mergeClasses(styles.tabButton, activeTab === 'staff' && styles.tabButtonActive)}
         >
           <PeopleCommunity24Regular className={mergeClasses(styles.tabIcon, activeTab === 'staff' && styles.tabIconActive)} />
@@ -574,6 +615,7 @@ export function AdminSettingsView(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setActiveTab('profile')}
+          aria-current={activeTab === 'profile' ? 'page' : undefined}
           className={mergeClasses(styles.tabButton, activeTab === 'profile' && styles.tabButtonActive)}
         >
           <BuildingShop24Regular className={mergeClasses(styles.tabIcon, activeTab === 'profile' && styles.tabIconActive)} />
@@ -583,6 +625,7 @@ export function AdminSettingsView(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setActiveTab('hardware')}
+          aria-current={activeTab === 'hardware' ? 'page' : undefined}
           className={mergeClasses(styles.tabButton, activeTab === 'hardware' && styles.tabButtonActive)}
         >
           <Print24Regular className={mergeClasses(styles.tabIcon, activeTab === 'hardware' && styles.tabIconActive)} />
@@ -592,6 +635,7 @@ export function AdminSettingsView(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setActiveTab('backup')}
+          aria-current={activeTab === 'backup' ? 'page' : undefined}
           className={mergeClasses(styles.tabButton, activeTab === 'backup' && styles.tabButtonActive)}
         >
           <Database24Regular className={mergeClasses(styles.tabIcon, activeTab === 'backup' && styles.tabIconActive)} />
@@ -608,6 +652,7 @@ export function AdminSettingsView(): React.JSX.Element {
         <button
           type="button"
           onClick={() => setActiveTab('updates')}
+          aria-current={activeTab === 'updates' ? 'page' : undefined}
           className={mergeClasses(styles.tabButton, activeTab === 'updates' && styles.tabButtonActive)}
         >
           <ArrowSync20Regular className={mergeClasses(styles.tabIcon, activeTab === 'updates' && styles.tabIconActive)} />
@@ -630,8 +675,9 @@ export function AdminSettingsView(): React.JSX.Element {
             </Badge>
           )}
         </button>
-      </div>
+      </nav>
 
+      <div className={styles.settingsContent}>
       {/* ── TAB 1: Staff, Cashiers & Permissions Management (Full Width) ── */}
       {activeTab === 'staff' && (
         <div className={styles.card}>
@@ -861,8 +907,8 @@ export function AdminSettingsView(): React.JSX.Element {
               />
 
               {(settings.receiptLanguage === 'urdu' || settings.receiptLanguage === 'bilingual') && (
-                <div style={{ marginTop: '12px', padding: '12px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <Text weight="semibold" size={200} style={{ color: '#334155' }}>
+                <div style={{ marginTop: '12px', padding: '12px', background: tokens.colorNeutralBackground2, borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <Text weight="semibold" size={200} style={{ color: tokens.colorNeutralForeground2 }}>
                     اردو رسید کے لیے اضافی معلومات (اختیاری):
                   </Text>
 
@@ -1001,9 +1047,9 @@ export function AdminSettingsView(): React.JSX.Element {
               <div
                 style={{
                   padding: '14px 16px',
-                  backgroundColor: '#F8FAFC',
+                  backgroundColor: tokens.colorNeutralBackground2,
                   border: '1px solid #E2E8F0',
-                  borderRadius: '10px',
+                  borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -1012,10 +1058,10 @@ export function AdminSettingsView(): React.JSX.Element {
                 }}
               >
                 <div style={{ maxWidth: '460px' }}>
-                  <Text weight="bold" size={300} style={{ color: '#0F172A', display: 'block' }}>
+                  <Text weight="bold" size={300} style={{ color: tokens.colorNeutralForeground1, display: 'block' }}>
                     List your business on Google Maps
                   </Text>
-                  <Caption1 style={{ color: '#475569', display: 'block', marginTop: '4px', lineHeight: '1.4' }}>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', marginTop: '4px', lineHeight: '1.4' }}>
                     Apni dukan ko Google Maps par muft register karein taakay naye local customers aap ko easily find kar sakein aur receipts par QR code scan kar ke 5-star Google review de sakein.
                   </Caption1>
                 </div>
@@ -1034,8 +1080,8 @@ export function AdminSettingsView(): React.JSX.Element {
               {/* Toggle: Print Google QR on Receipts */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <div>
-                  <Body2 style={{ fontWeight: 600, color: '#0F172A' }}>Print Google Review / Maps QR on Receipts</Body2>
-                  <Caption1 style={{ color: '#64748B', display: 'block' }}>
+                  <Body2 style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>Print Google Review / Maps QR on Receipts</Body2>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block' }}>
                     Customers can scan this QR from thermal bill or invoice to leave a review or view location
                   </Caption1>
                 </div>
@@ -1065,7 +1111,7 @@ export function AdminSettingsView(): React.JSX.Element {
                     Test Link
                   </Button>
                 </div>
-                <Caption2 style={{ color: '#64748B' }}>
+                <Caption2 style={{ color: tokens.colorNeutralForeground2 }}>
                   Tip: Google Maps app mein apni shop open karein, &quot;Share&quot; ya &quot;Ask for reviews&quot; pe click kar ke link yahan paste karein.
                 </Caption2>
               </div>
@@ -1087,7 +1133,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   style={{
                     marginTop: '10px',
                     padding: '14px',
-                    background: '#F8FAFC',
+                    background: tokens.colorNeutralBackground2,
                     borderRadius: '8px',
                     border: '1px dashed #CBD5E1',
                     display: 'flex',
@@ -1111,14 +1157,14 @@ export function AdminSettingsView(): React.JSX.Element {
                     <Badge appearance="tint" color="success" style={{ marginBottom: '4px' }}>
                       Live Receipt QR Preview
                     </Badge>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground1 }}>
                       {settings.googleQrAction === 'map' ? (
                         'Locate us on Google Maps'
                       ) : (
                         'Rate us on Google Maps'
                       )}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+                    <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground2, marginTop: '3px' }}>
                       Yeh QR code customer ke thermal receipt aur invoice ke bottom par print hoga.
                     </div>
                   </div>
@@ -1183,6 +1229,48 @@ export function AdminSettingsView(): React.JSX.Element {
             </div>
 
             <div className={styles.cardBody}>
+              {/* Printer Hardware Selection */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <CustomSelect
+                      label="Customer Receipt Thermal Printer"
+                      value={settings.receiptPrinterName || ''}
+                      onChange={(val) => setSettings({ ...settings, receiptPrinterName: val })}
+                      options={[
+                        { value: '', label: '⚡ Auto-Detect Thermal Printer (XP-80 / Bixolon / ESC-POS)' },
+                        ...installedPrinters.map((p) => ({
+                          value: p.name,
+                          label: `${p.name}${p.isDefault ? ' [System Default]' : ''}`,
+                        })),
+                      ]}
+                    />
+                  </div>
+                  <Button
+                    appearance="subtle"
+                    icon={<ArrowClockwise20Regular />}
+                    onClick={fetchPrinters}
+                    title="Refresh Printer List"
+                    disabled={loadingPrinters}
+                  />
+                </div>
+
+                <CustomSelect
+                  label="Kitchen KOT Ticket Printer"
+                  value={settings.kotPrinterName || ''}
+                  onChange={(val) => setSettings({ ...settings, kotPrinterName: val })}
+                  options={[
+                    { value: '', label: '⚡ Same as Receipt Printer' },
+                    ...installedPrinters.map((p) => ({
+                      value: p.name,
+                      label: `${p.name}${p.isDefault ? ' [System Default]' : ''}`,
+                    })),
+                  ]}
+                />
+              </div>
+
+              <Divider />
+
               <div className={styles.formRow}>
                 <Caption1 className={styles.paperWidthLabel}>Paper Roll Width</Caption1>
                 <div className={styles.segmentedGroup}>
@@ -1207,6 +1295,21 @@ export function AdminSettingsView(): React.JSX.Element {
                     58mm Compact
                   </button>
                 </div>
+              </div>
+
+              <Divider />
+
+              <div className={styles.switchRow}>
+                <div className={styles.switchLabel}>
+                  <Body2 className={styles.switchRowTitle}>Silent Print (Direct ESC/POS)</Body2>
+                  <Caption1 className={styles.switchRowDesc}>
+                    Prints directly to thermal paper without opening print dialog
+                  </Caption1>
+                </div>
+                <Switch
+                  checked={settings.silentPrint !== false}
+                  onChange={(_, d) => setSettings({ ...settings, silentPrint: d.checked })}
+                />
               </div>
 
               <Divider />
@@ -1241,15 +1344,24 @@ export function AdminSettingsView(): React.JSX.Element {
 
               <Divider />
 
-              <div className={styles.testPrintRow}>
-                <Button
-                  appearance="outline"
-                  icon={<Print24Regular />}
-                  onClick={handleTestPrint}
-                  className={styles.testPrintBtn}
-                >
-                  Send Test Print
-                </Button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <Button
+                    appearance="primary"
+                    icon={<Print24Regular />}
+                    onClick={() => handleTestPrint('receipt')}
+                    className={styles.testPrintBtn}
+                  >
+                    Test Receipt Feed &amp; Print
+                  </Button>
+                  <Button
+                    appearance="outline"
+                    icon={<Print24Regular />}
+                    onClick={() => handleTestPrint('kot')}
+                  >
+                    Test Kitchen KOT Feed
+                  </Button>
+                </div>
                 {printTestMsg && (
                   <Caption1 className={styles.testPrintSuccess}>{printTestMsg}</Caption1>
                 )}
@@ -1376,7 +1488,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 <div style={{
                   marginTop: '12px',
                   padding: '12px 16px',
-                  backgroundColor: '#EFF6FF',
+                  backgroundColor: tokens.colorPaletteBlueBackground2,
                   border: '1px solid #BFDBFE',
                   borderRadius: '8px',
                   fontSize: '12.5px',
@@ -1556,7 +1668,7 @@ export function AdminSettingsView(): React.JSX.Element {
             {/* Version & Channel Information Banner */}
             <div className={styles.updateStatusBanner}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: '15px', color: tokens.colorNeutralForeground1, marginBottom: '4px' }}>
+                <div style={{ fontWeight: 600, fontSize: '15px', color: tokens.colorNeutralForeground1, marginBottom: '4px' }}>
                   Current Installed Version
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1598,7 +1710,7 @@ export function AdminSettingsView(): React.JSX.Element {
                         ? `Downloading installer: ${progressInfo.label}`
                         : 'Downloading update package…'}
                   </span>
-                  <span style={{ fontWeight: 700, color: '#E51937' }}>
+                  <span style={{ fontWeight: 600, color: tokens.colorBrandForeground1 }}>
                     {downloadProgress}%
                   </span>
                 </div>
@@ -1625,16 +1737,16 @@ export function AdminSettingsView(): React.JSX.Element {
                   justifyContent: 'space-between',
                   padding: '16px 20px',
                   borderRadius: tokens.borderRadiusMedium,
-                  backgroundColor: '#DCFCE7',
+                  backgroundColor: tokens.colorStatusSuccessBackground1,
                   border: '1px solid #86EFAC',
                   gap: '16px',
                   flexWrap: 'wrap',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <CheckmarkCircle20Filled style={{ color: '#16A34A', fontSize: '24px' }} />
+                  <CheckmarkCircle20Filled style={{ color: tokens.colorStatusSuccessForeground1, fontSize: '24px' }} />
                   <div>
-                    <div style={{ fontWeight: 700, color: '#15803D', fontSize: '14px' }}>
+                    <div style={{ fontWeight: 600, color: '#15803D', fontSize: '14px' }}>
                       Update Downloaded &amp; Ready to Apply!
                     </div>
                     <div style={{ fontSize: '12px', color: '#166534', marginTop: '2px' }}>
@@ -1663,12 +1775,12 @@ export function AdminSettingsView(): React.JSX.Element {
                   justifyContent: 'space-between',
                   padding: '14px 18px',
                   borderRadius: tokens.borderRadiusMedium,
-                  backgroundColor: '#FEE2E2',
+                  backgroundColor: tokens.colorStatusDangerBackground1,
                   border: '1px solid #FCA5A5',
                   gap: '12px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#B91C1C' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: tokens.colorStatusDangerForeground1 }}>
                   <Warning20Regular />
                   <span style={{ fontSize: '13px', fontWeight: 600 }}>{updateError}</span>
                 </div>
@@ -1683,8 +1795,8 @@ export function AdminSettingsView(): React.JSX.Element {
               <div className={styles.backupActionCard}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <ArrowSync20Regular style={{ color: '#E51937' }} />
-                    <Body1 style={{ fontWeight: 700 }}>Automated Background Updates</Body1>
+                    <ArrowSync20Regular style={{ color: tokens.colorBrandForeground1 }} />
+                    <Body1 style={{ fontWeight: 600 }}>Automated Background Updates</Body1>
                   </div>
                   <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.6 }}>
                     Omnipos automatically checks for updates silently in the background every 4 hours. When a new release tag is created on GitHub, the installer is staged without interrupting your POS cashier operations.
@@ -1695,8 +1807,8 @@ export function AdminSettingsView(): React.JSX.Element {
               <div className={styles.backupActionCard}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <ShieldCheckmark20Regular style={{ color: '#107C41' }} />
-                    <Body1 style={{ fontWeight: 700 }}>Data Safety Guarantee</Body1>
+                    <ShieldCheckmark20Regular style={{ color: tokens.colorStatusSuccessForeground1 }} />
+                    <Body1 style={{ fontWeight: 600 }}>Data Safety Guarantee</Body1>
                   </div>
                   <Caption1 style={{ color: tokens.colorNeutralForeground2, lineHeight: 1.6 }}>
                     Upgrades will never wipe or reset your SQLite database, local products, sales records, customer khatas, or store configuration. All business records remain completely intact.
@@ -1715,6 +1827,8 @@ export function AdminSettingsView(): React.JSX.Element {
           </div>
         </div>
       )}
+      </div>
+      </div>
 
       {/* ── MODAL: Restore Database Confirmation Dialog ────── */}
       <Dialog open={isRestoreConfirmOpen} onOpenChange={(_, d) => setIsRestoreConfirmOpen(d.open)}>
@@ -1745,11 +1859,11 @@ export function AdminSettingsView(): React.JSX.Element {
                 </div>
                 <div className={styles.restoreFeaturesList}>
                   <div className={styles.restoreFeatureItem}>
-                    <CheckmarkCircle20Filled style={{ color: '#059669', fontSize: 15 }} />
+                    <CheckmarkCircle20Filled style={{ color: tokens.colorStatusSuccessForeground1, fontSize: 15 }} />
                     <span><strong>Database Tables:</strong> Products, categories, orders, customers &amp; khatas</span>
                   </div>
                   <div className={styles.restoreFeatureItem}>
-                    <CheckmarkCircle20Filled style={{ color: '#059669', fontSize: 15 }} />
+                    <CheckmarkCircle20Filled style={{ color: tokens.colorStatusSuccessForeground1, fontSize: 15 }} />
                     <span><strong>Media Assets:</strong> All saved product images &amp; menu photos</span>
                   </div>
                 </div>

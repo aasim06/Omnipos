@@ -89,12 +89,12 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={(_, d) => !d.open && onClose()}>
-      <DialogSurface style={{ maxWidth: '850px', width: '95vw', padding: '24px', borderRadius: '14px' }}>
+      <DialogSurface style={{ maxWidth: '850px', width: '95vw', padding: '24px', borderRadius: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #E1DFDD', paddingBottom: '16px', marginBottom: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <History20Regular style={{ color: '#0078D4' }} />
-              <DialogTitle style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>
+              <DialogTitle style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>
                 Vendor Account Ledger (Khata)
               </DialogTitle>
             </div>
@@ -114,12 +114,12 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
               gap: '12px',
               padding: '14px 16px',
               backgroundColor: '#F8F9FA',
-              borderRadius: '10px',
+              borderRadius: '8px',
               border: '1px solid #EDEBE9'
             }}>
               <div>
                 <Caption1 style={{ color: '#8A8886', textTransform: 'uppercase', fontWeight: 600 }}>Vendor Name</Caption1>
-                <Body1 style={{ fontWeight: 700, color: '#323130', display: 'block', fontSize: '15px' }}>{currentVendor.name}</Body1>
+                <Body1 style={{ fontWeight: 600, color: '#323130', display: 'block', fontSize: '15px' }}>{currentVendor.name}</Body1>
                 {currentVendor.contactPerson && (
                   <Caption1 style={{ color: '#605E5C' }}>Rep: {currentVendor.contactPerson}</Caption1>
                 )}
@@ -133,7 +133,7 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
 
               <div>
                 <Caption1 style={{ color: '#8A8886', textTransform: 'uppercase', fontWeight: 600 }}>Total Bills Recorded</Caption1>
-                <Body1 style={{ fontWeight: 700, color: '#323130', display: 'block', fontSize: '15px' }}>
+                <Body1 style={{ fontWeight: 600, color: '#323130', display: 'block', fontSize: '15px' }}>
                   {transactions.filter((t) => t.type === 'BILL').length}
                 </Body1>
                 <Caption1 style={{ color: '#605E5C' }}>
@@ -150,10 +150,10 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
                 flexDirection: 'column',
                 justifyContent: 'center'
               }}>
-                <Caption1 style={{ color: currentBal > 0 ? '#A4262C' : '#107C41', fontWeight: 700, textTransform: 'uppercase' }}>
+                <Caption1 style={{ color: currentBal > 0 ? '#A4262C' : '#107C41', fontWeight: 600, textTransform: 'uppercase' }}>
                   {currentBal > 0 ? 'Payable Balance (Wajib-ul-Ada)' : 'Account Settled (Nill)'}
                 </Caption1>
-                <span style={{ fontSize: '18px', fontWeight: 800, color: currentBal > 0 ? '#D13438' : '#107C41' }}>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: currentBal > 0 ? '#D13438' : '#107C41' }}>
                   {formatPKR(currentBal)}
                 </span>
               </div>
@@ -161,7 +161,7 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
 
             {/* Quick Action Bar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Subtitle2 style={{ fontWeight: 700 }}>Transaction History</Subtitle2>
+              <Subtitle2 style={{ fontWeight: 600 }}>Transaction History</Subtitle2>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <Button
                   appearance={showPaymentForm ? 'secondary' : 'primary'}
@@ -191,13 +191,13 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
               <div style={{
                 backgroundColor: '#FAFCFA',
                 border: '1px solid #107C41',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 padding: '16px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px'
               }}>
-                <Subtitle2 style={{ color: '#107C41', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Subtitle2 style={{ color: '#107C41', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <MoneyHand20Regular /> Record Cash / Bank Payment to {currentVendor.name}
                 </Subtitle2>
 
@@ -232,7 +232,7 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
                     appearance="primary"
                     icon={<Checkmark20Regular />}
                     onClick={handleRecordPayment}
-                    style={{ backgroundColor: '#107C41', color: '#FFF', fontWeight: 700, height: '36px' }}
+                    style={{ backgroundColor: '#107C41', color: '#FFF', fontWeight: 600, height: '36px' }}
                   >
                     Save Payment
                   </Button>
@@ -250,7 +250,7 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
             }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#F3F2F1', borderBottom: '1px solid #EDEBE9', textAlign: 'left', color: '#605E5C', fontWeight: 700 }}>
+                  <tr style={{ backgroundColor: '#F3F2F1', borderBottom: '1px solid #EDEBE9', textAlign: 'left', color: '#605E5C', fontWeight: 600 }}>
                     <th style={{ padding: '10px 12px' }}>Date</th>
                     <th style={{ padding: '10px 12px' }}>Type</th>
                     <th style={{ padding: '10px 12px' }}>Details / Reference</th>
@@ -297,7 +297,7 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
                           <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: !isBill ? '#107C41' : '#8A8886' }}>
                             {!isBill ? formatPKR(tx.amount) : '—'}
                           </td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: tx.balanceAfter > 0 ? '#D13438' : '#107C41' }}>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: tx.balanceAfter > 0 ? '#D13438' : '#107C41' }}>
                             {formatPKR(tx.balanceAfter)}
                           </td>
                         </tr>

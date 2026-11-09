@@ -84,7 +84,7 @@ export const useReportsAnalyticsStyles = makeStyles({
     gap: '4px',
   },
   headerTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '20px',
     color: tokens.colorNeutralForeground1,
     margin: 0,
@@ -131,19 +131,19 @@ export const useReportsAnalyticsStyles = makeStyles({
   },
   salesValue: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#0078D4',
     display: 'block',
   },
   cogsValue: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#881798',
     display: 'block',
   },
   expenseValue: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#D13438',
     display: 'block',
   },
@@ -152,19 +152,19 @@ export const useReportsAnalyticsStyles = makeStyles({
   },
   refundValue: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#E51937',
     display: 'block',
   },
   netProfitValueSuccess: {
     fontSize: '30px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#107C41',
     display: 'block',
   },
   netProfitValueDanger: {
     fontSize: '30px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: '#D13438',
     display: 'block',
   },
@@ -193,7 +193,7 @@ export const useReportsAnalyticsStyles = makeStyles({
     paddingBottom: '12px',
   },
   sectionTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'flex',
     alignItems: 'center',

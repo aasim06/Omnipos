@@ -29,7 +29,7 @@ export const useVendorsStyles = makeStyles({
   },
   cardTitle: {
     fontSize: '14px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
     letterSpacing: '-0.2px',
@@ -41,7 +41,7 @@ export const useVendorsStyles = makeStyles({
   },
   fieldLabel: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.6px',
     color: tokens.colorNeutralForeground2,
@@ -70,13 +70,13 @@ export const useVendorsStyles = makeStyles({
   },
   saveBtn: {
     height: '38px',
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     borderRadius: tokens.borderRadiusMedium,
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     border: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+    boxShadow: 'none',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -86,7 +86,7 @@ export const useVendorsStyles = makeStyles({
     whiteSpace: 'nowrap',
     transition: 'all 0.15s ease',
     ':hover': {
-      backgroundColor: '#C6172E',
+      backgroundColor: tokens.colorBrandBackgroundHover,
     },
   },
   filterBar: {
@@ -113,7 +113,7 @@ export const useVendorsStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground2,
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.6px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -138,8 +138,7 @@ export const useVendorsStyles = makeStyles({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    backdropFilter: 'blur(3px)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Win11 smoke layer, no blur,
     zIndex: 1000,
     display: 'flex',
     justifyContent: 'flex-end',
@@ -197,7 +196,7 @@ export const useVendorsStyles = makeStyles({
     height: '16px',
   },
   directoryTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   searchBoxContainer: {
@@ -234,7 +233,7 @@ export const useVendorsStyles = makeStyles({
     gap: '2px',
   },
   vendorNameText: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     fontSize: '13px',
   },
@@ -255,13 +254,13 @@ export const useVendorsStyles = makeStyles({
   },
   tdBalanceDebit: {
     textAlign: 'right',
-    fontWeight: 700,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
   },
   tdBalanceCredit: {
     textAlign: 'right',
-    fontWeight: 700,
-    color: '#107C41',
+    fontWeight: 600,
+    color: tokens.colorStatusSuccessForeground1,
   },
   actionBtnsRow: {
     display: 'flex',
@@ -297,10 +296,10 @@ export const useVendorsStyles = makeStyles({
     minWidth: '30px',
     padding: 0,
     borderRadius: '6px',
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
+    backgroundColor: tokens.colorStatusDangerBackground1,
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.25)', borderBottomColor: 'rgba(229, 25, 55, 0.25)', borderLeftColor: 'rgba(229, 25, 55, 0.25)', borderRightColor: 'rgba(229, 25, 55, 0.25)',
+    borderTopColor: tokens.colorStatusDangerBorder1, borderBottomColor: tokens.colorStatusDangerBorder1, borderLeftColor: tokens.colorStatusDangerBorder1, borderRightColor: tokens.colorStatusDangerBorder1,
   },
   actionBtnDelete: {
     width: '30px',
@@ -314,22 +313,22 @@ export const useVendorsStyles = makeStyles({
     borderTopColor: 'rgba(209, 52, 56, 0.25)', borderBottomColor: 'rgba(209, 52, 56, 0.25)', borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
   },
   iconStockIn: {
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     width: '16px',
     height: '16px',
   },
   iconPrint: {
-    color: '#0078D4',
+    color: tokens.colorPaletteBlueForeground2,
     width: '16px',
     height: '16px',
   },
   iconEdit: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
     width: '16px',
     height: '16px',
   },
   iconDelete: {
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
     width: '16px',
     height: '16px',
   },
@@ -339,7 +338,7 @@ export const useVendorsStyles = makeStyles({
     gap: '8px',
   },
   drawerTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     margin: 0,
   },
@@ -354,12 +353,12 @@ export const useVendorsStyles = makeStyles({
     overflow: 'hidden',
   },
   drawerSaveBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
   },
   printModalSurface: {
     maxWidth: '480px',
     width: '92vw',
-    borderRadius: '12px',
+    borderRadius: '8px',
     padding: '24px',
   },
   printModalHeader: {
@@ -371,7 +370,7 @@ export const useVendorsStyles = makeStyles({
   printModalTitle: {
     margin: 0,
     fontSize: '18px',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   printModalCloseBtn: {
     minWidth: 'auto',
@@ -397,7 +396,7 @@ export const useVendorsStyles = makeStyles({
     marginBottom: '12px',
   },
   slipStoreTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '16px',
     letterSpacing: '1px',
   },
@@ -413,7 +412,7 @@ export const useVendorsStyles = makeStyles({
     justifyContent: 'space-between',
   },
   slipBoldLabel: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   slipInvoicesBox: {
     margin: '10px 0',
@@ -426,7 +425,7 @@ export const useVendorsStyles = makeStyles({
     padding: '8px 0',
   },
   slipInvoicesHeader: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     marginBottom: '4px',
     textTransform: 'uppercase',
@@ -451,7 +450,7 @@ export const useVendorsStyles = makeStyles({
   slipBalanceRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '14px',
   },
   slipFooterSignature: {
@@ -479,7 +478,7 @@ export const useVendorsStyles = makeStyles({
     height: '38px',
     padding: '0 22px',
     borderRadius: '6px',
-    backgroundColor: '#0078D4',
+    backgroundColor: tokens.colorPaletteBlueBorderActive,
     whiteSpace: 'nowrap',
     fontWeight: 600,
   },

@@ -1540,6 +1540,21 @@ export const posApi = {
   },
 
   /**
+   * Get installed system printers (Electron)
+   */
+  async getPrinters(): Promise<any[]> {
+    if (typeof window !== 'undefined' && (window as any).posApi?.getPrinters) {
+      try {
+        return await (window as any).posApi.getPrinters();
+      } catch (err) {
+        console.warn('[posApi] getPrinters error:', err);
+        return [];
+      }
+    }
+    return [];
+  },
+
+  /**
    * Print receipt or thermal KOT ticket
    */
   async printReceipt(options?: { printerName?: string; silent?: boolean; html?: string }): Promise<boolean> {

@@ -55,7 +55,7 @@ const useStyles = makeStyles({
     gap: '2px',
   },
   headerTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '20px',
     color: tokens.colorNeutralForeground1,
     margin: 0,
@@ -69,7 +69,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
   },
   arrowUpIcon: {
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   stockOutBtn: {
     borderRadius: '8px',
@@ -89,16 +89,16 @@ const useStyles = makeStyles({
     borderRightColor: tokens.colorNeutralStroke1,
   },
   stockInBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     borderTopStyle: 'none',
     borderBottomStyle: 'none',
     borderLeftStyle: 'none',
     borderRightStyle: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+    boxShadow: 'none',
   },
 });
 
@@ -159,9 +159,9 @@ export function InventoryLayout(): React.JSX.Element {
             icon={<Receipt20Regular />}
             onClick={() => setIsPurchaseBillOpen(true)}
             style={{
-              borderColor: '#0078D4',
-              color: '#0078D4',
-              fontWeight: 700,
+              borderColor: tokens.colorPaletteBlueBorderActive,
+              color: tokens.colorPaletteBlueForeground2,
+              fontWeight: 600,
               borderRadius: '8px',
               fontSize: '13px',
             }}

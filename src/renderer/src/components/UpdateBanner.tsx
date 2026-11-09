@@ -24,7 +24,7 @@ const useStyles = makeStyles({
     width: '380px',
     backgroundColor: tokens.colorNeutralBackground1,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
-    borderRadius: '14px',
+    borderRadius: '8px',
     padding: '16px',
     boxShadow: '0 12px 36px rgba(0, 0, 0, 0.35)',
     display: 'flex',
@@ -59,7 +59,7 @@ const useStyles = makeStyles({
     color: '#16A34A',
   },
   title: {
-    fontWeight: '700',
+    fontWeight: '600',
     fontSize: '14px',
     color: tokens.colorNeutralForeground1,
   },

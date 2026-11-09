@@ -47,7 +47,7 @@ export const useStockLedgerStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground2,
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -69,30 +69,30 @@ export const useStockLedgerStyles = makeStyles({
   },
   kpiValueDefault: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '6px',
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
   kpiValueSuccess: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '6px',
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     display: 'block',
   },
   kpiValueDanger: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '6px',
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
     display: 'block',
   },
   kpiValueBrand: {
     fontSize: '26px',
-    fontWeight: 800,
+    fontWeight: 600,
     marginTop: '6px',
-    color: '#0078D4',
+    color: tokens.colorPaletteBlueForeground2,
     display: 'block',
   },
   kpiSubtext: {
@@ -106,15 +106,15 @@ export const useStockLedgerStyles = makeStyles({
     gap: '8px',
   },
   filterIcon: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   filterTitle: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   filterBadge: {
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-    color: '#E51937',
+    backgroundColor: tokens.colorStatusDangerBackground1,
+    color: tokens.colorBrandForeground1,
   },
   filterRight: {
     display: 'flex',
@@ -129,10 +129,10 @@ export const useStockLedgerStyles = makeStyles({
     minWidth: '140px',
   },
   printBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#ffffff',
     fontWeight: 600,
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
+    boxShadow: 'none',
     borderRadius: '6px',
   },
   thRight: {
@@ -154,10 +154,10 @@ export const useStockLedgerStyles = makeStyles({
     display: 'block',
   },
   badgeBold: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   productName: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
@@ -174,24 +174,24 @@ export const useStockLedgerStyles = makeStyles({
     textAlign: 'center',
   },
   qtyIn: {
-    fontWeight: 800,
-    color: '#107C41',
+    fontWeight: 600,
+    color: tokens.colorStatusSuccessForeground1,
     fontSize: '14px',
   },
   qtyOut: {
-    fontWeight: 800,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
     fontSize: '14px',
   },
   impactValIn: {
     textAlign: 'right',
-    fontWeight: 700,
-    color: '#107C41',
+    fontWeight: 600,
+    color: tokens.colorStatusSuccessForeground1,
   },
   impactValOut: {
     textAlign: 'right',
-    fontWeight: 700,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
   },
   actionBtnDelete: {
     width: '30px',
@@ -208,7 +208,7 @@ export const useStockLedgerStyles = makeStyles({
     borderLeftColor: 'rgba(209, 52, 56, 0.25)', borderRightColor: 'rgba(209, 52, 56, 0.25)',
   },
   iconDelete: {
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
   },
   scopeRow: {
     display: 'flex',
@@ -229,7 +229,7 @@ export const useStockLedgerStyles = makeStyles({
   },
   scopeLabel: {
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
@@ -261,16 +261,16 @@ export const useStockLedgerStyles = makeStyles({
     transition: 'all 0.12s ease',
   },
   scopeBtnActive: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeBtnBadge: {
     fontSize: '10px',
     padding: '1px 5px',
     borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeBtnBadgeActive: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
@@ -297,12 +297,12 @@ export const useStockLedgerStyles = makeStyles({
   icon14Red: {
     width: '14px',
     height: '14px',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   icon14Blue: {
     width: '14px',
     height: '14px',
-    color: '#2563EB',
+    color: tokens.colorPaletteBlueForeground2,
   },
 });
 

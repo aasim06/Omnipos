@@ -24,7 +24,7 @@ export const useStockOutStyles = makeStyles({
   },
   cardTitle: {
     fontSize: '14px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
     letterSpacing: '-0.2px',
@@ -60,7 +60,7 @@ export const useStockOutStyles = makeStyles({
   },
   fieldLabel: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.6px',
     color: tokens.colorNeutralForeground2,
@@ -79,15 +79,15 @@ export const useStockOutStyles = makeStyles({
   },
   lineTotalValue: {
     fontSize: '14px',
-    fontWeight: 800,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
   },
   saveBtn: {
     height: '36px',
     backgroundColor: '#D13438',
     color: '#FFFFFF',
     borderRadius: tokens.borderRadiusMedium,
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     border: 'none',
     boxShadow: '0 2px 6px rgba(209, 52, 56, 0.3)',
@@ -125,7 +125,7 @@ export const useStockOutStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground2,
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     textTransform: 'uppercase',
     letterSpacing: '0.6px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -151,8 +151,7 @@ export const useStockOutStyles = makeStyles({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    backdropFilter: 'blur(3px)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Win11 smoke layer, no blur,
     zIndex: 1000,
     display: 'flex',
     justifyContent: 'flex-end',
@@ -222,12 +221,12 @@ export const useStockOutStyles = makeStyles({
     height: '16px',
   },
   iconPrint: {
-    color: '#0078D4',
+    color: tokens.colorPaletteBlueForeground2,
     width: '16px',
     height: '16px',
   },
   iconRed: {
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
     width: '16px',
     height: '16px',
   },
@@ -271,16 +270,16 @@ export const useStockOutStyles = makeStyles({
   },
   tdRightLoss: {
     textAlign: 'right',
-    fontWeight: 700,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
   },
   productNameText: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
   badgeBold: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   reasonText: {
     color: tokens.colorNeutralForeground1,
@@ -345,13 +344,13 @@ export const useStockOutStyles = makeStyles({
   },
   drawerHeaderIconBadge: {
     backgroundColor: 'rgba(209, 52, 56, 0.12)',
-    color: '#D13438',
+    color: tokens.colorStatusDangerForeground1,
     padding: '8px',
     borderRadius: '8px',
     display: 'inline-flex',
   },
   drawerTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
@@ -382,11 +381,11 @@ export const useStockOutStyles = makeStyles({
     backgroundColor: '#D13438',
     color: '#FFFFFF',
     borderRadius: '8px',
-    fontWeight: 700,
+    fontWeight: 600,
     border: 'none',
   },
   dialogSurface: {
-    borderRadius: '12px',
+    borderRadius: '8px',
     width: '480px',
     maxWidth: '94vw',
     padding: '22px',
@@ -399,7 +398,7 @@ export const useStockOutStyles = makeStyles({
     marginBottom: '14px',
   },
   dialogTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     margin: 0,
     fontSize: '17px',
@@ -429,7 +428,7 @@ export const useStockOutStyles = makeStyles({
     paddingBottom: '8px',
   },
   voucherHeaderTitle: {
-    fontWeight: 800,
+    fontWeight: 600,
     fontSize: '15px',
   },
   voucherHeaderSubtitle: {
@@ -455,8 +454,8 @@ export const useStockOutStyles = makeStyles({
     color: '#555',
   },
   voucherReasonVal: {
-    fontWeight: 700,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
   },
   voucherTableSection: {
     borderTopWidth: '1px', borderBottomWidth: '1px',
@@ -468,7 +467,7 @@ export const useStockOutStyles = makeStyles({
   voucherTableTitleRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    fontWeight: 800,
+    fontWeight: 600,
   },
   voucherTableRow: {
     display: 'flex',
@@ -476,15 +475,15 @@ export const useStockOutStyles = makeStyles({
     marginTop: '4px',
   },
   voucherDeductedVal: {
-    fontWeight: 800,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
   },
   voucherTotalRow: {
     display: 'flex',
     justifyContent: 'space-between',
     fontSize: '14px',
-    fontWeight: 800,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
   },
   voucherRemarks: {
     fontSize: '10px',
@@ -526,9 +525,9 @@ export const useStockOutStyles = makeStyles({
   dialogPrintBtn: {
     height: '38px',
     padding: '0 22px',
-    backgroundColor: '#0078D4',
+    backgroundColor: tokens.colorPaletteBlueBorderActive,
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     borderRadius: '8px',
     border: 'none',
     whiteSpace: 'nowrap',
@@ -552,7 +551,7 @@ export const useStockOutStyles = makeStyles({
   },
   scopeLabel: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
@@ -589,16 +588,16 @@ export const useStockOutStyles = makeStyles({
     transitionTimingFunction: 'ease',
   },
   scopeBtnActive: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeBtnBadge: {
     fontSize: '10px',
     padding: '1px 5px',
     borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   scopeBtnBadgeActive: {
     backgroundColor: 'rgba(255,255,255,0.25)',
@@ -623,12 +622,12 @@ export const useStockOutStyles = makeStyles({
   icon14Red: {
     width: '14px',
     height: '14px',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   icon14Blue: {
     width: '14px',
     height: '14px',
-    color: '#2563EB',
+    color: tokens.colorPaletteBlueForeground2,
   },
   icon14Neutral: {
     width: '14px',
@@ -637,7 +636,7 @@ export const useStockOutStyles = makeStyles({
   icon12Red: {
     width: '12px',
     height: '12px',
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
   },
   historyHeader: {
     display: 'flex',

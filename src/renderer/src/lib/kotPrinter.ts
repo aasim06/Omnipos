@@ -1,5 +1,7 @@
 import { Order } from './types';
 import { posApi } from './api';
+import { storage, KEYS } from './storage';
+import { StoreSettings } from '@/features/admin/AdminSettingsView';
 
 export interface KotPrintOptions {
   tableOrToken?: string;
@@ -49,21 +51,26 @@ export function generateKotHtml(order: Order, options?: KotPrintOptions): string
       <style>
         @page {
           margin: 0;
-          size: auto;
+          size: 80mm 297mm;
         }
         * {
           box-sizing: border-box;
           margin: 0;
           padding: 0;
+          color: #000000 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
         html, body {
-          font-family: 'Noto Sans Arabic', 'Segoe UI', Tahoma, 'Urdu Typesetting', 'Courier New', Courier, monospace, system-ui, sans-serif;
-          width: 66mm;
-          max-width: 66mm;
-          margin: 0;
-          padding: 3mm 2mm 8mm 1mm;
-          color: #000;
-          background: #fff;
+          font-family: Arial, 'Segoe UI', Tahoma, sans-serif;
+          width: 100%;
+          max-width: 72mm;
+          margin: 0 auto;
+          padding: 2mm 1mm;
+          color: #000000 !important;
+          background: #ffffff !important;
+          font-size: 13px;
+          font-weight: 700;
           overflow-x: hidden;
         }
         .header {
@@ -145,6 +152,9 @@ export function generateKotHtml(order: Order, options?: KotPrintOptions): string
         TOTAL ITEMS: ${order.lines?.reduce((sum, l) => sum + (l.quantity || 1), 0) || 0}
         <div style="font-size: 10px; margin-top: 4px; font-weight: normal;">* Sent immediately to Kitchen Display & Printer *</div>
       </div>
+
+      <!-- Feed space for cutter / tear-bar clearance -->
+      <div style="height: 18mm; min-height: 50px;"></div>
     </body>
     </html>
   `;
@@ -154,12 +164,19 @@ export function generateKotHtml(order: Order, options?: KotPrintOptions): string
  * Print Kitchen KOT directly to thermal printer
  */
 export async function printKitchenKot(order: Order, options?: KotPrintOptions): Promise<boolean> {
-  const html = generateKotHtml(order, options);
+  const settings = storage.getItem<StoreSettings>(KEYS.storeSettings, {} as any);
+  const html = generateKotHtml(order, {
+    ...options,
+    storeName: options?.storeName || settings?.storeName,
+  });
+  const targetPrinter =
+    options?.printerName || settings?.kotPrinterName || settings?.receiptPrinterName;
+
   try {
     return await posApi.printReceipt({
       html,
-      silent: true,
-      printerName: options?.printerName,
+      silent: settings?.silentPrint ?? true,
+      printerName: targetPrinter,
     });
   } catch (err) {
     console.warn('[KOT Printer] Failed to dispatch KOT print:', err);

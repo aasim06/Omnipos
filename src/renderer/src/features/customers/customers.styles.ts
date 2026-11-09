@@ -42,7 +42,7 @@ export const useCustomersStyles = makeStyles({
   },
   title: {
     fontSize: '22px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   subtitle: {
@@ -55,24 +55,24 @@ export const useCustomersStyles = makeStyles({
     gap: '10px',
   },
   primaryBtn: {
-    backgroundColor: '#E51937',
+    backgroundColor: tokens.colorBrandBackground,
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     border: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
+    boxShadow: 'none',
     ':hover': {
       backgroundColor: '#be123c',
       color: '#FFFFFF',
     },
   },
   refundHeaderBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: tokens.colorPaletteBlueBorderActive,
     color: '#FFFFFF',
-    fontWeight: 700,
+    fontWeight: 600,
     border: 'none',
     boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)',
     ':hover': {
-      backgroundColor: '#1d4ed8',
+      backgroundColor: tokens.colorPaletteBlueBorderActive,
       color: '#FFFFFF',
     },
   },
@@ -85,7 +85,7 @@ export const useCustomersStyles = makeStyles({
   },
   statCard: {
     padding: '16px 20px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     display: 'flex',
@@ -96,7 +96,7 @@ export const useCustomersStyles = makeStyles({
   statIconBox: {
     width: '42px',
     height: '42px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -108,7 +108,7 @@ export const useCustomersStyles = makeStyles({
   },
   statValue: {
     fontSize: '20px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   statLabel: {
@@ -120,7 +120,7 @@ export const useCustomersStyles = makeStyles({
   // Card Panel
   card: {
     padding: '20px 24px',
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     boxShadow: tokens.shadow2,
@@ -159,7 +159,7 @@ export const useCustomersStyles = makeStyles({
     padding: '12px 16px',
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground2,
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
@@ -205,15 +205,15 @@ export const useCustomersStyles = makeStyles({
     height: '30px',
     borderRadius: '6px',
     border: '1px solid rgba(37, 99, 235, 0.3)',
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    backgroundColor: tokens.colorPaletteBlueBackground2,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    color: '#2563EB',
+    color: tokens.colorPaletteBlueForeground2,
     transition: 'all 0.15s ease',
     ':hover': {
-      backgroundColor: '#2563EB',
+      backgroundColor: tokens.colorPaletteBlueBorderActive,
       color: '#FFFFFF',
     },
   },
@@ -246,7 +246,7 @@ export const useCustomersStyles = makeStyles({
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
     cursor: 'pointer',
-    fontWeight: 700,
+    fontWeight: 600,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -260,7 +260,7 @@ export const useCustomersStyles = makeStyles({
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
     borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
-    fontWeight: 700,
+    fontWeight: 600,
   },
   headerLeftRow: {
     display: 'flex',
@@ -268,21 +268,21 @@ export const useCustomersStyles = makeStyles({
     gap: '10px',
   },
   headerIconRed: {
-    color: '#E51937',
+    color: tokens.colorBrandForeground1,
     width: '28px',
     height: '28px',
   },
   statIconBoxRed: {
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
-    color: '#E51937',
+    backgroundColor: tokens.colorStatusDangerBackground1,
+    color: tokens.colorBrandForeground1,
   },
   statIconBoxAmber: {
     backgroundColor: 'rgba(217, 119, 6, 0.12)',
-    color: '#D97706',
+    color: tokens.colorStatusWarningForeground1,
   },
   statIconBoxBlue: {
-    backgroundColor: 'rgba(37, 99, 235, 0.12)',
-    color: '#2563EB',
+    backgroundColor: tokens.colorPaletteBlueBackground2,
+    color: tokens.colorPaletteBlueForeground2,
   },
   icon22: {
     width: '22px',
@@ -311,7 +311,7 @@ export const useCustomersStyles = makeStyles({
   viewTabBtn: {
     padding: '8px 18px',
     borderRadius: '6px',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     cursor: 'pointer',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
@@ -326,15 +326,15 @@ export const useCustomersStyles = makeStyles({
   },
   viewTabBtnActiveCustomers: {
     borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
-    borderTopColor: '#E51937', borderBottomColor: '#E51937', borderLeftColor: '#E51937', borderRightColor: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
-    color: '#E51937',
+    borderTopColor: tokens.colorCompoundBrandStroke, borderBottomColor: tokens.colorCompoundBrandStroke, borderLeftColor: tokens.colorCompoundBrandStroke, borderRightColor: tokens.colorCompoundBrandStroke,
+    backgroundColor: tokens.colorStatusDangerBackground1,
+    color: tokens.colorBrandForeground1,
   },
   viewTabBtnActiveRefunds: {
     borderTopWidth: '2px', borderBottomWidth: '2px', borderLeftWidth: '2px', borderRightWidth: '2px',
-    borderTopColor: '#2563EB', borderBottomColor: '#2563EB', borderLeftColor: '#2563EB', borderRightColor: '#2563EB',
-    backgroundColor: 'rgba(37, 99, 235, 0.1)',
-    color: '#2563EB',
+    borderTopColor: tokens.colorPaletteBlueBorderActive, borderBottomColor: tokens.colorPaletteBlueBorderActive, borderLeftColor: tokens.colorPaletteBlueBorderActive, borderRightColor: tokens.colorPaletteBlueBorderActive,
+    backgroundColor: tokens.colorPaletteBlueBackground2,
+    color: tokens.colorPaletteBlueForeground2,
   },
   showingCountText: {
     fontSize: '12px',
@@ -362,11 +362,11 @@ export const useCustomersStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '11px',
   },
   customerNameBold: {
-    fontWeight: 700,
+    fontWeight: 600,
   },
   phoneCell: {
     display: 'inline-flex',
@@ -384,15 +384,15 @@ export const useCustomersStyles = makeStyles({
     fontWeight: 600,
   },
   blueSpentText: {
-    fontWeight: 700,
-    color: '#0078D4',
+    fontWeight: 600,
+    color: tokens.colorPaletteBlueForeground2,
   },
   amberDebtText: {
-    fontWeight: 700,
-    color: '#D97706',
+    fontWeight: 600,
+    color: tokens.colorStatusWarningForeground1,
   },
   greenZeroText: {
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
     fontWeight: 600,
   },
   actionGroupRight: {
@@ -400,7 +400,7 @@ export const useCustomersStyles = makeStyles({
   },
   tableSubtitle: {
     fontSize: '13px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   tableSubCount: {
@@ -412,8 +412,8 @@ export const useCustomersStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
   },
   orderIdBlue: {
-    fontWeight: 700,
-    color: '#2563EB',
+    fontWeight: 600,
+    color: tokens.colorPaletteBlueForeground2,
   },
   itemsCol: {
     display: 'flex',
@@ -425,8 +425,8 @@ export const useCustomersStyles = makeStyles({
     color: tokens.colorNeutralForeground1,
   },
   refundAmountDanger: {
-    fontWeight: 800,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
     fontSize: '14px',
   },
   dialogSurface480: {
@@ -459,10 +459,10 @@ export const useCustomersStyles = makeStyles({
     gap: '8px',
   },
   blueIcon: {
-    color: '#2563EB',
+    color: tokens.colorPaletteBlueForeground2,
   },
   greenIcon: {
-    color: '#107C41',
+    color: tokens.colorStatusSuccessForeground1,
   },
   dialogBodyCol16: {
     display: 'flex',
@@ -474,8 +474,8 @@ export const useCustomersStyles = makeStyles({
     padding: '12px 16px',
     borderRadius: '8px',
     backgroundColor: 'rgba(16, 124, 65, 0.12)',
-    color: '#107C41',
-    fontWeight: 700,
+    color: tokens.colorStatusSuccessForeground1,
+    fontWeight: 600,
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: 'rgba(16, 124, 65, 0.3)', borderBottomColor: 'rgba(16, 124, 65, 0.3)',
@@ -484,7 +484,7 @@ export const useCustomersStyles = makeStyles({
   stepHeading: {
     marginBottom: '8px',
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
   },
   orderScrollList: {
@@ -521,8 +521,8 @@ export const useCustomersStyles = makeStyles({
     gap: '8px',
   },
   orderIdTitle: {
-    fontWeight: 800,
-    color: '#2563EB',
+    fontWeight: 600,
+    color: tokens.colorPaletteBlueForeground2,
     fontSize: '13px',
   },
   orderMetaSub: {
@@ -539,7 +539,7 @@ export const useCustomersStyles = makeStyles({
   },
   orderTotalBold: {
     fontSize: '14px',
-    fontWeight: 800,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
   },
@@ -552,11 +552,11 @@ export const useCustomersStyles = makeStyles({
     alignItems: 'center',
     padding: '10px 14px',
     borderRadius: '8px',
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    backgroundColor: tokens.colorPaletteBlueBackground2,
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(37, 99, 235, 0.2)', borderBottomColor: 'rgba(37, 99, 235, 0.2)',
-    borderLeftColor: 'rgba(37, 99, 235, 0.2)', borderRightColor: 'rgba(37, 99, 235, 0.2)',
+    borderTopColor: tokens.colorPaletteBlueBorderActive, borderBottomColor: tokens.colorPaletteBlueBorderActive,
+    borderLeftColor: tokens.colorPaletteBlueBorderActive, borderRightColor: tokens.colorPaletteBlueBorderActive,
     marginBottom: '14px',
   },
   orderCustomerMeta: {
@@ -566,8 +566,8 @@ export const useCustomersStyles = makeStyles({
   },
   changeOrderBtn: {
     fontSize: '11px',
-    color: '#E51937',
-    fontWeight: 700,
+    color: tokens.colorBrandForeground1,
+    fontWeight: 600,
     backgroundColor: 'transparent',
     borderTopStyle: 'none', borderBottomStyle: 'none', borderLeftStyle: 'none', borderRightStyle: 'none',
     cursor: 'pointer',
@@ -575,7 +575,7 @@ export const useCustomersStyles = makeStyles({
   },
   step2Heading: {
     fontSize: '12px',
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground2,
     marginBottom: '8px',
   },
@@ -589,7 +589,7 @@ export const useCustomersStyles = makeStyles({
     flexBasis: '0%',
   },
   itemName13: {
-    fontWeight: 700,
+    fontWeight: 600,
     fontSize: '13px',
     display: 'block',
   },
@@ -607,11 +607,11 @@ export const useCustomersStyles = makeStyles({
     textAlign: 'right',
   },
   returnCostActive: {
-    fontWeight: 700,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
   },
   returnCostInactive: {
-    fontWeight: 700,
+    fontWeight: 600,
     color: tokens.colorNeutralForeground3,
   },
   reasonGrid: {
@@ -645,8 +645,8 @@ export const useCustomersStyles = makeStyles({
   },
   totalRefundVal: {
     fontSize: '18px',
-    fontWeight: 800,
-    color: '#D13438',
+    fontWeight: 600,
+    color: tokens.colorStatusDangerForeground1,
   },
   dialogActionsTop16: {
     marginTop: '16px',
