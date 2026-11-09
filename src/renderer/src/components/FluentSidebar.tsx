@@ -40,8 +40,7 @@ import {
   Grid20Regular,
   Add20Regular,
   ChevronDown20Regular,
-  ChevronLeft20Regular,
-  ChevronRight20Regular,
+  Navigation20Regular,
   Box20Regular,
   ArrowCircleDown20Regular,
   ArrowCircleUp20Regular,
@@ -62,64 +61,96 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useLicense, LicenseModules } from '@/features/auth/LicenseModulesContext';
 import { MODULE_TO_PERMISSION } from './RouteAccessGate';
 import { useAppTheme } from '@/theme/AppProviders';
+import { getWindowChrome } from '@/lib/windowChrome';
+
+// ── Windows 11 NavigationView styling ───────────────────────────────
+// The pane sits on the window frame (Mica when available) with no own surface,
+// items are 36px with 4px corners, hover/selected use a subtle translucent fill,
+// and the selected item gets a short 3×16px accent pill on the left.
+const NAV_ITEM_HEIGHT = '36px';
+const NAV_RAIL_WIDTH = '48px';
+const NAV_PANE_WIDTH = '256px';
+const ACCENT = '#E51937';
+const subtleLight = { hover: 'rgba(0, 0, 0, 0.037)', pressed: 'rgba(0, 0, 0, 0.024)', selected: 'rgba(0, 0, 0, 0.055)' };
+const subtleDark = { hover: 'rgba(255, 255, 255, 0.061)', pressed: 'rgba(255, 255, 255, 0.042)', selected: 'rgba(255, 255, 255, 0.084)' };
+const win11Ease = 'cubic-bezier(0, 0, 0, 1)';
+
+const itemBase = {
+  border: 'none',
+  outline: 'none',
+  backgroundColor: 'transparent',
+  color: tokens.colorNeutralForeground1,
+  fontFamily: tokens.fontFamilyBase,
+  transitionProperty: 'background-color',
+  transitionDuration: tokens.durationFaster,
+  transitionTimingFunction: win11Ease,
+} as const;
+
+const subtleItemLight = {
+  ...itemBase,
+  ':hover': { backgroundColor: subtleLight.hover },
+  ':active': { backgroundColor: subtleLight.pressed },
+};
+const subtleItemDark = {
+  ...itemBase,
+  ':hover': { backgroundColor: subtleDark.hover },
+  ':active': { backgroundColor: subtleDark.pressed },
+};
+const selectedItemLight = { ...itemBase, backgroundColor: subtleLight.selected, ':hover': { backgroundColor: subtleLight.selected } };
+const selectedItemDark = { ...itemBase, backgroundColor: subtleDark.selected, ':hover': { backgroundColor: subtleDark.selected } };
+
+const accentPill = {
+  position: 'absolute',
+  left: '0',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  width: '3px',
+  height: '16px',
+  borderRadius: '2px',
+  backgroundColor: ACCENT,
+} as const;
+
+const flyoutSurface = {
+  backgroundColor: tokens.colorNeutralBackground1,
+  borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+  borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+  borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+  borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
+} as const;
 
 const useStyles = makeStyles({
-  laserIndicator: {
-    position: 'absolute',
-    left: '0',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    width: '3.5px',
-    height: '22px',
-    borderRadius: '0 3px 3px 0',
-    backgroundColor: '#E51937',
-    boxShadow: '0 0 10px #E51937',
-  },
-  submenuLaserNotch: {
-    position: 'absolute',
-    left: '-11.5px',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    width: '3px',
-    height: '18px',
-    borderRadius: '2px',
-    backgroundColor: '#E51937',
-    boxShadow: '0 0 10px #E51937, 0 0 20px #E51937',
-    zIndex: 2,
-  },
+  laserIndicator: accentPill,
+  submenuLaserNotch: accentPill,
   accordionBtn: {
     width: '100%',
-    height: '38px',
-    padding: '0 10px',
-    borderRadius: '8px',
+    height: NAV_ITEM_HEIGHT,
+    padding: '0 8px 0 12px',
+    borderRadius: '4px',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     position: 'relative',
-    transition: 'all 0.15s ease',
     boxSizing: 'border-box',
   },
   accordionInner: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: '12px',
   },
   subItemBtn: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    height: '32px',
-    padding: '0 8px',
-    borderRadius: '6px',
-    border: 'none',
-    fontSize: '13px',
+    gap: '12px',
+    height: NAV_ITEM_HEIGHT,
+    padding: '0 12px 0 44px', // indented under the parent icon, like WinUI child items
+    borderRadius: '4px',
+    fontSize: tokens.fontSizeBase300,
     cursor: 'pointer',
     width: '100%',
     boxSizing: 'border-box',
     textAlign: 'left',
     position: 'relative',
-    transition: 'all 0.15s ease',
   },
   iconWrap: {
     display: 'flex',
@@ -127,42 +158,18 @@ const useStyles = makeStyles({
   },
   noWrapText: {
     whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
-  icon19: {
-    width: '19px',
-    height: '19px',
-  },
-  icon15: {
-    width: '15px',
-    height: '15px',
-  },
-  icon15Red: {
-    width: '15px',
-    height: '15px',
-    color: '#FF4D63',
-  },
-  icon17: {
-    width: '17px',
-    height: '17px',
-  },
-  icon17Red: {
-    width: '17px',
-    height: '17px',
-    color: '#E51937',
-  },
-  icon17Amber: {
-    width: '17px',
-    height: '17px',
-    color: '#F59E0B',
-  },
-  icon17Danger: {
-    width: '17px',
-    height: '17px',
-    color: '#EF4444',
-  },
-  iconBrand: {
-    color: '#E51937',
-  },
+  icon19: { width: '20px', height: '20px' },
+  icon15: { width: '16px', height: '16px' },
+  icon15Red: { width: '16px', height: '16px', color: tokens.colorBrandForeground1 },
+  icon17: { width: '16px', height: '16px' },
+  icon17Red: { color: tokens.colorBrandForeground1 },
+  icon17Amber: {},
+  icon17Danger: {},
+  iconBrand: { color: tokens.colorBrandForeground1 },
+
   nav: {
     height: '100%',
     maxHeight: '100%',
@@ -172,124 +179,52 @@ const useStyles = makeStyles({
     boxSizing: 'border-box',
     flexShrink: 0,
     overflow: 'hidden',
-    transitionProperty: 'width, background, border-color',
-    transitionDuration: '0.25s, 0.2s, 0.2s',
-    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1), ease, ease',
+    transitionProperty: 'width',
+    transitionDuration: tokens.durationNormal,
+    transitionTimingFunction: win11Ease,
     position: 'relative',
     userSelect: 'none',
+    // No own surface: the pane sits directly on the window frame / Mica.
+    backgroundColor: 'transparent',
+    color: tokens.colorNeutralForeground1,
+    fontFamily: tokens.fontFamilyBase,
   },
-  navCollapsed: {
-    width: '64px',
-  },
-  navExpanded: {
-    width: '236px',
-  },
-  navDark: {
-    background: 'linear-gradient(180deg, #111215 0%, #0c0d10 100%)',
-    borderRightWidth: '1px',
-    borderRightStyle: 'solid',
-    borderRightColor: 'rgba(255, 255, 255, 0.08)',
-    boxShadow: '4px 0 24px rgba(0, 0, 0, 0.35)',
-  },
-  navLight: {
-    background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
-    borderRightWidth: '1px',
-    borderRightStyle: 'solid',
-    borderRightColor: '#E2E8F0',
-    boxShadow: '4px 0 20px rgba(0, 0, 0, 0.04)',
-  },
+  navCollapsed: { width: NAV_RAIL_WIDTH },
+  navExpanded: { width: NAV_PANE_WIDTH },
+  navDark: {},
+  navLight: {},
+
   header: {
     flexShrink: 0,
     display: 'flex',
     alignItems: 'center',
+    gap: '4px',
+    padding: '4px',
   },
-  headerCollapsed: {
-    padding: '16px 0 12px',
-    justifyContent: 'center',
-  },
-  headerExpanded: {
-    padding: '16px 14px 14px',
-    justifyContent: 'flex-start',
-  },
-  headerDark: {
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-    background: 'radial-gradient(circle at 50% 0%, rgba(229, 25, 55, 0.12) 0%, transparent 75%)',
-  },
-  headerLight: {
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: '#F1F5F9',
-    background: 'radial-gradient(circle at 50% 0%, rgba(229, 25, 55, 0.06) 0%, transparent 75%)',
-  },
-  brandToggle: {
-    display: 'flex',
-    alignItems: 'center',
-    cursor: 'pointer',
-    gap: '10px',
-  },
-  brandToggleCollapsed: {
-    width: 'auto',
-  },
-  brandToggleExpanded: {
-    width: '100%',
-  },
-  brandBadge: {
-    width: '34px',
-    height: '34px',
-    borderRadius: '8px',
-    background: 'linear-gradient(135deg, #FF1E3C 0%, #B30018 100%)',
-    color: '#ffffff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 900,
-    fontSize: '14px',
-    letterSpacing: '-0.5px',
-    boxShadow: '0 0 16px rgba(229, 25, 55, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.35)',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(255, 255, 255, 0.2)', borderBottomColor: 'rgba(255, 255, 255, 0.2)',
-    borderLeftColor: 'rgba(255, 255, 255, 0.2)', borderRightColor: 'rgba(255, 255, 255, 0.2)',
+  headerCollapsed: {},
+  headerExpanded: {},
+  headerDark: {},
+  headerLight: {},
+  hamburgerBtn: {
+    width: '40px',
+    height: NAV_ITEM_HEIGHT,
     flexShrink: 0,
-  },
-  brandTextWrap: {
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
-    flex: 1,
-  },
-  brandTitleRow: {
+    padding: 0,
+    borderRadius: '4px',
+    cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
+    justifyContent: 'center',
   },
-  brandTitle: {
-    fontWeight: 800,
-    fontSize: '14.5px',
-    letterSpacing: '-0.02em',
-    lineHeight: 1.2,
+  paneTitle: {
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    paddingLeft: '4px',
   },
-  brandTitleDark: {
-    color: '#FFFFFF',
-  },
-  brandTitleLight: {
-    color: '#0F172A',
-  },
-  brandDot: {
-    width: '5px',
-    height: '5px',
-    borderRadius: '50%',
-    backgroundColor: '#E51937',
-    boxShadow: '0 0 6px #E51937',
-  },
-  brandSubtitle: {
-    fontSize: '9.5px',
-    color: '#64748B',
-    fontWeight: 600,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-  },
+
   scrollContainer: {
     flex: '1 1 0%',
     minHeight: 0,
@@ -298,116 +233,48 @@ const useStyles = makeStyles({
     overflowX: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    gap: '2px',
   },
-  scrollCollapsed: {
-    padding: '12px 6px',
-  },
-  scrollExpanded: {
-    padding: '12px 10px',
-  },
+  scrollCollapsed: { padding: '4px' },
+  scrollExpanded: { padding: '4px' },
   sectionContainer: {
-    marginBottom: '8px',
+    marginBottom: '4px',
   },
   sectionTitleRow: {
-    fontSize: '9.5px',
-    fontWeight: 800,
-    letterSpacing: '0.14em',
-    textTransform: 'uppercase',
-    padding: '10px 10px 4px',
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    padding: '12px 12px 4px',
     overflow: 'hidden',
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
   },
-  sectionTitleDark: {
-    color: '#475569',
-  },
-  sectionTitleLight: {
-    color: '#94A3B8',
-  },
-  sectionDotDark: {
-    width: '4px',
-    height: '4px',
-    borderRadius: '1px',
-    backgroundColor: '#334155',
-  },
-  sectionDotLight: {
-    width: '4px',
-    height: '4px',
-    borderRadius: '1px',
-    backgroundColor: '#CBD5E1',
-  },
-  dividerDark: {
-    height: '1px',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    margin: '8px 6px',
-  },
-  dividerLight: {
-    height: '1px',
-    backgroundColor: '#E2E8F0',
-    margin: '8px 6px',
-  },
+  sectionTitleDark: {},
+  sectionTitleLight: {},
+  sectionDotDark: { display: 'none' },
+  sectionDotLight: { display: 'none' },
+  dividerDark: { height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.084)', margin: '6px 4px' },
+  dividerLight: { height: '1px', backgroundColor: 'rgba(0, 0, 0, 0.08)', margin: '6px 4px' },
   sectionItems: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '3px',
+    gap: '2px',
   },
+
   collapsedAccordionBtn: {
-    width: '42px',
-    height: '40px',
+    width: '40px',
+    height: NAV_ITEM_HEIGHT,
     padding: 0,
-    margin: '0 auto',
-    borderRadius: '8px',
+    borderRadius: '4px',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    transition: 'all 0.15s ease',
   },
-  collapsedBtnActiveDark: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.28)', borderBottomColor: 'rgba(229, 25, 55, 0.28)',
-    borderLeftColor: 'rgba(229, 25, 55, 0.28)', borderRightColor: 'rgba(229, 25, 55, 0.28)',
-    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.16) 0%, rgba(229, 25, 55, 0.04) 100%)',
-    color: '#FF4D63',
-  },
-  collapsedBtnActiveLight: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.22)', borderBottomColor: 'rgba(229, 25, 55, 0.22)',
-    borderLeftColor: 'rgba(229, 25, 55, 0.22)', borderRightColor: 'rgba(229, 25, 55, 0.22)',
-    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.12) 0%, rgba(229, 25, 55, 0.03) 100%)',
-    color: '#FF4D63',
-  },
-  collapsedBtnInactiveDark: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'transparent', borderBottomColor: 'transparent',
-    borderLeftColor: 'transparent', borderRightColor: 'transparent',
-    background: 'transparent',
-    color: '#94A3B8',
-    ':hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.04)',
-      color: '#F1F5F9',
-    },
-  },
-  collapsedBtnInactiveLight: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'transparent', borderBottomColor: 'transparent',
-    borderLeftColor: 'transparent', borderRightColor: 'transparent',
-    background: 'transparent',
-    color: '#475569',
-    ':hover': {
-      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-      color: '#0F172A',
-    },
-  },
+  collapsedBtnActiveDark: selectedItemDark,
+  collapsedBtnActiveLight: selectedItemLight,
+  collapsedBtnInactiveDark: subtleItemDark,
+  collapsedBtnInactiveLight: subtleItemLight,
   collapsedInnerSpan: {
     display: 'flex',
     alignItems: 'center',
@@ -415,21 +282,13 @@ const useStyles = makeStyles({
     width: '100%',
     height: '100%',
   },
-  collapsedActiveLaser: {
-    position: 'absolute',
-    left: '0',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    width: '3.5px',
-    height: '20px',
-    borderRadius: '0 3px 3px 0',
-    backgroundColor: '#E51937',
-    boxShadow: '0 0 8px #E51937',
-  },
+  collapsedActiveLaser: accentPill,
+
   menuPopover: {
-    borderRadius: '10px',
-    padding: '6px',
+    borderRadius: '8px',
+    padding: '4px',
     minWidth: '220px',
+    boxSizing: 'border-box',
     '::before': {
       content: '""',
       position: 'absolute',
@@ -440,338 +299,108 @@ const useStyles = makeStyles({
       backgroundColor: 'transparent',
     },
   },
-  menuPopoverDark: {
-    backgroundColor: '#121316',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(255, 255, 255, 0.1)', borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    borderLeftColor: 'rgba(255, 255, 255, 0.1)', borderRightColor: 'rgba(255, 255, 255, 0.1)',
-    boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6)',
-  },
-  menuPopoverLight: {
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#E2E8F0', borderBottomColor: '#E2E8F0',
-    borderLeftColor: '#E2E8F0', borderRightColor: '#E2E8F0',
-    boxShadow: '0 12px 36px rgba(0, 0, 0, 0.08)',
-  },
-  menuHeader: {
-    padding: '6px 12px 8px',
-    marginBottom: '4px',
-  },
-  menuHeaderDark: {
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  menuHeaderLight: {
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: '#F1F5F9',
-  },
-  menuHeaderTitle: {
-    color: '#FF4D63',
-    fontWeight: 600
-  },
-  menuHeaderSubtitle: {
-    color: '#64748B',
-    fontSize: '14px'
-  },
+  menuPopoverDark: { ...flyoutSurface, boxShadow: '0 8px 16px rgba(0, 0, 0, 0.26)' },
+  menuPopoverLight: { ...flyoutSurface, boxShadow: '0 8px 16px rgba(0, 0, 0, 0.14)' },
+  menuHeader: { padding: '8px 12px 6px' },
+  menuHeaderDark: {},
+  menuHeaderLight: {},
+  menuHeaderTitle: { color: tokens.colorNeutralForeground1, fontWeight: 600 },
+  menuHeaderSubtitle: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
   flyoutItemBtn: {
     display: 'flex',
     alignItems: 'center',
-    gap: '9px',
-    height: '34px',
-    padding: '0 10px',
-    borderRadius: '6px',
-    border: 'none',
-    fontSize: '13px',
+    gap: '12px',
+    height: '32px',
+    padding: '0 12px',
+    borderRadius: '4px',
+    fontSize: tokens.fontSizeBase300,
     cursor: 'pointer',
     width: '100%',
     boxSizing: 'border-box',
     textAlign: 'left',
     position: 'relative',
-    transition: 'background-color 0.12s ease, color 0.12s ease',
-    outline: 'none',
   },
-  flyoutItemActiveDark: {
-    fontWeight: 700,
-    color: '#FF4D63',
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-  },
-  flyoutItemActiveLight: {
-    fontWeight: 700,
-    color: '#E51937',
-    backgroundColor: 'rgba(229, 25, 55, 0.08)',
-  },
-  flyoutItemInactiveDark: {
-    fontWeight: 500,
-    color: '#E2E8F0',
-    backgroundColor: 'transparent',
-    ':hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.07)',
-      color: '#FFFFFF',
-    },
-  },
-  flyoutItemInactiveLight: {
-    fontWeight: 500,
-    color: '#334155',
-    backgroundColor: 'transparent',
-    ':hover': {
-      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-      color: '#0F172A',
-    },
-  },
-  flyoutItemSpecialDark: {
-    fontWeight: 600,
-    color: '#FF4D63',
-    backgroundColor: 'transparent',
-    ':hover': {
-      backgroundColor: 'rgba(229, 25, 55, 0.1)',
-      color: '#FF6B7D',
-    },
-  },
-  flyoutItemSpecialLight: {
-    fontWeight: 600,
-    color: '#E51937',
-    backgroundColor: 'transparent',
-    ':hover': {
-      backgroundColor: 'rgba(229, 25, 55, 0.08)',
-      color: '#B30018',
-    },
-  },
-  accordionBtnActiveDark: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.28)', borderBottomColor: 'rgba(229, 25, 55, 0.28)',
-    borderLeftColor: 'rgba(229, 25, 55, 0.28)', borderRightColor: 'rgba(229, 25, 55, 0.28)',
-    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.16) 0%, rgba(229, 25, 55, 0.04) 100%)',
-    color: '#FFFFFF',
-  },
-  accordionBtnActiveLight: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.22)', borderBottomColor: 'rgba(229, 25, 55, 0.22)',
-    borderLeftColor: 'rgba(229, 25, 55, 0.22)', borderRightColor: 'rgba(229, 25, 55, 0.22)',
-    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.12) 0%, rgba(229, 25, 55, 0.03) 100%)',
-    color: '#E51937',
-  },
-  accordionBtnInactiveDark: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'transparent', borderBottomColor: 'transparent',
-    borderLeftColor: 'transparent', borderRightColor: 'transparent',
-    background: 'transparent',
-    color: '#94A3B8',
-    ':hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.04)',
-      color: '#F1F5F9',
-    },
-  },
-  accordionBtnInactiveLight: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'transparent', borderBottomColor: 'transparent',
-    borderLeftColor: 'transparent', borderRightColor: 'transparent',
-    background: 'transparent',
-    color: '#475569',
-    ':hover': {
-      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-      color: '#0F172A',
-    },
-  },
-  accordionIconWrapActive: {
-    color: '#FF4D63',
-  },
-  accordionIconWrapInactiveDark: {
-    color: '#94A3B8',
-  },
-  accordionIconWrapInactiveLight: {
-    color: '#475569',
-  },
-  accordionLabelActive: {
-    fontSize: '14px',
-    fontWeight: 700,
-  },
-  accordionLabelInactive: {
-    fontSize: '14px',
-    fontWeight: 500,
-  },
+  flyoutItemActiveDark: { ...selectedItemDark, fontWeight: 600 },
+  flyoutItemActiveLight: { ...selectedItemLight, fontWeight: 600 },
+  flyoutItemInactiveDark: subtleItemDark,
+  flyoutItemInactiveLight: subtleItemLight,
+  flyoutItemSpecialDark: { ...subtleItemDark, color: tokens.colorBrandForeground1 },
+  flyoutItemSpecialLight: { ...subtleItemLight, color: tokens.colorBrandForeground1 },
+
+  accordionBtnActiveDark: selectedItemDark,
+  accordionBtnActiveLight: selectedItemLight,
+  accordionBtnInactiveDark: subtleItemDark,
+  accordionBtnInactiveLight: subtleItemLight,
+  accordionIconWrapActive: {},
+  accordionIconWrapInactiveDark: {},
+  accordionIconWrapInactiveLight: {},
+  accordionLabelActive: { fontSize: tokens.fontSizeBase300, fontWeight: tokens.fontWeightRegular },
+  accordionLabelInactive: { fontSize: tokens.fontSizeBase300, fontWeight: tokens.fontWeightRegular },
   chevronIcon: {
-    width: '15px',
-    height: '15px',
-    transition: 'transform 0.22s ease',
+    width: '12px',
+    height: '12px',
+    transitionProperty: 'transform',
+    transitionDuration: tokens.durationNormal,
+    transitionTimingFunction: win11Ease,
   },
-  chevronDark: {
-    color: '#475569',
-  },
-  chevronLight: {
-    color: '#94A3B8',
-  },
-  chevronRotated: {
-    transform: 'rotate(180deg)',
-  },
-  chevronNormal: {
-    transform: 'rotate(0deg)',
-  },
+  chevronDark: { color: tokens.colorNeutralForeground2 },
+  chevronLight: { color: tokens.colorNeutralForeground2 },
+  chevronRotated: { transform: 'rotate(180deg)' },
+  chevronNormal: { transform: 'rotate(0deg)' },
   submenuContainer: {
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
-    marginLeft: '14px',
-    paddingLeft: '10px',
     overflow: 'hidden',
-    transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionProperty: 'max-height, opacity, margin',
+    transitionDuration: tokens.durationNormal,
+    transitionTimingFunction: win11Ease,
   },
-  submenuBorderDark: {
-    borderLeftWidth: '1.5px',
-    borderLeftStyle: 'solid',
-    borderLeftColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  submenuBorderLight: {
-    borderLeftWidth: '1.5px',
-    borderLeftStyle: 'solid',
-    borderLeftColor: '#E2E8F0',
-  },
-  submenuOpen: {
-    maxHeight: '240px',
-    opacity: 1,
-    marginTop: '4px',
-    marginBottom: '4px',
-  },
-  submenuClosed: {
-    maxHeight: 0,
-    opacity: 0,
-    marginTop: 0,
-    marginBottom: 0,
-  },
-  subItemActiveDark: {
-    color: '#E51937',
-    background: 'rgba(229, 25, 55, 0.1)',
-    fontWeight: 700,
-  },
-  subItemActiveLight: {
-    color: '#E51937',
-    background: 'rgba(229, 25, 55, 0.08)',
-    fontWeight: 700,
-  },
-  subItemInactiveDark: {
-    color: '#94A3B8',
-    background: 'transparent',
-    fontWeight: 500,
-    ':hover': {
-      color: '#F1F5F9',
-      backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    },
-  },
-  subItemInactiveLight: {
-    color: '#64748B',
-    background: 'transparent',
-    fontWeight: 500,
-    ':hover': {
-      color: '#0F172A',
-      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-    },
-  },
-  subItemLabelActive: {
-    fontWeight: 700,
-    fontSize: '13px',
-  },
-  subItemLabelInactive: {
-    fontWeight: 500,
-    fontSize: '13px',
-  },
-  subItemIconWrapActive: {
-    opacity: 1,
-  },
-  subItemIconWrapInactive: {
-    opacity: 0.75,
-  },
+  submenuBorderDark: {},
+  submenuBorderLight: {},
+  submenuOpen: { maxHeight: '260px', opacity: 1, marginTop: '2px' },
+  submenuClosed: { maxHeight: 0, opacity: 0, marginTop: 0 },
+  subItemActiveDark: selectedItemDark,
+  subItemActiveLight: selectedItemLight,
+  subItemInactiveDark: subtleItemDark,
+  subItemInactiveLight: subtleItemLight,
+  subItemLabelActive: { fontSize: tokens.fontSizeBase300 },
+  subItemLabelInactive: { fontSize: tokens.fontSizeBase300 },
+  subItemIconWrapActive: {},
+  subItemIconWrapInactive: {},
+
   navLink: {
     display: 'flex',
     alignItems: 'center',
-    height: '38px',
-    borderRadius: '8px',
+    height: NAV_ITEM_HEIGHT,
+    borderRadius: '4px',
     textDecoration: 'none',
-    fontSize: '13px',
+    fontSize: tokens.fontSizeBase300,
     position: 'relative',
     boxSizing: 'border-box',
     cursor: 'pointer',
-    transition: 'all 0.15s ease',
   },
   navLinkCollapsed: {
-    width: '42px',
-    margin: '0 auto',
+    width: '40px',
     padding: 0,
     justifyContent: 'center',
   },
   navLinkExpanded: {
     width: '100%',
-    margin: 0,
-    padding: '0 10px',
+    padding: '0 12px',
     justifyContent: 'flex-start',
   },
-  navLinkActiveDark: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.28)', borderBottomColor: 'rgba(229, 25, 55, 0.28)',
-    borderLeftColor: 'rgba(229, 25, 55, 0.28)', borderRightColor: 'rgba(229, 25, 55, 0.28)',
-    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.16) 0%, rgba(229, 25, 55, 0.04) 100%)',
-    color: '#FFFFFF',
-    fontWeight: 700,
-  },
-  navLinkActiveLight: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.22)', borderBottomColor: 'rgba(229, 25, 55, 0.22)',
-    borderLeftColor: 'rgba(229, 25, 55, 0.22)', borderRightColor: 'rgba(229, 25, 55, 0.22)',
-    background: 'linear-gradient(90deg, rgba(229, 25, 55, 0.12) 0%, rgba(229, 25, 55, 0.03) 100%)',
-    color: '#E51937',
-    fontWeight: 700,
-  },
-  navLinkInactiveDark: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'transparent', borderBottomColor: 'transparent',
-    borderLeftColor: 'transparent', borderRightColor: 'transparent',
-    background: 'transparent',
-    color: '#94A3B8',
-    fontWeight: 500,
-    ':hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.04)',
-      color: '#F1F5F9',
-    },
-  },
-  navLinkInactiveLight: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'transparent', borderBottomColor: 'transparent',
-    borderLeftColor: 'transparent', borderRightColor: 'transparent',
-    background: 'transparent',
-    color: '#475569',
-    fontWeight: 500,
-    ':hover': {
-      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-      color: '#0F172A',
-    },
-  },
-  navLinkIconActive: {
-    color: '#FF4D63',
-    filter: 'drop-shadow(0 0 6px rgba(229, 25, 55, 0.6))',
-  },
-  navLinkIconInactiveDark: {
-    color: '#94A3B8',
-    filter: 'none',
-  },
-  navLinkIconInactiveLight: {
-    color: '#475569',
-    filter: 'none',
-  },
+  navLinkActiveDark: selectedItemDark,
+  navLinkActiveLight: selectedItemLight,
+  navLinkInactiveDark: subtleItemDark,
+  navLinkInactiveLight: subtleItemLight,
+  navLinkIconActive: { display: 'flex', alignItems: 'center' },
+  navLinkIconInactiveDark: { display: 'flex', alignItems: 'center' },
+  navLinkIconInactiveLight: { display: 'flex', alignItems: 'center' },
   navLinkRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: '12px',
     width: '100%',
   },
   navLinkLabel: {
@@ -779,199 +408,74 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    fontSize: '14px',
+    fontSize: tokens.fontSizeBase300,
   },
+  // Neutral info badge (Win11 InfoBadge style is reserved for counts; labels stay quiet).
   badgePill: {
-    fontSize: '9.5px',
-    fontWeight: 800,
-    padding: '1px 6px',
-    borderRadius: '4px',
-    backgroundColor: 'rgba(229, 25, 55, 0.15)',
-    color: '#FF4D63',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(229, 25, 55, 0.3)', borderBottomColor: 'rgba(229, 25, 55, 0.3)',
-    borderLeftColor: 'rgba(229, 25, 55, 0.3)', borderRightColor: 'rgba(229, 25, 55, 0.3)',
+    fontSize: '10px',
+    fontWeight: 600,
+    lineHeight: '16px',
+    padding: '0 6px',
+    borderRadius: '8px',
+    color: tokens.colorNeutralForeground2,
+    backgroundColor: tokens.colorNeutralBackground3,
   },
+
   bottomDeck: {
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    padding: '4px',
   },
-  bottomDeckCollapsed: {
-    padding: '10px 6px 14px',
-  },
-  bottomDeckExpanded: {
-    padding: '10px 10px 14px',
-  },
-  bottomDeckDark: {
-    borderTopWidth: '1px',
-    borderTopStyle: 'solid',
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-    background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.3) 100%)',
-  },
-  bottomDeckLight: {
-    borderTopWidth: '1px',
-    borderTopStyle: 'solid',
-    borderTopColor: '#E2E8F0',
-    background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.02) 100%)',
-  },
+  bottomDeckCollapsed: {},
+  bottomDeckExpanded: {},
+  bottomDeckDark: {},
+  bottomDeckLight: {},
   toolbar: {
-    padding: '3px',
-    borderRadius: '9px',
     boxSizing: 'border-box',
     alignItems: 'center',
-    gap: '4px',
+    gap: '2px',
   },
   toolbarCollapsed: {
     display: 'flex',
     flexDirection: 'column',
-    width: '38px',
-    margin: '0 auto',
+    width: '40px',
   },
   toolbarExpanded: {
     display: 'grid',
     width: '100%',
-    margin: 0,
   },
-  toolbarAdmin: {
-    gridTemplateColumns: 'repeat(6, 1fr)',
-  },
-  toolbarNonAdmin: {
-    gridTemplateColumns: 'repeat(4, 1fr)',
-  },
-  toolbarDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(255, 255, 255, 0.08)', borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    borderLeftColor: 'rgba(255, 255, 255, 0.08)', borderRightColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  toolbarLight: {
-    backgroundColor: '#F1F5F9',
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#E2E8F0', borderBottomColor: '#E2E8F0',
-    borderLeftColor: '#E2E8F0', borderRightColor: '#E2E8F0',
-  },
+  toolbarAdmin: { gridTemplateColumns: 'repeat(5, 1fr)' },
+  toolbarNonAdmin: { gridTemplateColumns: 'repeat(3, 1fr)' },
+  toolbarDark: {},
+  toolbarLight: {},
   toolbarBtn: {
-    height: '32px',
+    height: NAV_ITEM_HEIGHT,
     width: '100%',
     padding: 0,
-    borderRadius: '6px',
-    border: 'none',
-    backgroundColor: 'transparent',
+    borderRadius: '4px',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'all 0.15s ease',
   },
-  themeBtnDark: {
-    color: '#F59E0B',
-    ':hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-    },
-  },
-  themeBtnLight: {
-    color: '#E51937',
-    ':hover': {
-      backgroundColor: '#FFFFFF',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-    },
-  },
-  refreshBtnDark: {
-    color: '#06B6D4',
-    ':hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-      color: '#22D3EE',
-    },
-  },
-  refreshBtnLight: {
-    color: '#0891B2',
-    ':hover': {
-      backgroundColor: '#FFFFFF',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-      color: '#0E7490',
-    },
-  },
-  adminBtnActiveDark: {
-    backgroundColor: 'rgba(229, 25, 55, 0.2)',
-    color: '#E51937',
-  },
-  adminBtnActiveLight: {
-    backgroundColor: 'rgba(229, 25, 55, 0.12)',
-    color: '#E51937',
-  },
-  adminBtnInactiveDark: {
-    color: '#CBD5E1',
-    ':hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-    },
-  },
-  adminBtnInactiveLight: {
-    color: '#64748B',
-    ':hover': {
-      backgroundColor: '#FFFFFF',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-    },
-  },
-  storageBtnActiveDark: {
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    color: '#CBD5E1',
-  },
-  storageBtnActiveLight: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
-    color: '#64748B',
-  },
-  storageBtnInactiveDark: {
-    color: '#CBD5E1',
-    ':hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-    },
-  },
-  storageBtnInactiveLight: {
-    color: '#64748B',
-    ':hover': {
-      backgroundColor: '#FFFFFF',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-    },
-  },
-  logoutBtnDark: {
-    color: '#EF4444',
-    ':hover': {
-      backgroundColor: 'rgba(239, 68, 68, 0.15)',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-    },
-  },
-  logoutBtnLight: {
-    color: '#EF4444',
-    ':hover': {
-      backgroundColor: 'rgba(239, 68, 68, 0.1)',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-    },
-  },
-  collapseBtnDark: {
-    color: '#CBD5E1',
-    ':hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-    },
-  },
-  collapseBtnLight: {
-    color: '#64748B',
-    ':hover': {
-      backgroundColor: '#FFFFFF',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-    },
-  },
+  themeBtnDark: subtleItemDark,
+  themeBtnLight: subtleItemLight,
+  refreshBtnDark: subtleItemDark,
+  refreshBtnLight: subtleItemLight,
+  adminBtnActiveDark: selectedItemDark,
+  adminBtnActiveLight: selectedItemLight,
+  adminBtnInactiveDark: subtleItemDark,
+  adminBtnInactiveLight: subtleItemLight,
+  storageBtnActiveDark: selectedItemDark,
+  storageBtnActiveLight: selectedItemLight,
+  storageBtnInactiveDark: subtleItemDark,
+  storageBtnInactiveLight: subtleItemLight,
+  logoutBtnDark: subtleItemDark,
+  logoutBtnLight: subtleItemLight,
+
   storageDialogSurface: {
-    borderRadius: tokens.borderRadiusLarge,
+    borderRadius: tokens.borderRadiusXLarge,
     maxWidth: '520px',
     width: '92vw',
     boxSizing: 'border-box',
@@ -994,8 +498,8 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1, borderBottomColor: tokens.colorNeutralStroke1,
-    borderLeftColor: tokens.colorNeutralStroke1, borderRightColor: tokens.colorNeutralStroke1,
+    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
@@ -1012,59 +516,51 @@ const useStyles = makeStyles({
   },
   storageHealthy: {
     fontSize: '12px',
-    fontWeight: 700,
-    color: '#10B981',
+    fontWeight: 600,
+    color: tokens.colorPaletteGreenForeground1,
   },
-  storageBadgeAuto: {
-    backgroundColor: 'rgba(229, 25, 55, 0.1)',
-    color: '#E51937',
-  },
+  storageBadgeAuto: {},
   storageMsg: {
-    color: '#10B981',
+    color: tokens.colorPaletteGreenForeground1,
     fontSize: '12px',
     fontWeight: 600,
     textAlign: 'center',
     padding: '8px 12px',
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    borderRadius: '6px',
+    backgroundColor: tokens.colorPaletteGreenBackground1,
+    borderRadius: '4px',
   },
   storageActionRow: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
-    gap: '12px',
+    gap: '8px',
     marginTop: '4px',
   },
   storageActionButton: {
-    height: '40px',
-    borderRadius: '8px',
+    height: '32px',
+    borderRadius: '4px',
     borderTopStyle: 'none',
     borderBottomStyle: 'none',
     borderLeftStyle: 'none',
     borderRightStyle: 'none',
-    color: '#FFFFFF',
-    fontSize: '13px',
-    fontWeight: 700,
+    fontSize: tokens.fontSizeBase300,
+    fontFamily: tokens.fontFamilyBase,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: '8px',
-    outline: 'none',
-    transition: 'all 0.15s ease',
   },
+  // Secondary (standard) button
   storageBackupBlue: {
-    backgroundColor: '#0078D4',
-    boxShadow: '0 2px 8px rgba(0, 120, 212, 0.25)',
-    ':hover': {
-      backgroundColor: '#106EBE',
-    },
+    ...flyoutSurface,
+    color: tokens.colorNeutralForeground1,
+    ':hover': { backgroundColor: tokens.colorNeutralBackground1Hover },
   },
+  // Accent (primary) button
   storageResyncRed: {
-    backgroundColor: '#E51937',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.25)',
-    ':hover': {
-      backgroundColor: '#C4122C',
-    },
+    backgroundColor: tokens.colorBrandBackground,
+    color: tokens.colorNeutralForegroundOnBrand,
+    ':hover': { backgroundColor: tokens.colorBrandBackgroundHover },
   },
   storageActions: {
     marginTop: '18px',
@@ -1072,10 +568,6 @@ const useStyles = makeStyles({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    paddingTop: '12px',
-    borderTopWidth: '1px',
-    borderTopStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke2,
   },
   storageManagerLink: {
     background: 'transparent',
@@ -1083,71 +575,31 @@ const useStyles = makeStyles({
     borderBottomStyle: 'none',
     borderLeftStyle: 'none',
     borderRightStyle: 'none',
-    color: '#0078D4',
-    fontSize: '13px',
-    fontWeight: 600,
+    color: tokens.colorBrandForegroundLink,
+    fontSize: tokens.fontSizeBase300,
+    fontFamily: tokens.fontFamilyBase,
     cursor: 'pointer',
     padding: '6px 8px',
-    borderRadius: '6px',
+    borderRadius: '4px',
     display: 'inline-flex',
     alignItems: 'center',
     gap: '4px',
-    transition: 'all 0.15s ease',
-    ':hover': {
-      textDecoration: 'underline',
-      backgroundColor: 'rgba(0, 120, 212, 0.08)',
-    },
+    ':hover': { textDecoration: 'underline' },
   },
   storageCloseBtn: {
-    height: '36px',
-    padding: '0 18px',
-    borderRadius: '7px',
-    fontSize: '13px',
-    fontWeight: 600,
+    height: '32px',
+    padding: '0 16px',
+    borderRadius: '4px',
+    fontSize: tokens.fontSizeBase300,
+    fontFamily: tokens.fontFamilyBase,
     cursor: 'pointer',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    outline: 'none',
-    transition: 'all 0.15s ease',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
   },
-  storageCloseDark: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: 'rgba(255, 255, 255, 0.15)', borderBottomColor: 'rgba(255, 255, 255, 0.15)',
-    borderLeftColor: 'rgba(255, 255, 255, 0.15)', borderRightColor: 'rgba(255, 255, 255, 0.15)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    color: '#F1F5F9',
-  },
-  storageCloseLight: {
-    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
-    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
-    borderTopColor: '#CBD5E1', borderBottomColor: '#CBD5E1',
-    borderLeftColor: '#CBD5E1', borderRightColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
-    color: '#334155',
-  },
-  storageResyncBtn: {
-    height: '36px',
-    padding: '0 20px',
-    borderRadius: '7px',
-    border: 'none',
-    backgroundColor: '#E51937',
-    color: '#FFFFFF',
-    fontSize: '13px',
-    fontWeight: 700,
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '7px',
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-    outline: 'none',
-    boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
-    transition: 'all 0.15s ease',
-  },
+  storageCloseDark: { ...flyoutSurface, color: tokens.colorNeutralForeground1, ':hover': { backgroundColor: tokens.colorNeutralBackground1Hover } },
+  storageCloseLight: { ...flyoutSurface, color: tokens.colorNeutralForeground1, ':hover': { backgroundColor: tokens.colorNeutralBackground1Hover } },
+  storageResyncBtn: {},
   textMuted: {
     color: tokens.colorNeutralForeground2,
   },
@@ -1211,15 +663,37 @@ export function FluentSidebar(): React.JSX.Element {
     }
   };
 
-  // Collapsed state persisted in localStorage
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    return localStorage.getItem('omnipos_sidebar_collapsed') === 'true';
-  });
+  const hasTitleBar = getWindowChrome().customTitleBar;
+
+  // Collapsed state is remembered separately for POS screens and for everything else.
+  // POS screens default to the compact 48px rail so the products and the cart get the room.
+  const isPosRoute = location.pathname.startsWith('/pos');
+  const collapseKey = isPosRoute ? 'omnipos_sidebar_collapsed_pos' : 'omnipos_sidebar_collapsed';
+  const readCollapsed = (key: string): boolean => {
+    try {
+      const saved = localStorage.getItem(key);
+      return saved === null ? key === 'omnipos_sidebar_collapsed_pos' : saved === 'true';
+    } catch {
+      return false;
+    }
+  };
+  const collapseKeyRef = useRef(collapseKey);
+  collapseKeyRef.current = collapseKey;
+
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => readCollapsed(collapseKey));
+
+  useEffect(() => {
+    setIsCollapsed(readCollapsed(collapseKey));
+  }, [collapseKey]);
 
   const toggleSidebar = () => {
     setIsCollapsed((prev) => {
       const next = !prev;
-      localStorage.setItem('omnipos_sidebar_collapsed', String(next));
+      try {
+        localStorage.setItem(collapseKeyRef.current, String(next));
+      } catch {
+        /* storage unavailable: keep the in-memory state */
+      }
       return next;
     });
   };
@@ -1267,7 +741,7 @@ export function FluentSidebar(): React.JSX.Element {
     setFlyout({
       label: item.label,
       top: calculatedTop,
-      left: Math.max(68, rect.right + 8),
+      left: Math.max(52, rect.right + 4),
       item,
     });
   };
@@ -1298,7 +772,7 @@ export function FluentSidebar(): React.JSX.Element {
 
   const allSections = [
     {
-      title: 'HOME',
+      title: 'Home',
       items: [
         {
           to: '/dashboard',
@@ -1310,7 +784,7 @@ export function FluentSidebar(): React.JSX.Element {
       ],
     },
     {
-      title: 'BILLING & SALES',
+      title: 'Billing & sales',
       items: [
         {
           to: '/pos/fastfood',
@@ -1337,7 +811,7 @@ export function FluentSidebar(): React.JSX.Element {
       ],
     },
     {
-      title: 'ITEMS & STOCK',
+      title: 'Items & stock',
       items: [
         {
           isAccordion: true,
@@ -1402,7 +876,7 @@ export function FluentSidebar(): React.JSX.Element {
       ],
     },
     {
-      title: 'ACCOUNTS & REPORTS',
+      title: 'Accounts & reports',
       items: [
         {
           to: '/expenses',
@@ -1421,7 +895,7 @@ export function FluentSidebar(): React.JSX.Element {
       ],
     },
     {
-      title: 'SETTINGS & USERS',
+      title: 'Settings & users',
       items: [
         {
           to: '/admin',
@@ -1471,41 +945,20 @@ export function FluentSidebar(): React.JSX.Element {
         isDark ? styles.navDark : styles.navLight
       )}
     >
-      {/* ── Top Ambient Glow Header ─────────────────────────────── */}
-      <div
-        className={mergeClasses(
-          styles.header,
-          isCollapsed ? styles.headerCollapsed : styles.headerExpanded,
-          isDark ? styles.headerDark : styles.headerLight
-        )}
-      >
-        <div
+      {/* ── Pane header: hamburger button (WinUI "GlobalNavigationButton") ── */}
+      <div className={styles.header}>
+        <button
+          type="button"
           onClick={toggleSidebar}
-          className={mergeClasses(
-            styles.brandToggle,
-            isCollapsed ? styles.brandToggleCollapsed : styles.brandToggleExpanded
-          )}
-          title={isCollapsed ? 'Click to expand sidebar (Ctrl+B)' : 'Click to collapse sidebar (Ctrl+B)'}
+          className={mergeClasses(styles.hamburgerBtn, isDark ? styles.navLinkInactiveDark : styles.navLinkInactiveLight)}
+          title={isCollapsed ? 'Open navigation (Ctrl+B)' : 'Close navigation (Ctrl+B)'}
+          aria-label={isCollapsed ? 'Open navigation' : 'Close navigation'}
+          aria-expanded={!isCollapsed}
         >
-          {/* Futuristic Hexagon/Square Logo Badge */}
-          <div className={styles.brandBadge}>
-            OP
-          </div>
-
-          {!isCollapsed && (
-            <div className={styles.brandTextWrap}>
-              <div className={styles.brandTitleRow}>
-                <span className={mergeClasses(styles.brandTitle, isDark ? styles.brandTitleDark : styles.brandTitleLight)}>
-                  OmniPos
-                </span>
-                <span className={styles.brandDot} />
-              </div>
-              <div className={styles.brandSubtitle}>
-                Enterprise POS &amp; ERP
-              </div>
-            </div>
-          )}
-        </div>
+          <Navigation20Regular className={styles.icon19} />
+        </button>
+        {/* The desktop title bar already shows the app name; the web build shows it here. */}
+        {!isCollapsed && !hasTitleBar && <span className={styles.paneTitle}>Omnipos</span>}
       </div>
 
       {/* ── Scrollable Navigation Items ─────────────────────────── */}
@@ -1849,21 +1302,6 @@ export function FluentSidebar(): React.JSX.Element {
             className={mergeClasses(styles.toolbarBtn, isDark ? styles.logoutBtnDark : styles.logoutBtnLight)}
           >
             <LockClosed20Regular className={mergeClasses(styles.icon17, styles.icon17Danger)} />
-          </button>
-
-          {/* 5. Collapse / Expand Sidebar Button */}
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
-            aria-label={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
-            className={mergeClasses(styles.toolbarBtn, isDark ? styles.collapseBtnDark : styles.collapseBtnLight)}
-          >
-            {isCollapsed ? (
-              <ChevronRight20Regular className={styles.icon17} />
-            ) : (
-              <ChevronLeft20Regular className={styles.icon17} />
-            )}
           </button>
         </div>
       </div>

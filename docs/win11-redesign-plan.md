@@ -61,7 +61,7 @@ Goal: the app should feel like a native Windows 11 desktop app (Fluent 2 / WinUI
 - Change the sidebar into a **WinUI NavigationView** look:
   - Transparent on Mica (no own background), sits under the title bar.
   - Items: 36px tall, 4px radius, hover = subtle fill, selected = subtle fill + **3px × 16px accent pill** on the left (Win11 style, not a full-height bar).
-  - Expanded 280px → **Compact 48px** (icon only, tooltip on hover). Hamburger button at the top.
+  - Expanded 256px → **Compact 48px** (icon only, tooltip on hover). Hamburger button at the top.
 - **On POS routes, default to compact (48px)** → gives about 188px back to the cart and products. Remember the user's choice per screen.
 - Content area = a "layer": rounded **top-left 8px corner**, 1px stroke, sits on top of the Mica, exactly like Settings / File Explorer in Windows 11.
 - Splash and Login screens: remove radial gradient and red glow; plain Mica + logo + Fluent `Spinner`, like a Windows app starting.

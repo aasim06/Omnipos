@@ -28,7 +28,7 @@ import { LicensePage } from '@/features/auth/LicensePage';
 import { LicenseDisabledOverlay } from '@/features/auth/LicenseDisabledOverlay';
 import { RouteAccessGate, getDefaultAccessibleRoute } from '@/components/RouteAccessGate';
 import { FastFoodDashboardView } from '@/features/dashboard/FastFoodDashboardView';
-import { makeStyles } from '@fluentui/react-components';
+import { makeStyles, Spinner, tokens } from '@fluentui/react-components';
 
 import { getOrCreateBrowserHwid, getWebLicenseApiBase } from '@/lib/webLicense';
 
@@ -45,11 +45,22 @@ const useStyles = makeStyles({
     height: '100%',
     overflow: 'hidden',
   },
+  // Windows 11 content "layer": sits on the frame / Mica next to the navigation pane,
+  // with a hairline stroke and a rounded top-left corner (like Settings / File Explorer).
   mainContent: {
     flex: 1,
     minWidth: 0,
     height: '100%',
     overflow: 'hidden',
+    boxSizing: 'border-box',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderTopLeftRadius: '8px',
+    borderTopWidth: '1px',
+    borderLeftWidth: '1px',
+    borderTopStyle: 'solid',
+    borderLeftStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2,
   },
   splashContainer: {
     width: '100%',
@@ -58,39 +69,30 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'radial-gradient(circle at 50% 30%, #171b26 0%, #0c0d12 100%)',
-    color: '#FFFFFF',
-    fontFamily: 'Segoe UI, system-ui, sans-serif',
+    gap: '12px',
+    color: tokens.colorNeutralForeground1,
+    fontFamily: tokens.fontFamilyBase,
     userSelect: 'none',
   },
   splashLogo: {
-    width: '56px',
-    height: '56px',
-    borderRadius: '14px',
+    width: '48px',
+    height: '48px',
+    borderRadius: '8px',
     background: 'linear-gradient(135deg, #FF1E3C 0%, #B30018 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontWeight: 900,
-    fontSize: '20px',
+    fontWeight: 600,
+    fontSize: '18px',
     color: '#FFFFFF',
-    boxShadow: '0 0 28px rgba(229, 25, 55, 0.6)',
-    marginBottom: '20px',
   },
   splashTitle: {
-    fontSize: '20px',
-    fontWeight: 800,
-    letterSpacing: '-0.02em',
-  },
-  splashRedText: {
-    color: '#FF4D63',
+    fontSize: tokens.fontSizeBase500, // Win11 "Subtitle" 20px
+    fontWeight: tokens.fontWeightSemibold,
   },
   splashSubtitle: {
-    fontSize: '12px',
-    color: '#64748B',
-    marginTop: '4px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
   },
 });
 
@@ -235,15 +237,10 @@ export default function App(): React.JSX.Element {
   if (gate === null) {
     return (
       <div className={styles.splashContainer}>
-        <div className={styles.splashLogo}>
-          OP
-        </div>
-        <div className={styles.splashTitle}>
-          Omni<span className={styles.splashRedText}>Pos</span> Terminal
-        </div>
-        <div className={styles.splashSubtitle}>
-          Verifying License Security...
-        </div>
+        <div className={styles.splashLogo}>O</div>
+        <div className={styles.splashTitle}>Omnipos</div>
+        <Spinner size="tiny" />
+        <div className={styles.splashSubtitle}>Checking license…</div>
       </div>
     );
   }
