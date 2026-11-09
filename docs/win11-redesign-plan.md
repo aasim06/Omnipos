@@ -3,6 +3,17 @@
 Branch: `feature/win11-redesign`
 Goal: the app should feel like a native Windows 11 desktop app (Fluent 2 / WinUI 3), not a website. The POS screen gets the most work, and the cart gets much more room.
 
+## Progress
+
+| Phase | Status |
+|---|---|
+| P1 Window, theme, font, CSS | Done |
+| P2 NavigationView sidebar, content layer | Done |
+| P3 POS split into hook + components | Done |
+| P4 POS layout | Done: resizable order pane (splitter, remembered width), one 48px command bar (scanner + search + mode/view switches), 40px category pivot, floating scan InfoBar, featured card optional (off by default), auto-fill product grid, footer with sticky total + flyouts for discount / cash / split / khata, F9 hint on Confirm. **Left for P5:** order details header (customer combobox, order type), 48px line-item rows, `getTokens()` → `makeStyles` |
+| P5 POS dialogs + keyboard | Not started |
+| P6 Other screens | Not started |
+
 ---
 
 ## 0. Current state (what makes it look like a website)

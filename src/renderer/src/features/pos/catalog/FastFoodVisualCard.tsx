@@ -71,7 +71,7 @@ export const FastFoodVisualCard = React.memo(
         onClick={() => handleAction()}
         style={{
           backgroundColor: F.bgCard,
-          borderRadius: '12px',
+          borderRadius: '8px',
           border: `1px solid ${isSelected ? F.accentRed : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
           overflow: 'hidden',
           display: 'flex',

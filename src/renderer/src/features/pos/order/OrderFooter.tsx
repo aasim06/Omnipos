@@ -1,8 +1,29 @@
+import React from 'react';
+import { Popover, PopoverSurface, PopoverTrigger } from '@fluentui/react-components';
 import { PosCounterState } from '@/features/pos/usePosCounter';
-import { ArrowRepeatAll20Regular, CheckmarkCircle20Filled, ChevronDown20Regular, ChevronUp20Regular, Dismiss16Regular, Money20Regular, Notebook20Regular, Payment20Regular } from '@fluentui/react-icons';
+import {
+  ArrowRepeatAll20Regular,
+  CheckmarkCircle20Filled,
+  ChevronDown16Regular,
+  ChevronUp20Regular,
+  Dismiss16Regular,
+  Money20Regular,
+  Notebook20Regular,
+  Payment20Regular,
+  Tag20Regular,
+} from '@fluentui/react-icons';
 import { playBeep } from '@/lib/soundFx';
 import { CustomSelect } from '@/components/ui';
 
+type FooterFlyout = 'tender' | 'split' | 'khata' | null;
+
+/**
+ * Order footer, Windows 11 style.
+ * Always visible: totals, payment method, one action row and the Confirm button.
+ * Discount, cash tender, split amounts and khata customer open in flyouts above the
+ * footer, so the line-item list keeps the height. The controls inside the flyouts
+ * (and every handler / calculation) are unchanged from the previous inline footer.
+ */
 export function OrderFooter({ pos }: { pos: PosCounterState }) {
   const {
     isDark,
@@ -42,280 +63,281 @@ export function OrderFooter({ pos }: { pos: PosCounterState }) {
     isPending,
   } = pos;
 
-  return (
-    <>
-      <div
+  const [flyout, setFlyout] = React.useState<FooterFlyout>(null);
+  const openChange = (which: Exclude<FooterFlyout, null>) => (_: unknown, data: { open: boolean }) =>
+    setFlyout(data.open ? which : null);
+
+  const subtleHover = isDark ? 'rgba(255,255,255,0.061)' : 'rgba(0,0,0,0.037)';
+  const splitSum = (Number(splitCashAmount) || 0) + (Number(splitOnlineAmount) || 0) + (Number(splitKhataAmount) || 0);
+  const splitDiff = total - splitSum;
+  const selectedKhata = customerKhatas.find((k: any) => k.id === selectedKhataId);
+  const confirmDisabled =
+    cart.length === 0 ||
+    isPending ||
+    (paymentMode === 'khata' && !selectedKhataId) ||
+    (paymentMode === 'split' && splitSum !== total);
+
+  /* ── shared Win11 bits ── */
+  const surfaceStyle: React.CSSProperties = {
+    width: 'min(340px, 90vw)',
+    padding: '12px',
+    boxSizing: 'border-box',
+    borderRadius: '8px',
+    fontFamily: F.font,
+  };
+  const flyoutTitle = (text: string) => (
+    <div style={{ fontSize: '14px', fontWeight: 600, color: F.textPrimary, marginBottom: '10px' }}>{text}</div>
+  );
+  const actionButton = (opts: { active: boolean; warn?: boolean; disabled?: boolean }): React.CSSProperties => ({
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    height: '32px',
+    padding: '0 10px',
+    borderRadius: '4px',
+    border: `1px solid ${opts.warn ? F.accentRed : F.border}`,
+    backgroundColor: opts.active ? subtleHover : 'transparent',
+    color: opts.disabled ? F.textMuted : F.textPrimary,
+    fontSize: '13px',
+    fontFamily: F.font,
+    cursor: opts.disabled ? 'not-allowed' : 'pointer',
+    whiteSpace: 'nowrap',
+  });
+  const actionLabel: React.CSSProperties = { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' };
+
+  const paymentButton = (mode: 'cash' | 'card' | 'khata' | 'split', label: string, icon: React.ReactNode, onSelect: () => void) => {
+    const active = paymentMode === mode;
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={active}
         style={{
-          padding: '14px 18px 18px',
-          borderTop: `1px solid ${F.border}`,
-          backgroundColor: F.bgCard,
+          height: '30px',
+          borderRadius: '4px',
+          border: 'none',
+          backgroundColor: active ? F.bgCard : 'transparent',
+          boxShadow: active ? (isDark ? '0 0 0 1px rgba(255,255,255,0.08)' : '0 0 0 1px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.06)') : 'none',
+          color: active ? F.textPrimary : F.textSecondary,
+          fontSize: '13px',
+          fontWeight: active ? 600 : 400,
+          fontFamily: F.font,
+          cursor: 'pointer',
           display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-          flexShrink: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '5px',
         }}
       >
-        {/* Collapsible Bill Discount Field */}
-        {isDiscountCollapsed ? (
-          /* Collapsed Discount Bar */
-          discountVal > 0 ? (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '5px 12px',
-                borderRadius: F.radiusSm,
-                backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5',
-                border: `1px solid ${isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0'}`,
-              }}
-            >
-              <div
-                onClick={() => setIsDiscountCollapsed(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', flex: 1 }}
-              >
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 17,
-                    height: 17,
-                    borderRadius: '50%',
-                    backgroundColor: '#10B981',
-                    color: '#FFFFFF',
-                    fontSize: '10px',
-                    fontWeight: 900,
-                  }}
-                >
-                  %
-                </span>
-                <span style={{ fontSize: '11.5px', fontWeight: 800, color: isDark ? '#34D399' : '#047857' }}>
-                  {discountMode === 'percent' ? `${discountValue}% OFF` : `PKR ${discountValue} OFF`}
-                  <span style={{ fontWeight: 600, marginLeft: '6px', fontSize: '11px' }}>
-                    (-PKR {discountVal.toLocaleString()})
-                  </span>
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Dismiss16Regular
-                  style={{ width: 14, height: 14, cursor: 'pointer', color: isDark ? '#34D399' : '#047857' }}
-                  title="Remove discount"
-                  onClick={handleClearDiscount}
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsDiscountCollapsed(false)}
-                  title="Edit discount"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#34D399' : '#047857', padding: 0, display: 'flex' }}
-                >
-                  <ChevronDown20Regular style={{ width: 14, height: 14 }} />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              onClick={() => setIsDiscountCollapsed(false)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '5px 12px',
-                borderRadius: F.radiusSm,
-                backgroundColor: F.bgSubtle,
-                border: `1px dashed ${F.border}`,
-                cursor: 'pointer',
-                userSelect: 'none',
-                transition: 'all 0.12s ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = F.accentRed)}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = F.border)}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 17,
-                    height: 17,
-                    borderRadius: '50%',
-                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
-                    color: F.accentRed,
-                    fontSize: '10.5px',
-                    fontWeight: 800,
-                  }}
-                >
-                  %
-                </span>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: F.textSecondary, letterSpacing: '0.04em' }}>
-                  BILL DISCOUNT
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: F.textMuted, fontSize: '11px' }}>
-                <span style={{ fontWeight: 600 }}>+ Add Discount</span>
-                <ChevronDown20Regular style={{ width: 14, height: 14 }} />
-              </div>
-            </div>
-          )
-        ) : (
-          /* Expanded Discount Control Panel */
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              padding: '9px 12px',
-              borderRadius: F.radiusMd,
-              backgroundColor: F.bgSubtle,
-              border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.35)' : '#FCA5A5'}`,
-              boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : '0 2px 6px rgba(0,0,0,0.05)',
-            }}
-          >
-            {/* Header: Title + Mode Toggle + Collapse Button */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 17,
-                    height: 17,
-                    borderRadius: '50%',
-                    backgroundColor: F.accentRed,
-                    color: '#FFF',
-                    fontSize: '10px',
-                    fontWeight: 900,
-                  }}
-                >
-                  %
-                </span>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: F.textPrimary, letterSpacing: '0.03em' }}>
-                  BILL DISCOUNT
-                </span>
-              </div>
+        {icon}
+        <span>{label}</span>
+      </button>
+    );
+  };
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {/* Percentage vs Fixed Toggle */}
-                <div
-                  style={{
-                    display: 'flex',
-                    borderRadius: F.radiusSm,
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0',
-                    padding: '2px',
-                    gap: '2px',
-                  }}
-                >
+  return (
+    <div
+      style={{
+        padding: '12px 16px 16px',
+        borderTop: `1px solid ${F.border}`,
+        backgroundColor: F.bgCard,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        flexShrink: 0,
+      }}
+    >
+      {/* ── Summary ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: F.textSecondary }}>
+          <span>Subtotal</span>
+          <span style={{ color: F.textPrimary }}>PKR {subtotal.toLocaleString()}</span>
+        </div>
+
+        {discountVal > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: F.accentGreen }}>
+            <span>Discount ({discountMode === 'percent' ? `${discountValue}%` : `PKR ${discountValue}`})</span>
+            <span style={{ fontWeight: 600 }}>-PKR {discountVal.toLocaleString()}</span>
+          </div>
+        )}
+
+        {orderType === 'delivery' && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: F.textSecondary }}>
+            <span>Delivery charges</span>
+            <span style={{ color: effectiveDeliveryFee === 0 ? F.accentGreen : F.textPrimary }}>
+              {effectiveDeliveryFee === 0 ? 'FREE' : `PKR ${effectiveDeliveryFee}`}
+            </span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '2px' }}>
+          <span style={{ fontSize: '14px', fontWeight: 600, color: F.textPrimary }}>Total</span>
+          <span style={{ fontSize: '28px', lineHeight: '36px', fontWeight: 600, color: F.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+            PKR {total.toLocaleString()}
+          </span>
+        </div>
+
+        {/* Change due stays visible for the cashier (cash only) */}
+        {paymentMode === 'cash' && cart.length > 0 && typeof tenderedAmount === 'number' && tenderedAmount >= total && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: F.accentGreen }}>
+            <span>Change due (wapsi) · received PKR {tenderedAmount.toLocaleString()}</span>
+            <span style={{ fontSize: '16px', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+              PKR {(tenderedAmount - total).toLocaleString()}
+            </span>
+          </div>
+        )}
+        {paymentMode === 'cash' && cart.length > 0 && typeof tenderedAmount === 'number' && tenderedAmount > 0 && tenderedAmount < total && (
+          <div style={{ fontSize: '13px', color: F.accentRed, textAlign: 'right' }}>
+            Short by PKR {(total - tenderedAmount).toLocaleString()}
+          </div>
+        )}
+      </div>
+
+      {/* ── Payment method (segmented) ── */}
+      <div
+        role="group"
+        aria-label="Payment method"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2px', padding: '2px', borderRadius: '6px', backgroundColor: F.bgSubtle }}
+      >
+        {paymentButton('cash', 'Cash', <Money20Regular style={{ width: 16, height: 16 }} />, () => {
+          setPaymentMode('cash');
+          playBeep();
+        })}
+        {paymentButton('card', 'Card', <Payment20Regular style={{ width: 16, height: 16 }} />, () => {
+          setPaymentMode('card');
+          playBeep();
+        })}
+        {paymentButton('khata', 'Khata', <Notebook20Regular style={{ width: 16, height: 16 }} />, () => {
+          setPaymentMode('khata');
+          playBeep();
+          setFlyout('khata');
+        })}
+        {paymentButton('split', 'Split', <ArrowRepeatAll20Regular style={{ width: 16, height: 16 }} />, () => {
+          setPaymentMode('split');
+          const half = Math.round(total / 2);
+          setSplitCashAmount(half);
+          setSplitOnlineAmount(total - half);
+          setSplitKhataAmount(0);
+          playBeep();
+          if (cart.length > 0) setFlyout('split');
+        })}
+      </div>
+
+      {/* ── Action row: discount + the extra step of the chosen payment method ── */}
+      <div style={{ display: 'flex', gap: '6px' }}>
+        {/* Discount flyout (open state = the existing isDiscountCollapsed flag) */}
+        <Popover
+          open={!isDiscountCollapsed}
+          onOpenChange={(_, data) => setIsDiscountCollapsed(!data.open)}
+          positioning="above-start"
+          trapFocus
+        >
+          <PopoverTrigger disableButtonEnhancement>
+            <button type="button" style={actionButton({ active: discountVal > 0 })}>
+              <Tag20Regular style={{ width: 16, height: 16, flexShrink: 0, color: discountVal > 0 ? F.accentGreen : F.textSecondary }} />
+              <span style={actionLabel}>
+                {discountVal > 0
+                  ? (discountMode === 'percent' ? `${discountValue}% off` : `PKR ${discountValue} off`)
+                  : 'Discount'}
+              </span>
+              <ChevronDown16Regular style={{ width: 12, height: 12, flexShrink: 0, color: F.textSecondary }} />
+            </button>
+          </PopoverTrigger>
+          <PopoverSurface style={surfaceStyle}>
+            {/* Expanded Discount Control Panel */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Header: Title + Mode Toggle + Collapse Button */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: F.textPrimary }}>Bill discount</span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* Percentage vs Fixed Toggle */}
+                  <div style={{ display: 'flex', borderRadius: '6px', backgroundColor: F.bgSubtle, padding: '2px', gap: '2px' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiscountMode('percent');
+                        if (discountMode !== 'percent') {
+                          setDiscountValue(0);
+                          setDiscountInput('');
+                        }
+                      }}
+                      style={{
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '3px 8px',
+                        fontSize: '12px',
+                        fontWeight: discountMode === 'percent' ? 600 : 400,
+                        cursor: 'pointer',
+                        backgroundColor: discountMode === 'percent' ? F.bgCard : 'transparent',
+                        color: F.textPrimary,
+                      }}
+                    >
+                      % Percent
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiscountMode('fixed');
+                        if (discountMode !== 'fixed') {
+                          setDiscountValue(0);
+                          setDiscountInput('');
+                        }
+                      }}
+                      style={{
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '3px 8px',
+                        fontSize: '12px',
+                        fontWeight: discountMode === 'fixed' ? 600 : 400,
+                        cursor: 'pointer',
+                        backgroundColor: discountMode === 'fixed' ? F.bgCard : 'transparent',
+                        color: F.textPrimary,
+                      }}
+                    >
+                      PKR Flat
+                    </button>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => {
-                      setDiscountMode('percent');
-                      if (discountMode !== 'percent') {
-                        setDiscountValue(0);
-                        setDiscountInput('');
-                      }
-                    }}
-                    style={{
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '2px 7px',
-                      fontSize: '10.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      backgroundColor: discountMode === 'percent' ? F.accentRed : 'transparent',
-                      color: discountMode === 'percent' ? '#FFF' : F.textMuted,
-                      transition: 'all 0.15s ease',
-                    }}
+                    onClick={() => setIsDiscountCollapsed(true)}
+                    title="Close"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: F.textSecondary, padding: '2px', display: 'flex', alignItems: 'center' }}
                   >
-                    % Percent
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDiscountMode('fixed');
-                      if (discountMode !== 'fixed') {
-                        setDiscountValue(0);
-                        setDiscountInput('');
-                      }
-                    }}
-                    style={{
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '2px 7px',
-                      fontSize: '10.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      backgroundColor: discountMode === 'fixed' ? F.accentRed : 'transparent',
-                      color: discountMode === 'fixed' ? '#FFF' : F.textMuted,
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    PKR Flat
+                    <ChevronUp20Regular style={{ width: 15, height: 15 }} />
                   </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsDiscountCollapsed(true)}
-                  title="Collapse discount"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: F.textMuted, padding: '2px', display: 'flex', alignItems: 'center' }}
-                >
-                  <ChevronUp20Regular style={{ width: 15, height: 15 }} />
-                </button>
               </div>
-            </div>
 
-            {/* Quick Preset Buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              {discountMode === 'percent'
-                ? [5, 10, 15, 20, 25].map((pct) => (
-                    <button
-                      key={pct}
-                      type="button"
-                      onClick={() => handleApplyPreset(pct)}
-                      style={{
-                        flex: 1,
-                        padding: '3px 0',
-                        borderRadius: F.radiusSm,
-                        border: `1px solid ${discountValue === pct ? F.accentRed : F.border}`,
-                        backgroundColor: discountValue === pct ? (isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2') : F.bgCard,
-                        color: discountValue === pct ? F.accentRed : F.textSecondary,
-                        fontSize: '11px',
-                        fontWeight: discountValue === pct ? 800 : 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.1s ease',
-                      }}
-                    >
-                      {pct}%
-                    </button>
-                  ))
-                : [50, 100, 200, 500].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => handleApplyPreset(amt)}
-                      style={{
-                        flex: 1,
-                        padding: '3px 0',
-                        borderRadius: F.radiusSm,
-                        border: `1px solid ${discountValue === amt ? F.accentRed : F.border}`,
-                        backgroundColor: discountValue === amt ? (isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2') : F.bgCard,
-                        color: discountValue === amt ? F.accentRed : F.textSecondary,
-                        fontSize: '11px',
-                        fontWeight: discountValue === amt ? 800 : 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.1s ease',
-                      }}
-                    >
-                      {amt}
-                    </button>
-                  ))}
-            </div>
+              {/* Quick Preset Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                {(discountMode === 'percent' ? [5, 10, 15, 20, 25] : [50, 100, 200, 500]).map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => handleApplyPreset(preset)}
+                    style={{
+                      flex: 1,
+                      height: '28px',
+                      borderRadius: '4px',
+                      border: `1px solid ${discountValue === preset ? F.accentRed : F.border}`,
+                      backgroundColor: discountValue === preset ? F.accentRedSubtle : F.bgCard,
+                      color: F.textPrimary,
+                      fontSize: '12px',
+                      fontWeight: discountValue === preset ? 600 : 400,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {discountMode === 'percent' ? `${preset}%` : preset}
+                  </button>
+                ))}
+              </div>
 
-            {/* Custom Input + Clear + Done */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
+              {/* Custom Input + Clear + Done */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <input
                   type="number"
                   min="0"
@@ -333,447 +355,302 @@ export function OrderFooter({ pos }: { pos: PosCounterState }) {
                   }}
                   placeholder={discountMode === 'percent' ? 'Custom % (e.g. 12)' : 'Custom PKR (e.g. 150)'}
                   style={{
-                    width: '100%',
+                    flex: 1,
+                    minWidth: 0,
+                    height: '32px',
                     boxSizing: 'border-box',
-                    padding: '4px 8px',
-                    borderRadius: F.radiusSm,
+                    padding: '0 10px',
+                    borderRadius: '4px',
                     border: `1px solid ${F.border}`,
                     backgroundColor: F.bgCard,
                     color: F.textPrimary,
-                    fontSize: '11.5px',
+                    fontSize: '13px',
                     fontFamily: F.font,
                     outline: 'none',
                   }}
                 />
-              </div>
 
-              {discountValue > 0 && (
+                {discountValue > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearDiscount}
+                    style={{
+                      height: '32px',
+                      padding: '0 10px',
+                      borderRadius: '4px',
+                      border: `1px solid ${F.border}`,
+                      backgroundColor: F.bgCard,
+                      color: F.textPrimary,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Dismiss16Regular style={{ width: 12, height: 12 }} />
+                    <span>Clear</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={handleClearDiscount}
+                  onClick={() => setIsDiscountCollapsed(true)}
                   style={{
-                    padding: '4px 8px',
-                    borderRadius: F.radiusSm,
-                    border: `1px solid ${F.border}`,
-                    backgroundColor: F.bgCard,
-                    color: F.textMuted,
-                    fontSize: '11px',
+                    height: '32px',
+                    padding: '0 14px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    backgroundColor: F.accentRed,
+                    color: '#FFF',
+                    fontSize: '13px',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
                   }}
                 >
-                  <Dismiss16Regular style={{ width: 12, height: 12 }} />
-                  <span>Clear</span>
+                  Done
                 </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setIsDiscountCollapsed(true)}
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: F.radiusSm,
-                  border: 'none',
-                  backgroundColor: F.accentRed,
-                  color: '#FFF',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Financial Breakdown */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: F.textSecondary }}>
-            <span>Subtotal</span>
-            <span style={{ fontWeight: 600, color: F.textPrimary }}>PKR {subtotal.toLocaleString()}</span>
-          </div>
-
-          {discountVal > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#10B981' }}>
-              <span>Discount ({discountMode === 'percent' ? `${discountValue}%` : `PKR ${discountValue}`})</span>
-              <span style={{ fontWeight: 700 }}>-PKR {discountVal.toLocaleString()}</span>
-            </div>
-          )}
-
-          {orderType === 'delivery' && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: F.textSecondary }}>
-              <span>Delivery Charges</span>
-              <span style={{ fontWeight: 600, color: effectiveDeliveryFee === 0 ? F.accentGreen : F.textPrimary }}>
-                {effectiveDeliveryFee === 0 ? 'FREE' : `PKR ${effectiveDeliveryFee}`}
-              </span>
-            </div>
-          )}
-
-          <div style={{ height: '1px', backgroundColor: F.borderSubtle, margin: '2px 0' }} />
-
-          {/* Total Row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', fontWeight: 800, color: F.textPrimary }}>TOTAL</span>
-            <span style={{ fontSize: '19px', fontWeight: 900, color: F.textPrimary }}>
-              PKR {total.toLocaleString()}
-            </span>
-          </div>
-        </div>
-
-        {/* Payment Method Selector */}
-        <div>
-          <div style={{ fontSize: '10.5px', fontWeight: 700, color: F.textSecondary, marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Payment Method
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentMode('cash');
-                playBeep();
-              }}
-              style={{
-                padding: '6px 0',
-                borderRadius: F.radiusSm,
-                border: `1px solid ${paymentMode === 'cash' ? F.accentRed : F.border}`,
-                backgroundColor: paymentMode === 'cash' ? (isDark ? 'rgba(229,25,55,0.2)' : '#FEF2F2') : F.bgSubtle,
-                color: paymentMode === 'cash' ? F.accentRed : F.textPrimary,
-                fontSize: '11px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-                transition: 'all 0.12s ease',
-              }}
-            >
-              <Money20Regular style={{ width: 14, height: 14 }} />
-              <span>Cash</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentMode('card');
-                playBeep();
-              }}
-              style={{
-                padding: '6px 0',
-                borderRadius: F.radiusSm,
-                border: `1px solid ${paymentMode === 'card' ? F.accentRed : F.border}`,
-                backgroundColor: paymentMode === 'card' ? (isDark ? 'rgba(229,25,55,0.2)' : '#FEF2F2') : F.bgSubtle,
-                color: paymentMode === 'card' ? F.accentRed : F.textPrimary,
-                fontSize: '11px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-                transition: 'all 0.12s ease',
-              }}
-            >
-              <Payment20Regular style={{ width: 14, height: 14 }} />
-              <span>Card</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentMode('khata');
-                playBeep();
-              }}
-              style={{
-                padding: '6px 0',
-                borderRadius: F.radiusSm,
-                border: `1px solid ${paymentMode === 'khata' ? F.accentRed : F.border}`,
-                backgroundColor: paymentMode === 'khata' ? (isDark ? 'rgba(229,25,55,0.2)' : '#FEF2F2') : F.bgSubtle,
-                color: paymentMode === 'khata' ? F.accentRed : F.textPrimary,
-                fontSize: '11px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-                transition: 'all 0.12s ease',
-              }}
-            >
-              <Notebook20Regular style={{ width: 14, height: 14 }} />
-              <span>Khata</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentMode('split');
-                const half = Math.round(total / 2);
-                setSplitCashAmount(half);
-                setSplitOnlineAmount(total - half);
-                setSplitKhataAmount(0);
-                playBeep();
-              }}
-              style={{
-                padding: '6px 0',
-                borderRadius: F.radiusSm,
-                border: `1px solid ${paymentMode === 'split' ? F.accentRed : F.border}`,
-                backgroundColor: paymentMode === 'split' ? (isDark ? 'rgba(229,25,55,0.2)' : '#FEF2F2') : F.bgSubtle,
-                color: paymentMode === 'split' ? F.accentRed : F.textPrimary,
-                fontSize: '11px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-                transition: 'all 0.12s ease',
-              }}
-            >
-              <ArrowRepeatAll20Regular style={{ width: 14, height: 14 }} />
-              <span>Split</span>
-            </button>
-          </div>
-
-          {/* Quick Cash Tender & Change Due Calculator */}
-          {paymentMode === 'cash' && cart.length > 0 && (
-            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '10.5px', fontWeight: 700, color: F.textSecondary, textTransform: 'uppercase' }}>
-                  Cash Tendered (Received)
-                </span>
-                {tenderedAmount !== '' && (
-                  <span
-                    onClick={() => setTenderedAmount('')}
-                    style={{ fontSize: '10.5px', color: F.textMuted, cursor: 'pointer' }}
-                  >
-                    Reset
-                  </span>
-                )}
               </div>
+            </div>
+          </PopoverSurface>
+        </Popover>
 
-              {/* Quick Denominations */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTenderedAmount(total);
-                    playBeep();
-                  }}
-                  style={{
-                    padding: '4px 0',
-                    borderRadius: '4px',
-                    border: `1px solid ${tenderedAmount === total ? F.accentRed : F.border}`,
-                    backgroundColor: tenderedAmount === total ? F.accentRedSubtle : F.bgSubtle,
-                    color: tenderedAmount === total ? F.accentRed : F.textPrimary,
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Exact
-                </button>
-                {[500, 1000, 5000].map((amt) => (
+        {/* Cash: tender & change calculator */}
+        {paymentMode === 'cash' && (
+          <Popover open={flyout === 'tender'} onOpenChange={openChange('tender')} positioning="above-end" trapFocus>
+            <PopoverTrigger disableButtonEnhancement>
+              <button type="button" disabled={cart.length === 0} style={actionButton({ active: tenderedAmount !== '', disabled: cart.length === 0 })}>
+                <Money20Regular style={{ width: 16, height: 16, flexShrink: 0, color: F.textSecondary }} />
+                <span style={actionLabel}>
+                  {typeof tenderedAmount === 'number' ? `Received ${tenderedAmount.toLocaleString()}` : 'Cash received'}
+                </span>
+                <ChevronDown16Regular style={{ width: 12, height: 12, flexShrink: 0, color: F.textSecondary }} />
+              </button>
+            </PopoverTrigger>
+            <PopoverSurface style={surfaceStyle}>
+              {flyoutTitle('Cash received')}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Quick Denominations */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
                   <button
-                    key={amt}
                     type="button"
                     onClick={() => {
-                      setTenderedAmount(amt);
+                      setTenderedAmount(total);
                       playBeep();
                     }}
                     style={{
-                      padding: '4px 0',
+                      height: '32px',
                       borderRadius: '4px',
-                      border: `1px solid ${tenderedAmount === amt ? F.accentRed : F.border}`,
-                      backgroundColor: tenderedAmount === amt ? F.accentRedSubtle : F.bgSubtle,
-                      color: tenderedAmount === amt ? F.accentRed : F.textPrimary,
-                      fontSize: '11px',
-                      fontWeight: 700,
+                      border: `1px solid ${tenderedAmount === total ? F.accentRed : F.border}`,
+                      backgroundColor: tenderedAmount === total ? F.accentRedSubtle : F.bgCard,
+                      color: F.textPrimary,
+                      fontSize: '13px',
+                      fontWeight: tenderedAmount === total ? 600 : 400,
                       cursor: 'pointer',
                     }}
                   >
-                    {amt >= 1000 ? `${amt / 1000}k` : amt}
+                    Exact
                   </button>
-                ))}
-              </div>
+                  {[500, 1000, 5000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => {
+                        setTenderedAmount(amt);
+                        playBeep();
+                      }}
+                      style={{
+                        height: '32px',
+                        borderRadius: '4px',
+                        border: `1px solid ${tenderedAmount === amt ? F.accentRed : F.border}`,
+                        backgroundColor: tenderedAmount === amt ? F.accentRedSubtle : F.bgCard,
+                        color: F.textPrimary,
+                        fontSize: '13px',
+                        fontWeight: tenderedAmount === amt ? 600 : 400,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {amt >= 1000 ? `${amt / 1000}k` : amt}
+                    </button>
+                  ))}
+                </div>
 
-              <input
-                type="number"
-                value={tenderedAmount}
-                onChange={(e) => setTenderedAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="Or enter cash received..."
-                style={{
-                  width: '100%',
-                  padding: '6px 10px',
-                  borderRadius: F.radiusSm,
-                  border: `1px solid ${F.border}`,
-                  backgroundColor: F.bgSubtle,
-                  color: F.textPrimary,
-                  fontSize: '12px',
-                  fontFamily: F.font,
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
-
-              {/* Return Change Banner */}
-              {typeof tenderedAmount === 'number' && tenderedAmount >= total && (
-                <div
+                <input
+                  type="number"
+                  value={tenderedAmount}
+                  onChange={(e) => setTenderedAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="Or enter cash received..."
                   style={{
-                    padding: '6px 10px',
-                    borderRadius: F.radiusSm,
-                    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
-                    border: '1px solid rgba(16, 185, 129, 0.35)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    width: '100%',
+                    height: '32px',
+                    padding: '0 10px',
+                    borderRadius: '4px',
+                    border: `1px solid ${F.border}`,
+                    backgroundColor: F.bgCard,
+                    color: F.textPrimary,
+                    fontSize: '13px',
+                    fontFamily: F.font,
+                    outline: 'none',
+                    boxSizing: 'border-box',
                   }}
-                >
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#10B981', textTransform: 'uppercase' }}>
-                    Change Due (Wapsi)
-                  </span>
-                  <span style={{ fontSize: '15px', fontWeight: 900, color: '#10B981', fontFamily: 'monospace' }}>
-                    PKR {(tenderedAmount - total).toLocaleString()}
-                  </span>
-                </div>
-              )}
+                />
 
-              {typeof tenderedAmount === 'number' && tenderedAmount > 0 && tenderedAmount < total && (
-                <div style={{ fontSize: '11px', color: F.accentRed, fontWeight: 600, textAlign: 'right' }}>
-                  Short by PKR {(total - tenderedAmount).toLocaleString()}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Split Payment Controls */}
-          {paymentMode === 'split' && cart.length > 0 && (
-            <div
-              style={{
-                marginTop: '8px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '6px',
-                padding: '8px',
-                borderRadius: F.radiusSm,
-                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC',
-                border: `1px solid ${F.border}`,
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10.5px', fontWeight: 700 }}>
-                <span style={{ color: F.textSecondary, textTransform: 'uppercase' }}>Split Amount Allocation</span>
-                <span style={{ color: F.accentRed }}>Total: PKR {total.toLocaleString()}</span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                <div>
-                  <label style={{ fontSize: '10px', color: F.textMuted, display: 'block', marginBottom: '2px' }}>Cash (PKR)</label>
-                  <input
-                    type="number"
-                    value={splitCashAmount}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? '' : Number(e.target.value);
-                      setSplitCashAmount(val);
-                      if (typeof val === 'number') {
-                        const rem = Math.max(0, total - val - (Number(splitKhataAmount) || 0));
-                        setSplitOnlineAmount(rem);
-                      }
-                    }}
-                    placeholder="Cash amount..."
-                    style={{
-                      width: '100%',
-                      padding: '5px 8px',
-                      borderRadius: '4px',
-                      border: `1px solid ${F.border}`,
-                      backgroundColor: F.bgSubtle,
-                      color: F.textPrimary,
-                      fontSize: '11.5px',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '10px', color: F.textMuted, display: 'block', marginBottom: '2px' }}>Card / Online</label>
-                  <input
-                    type="number"
-                    value={splitOnlineAmount}
-                    onChange={(e) => setSplitOnlineAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Online amount..."
-                    style={{
-                      width: '100%',
-                      padding: '5px 8px',
-                      borderRadius: '4px',
-                      border: `1px solid ${F.border}`,
-                      backgroundColor: F.bgSubtle,
-                      color: F.textPrimary,
-                      fontSize: '11.5px',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-              </div>
-
-              {selectedCustomer.id && (
-                <div>
-                  <label style={{ fontSize: '10px', color: F.textMuted, display: 'block', marginBottom: '2px' }}>
-                    Khata / Udhar ({selectedCustomer.name})
-                  </label>
-                  <input
-                    type="number"
-                    value={splitKhataAmount}
-                    onChange={(e) => setSplitKhataAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Khata amount..."
-                    style={{
-                      width: '100%',
-                      padding: '5px 8px',
-                      borderRadius: '4px',
-                      border: `1px solid ${F.border}`,
-                      backgroundColor: F.bgSubtle,
-                      color: F.textPrimary,
-                      fontSize: '11.5px',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Validation Status */}
-              {(() => {
-                const sum = (Number(splitCashAmount) || 0) + (Number(splitOnlineAmount) || 0) + (Number(splitKhataAmount) || 0);
-                const diff = total - sum;
-                if (diff === 0) {
-                  return (
-                    <div style={{ fontSize: '11px', color: '#10B981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckmarkCircle20Filled style={{ width: 14, height: 14 }} />
-                      <span>Exact match (PKR {sum.toLocaleString()})</span>
-                    </div>
-                  );
-                }
-                if (diff > 0) {
-                  return (
-                    <div style={{ fontSize: '11px', color: '#F59E0B', fontWeight: 600 }}>
-                      Remaining to allocate: PKR {diff.toLocaleString()}
-                    </div>
-                  );
-                }
-                return (
-                  <div style={{ fontSize: '11px', color: '#EF4444', fontWeight: 600 }}>
-                    Exceeds total by PKR {Math.abs(diff).toLocaleString()}
+                {/* Return Change */}
+                {typeof tenderedAmount === 'number' && tenderedAmount >= total && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: F.accentGreen }}>
+                    <span>Change due (wapsi)</span>
+                    <span style={{ fontSize: '16px', fontWeight: 600 }}>PKR {(tenderedAmount - total).toLocaleString()}</span>
                   </div>
-                );
-              })()}
-            </div>
-          )}
+                )}
+                {typeof tenderedAmount === 'number' && tenderedAmount > 0 && tenderedAmount < total && (
+                  <div style={{ fontSize: '13px', color: F.accentRed, textAlign: 'right' }}>
+                    Short by PKR {(total - tenderedAmount).toLocaleString()}
+                  </div>
+                )}
 
-          {/* Khata Customer Selection */}
-          {paymentMode === 'khata' && (
-            <div style={{ marginTop: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setTenderedAmount('')}
+                    disabled={tenderedAmount === ''}
+                    style={{ height: '32px', padding: '0 12px', borderRadius: '4px', border: `1px solid ${F.border}`, backgroundColor: F.bgCard, color: tenderedAmount === '' ? F.textMuted : F.textPrimary, fontSize: '13px', cursor: tenderedAmount === '' ? 'default' : 'pointer' }}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFlyout(null)}
+                    style={{ height: '32px', padding: '0 14px', borderRadius: '4px', border: 'none', backgroundColor: F.accentRed, color: '#FFF', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </PopoverSurface>
+          </Popover>
+        )}
+
+        {/* Split: amount allocation */}
+        {paymentMode === 'split' && (
+          <Popover open={flyout === 'split'} onOpenChange={openChange('split')} positioning="above-end" trapFocus>
+            <PopoverTrigger disableButtonEnhancement>
+              <button
+                type="button"
+                disabled={cart.length === 0}
+                style={actionButton({ active: true, warn: cart.length > 0 && splitDiff !== 0, disabled: cart.length === 0 })}
+              >
+                <ArrowRepeatAll20Regular style={{ width: 16, height: 16, flexShrink: 0, color: F.textSecondary }} />
+                <span style={actionLabel}>
+                  {cart.length === 0
+                    ? 'Split amounts'
+                    : splitDiff === 0
+                      ? 'Split: amounts match'
+                      : splitDiff > 0
+                        ? `Split: PKR ${splitDiff.toLocaleString()} left`
+                        : `Split: PKR ${Math.abs(splitDiff).toLocaleString()} over`}
+                </span>
+                <ChevronDown16Regular style={{ width: 12, height: 12, flexShrink: 0, color: F.textSecondary }} />
+              </button>
+            </PopoverTrigger>
+            <PopoverSurface style={surfaceStyle}>
+              {flyoutTitle(`Split payment · Total PKR ${total.toLocaleString()}`)}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', color: F.textSecondary, display: 'block', marginBottom: '4px' }}>Cash (PKR)</label>
+                    <input
+                      type="number"
+                      value={splitCashAmount}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setSplitCashAmount(val);
+                        if (typeof val === 'number') {
+                          const rem = Math.max(0, total - val - (Number(splitKhataAmount) || 0));
+                          setSplitOnlineAmount(rem);
+                        }
+                      }}
+                      placeholder="Cash amount..."
+                      style={{ width: '100%', height: '32px', padding: '0 10px', borderRadius: '4px', border: `1px solid ${F.border}`, backgroundColor: F.bgCard, color: F.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '12px', color: F.textSecondary, display: 'block', marginBottom: '4px' }}>Card / Online</label>
+                    <input
+                      type="number"
+                      value={splitOnlineAmount}
+                      onChange={(e) => setSplitOnlineAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Online amount..."
+                      style={{ width: '100%', height: '32px', padding: '0 10px', borderRadius: '4px', border: `1px solid ${F.border}`, backgroundColor: F.bgCard, color: F.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {selectedCustomer.id && (
+                  <div>
+                    <label style={{ fontSize: '12px', color: F.textSecondary, display: 'block', marginBottom: '4px' }}>
+                      Khata / Udhar ({selectedCustomer.name})
+                    </label>
+                    <input
+                      type="number"
+                      value={splitKhataAmount}
+                      onChange={(e) => setSplitKhataAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Khata amount..."
+                      style={{ width: '100%', height: '32px', padding: '0 10px', borderRadius: '4px', border: `1px solid ${F.border}`, backgroundColor: F.bgCard, color: F.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                )}
+
+                {/* Validation Status */}
+                {splitDiff === 0 ? (
+                  <div style={{ fontSize: '13px', color: F.accentGreen, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <CheckmarkCircle20Filled style={{ width: 14, height: 14 }} />
+                    <span>Exact match (PKR {splitSum.toLocaleString()})</span>
+                  </div>
+                ) : splitDiff > 0 ? (
+                  <div style={{ fontSize: '13px', color: isDark ? '#FCE100' : '#9D5D00' }}>
+                    Remaining to allocate: PKR {splitDiff.toLocaleString()}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '13px', color: F.accentRed }}>
+                    Exceeds total by PKR {Math.abs(splitDiff).toLocaleString()}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => setFlyout(null)}
+                    style={{ height: '32px', padding: '0 14px', borderRadius: '4px', border: 'none', backgroundColor: F.accentRed, color: '#FFF', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </PopoverSurface>
+          </Popover>
+        )}
+
+        {/* Khata: customer to debit */}
+        {paymentMode === 'khata' && (
+          <Popover open={flyout === 'khata'} onOpenChange={openChange('khata')} positioning="above-end">
+            <PopoverTrigger disableButtonEnhancement>
+              <button type="button" style={actionButton({ active: !!selectedKhataId, warn: !selectedKhataId })}>
+                <Notebook20Regular style={{ width: 16, height: 16, flexShrink: 0, color: selectedKhataId ? F.textSecondary : F.accentRed }} />
+                <span style={{ ...actionLabel, color: selectedKhataId ? F.textPrimary : F.accentRed }}>
+                  {selectedKhata ? selectedKhata.name : 'Choose khata customer'}
+                </span>
+                <ChevronDown16Regular style={{ width: 12, height: 12, flexShrink: 0, color: F.textSecondary }} />
+              </button>
+            </PopoverTrigger>
+            <PopoverSurface style={{ ...surfaceStyle, minHeight: '120px' }}>
               <CustomSelect
                 label="Khata Customer"
                 required
                 value={selectedKhataId}
-                onChange={(val) => setSelectedKhataId(val)}
+                onChange={(val) => {
+                  setSelectedKhataId(val);
+                  setFlyout(null);
+                }}
                 placeholder="-- Select Khata Customer --"
                 options={customerKhatas.map((k: any) => ({
                   value: k.id,
@@ -781,60 +658,54 @@ export function OrderFooter({ pos }: { pos: PosCounterState }) {
                 }))}
                 error={!selectedKhataId ? '* Please select customer to debit bill' : undefined}
               />
-            </div>
-          )}
-        </div>
-
-        {/* Primary Interactive Button: Red Brand Accent (#E51937) */}
-        <button
-          disabled={
-            cart.length === 0 ||
-            isPending ||
-            (paymentMode === 'khata' && !selectedKhataId) ||
-            (paymentMode === 'split' &&
-              (Number(splitCashAmount) || 0) +
-                (Number(splitOnlineAmount) || 0) +
-                (Number(splitKhataAmount) || 0) !==
-                total)
-          }
-          onClick={() => checkout()}
-          style={{
-            width: '100%',
-            height: '46px',
-            borderRadius: F.radiusMd,
-            backgroundColor: cart.length === 0 || isPending ? (isDark ? '#383838' : '#CBD5E1') : F.accentRed,
-            color: '#FFFFFF',
-            border: 'none',
-            fontFamily: F.font,
-            fontWeight: 700,
-            fontSize: '15px',
-            cursor: cart.length === 0 || isPending ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            boxShadow: cart.length === 0 || isPending ? 'none' : '0 4px 12px rgba(229, 25, 55, 0.28)',
-            transition: 'background-color 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            if (cart.length > 0 && !isPending) e.currentTarget.style.backgroundColor = F.accentRedHover;
-          }}
-          onMouseLeave={(e) => {
-            if (cart.length > 0 && !isPending) e.currentTarget.style.backgroundColor = F.accentRed;
-          }}
-        >
-          {isSuccess ? (
-            <>
-              <CheckmarkCircle20Filled style={{ width: 18, height: 18 }} />
-              <span>Order Placed!</span>
-            </>
-          ) : isPending ? (
-            <span>Processing...</span>
-          ) : (
-            <span>Confirm Order</span>
-          )}
-        </button>
+            </PopoverSurface>
+          </Popover>
+        )}
       </div>
-    </>
+
+      {/* ── Confirm (primary / accent button) ── */}
+      <button
+        disabled={confirmDisabled}
+        onClick={() => checkout()}
+        title="Confirm order (F9 or Ctrl+Enter)"
+        style={{
+          width: '100%',
+          height: '44px',
+          borderRadius: '4px',
+          backgroundColor: cart.length === 0 || isPending ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)') : F.accentRed,
+          color: cart.length === 0 || isPending ? F.textMuted : '#FFFFFF',
+          border: 'none',
+          fontFamily: F.font,
+          fontWeight: 600,
+          fontSize: '15px',
+          cursor: confirmDisabled ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          transition: 'background-color 0.167s cubic-bezier(0, 0, 0, 1)',
+        }}
+        onMouseEnter={(e) => {
+          if (cart.length > 0 && !isPending) e.currentTarget.style.backgroundColor = F.accentRedHover;
+        }}
+        onMouseLeave={(e) => {
+          if (cart.length > 0 && !isPending) e.currentTarget.style.backgroundColor = F.accentRed;
+        }}
+      >
+        {isSuccess ? (
+          <>
+            <CheckmarkCircle20Filled style={{ width: 18, height: 18 }} />
+            <span>Order Placed!</span>
+          </>
+        ) : isPending ? (
+          <span>Processing...</span>
+        ) : (
+          <>
+            <span>Confirm order</span>
+            <span style={{ fontSize: '12px', fontWeight: 400, opacity: 0.8, padding: '1px 6px', borderRadius: '4px', border: '1px solid currentColor' }}>F9</span>
+          </>
+        )}
+      </button>
+    </div>
   );
 }

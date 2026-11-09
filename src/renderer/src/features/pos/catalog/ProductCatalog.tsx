@@ -3,7 +3,7 @@ import { playBeep } from '@/lib/soundFx';
 import { Add16Filled, Scales20Regular } from '@fluentui/react-icons';
 import { FastFoodVisualCard } from '@/features/pos/catalog/FastFoodVisualCard';
 
-export function ProductCatalog({ pos }: { pos: PosCounterState }) {
+export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCounterState; highlightSelected?: boolean }) {
   const {
     module,
     isDark,
@@ -213,7 +213,7 @@ export function ProductCatalog({ pos }: { pos: PosCounterState }) {
           </div>
         ) : (
           /* ── Visual Grid View: Exactly 4 Cards Per Row ── */
-          <div style={{ display: 'grid', gridTemplateColumns: filteredProducts.length === 0 ? '1fr' : 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: filteredProducts.length === 0 ? '1fr' : 'repeat(auto-fill, minmax(168px, 1fr))', gap: '12px' }}>
             {filteredProducts.length === 0 ? (
               <div
                 style={{
@@ -234,7 +234,7 @@ export function ProductCatalog({ pos }: { pos: PosCounterState }) {
               </div>
             ) : (
               filteredProducts.map((product) => {
-                const isSelected = selectedProduct?.id === product.id;
+                const isSelected = highlightSelected && selectedProduct?.id === product.id;
                 const isWeightItem = isWeighableOrLiquid(product.unit) || product.pricingType === 'perkg' || product.pricingType === 'amountse';
 
                 return (

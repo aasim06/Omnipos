@@ -1,34 +1,54 @@
+import React from 'react';
 import { PosCounterState } from '@/features/pos/usePosCounter';
-import { TerminalModeBar } from '@/features/pos/catalog/TerminalModeBar';
-import { CatalogHeader } from '@/features/pos/catalog/CatalogHeader';
-import { ScannerBar } from '@/features/pos/catalog/ScannerBar';
+import { CommandBar } from '@/features/pos/catalog/CommandBar';
+import { CategoryPivot } from '@/features/pos/catalog/CategoryPivot';
+import { ScanFeedback } from '@/features/pos/catalog/ScanFeedback';
 import { MealBuilderCard } from '@/features/pos/catalog/MealBuilderCard';
 import { ProductCatalog } from '@/features/pos/catalog/ProductCatalog';
 
+const FEATURED_KEY = 'omnipos_pos_show_featured';
+
+function readShowFeatured(): boolean {
+  try {
+    return localStorage.getItem(FEATURED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 export function CatalogPane({ pos }: { pos: PosCounterState }) {
+  // The fast-food "featured item" card is optional now (hidden by default) so products get the height.
+  const [showFeatured, setShowFeatured] = React.useState<boolean>(readShowFeatured);
+  const toggleFeatured = () =>
+    setShowFeatured((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(FEATURED_KEY, String(next));
+      } catch {
+        /* storage unavailable */
+      }
+      return next;
+    });
+
   return (
-    <>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Scanner, search, mode and view switches in one row */}
+      <CommandBar pos={pos} showFeatured={showFeatured} onToggleFeatured={toggleFeatured} />
 
-        {/* ── POS Terminal Mode Switcher Bar (Tabs) ── */}
-        <TerminalModeBar pos={pos} />
+      {/* Category pivot */}
+      <CategoryPivot pos={pos} />
 
-        {/* Desktop Header Bar with Fluent Pivot Tabs */}
-        <CatalogHeader pos={pos} />
+      {/* Scanner result (floating, takes no space) */}
+      <ScanFeedback pos={pos} />
 
-        {/* Scrollable Content Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Scrollable content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* ── Featured item / meal builder (fast food, optional) ── */}
+        {showFeatured && <MealBuilderCard pos={pos} />}
 
-          {/* ── High-Speed Barcode / SKU Scanner Bar ── */}
-          <ScannerBar pos={pos} />
-
-          {/* ── Fluent Hero Highlight Card (Meal Builder - Fast Food Only) ── */}
-          <MealBuilderCard pos={pos} />
-
-          {/* ── Product Catalog Section (Grid View vs Supermarket Table View) ── */}
-          <ProductCatalog pos={pos} />
-        </div>
+        {/* ── Product Catalog Section (Grid View vs Supermarket Table View) ── */}
+        <ProductCatalog pos={pos} highlightSelected={showFeatured} />
       </div>
-    </>
+    </div>
   );
 }
