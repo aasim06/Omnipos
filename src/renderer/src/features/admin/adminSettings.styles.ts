@@ -463,8 +463,6 @@ export const useAdminSettingsStyles = makeStyles({
     fontWeight: 600,
     color: tokens.colorNeutralForeground2,
     fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
     backgroundColor: tokens.colorNeutralBackground3,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
   },
@@ -509,7 +507,6 @@ export const useAdminSettingsStyles = makeStyles({
   },
   roleBadge: {
     fontWeight: 600,
-    textTransform: 'uppercase',
     fontSize: '10px',
   },
   statusToggleBtn: {
@@ -695,7 +692,6 @@ export const useAdminSettingsStyles = makeStyles({
   },
   permMatrixTitle: {
     fontWeight: 600,
-    textTransform: 'uppercase',
     color: tokens.colorNeutralForeground1,
   },
   btnGroup: {

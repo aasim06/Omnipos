@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/win11';
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
@@ -559,37 +560,26 @@ export function AdminSettingsView(): React.JSX.Element {
 
   return (
     <div className={styles.container}>
-      {/* ── Page Header ──────────────────────────────────── */}
-      <div className={styles.pageHeader}>
-        <div>
-          <Subtitle1 as="h1" className={styles.pageTitle}>
-            Store Settings &amp; Preferences
-          </Subtitle1>
-          <Text as="p" size={200} className={styles.pageSubtitle}>
-            Customize store identity, receipt branding, cashier accounts &amp; granular role permissions.
-          </Text>
-        </div>
-
-        {activeTab === 'staff' ? (
-          <Button
-            appearance="primary"
-            icon={<PersonAdd20Regular />}
-            onClick={handleOpenAddUser}
-            className={styles.primaryRedButton}
-          >
-            Add New Cashier / Staff
-          </Button>
-        ) : activeTab === 'updates' ? null : (
-          <Button
-            appearance="primary"
-            icon={saveSuccess ? <Checkmark20Filled /> : <Save20Regular />}
-            onClick={handleSave}
-            className={styles.saveButton}
-          >
-            {saveSuccess ? 'Saved!' : 'Save Changes'}
-          </Button>
-        )}
-      </div>
+      {/* ── Page header (Windows 11): one accent command per tab ── */}
+      <PageHeader
+        title="Settings"
+        subtitle="Staff, store details, receipts, printers, backups and updates"
+        actions={
+          activeTab === 'staff' ? (
+            <Button appearance="primary" icon={<PersonAdd20Regular />} onClick={handleOpenAddUser}>
+              Add staff
+            </Button>
+          ) : activeTab === 'updates' ? null : (
+            <Button
+              appearance="primary"
+              icon={saveSuccess ? <Checkmark20Filled /> : <Save20Regular />}
+              onClick={handleSave}
+            >
+              {saveSuccess ? 'Saved' : 'Save changes'}
+            </Button>
+          )
+        }
+      />
 
       {/* ── Settings body: section list on the left, content on the right (Windows 11 Settings) ── */}
       <div className={styles.settingsBody}>
@@ -602,13 +592,13 @@ export function AdminSettingsView(): React.JSX.Element {
           className={mergeClasses(styles.tabButton, activeTab === 'staff' && styles.tabButtonActive)}
         >
           <PeopleCommunity24Regular className={mergeClasses(styles.tabIcon, activeTab === 'staff' && styles.tabIconActive)} />
-          <span>Staff &amp; Cashier Accounts</span>
+          <span>Staff</span>
           <Badge
             appearance="tint"
             color="brand"
             className={activeTab === 'staff' ? styles.tabBadgeActive : styles.tabBadge}
           >
-            {users.length} Users
+            {users.length} {users.length === 1 ? 'user' : 'users'}
           </Badge>
         </button>
 
@@ -619,7 +609,7 @@ export function AdminSettingsView(): React.JSX.Element {
           className={mergeClasses(styles.tabButton, activeTab === 'profile' && styles.tabButtonActive)}
         >
           <BuildingShop24Regular className={mergeClasses(styles.tabIcon, activeTab === 'profile' && styles.tabIconActive)} />
-          <span>Store Profile &amp; Receipts</span>
+          <span>Store profile</span>
         </button>
 
         <button
@@ -629,7 +619,7 @@ export function AdminSettingsView(): React.JSX.Element {
           className={mergeClasses(styles.tabButton, activeTab === 'hardware' && styles.tabButtonActive)}
         >
           <Print24Regular className={mergeClasses(styles.tabIcon, activeTab === 'hardware' && styles.tabIconActive)} />
-          <span>Printer, Drawer &amp; Billing</span>
+          <span>Printer and billing</span>
         </button>
 
         <button
@@ -639,7 +629,7 @@ export function AdminSettingsView(): React.JSX.Element {
           className={mergeClasses(styles.tabButton, activeTab === 'backup' && styles.tabButtonActive)}
         >
           <Database24Regular className={mergeClasses(styles.tabIcon, activeTab === 'backup' && styles.tabIconActive)} />
-          <span>Database &amp; Data Backup</span>
+          <span>Backup</span>
           <Badge
             appearance="tint"
             color="success"
@@ -656,7 +646,7 @@ export function AdminSettingsView(): React.JSX.Element {
           className={mergeClasses(styles.tabButton, activeTab === 'updates' && styles.tabButtonActive)}
         >
           <ArrowSync20Regular className={mergeClasses(styles.tabIcon, activeTab === 'updates' && styles.tabIconActive)} />
-          <span>App Updates</span>
+          <span>Updates</span>
           {isUpdateReady ? (
             <Badge appearance="filled" color="success">
               Ready
@@ -689,10 +679,10 @@ export function AdminSettingsView(): React.JSX.Element {
               <div className={styles.headerTextCol}>
                 <div className={styles.headerTitleRow}>
                   <Body1 className={styles.headerTitle}>
-                    Staff, Cashiers &amp; Role Permissions
+                    Staff and permissions
                   </Body1>
                   <Badge appearance="tint" color="brand" className={styles.headerBadge}>
-                    {users.length} Users
+                    {users.length} {users.length === 1 ? 'user' : 'users'}
                   </Badge>
                 </div>
                 <Caption1 className={styles.headerSubtitle}>
@@ -701,14 +691,6 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
             </div>
 
-            <Button
-              appearance="primary"
-              icon={<PersonAdd20Regular />}
-              onClick={handleOpenAddUser}
-              className={styles.primaryRedButton}
-            >
-              Add New Cashier / Staff
-            </Button>
           </div>
 
           <div className={styles.tableWrapper}>
@@ -840,7 +822,7 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Store Profile &amp; Branding
+                  Store profile
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Appears at the top of every customer receipt
@@ -949,7 +931,7 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Scan-to-Pay Digital QR Code
+                  Scan-to-pay QR code
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Print Raast / EasyPaisa / JazzCash / Bank QR code on customer bills
@@ -1070,10 +1052,9 @@ export function AdminSettingsView(): React.JSX.Element {
                   </Caption1>
                 </div>
                 <Button
-                  appearance="primary"
+                  appearance="secondary"
                   icon={<Open20Regular />}
                   onClick={handleOpenGoogleBusinessRegistration}
-                  className={styles.primaryRedButton}
                 >
                   Register on Google Maps
                 </Button>
@@ -1185,7 +1166,7 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Offline-First Database Engine
+                  Database
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Local storage resilience and cloud synchronization
@@ -1224,7 +1205,7 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Thermal Receipt Printer &amp; Drawer
+                  Receipt printer and cash drawer
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Hardware configuration for 80mm / 58mm ESC/POS printers
@@ -1385,7 +1366,7 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Billing, Taxes &amp; Currency
+                  Currency and tax
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Currency symbol and tax calculations at checkout
@@ -1432,7 +1413,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 <div className={styles.headerTextCol}>
                   <div className={styles.headerTitleRow}>
                     <Body1 className={styles.headerTitle}>
-                      Windows Offline Database &amp; Data Safety
+                      Local database and backups
                     </Body1>
                     <Badge appearance="tint" color="success">
                       SQLite 3 (WAL Mode Active)
@@ -1636,7 +1617,7 @@ export function AdminSettingsView(): React.JSX.Element {
               <div className={styles.headerTextCol}>
                 <div className={styles.headerTitleRow}>
                   <Body1 className={styles.headerTitle}>
-                    Software Updates &amp; GitHub Releases
+                    Software updates
                   </Body1>
                   <Badge appearance="tint" color="brand">
                     v{currentVersion}
@@ -1936,7 +1917,7 @@ export function AdminSettingsView(): React.JSX.Element {
         <DialogSurface className={styles.dialogSurfaceLarge}>
           <form onSubmit={handleSaveNewUser}>
             <DialogBody className={styles.dialogBodyNoOverflow}>
-              <DialogTitle>Add New Cashier / Staff Member</DialogTitle>
+              <DialogTitle>Add staff member</DialogTitle>
               <DialogContent className={styles.dialogContentFlex}>
                 <Text size={200} className={styles.dialogDescText}>
                   Create login credentials and grant access only to the modules this staff member is allowed to operate.
