@@ -4,7 +4,7 @@ export const useAdminSettingsStyles = makeStyles({
   container: {
     paddingTop: 0,
     paddingRight: '32px',
-    paddingBottom: '80px',
+    paddingBottom: '16px',
     paddingLeft: '32px',
     height: '100%',
     boxSizing: 'border-box',
@@ -77,30 +77,27 @@ export const useAdminSettingsStyles = makeStyles({
     },
   },
   tabNavContainer: {
-    // Windows 11 Settings: vertical section list that stays in view while the content scrolls
+    // Top tab bar: sections in one row so the content gets the full width
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: '2px',
-    width: '280px',
-    flexShrink: 0,
-    position: 'sticky',
-    top: '96px',
     alignSelf: 'flex-start',
-    '@media (max-width: 1100px)': {
-      position: 'static',
-      width: '100%',
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-    },
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    padding: '4px',
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
+    borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
   },
   settingsBody: {
     display: 'flex',
-    alignItems: 'flex-start',
-    gap: '24px',
-    '@media (max-width: 1100px)': {
-      flexDirection: 'column',
-      gap: '16px',
-    },
+    flexDirection: 'column',
+    gap: '16px',
   },
   settingsContent: {
     flex: 1,
@@ -114,10 +111,9 @@ export const useAdminSettingsStyles = makeStyles({
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    width: '100%',
-    minHeight: '40px',
-    padding: '6px 12px 6px 16px',
+    gap: '8px',
+    minHeight: '36px',
+    padding: '6px 12px',
     boxSizing: 'border-box',
     borderRadius: '4px',
     borderTopStyle: 'none',
@@ -129,7 +125,6 @@ export const useAdminSettingsStyles = makeStyles({
     fontFamily: tokens.fontFamilyBase,
     fontWeight: 400,
     fontSize: '14px',
-    textAlign: 'left',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     transitionProperty: 'background-color',
@@ -141,17 +136,15 @@ export const useAdminSettingsStyles = makeStyles({
     ':active': {
       backgroundColor: tokens.colorSubtleBackgroundPressed,
     },
-    '@media (max-width: 1100px)': {
-      width: 'auto',
-    },
   },
   tabButtonActive: {
-    // Selected: subtle fill + short accent pill (WinUI NavigationView)
+    // Selected: subtle fill + short accent pill on the left edge (WinUI list selection)
     backgroundColor: tokens.colorSubtleBackgroundSelected,
+    // Same font weight as unselected tabs, so the tab width never changes on selection
     ':hover': {
       backgroundColor: tokens.colorSubtleBackgroundSelected,
     },
-    '::before': {
+    '::after': {
       content: '""',
       position: 'absolute',
       left: 0,
@@ -173,14 +166,12 @@ export const useAdminSettingsStyles = makeStyles({
     color: tokens.colorNeutralForeground1,
   },
   tabBadge: {
-    marginLeft: 'auto',
     fontWeight: 400,
     whiteSpace: 'nowrap',
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground2,
   },
   tabBadgeActive: {
-    marginLeft: 'auto',
     fontWeight: 400,
     whiteSpace: 'nowrap',
     backgroundColor: tokens.colorNeutralBackground3,
@@ -191,6 +182,34 @@ export const useAdminSettingsStyles = makeStyles({
     gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
     gap: '16px',
     alignItems: 'start',
+  },
+  // A card that takes two grid columns (falls back to one on narrow windows)
+  cardWide: {
+    gridColumn: 'span 2',
+    '@media (max-width: 900px)': {
+      gridColumn: 'auto',
+    },
+  },
+  // Form fields side by side inside a card
+  fieldGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    columnGap: '16px',
+    rowGap: '16px',
+  },
+  // Card body split into two independent columns
+  cardBodySplit: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    columnGap: '32px',
+    rowGap: '16px',
+    alignItems: 'start',
+  },
+  cardBodyCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    minWidth: 0,
   },
   card: {
     padding: '0',
@@ -407,7 +426,14 @@ export const useAdminSettingsStyles = makeStyles({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '12px 16px',
-    borderRadius: tokens.borderRadiusMedium,
+    // Pinned to the bottom: pushed down when the page is short, stays in view while scrolling
+    marginTop: 'auto',
+    position: 'sticky',
+    bottom: '16px',
+    zIndex: 20,
+    flexShrink: 0,
+    boxShadow: tokens.shadow8,
+    borderRadius: tokens.borderRadiusLarge,
     backgroundColor: tokens.colorNeutralBackground1,
     borderTopWidth: '1px',
     borderBottomWidth: '1px',
@@ -417,10 +443,10 @@ export const useAdminSettingsStyles = makeStyles({
     borderBottomStyle: 'solid',
     borderLeftStyle: 'solid',
     borderRightStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke1,
-    borderBottomColor: tokens.colorNeutralStroke1,
-    borderLeftColor: tokens.colorNeutralStroke1,
-    borderRightColor: tokens.colorNeutralStroke1,
+    borderTopColor: tokens.colorNeutralStroke2,
+    borderBottomColor: tokens.colorNeutralStroke2,
+    borderLeftColor: tokens.colorNeutralStroke2,
+    borderRightColor: tokens.colorNeutralStroke2,
   },
   tableWrapper: {
     overflowX: 'auto',

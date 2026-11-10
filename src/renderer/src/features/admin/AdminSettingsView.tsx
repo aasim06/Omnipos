@@ -832,8 +832,8 @@ export function AdminSettingsView(): React.JSX.Element {
       {/* ── TAB 2: Store Profile & Receipts ── */}
       {activeTab === 'profile' && (
         <div className={styles.grid}>
-          {/* CARD 1: Store Profile & Receipt Branding */}
-          <div className={styles.card}>
+          {/* CARD 1: Store Profile & Receipt Branding (wide card, fields in two columns) */}
+          <div className={mergeClasses(styles.card, styles.cardWide)}>
             <div className={styles.cardHeader}>
               <div className={styles.cardIconBox}>
                 <BuildingShop24Regular className={styles.icon20} />
@@ -849,6 +849,7 @@ export function AdminSettingsView(): React.JSX.Element {
             </div>
 
             <div className={styles.cardBody}>
+              <div className={styles.fieldGrid}>
               <CustomInput
                 label="Store / Restaurant Name"
                 value={settings.storeName}
@@ -883,6 +884,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 onChange={(e) => setSettings({ ...settings, footerNote: e.target.value })}
                 placeholder="Thank you for your visit!"
               />
+              </div>
 
               <Divider style={{ margin: '14px 0 10px 0' }} />
 
@@ -912,6 +914,7 @@ export function AdminSettingsView(): React.JSX.Element {
                     اردو رسید کے لیے اضافی معلومات (اختیاری):
                   </Text>
 
+                  <div className={styles.fieldGrid}>
                   <CustomInput
                     label="دکان کا نام (اردو میں)"
                     value={settings.storeNameUrdu || ''}
@@ -932,6 +935,7 @@ export function AdminSettingsView(): React.JSX.Element {
                     onChange={(e) => setSettings({ ...settings, footerNoteUrdu: e.target.value })}
                     placeholder="مثلاً: تشریف آوری کا شکریہ! خریدا ہوا مال واپس نہیں ہو سکتا۔"
                   />
+                  </div>
                 </div>
               )}
             </div>
@@ -1212,8 +1216,8 @@ export function AdminSettingsView(): React.JSX.Element {
       {/* ── TAB 3: Hardware, Printer & Taxes ── */}
       {activeTab === 'hardware' && (
         <div className={styles.grid}>
-          {/* CARD 2: Thermal Receipt Printer & Drawer */}
-          <div className={styles.card}>
+          {/* CARD 2: Thermal Receipt Printer & Drawer (wide card, two columns) */}
+          <div className={mergeClasses(styles.card, styles.cardWide)}>
             <div className={styles.cardHeader}>
               <div className={styles.cardIconBox}>
                 <Print24Regular className={styles.icon20} />
@@ -1228,7 +1232,9 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
             </div>
 
-            <div className={styles.cardBody}>
+            <div className={mergeClasses(styles.cardBody, styles.cardBodySplit)}>
+              {/* Left column: printers and paper */}
+              <div className={styles.cardBodyCol}>
               {/* Printer Hardware Selection */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
@@ -1296,9 +1302,10 @@ export function AdminSettingsView(): React.JSX.Element {
                   </button>
                 </div>
               </div>
+              </div>
 
-              <Divider />
-
+              {/* Right column: print behaviour and test print */}
+              <div className={styles.cardBodyCol}>
               <div className={styles.switchRow}>
                 <div className={styles.switchLabel}>
                   <Body2 className={styles.switchRowTitle}>Silent Print (Direct ESC/POS)</Body2>
@@ -1365,6 +1372,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 {printTestMsg && (
                   <Caption1 className={styles.testPrintSuccess}>{printTestMsg}</Caption1>
                 )}
+              </div>
               </div>
             </div>
           </div>
