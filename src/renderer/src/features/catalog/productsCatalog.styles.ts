@@ -3,14 +3,14 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 export const useProductsCatalogStyles = makeStyles({
   container: {
     paddingTop: 0,
-    paddingRight: '24px',
-    paddingBottom: '20px',
-    paddingLeft: '24px',
+    paddingRight: '32px',
+    paddingBottom: '32px',
+    paddingLeft: '32px',
     height: '100%',
     boxSizing: 'border-box',
     display: 'flex',
     flexDirection: 'column',
-    gap: '18px',
+    gap: '16px',
     backgroundColor: tokens.colorNeutralBackground2, // #F5F5F5 Mica Canvas
     overflowY: 'auto',
     overflowX: 'hidden',
@@ -52,15 +52,15 @@ export const useProductsCatalogStyles = makeStyles({
   divisionHeroCard: {
     borderRadius: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: tokens.shadow8,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    padding: '24px',
+    boxShadow: 'none',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    padding: '20px',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
     transition: 'all 0.2s ease',
     ':hover': {
-      boxShadow: tokens.shadow16,
+      boxShadow: 'none',
     },
   },
   tableCard: {
@@ -130,12 +130,12 @@ export const useProductsCatalogStyles = makeStyles({
   kpiContainer: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '22px',
+    gap: '16px',
   },
   kpiGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '16px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '12px',
   },
   kpiHeaderRow: {
     display: 'flex',
@@ -146,8 +146,6 @@ export const useProductsCatalogStyles = makeStyles({
     fontSize: '11px',
     fontWeight: 600,
     color: tokens.colorNeutralForeground3,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
   },
   kpiValue: {
     fontSize: '26px',
@@ -281,13 +279,13 @@ export const useProductsCatalogStyles = makeStyles({
     boxShadow: 'none',
   },
   divisionTitle: {
-    fontSize: '18px',
+    fontSize: '20px',
     fontWeight: 600,
     color: tokens.colorNeutralForeground1,
   },
   divisionSubtitle: {
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground3,
+    fontSize: '14px',
+    color: tokens.colorNeutralForeground2,
   },
   divisionTagFastFood: {
     fontSize: '10.5px',
@@ -318,13 +316,12 @@ export const useProductsCatalogStyles = makeStyles({
     border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   divisionStatHead: {
-    fontSize: '10.5px',
-    color: tokens.colorNeutralForeground3,
-    fontWeight: 600,
-    textTransform: 'uppercase',
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground2,
+    fontWeight: 400,
   },
   divisionStatNum: {
-    fontSize: '18px',
+    fontSize: '20px',
     fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     marginTop: '2px',
@@ -343,7 +340,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   divisionBtnRow: {
     display: 'flex',
-    gap: '10px',
+    gap: '8px',
     marginTop: '20px',
   },
   btnFastFoodHero: {
@@ -398,7 +395,6 @@ export const useProductsCatalogStyles = makeStyles({
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: tokens.colorStatusDangerBorder1, borderBottomColor: tokens.colorStatusDangerBorder1,
     borderLeftColor: tokens.colorStatusDangerBorder1, borderRightColor: tokens.colorStatusDangerBorder1,
-    letterSpacing: '0.06em',
   },
   headerSubtitle: {
     color: tokens.colorNeutralForeground2,
@@ -570,7 +566,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   liveTitle: {
     fontWeight: 600,
-    fontSize: '16px',
+    fontSize: '20px',
     color: tokens.colorNeutralForeground1,
   },
   liveSubtitle: {
@@ -764,8 +760,6 @@ export const useProductsCatalogStyles = makeStyles({
     width: '30%',
     fontWeight: 600,
     fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
     color: tokens.colorNeutralForeground2,
     textAlign: 'left',
   },
@@ -774,8 +768,6 @@ export const useProductsCatalogStyles = makeStyles({
     width: '16%',
     fontWeight: 600,
     fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
     color: tokens.colorNeutralForeground2,
     textAlign: 'left',
   },
@@ -784,8 +776,6 @@ export const useProductsCatalogStyles = makeStyles({
     width: '13%',
     fontWeight: 600,
     fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
     color: tokens.colorNeutralForeground2,
     textAlign: 'left',
   },
@@ -794,8 +784,6 @@ export const useProductsCatalogStyles = makeStyles({
     width: '12%',
     fontWeight: 600,
     fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
     color: tokens.colorNeutralForeground2,
     textAlign: 'left',
   },
@@ -804,8 +792,6 @@ export const useProductsCatalogStyles = makeStyles({
     width: '15%',
     fontWeight: 600,
     fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
     color: tokens.colorNeutralForeground2,
     textAlign: 'left',
   },
@@ -814,8 +800,6 @@ export const useProductsCatalogStyles = makeStyles({
     width: '10%',
     fontWeight: 600,
     fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
     color: tokens.colorNeutralForeground2,
     textAlign: 'left',
   },
@@ -825,8 +809,6 @@ export const useProductsCatalogStyles = makeStyles({
     textAlign: 'right',
     fontWeight: 600,
     fontSize: '11px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
     color: tokens.colorNeutralForeground2,
   },
   emptyTd: {
@@ -939,7 +921,6 @@ export const useProductsCatalogStyles = makeStyles({
     fontSize: '10px',
     fontWeight: 600,
     color: tokens.colorNeutralForeground3,
-    textTransform: 'uppercase',
   },
   priceNumber: {
     fontSize: '15px',
@@ -1325,8 +1306,6 @@ export const useProductsCatalogStyles = makeStyles({
   previewHeadTitle: {
     fontSize: '10.5px',
     fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
     color: tokens.colorNeutralForeground2,
   },
   previewHeadSub: {
@@ -1372,7 +1351,6 @@ export const useProductsCatalogStyles = makeStyles({
     borderRadius: '4px',
     fontSize: '9.5px',
     fontWeight: 600,
-    textTransform: 'uppercase',
   },
   mockupStockBadge: {
     position: 'absolute',
@@ -1410,7 +1388,6 @@ export const useProductsCatalogStyles = makeStyles({
   mockupPriceLabel: {
     fontSize: '9px',
     color: tokens.colorNeutralForeground3,
-    textTransform: 'uppercase',
     fontWeight: 600,
   },
   mockupPriceVal: {

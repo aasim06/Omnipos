@@ -1,3 +1,4 @@
+import { KpiTile, PageHeader } from '@/components/win11';
 import React, { useState } from 'react';
 import {
   makeStyles,
@@ -546,74 +547,40 @@ export function KhataView(): React.JSX.Element {
 
   return (
     <div className={styles.container}>
-      {/* ── Page Header ── */}
-      <div className={styles.pageHeader}>
-        <div>
-          <Subtitle1
-            as="h1"
-            className={styles.headerTitle}
+      {/* ── Page header (Windows 11) ── */}
+      <PageHeader
+        title="Khata"
+        subtitle="Customer credit (udhaar), statements, credit limits and reminders"
+        actions={
+          <Button
+            appearance="primary"
+            icon={<Add20Regular />}
+            onClick={() => {
+              newKhataForm.reset();
+              setIsNewKhataOpen(true);
+            }}
           >
-            Khata / Udhaar Commercial Ledger
-          </Subtitle1>
-          <Caption1 className={styles.headerSubtitle}>
-            Enterprise customer credit management, passbook statements, credit limits &amp; WhatsApp reminders
-          </Caption1>
-        </div>
+            New khata
+          </Button>
+        }
+      />
 
-        <Button
-          appearance="primary"
-          icon={<Add20Regular />}
-          onClick={() => {
-            newKhataForm.reset();
-            setIsNewKhataOpen(true);
-          }}
-          className={styles.addCustomerBtn}
-        >
-          Add New Customer Khata
-        </Button>
-      </div>
-
-      {/* ── 4 KPI Summary Metric Cards ── */}
+      {/* ── Key numbers ── */}
       <div className={styles.summaryGrid}>
-        <div className={styles.statCard}>
-          <Caption1 className={styles.statLabel}>
-            Total Customers on Credit
-          </Caption1>
-          <Subtitle1 className={styles.statVal}>
-            {khatas.length}
-          </Subtitle1>
-          <Caption1 className={styles.statSub}>Registered accounts</Caption1>
-        </div>
-
-        <div className={styles.statCard}>
-          <Caption1 className={styles.statLabel}>
-            Total Market Receivables (Udhaar)
-          </Caption1>
-          <Subtitle1 className={mergeClasses(styles.statVal, styles.statValRed)}>
-            PKR {totalMarketDebt.toLocaleString()}
-          </Subtitle1>
-          <Caption1 className={styles.statSub}>Outstanding balance to recover</Caption1>
-        </div>
-
-        <div className={styles.statCard}>
-          <Caption1 className={styles.statLabel}>
-            Approved Credit Limit Cap
-          </Caption1>
-          <Subtitle1 className={mergeClasses(styles.statVal, styles.statValBrand)}>
-            PKR {totalCreditExtended.toLocaleString()}
-          </Subtitle1>
-          <Caption1 className={styles.statSub}>Total risk ceiling</Caption1>
-        </div>
-
-        <div className={styles.statCard}>
-          <Caption1 className={styles.statLabel}>
-            High-Risk / Near Limit Accounts
-          </Caption1>
-          <Subtitle1 className={mergeClasses(styles.statVal, highRiskCustomers > 0 ? styles.statValWarn : styles.statValSuccess)}>
-            {highRiskCustomers}
-          </Subtitle1>
-          <Caption1 className={styles.statSub}>&gt;80% credit limit utilized</Caption1>
-        </div>
+        <KpiTile label="Customers on credit" value={khatas.length} footer={<span>Registered accounts</span>} />
+        <KpiTile
+          label="Receivables"
+          value={`PKR ${totalMarketDebt.toLocaleString()}`}
+          tone={totalMarketDebt > 0 ? 'danger' : 'neutral'}
+          footer={<span>Outstanding balance to recover</span>}
+        />
+        <KpiTile label="Credit limits" value={`PKR ${totalCreditExtended.toLocaleString()}`} footer={<span>Total approved limit</span>} />
+        <KpiTile
+          label="Near limit"
+          value={highRiskCustomers}
+          tone={highRiskCustomers > 0 ? 'warning' : 'success'}
+          footer={<span>Over 80% of credit limit used</span>}
+        />
       </div>
 
       {/* ── Main Khata Table Card ── */}

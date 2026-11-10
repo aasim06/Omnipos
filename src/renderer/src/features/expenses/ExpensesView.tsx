@@ -1,3 +1,4 @@
+import { KpiTile, PageHeader } from '@/components/win11';
 import React, { useState } from 'react';
 import {
   makeStyles,
@@ -181,6 +182,15 @@ export function ExpensesView(): React.JSX.Element {
   });
 
   const totalExpenseAmount = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  // Category with the highest total amount (computed from the recorded expenses)
+  const topExpenseCategory = React.useMemo(() => {
+    const byCategory: Record<string, number> = {};
+    expenses.forEach((e) => {
+      byCategory[e.category] = (byCategory[e.category] || 0) + (e.amount || 0);
+    });
+    const [category, amount] = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0] || [];
+    return category ? { category, amount: amount as number } : null;
+  }, [expenses]);
   const expectedInDrawer = drawer
     ? drawer.openingFloat + drawer.cashSales + drawer.cashIn - drawer.cashOut
     : 0;
@@ -191,59 +201,32 @@ export function ExpensesView(): React.JSX.Element {
 
   return (
     <div className={styles.container}>
-      {/* ── Page Header ── */}
-      <div className={styles.pageHeader}>
-        <div className={styles.headerTitleCol}>
-          <Subtitle1
-            as="h1"
-            className={styles.headerTitle}
-          >
-            Daily Expenses &amp; Cash Drawer
-          </Subtitle1>
-          <Caption1
-            as="p"
-            className={styles.headerSubtitle}
-          >
-            Record store expenses, petty cash, and manage daily cashier drawer float audit
-          </Caption1>
-        </div>
-      </div>
+      {/* ── Page header (Windows 11) ── */}
+      <PageHeader title="Expenses" subtitle="Store expenses, petty cash and the cash drawer" />
 
       <div className={styles.tabListContainer}>
         <TabList selectedValue={activeTab} onTabSelect={(_, d) => setActiveTab(d.value as any)}>
-          <Tab value="expenses">Expenses Ledger</Tab>
-          <Tab value="drawer">Cash Drawer Audit</Tab>
+          <Tab value="expenses">Expenses</Tab>
+          <Tab value="drawer">Cash drawer</Tab>
         </TabList>
       </div>
 
       {activeTab === 'expenses' ? (
         <>
-          {/* Metrics */}
+          {/* Key numbers */}
           <div className={styles.metricsGrid}>
-            <div className={styles.metricCard}>
-              <Caption1 className={styles.kpiLabel}>Total Logged Expenses</Caption1>
-              <Subtitle1 className={styles.kpiValueDanger}>
-                {formatPKR(totalExpenseAmount)}
-              </Subtitle1>
-            </div>
-            <div className={styles.metricCard}>
-              <Caption1 className={styles.kpiLabel}>Total Entries</Caption1>
-              <Subtitle1 className={styles.kpiValueDefault}>
-                {expenses.length} Records
-              </Subtitle1>
-            </div>
-            <div className={styles.metricCard}>
-              <Caption1 className={styles.kpiLabel}>Top Category</Caption1>
-              <Subtitle1 className={styles.kpiValueBrand}>
-                Rent &amp; Utilities
-              </Subtitle1>
-            </div>
-            <div className={styles.metricCard}>
-              <Caption1 className={styles.kpiLabel}>Paid via Cash Drawer</Caption1>
-              <Subtitle1 className={styles.kpiValueSuccess}>
-                {formatPKR(expenses.filter((e) => e.paymentMode === 'cash').reduce((s, e) => s + (e.amount || 0), 0))}
-              </Subtitle1>
-            </div>
+            <KpiTile label="Total expenses" value={formatPKR(totalExpenseAmount)} tone={totalExpenseAmount > 0 ? 'danger' : 'neutral'} />
+            <KpiTile label="Entries" value={expenses.length} unit={expenses.length === 1 ? 'record' : 'records'} />
+            <KpiTile
+              label="Top category"
+              value={topExpenseCategory ? topExpenseCategory.category : '—'}
+              footer={topExpenseCategory ? <span>{formatPKR(topExpenseCategory.amount)}</span> : <span>No expenses yet</span>}
+            />
+            <KpiTile
+              label="Paid from cash drawer"
+              value={formatPKR(expenses.filter((e) => e.paymentMode === 'cash').reduce((s, e) => s + (e.amount || 0), 0))}
+              tone="success"
+            />
           </div>
 
           {/* Action Row */}
@@ -339,30 +322,10 @@ export function ExpensesView(): React.JSX.Element {
         /* Cash Drawer Audit Tab */
         <>
           <div className={styles.metricsGrid}>
-            <div className={styles.metricCard}>
-              <Caption1 className={styles.kpiLabel}>Opening Register Float</Caption1>
-              <Subtitle1 className={styles.kpiValueDefaultLg}>
-                {formatPKR(drawer?.openingFloat || 5000)}
-              </Subtitle1>
-            </div>
-            <div className={styles.metricCard}>
-              <Caption1 className={styles.kpiLabel}>Total Cash Sales Today</Caption1>
-              <Subtitle1 className={styles.kpiValueSuccess}>
-                +{formatPKR(drawer?.cashSales || 0)}
-              </Subtitle1>
-            </div>
-            <div className={styles.metricCard}>
-              <Caption1 className={styles.kpiLabel}>Cash In / Cash Out</Caption1>
-              <Subtitle1 className={styles.kpiValueDefaultLg}>
-                +{formatPKR(drawer?.cashIn || 0)} / -{formatPKR(drawer?.cashOut || 0)}
-              </Subtitle1>
-            </div>
-            <div className={styles.metricCard}>
-              <Caption1 className={styles.kpiLabel}>Expected In Drawer Right Now</Caption1>
-              <Subtitle1 className={styles.kpiValueBrand}>
-                {formatPKR(expectedInDrawer)}
-              </Subtitle1>
-            </div>
+            <KpiTile label="Opening float" value={formatPKR(drawer?.openingFloat || 5000)} />
+            <KpiTile label="Cash sales today" value={`+${formatPKR(drawer?.cashSales || 0)}`} tone="success" />
+            <KpiTile label="Cash in / out" value={`+${formatPKR(drawer?.cashIn || 0)} / -${formatPKR(drawer?.cashOut || 0)}`} />
+            <KpiTile label="Expected in drawer" value={formatPKR(expectedInDrawer)} />
           </div>
 
           <div className={styles.actionGrid}>

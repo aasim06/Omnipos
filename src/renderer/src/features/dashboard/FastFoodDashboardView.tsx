@@ -20,8 +20,10 @@ import {
   DataHistogram24Regular,
   Ribbon20Filled,
   Trophy20Filled,
+  ShoppingBag20Regular,
 } from '@fluentui/react-icons';
-import { mergeClasses, tokens } from '@fluentui/react-components';
+import { Button, mergeClasses, tokens } from '@fluentui/react-components';
+import { KpiTile, PageHeader } from '@/components/win11';
 import { useAppTheme } from '@/theme/AppProviders';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { offlineDb, LocalOrder } from '@/lib/offlineDb';
@@ -146,6 +148,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
     let completedCount = 0;
     let inKitchenCount = 0;
     let readyCount = 0;
+    let totalItems = 0;
 
     let dineInCount = 0;
     let takeawayCount = 0;
@@ -182,13 +185,15 @@ export function FastFoodDashboardView(): React.JSX.Element {
           };
         }
         itemCountMap[line.productId].qty += line.quantity;
+        totalItems += line.quantity || 0;
         itemCountMap[line.productId].revenue += line.unitPrice * line.quantity;
       });
     });
 
     const totalOrders = filteredOrders.length;
     const aov = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
-    const avgPrepMinutes = activeTab === 'fastfood' ? 11.4 : 3.2;
+    // Average items per order, from the actual order lines
+    const itemsPerOrder = totalOrders > 0 ? Math.round((totalItems / totalOrders) * 10) / 10 : 0;
 
     const topItems = Object.values(itemCountMap)
       .sort((a, b) => b.qty - a.qty)
@@ -203,7 +208,8 @@ export function FastFoodDashboardView(): React.JSX.Element {
       inKitchenCount,
       readyCount,
       aov,
-      avgPrepMinutes,
+      totalItems,
+      itemsPerOrder,
       dineInCount,
       takeawayCount,
       deliveryCount,
@@ -345,219 +351,143 @@ export function FastFoodDashboardView(): React.JSX.Element {
 
   return (
     <div className={mergeClasses(styles.root, isDark ? styles.rootDark : styles.rootLight)}>
-      {/* ══════════════════════════════════════════════════════════════════════
-          TOP HEADER & MODULE SWITCHER TABS
-      ══════════════════════════════════════════════════════════════════════ */}
-      <div className={mergeClasses(styles.header, isDark ? styles.headerDark : styles.headerLight)}>
-        <div>
-          <div className={styles.headerTitleRow}>
-            <h1 className={styles.headerTitle}>
-              Sales & Activity Dashboard
-            </h1>
-            <div className={styles.liveBadge}>
-              <span className={styles.liveBadgeDot} />
-              <span>LIVE • OFFLINE-FIRST</span>
-            </div>
-          </div>
-          <p className={mergeClasses(styles.headerSub, isDark ? styles.headerSubDark : styles.headerSubLight)}>
-            Live sales, orders count, and kitchen cooking time
-          </p>
-        </div>
+      {/* ── Page header (Windows 11): title, description, commands ── */}
+      <PageHeader
+        title="Dashboard"
+        subtitle={activeTab === 'fastfood' ? 'Sales, orders and kitchen activity' : 'Sales and orders for the mart'}
+        actions={
+          <>
+              {(hasFastFood || hasOmnimart) && (
+                hasFastFood && hasOmnimart ? (
+                  <div className={mergeClasses(styles.tabSwitcher, isDark ? styles.tabSwitcherDark : styles.tabSwitcherLight)}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('fastfood')}
+                      className={mergeClasses(
+                        styles.tabBtn,
+                        activeTab === 'fastfood'
+                          ? styles.tabBtnFastFoodActive
+                          : isDark
+                          ? styles.tabBtnInactiveDark
+                          : styles.tabBtnInactiveLight
+                      )}
+                    >
+                      <Food24Regular className={styles.icon16} />
+                      <span>Fast food</span>
+                      <span
+                        className={mergeClasses(
+                          styles.tabCountBadge,
+                          activeTab === 'fastfood'
+                            ? styles.tabCountBadgeActive
+                            : isDark
+                            ? styles.tabCountBadgeInactiveDark
+                            : styles.tabCountBadgeInactiveLight
+                        )}
+                      >
+                        {activeTab === 'fastfood' ? metrics.totalOrders : 'POS'}
+                      </span>
+                    </button>
 
-        {/* ── Top Dual Tabs: Fast Food vs Mini Mart (License-Filtered) ── */}
-        <div className={styles.headerRightActions}>
-          {(hasFastFood || hasOmnimart) && (
-            hasFastFood && hasOmnimart ? (
-              <div className={mergeClasses(styles.tabSwitcher, isDark ? styles.tabSwitcherDark : styles.tabSwitcherLight)}>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('fastfood')}
-                  className={mergeClasses(
-                    styles.tabBtn,
-                    activeTab === 'fastfood'
-                      ? styles.tabBtnFastFoodActive
-                      : isDark
-                      ? styles.tabBtnInactiveDark
-                      : styles.tabBtnInactiveLight
-                  )}
-                >
-                  <Food24Regular className={styles.icon16} />
-                  <span>Fast Food Restaurant</span>
-                  <span
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('minimart')}
+                      className={mergeClasses(
+                        styles.tabBtn,
+                        activeTab === 'minimart'
+                          ? styles.tabBtnMiniMartActive
+                          : isDark
+                          ? styles.tabBtnInactiveDark
+                          : styles.tabBtnInactiveLight
+                      )}
+                    >
+                      <BuildingShop24Regular className={styles.icon16} />
+                      <span>Mart</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div
                     className={mergeClasses(
-                      styles.tabCountBadge,
-                      activeTab === 'fastfood'
-                        ? styles.tabCountBadgeActive
-                        : isDark
-                        ? styles.tabCountBadgeInactiveDark
-                        : styles.tabCountBadgeInactiveLight
+                      styles.singleModuleBadge,
+                      hasFastFood ? styles.singleModuleBadgeFastFood : styles.singleModuleBadgeMiniMart
                     )}
                   >
-                    {activeTab === 'fastfood' ? metrics.totalOrders : 'POS'}
-                  </span>
-                </button>
+                    {hasFastFood ? <Food24Regular className={styles.icon16} /> : <BuildingShop24Regular className={styles.icon16} />}
+                    <span>{hasFastFood ? 'Fast food' : 'Mart'}</span>
+                  </div>
+                )
+              )}
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('minimart')}
-                  className={mergeClasses(
-                    styles.tabBtn,
-                    activeTab === 'minimart'
-                      ? styles.tabBtnMiniMartActive
-                      : isDark
-                      ? styles.tabBtnInactiveDark
-                      : styles.tabBtnInactiveLight
-                  )}
-                >
-                  <BuildingShop24Regular className={styles.icon16} />
-                  <span>Mini Mart Retail</span>
-                </button>
+              {/* Date range filter */}
+              <div className={mergeClasses(styles.dateFilterGroup, isDark ? styles.dateFilterGroupDark : styles.dateFilterGroupLight)}>
+                {(['today', 'week', 'month'] as DateRange[]).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setDateRange(r)}
+                    className={mergeClasses(
+                      styles.dateBtn,
+                      dateRange === r
+                        ? isDark
+                          ? styles.dateBtnActiveDark
+                          : styles.dateBtnActiveLight
+                        : isDark
+                        ? styles.dateBtnInactiveDark
+                        : styles.dateBtnInactiveLight
+                    )}
+                  >
+                    {r === 'today' ? 'Today' : r === 'week' ? '7 Days' : 'Month'}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <div
-                className={mergeClasses(
-                  styles.singleModuleBadge,
-                  hasFastFood ? styles.singleModuleBadgeFastFood : styles.singleModuleBadgeMiniMart
-                )}
-              >
-                {hasFastFood ? <Food24Regular className={styles.icon16} /> : <BuildingShop24Regular className={styles.icon16} />}
-                <span>{hasFastFood ? 'Fast Food Restaurant' : 'Mini Mart Retail'}</span>
-              </div>
-            )
-          )}
 
-          {/* Date range filter */}
-          <div className={mergeClasses(styles.dateFilterGroup, isDark ? styles.dateFilterGroupDark : styles.dateFilterGroupLight)}>
-            {(['today', 'week', 'month'] as DateRange[]).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setDateRange(r)}
-                className={mergeClasses(
-                  styles.dateBtn,
-                  dateRange === r
-                    ? isDark
-                      ? styles.dateBtnActiveDark
-                      : styles.dateBtnActiveLight
-                    : isDark
-                    ? styles.dateBtnInactiveDark
-                    : styles.dateBtnInactiveLight
-                )}
-              >
-                {r === 'today' ? 'Today' : r === 'week' ? '7 Days' : 'Month'}
-              </button>
-            ))}
-          </div>
 
-          <button
-            type="button"
-            title="Refresh"
-            onClick={loadData}
-            className={mergeClasses(styles.refreshBtn, isDark ? styles.refreshBtnDark : styles.refreshBtnLight)}
-          >
-            <ArrowClockwise20Regular className={styles.icon16} />
-          </button>
-        </div>
-      </div>
+              <Button appearance="subtle" icon={<ArrowClockwise20Regular />} title="Refresh" aria-label="Refresh" onClick={loadData} />
+          </>
+        }
+      />
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          4 HERO KPI METRIC CARDS (Laser Top Border & Glow)
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ── Key numbers (only values computed from real orders) ── */}
       <div className={styles.kpiGrid}>
-        {/* Card 1: Gross Sales */}
-        <div className={mergeClasses(styles.kpiCard, isDark ? styles.cardDark : styles.cardLight)}>
-          <div className={styles.laserRed} />
-          <div className={styles.kpiHeader}>
-            <span className={mergeClasses(styles.kpiTitle, isDark ? styles.textMutedDark : styles.textMutedLight)}>
-              {activeTab === 'fastfood' ? 'Food Revenue' : 'Retail Sales'} ({dateRange})
-            </span>
-            <div className={styles.kpiIconRed}>
-              <Money24Filled className={styles.icon20} />
-            </div>
-          </div>
-          <div className={mergeClasses(styles.kpiValue, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
-            PKR {metrics.totalRevenue.toLocaleString()}
-          </div>
-          {metrics.totalDiscounts > 0 && (
-            <div style={{ fontSize: '12px', color: tokens.colorStatusSuccessForeground1, fontWeight: 600, marginTop: '2px' }}>
-              Discounts: -PKR {metrics.totalDiscounts.toLocaleString()}
-            </div>
-          )}
-          <div className={styles.kpiTrendRow}>
-            <ArrowTrending24Filled className={styles.icon14} />
-            <span className={styles.trendGreen}>+18.4%</span>
-            <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>vs previous period</span>
-          </div>
-        </div>
-
-        {/* Card 2: Total Orders */}
-        <div className={mergeClasses(styles.kpiCard, isDark ? styles.cardDark : styles.cardLight)}>
-          <div className={styles.laserBlue} />
-          <div className={styles.kpiHeader}>
-            <span className={mergeClasses(styles.kpiTitle, isDark ? styles.textMutedDark : styles.textMutedLight)}>
-              Total Orders Billed
-            </span>
-            <div className={styles.kpiIconBlue}>
-              <Receipt24Filled className={styles.icon20} />
-            </div>
-          </div>
-          <div className={mergeClasses(styles.kpiValue, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
-            {metrics.totalOrders} <span className={mergeClasses(styles.kpiUnit, isDark ? styles.textMutedDark : styles.textMutedLight)}>orders</span>
-          </div>
-          <div className={styles.kpiDotRow}>
-            <span className={styles.dotGreen}>● {metrics.completedCount} Served</span>
-            {activeTab === 'fastfood' && (
-              <span className={styles.dotAmber}>● {metrics.inKitchenCount} Cooking</span>
-            )}
-          </div>
-        </div>
-
-        {/* Card 3: Kitchen Velocity / Checkout Speed */}
-        <div className={mergeClasses(styles.kpiCard, isDark ? styles.cardDark : styles.cardLight)}>
-          <div className={styles.laserAmber} />
-          <div className={styles.kpiHeader}>
-            <span className={mergeClasses(styles.kpiTitle, isDark ? styles.textMutedDark : styles.textMutedLight)}>
-              {activeTab === 'fastfood' && hasKitchen ? 'Avg Kitchen Prep Speed' : 'Avg Checkout Speed'}
-            </span>
-            <div className={styles.kpiIconAmber}>
-              <Timer24Regular className={styles.icon20} />
-            </div>
-          </div>
-          <div className={mergeClasses(styles.kpiValue, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
-            {activeTab === 'fastfood' && hasKitchen ? `${metrics.avgPrepMinutes} ` : '1.2 '}
-            <span className={mergeClasses(styles.kpiUnit, isDark ? styles.textMutedDark : styles.textMutedLight)}>
-              Minutes / Ticket
-            </span>
-          </div>
-          <div className={mergeClasses(styles.kpiTrendRow, styles.trendAmber)}>
-            {activeTab === 'fastfood' && hasKitchen ? <Fire20Filled className={mergeClasses(styles.icon14, styles.colorRed)} /> : <Sparkle20Filled className={styles.icon14} />}
-            <span className={styles.fw800}>
-              {activeTab === 'fastfood' && hasKitchen ? '94% under 15m target' : 'Fast Checkout Speed'}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 4: Average Order Value */}
-        <div className={mergeClasses(styles.kpiCard, isDark ? styles.cardDark : styles.cardLight)}>
-          <div className={styles.laserGreen} />
-          <div className={styles.kpiHeader}>
-            <span className={mergeClasses(styles.kpiTitle, isDark ? styles.textMutedDark : styles.textMutedLight)}>
-              Average Ticket (AOV)
-            </span>
-            <div className={styles.kpiIconGreen}>
-              <Sparkle20Filled className={styles.icon20} />
-            </div>
-          </div>
-          <div className={mergeClasses(styles.kpiValue, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
-            PKR {metrics.aov.toLocaleString()}
-          </div>
-          <div className={styles.kpiTrendRow}>
-            <span className={isDark ? styles.textSecondaryDark : styles.textSecondaryLight}>Basket Size:</span>
-            <span className={mergeClasses(styles.fw800, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
-              {activeTab === 'fastfood' ? '2.4 items/ticket' : '3.8 items'}
-            </span>
-          </div>
-        </div>
+        <KpiTile
+          label={activeTab === 'fastfood' ? 'Food sales' : 'Retail sales'}
+          value={`PKR ${metrics.totalRevenue.toLocaleString()}`}
+          icon={<Money24Filled />}
+          footer={
+            metrics.totalDiscounts > 0 ? (
+              <span>Gross PKR {metrics.totalGrossSales.toLocaleString()} · discounts PKR {metrics.totalDiscounts.toLocaleString()}</span>
+            ) : (
+              <span>{dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'Last 7 days' : 'This month'}</span>
+            )
+          }
+        />
+        <KpiTile
+          label="Orders"
+          value={metrics.totalOrders}
+          icon={<Receipt24Filled />}
+          footer={
+            <>
+              <span>{metrics.completedCount} paid</span>
+              {activeTab === 'fastfood' && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{metrics.inKitchenCount} in kitchen</span>
+                </>
+              )}
+            </>
+          }
+        />
+        <KpiTile
+          label="Average order"
+          value={`PKR ${metrics.aov.toLocaleString()}`}
+          icon={<Sparkle20Filled />}
+          footer={<span>Sales ÷ orders</span>}
+        />
+        <KpiTile
+          label="Items per order"
+          value={metrics.itemsPerOrder}
+          icon={<ShoppingBag20Regular />}
+          footer={<span>{metrics.totalItems.toLocaleString()} items sold</span>}
+        />
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
@@ -570,12 +500,9 @@ export function FastFoodDashboardView(): React.JSX.Element {
             <div>
               <div className={styles.chartTitleGroup}>
                 <h3 className={styles.chartTitle}>
-                  {activeTab === 'fastfood' ? 'Hourly Orders & Sales' : 'Hourly Retail Breakdown'}
+                  {activeTab === 'fastfood' ? 'Orders by hour' : 'Sales by hour'}
                 </h3>
-                <span className={styles.telemetryTag}>
-                  <DataHistogram24Regular className={styles.icon14} />
-                  <span>Hourly Telemetry</span>
-                </span>
+                
               </div>
               <p className={mergeClasses(styles.chartSub, isDark ? styles.textSecondaryDark : styles.textSecondaryLight)}>
                 Bar height shows total orders • Click any column to view exact order tickets
@@ -833,7 +760,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
           <div>
             <div className={styles.chartTitleGroup}>
               <h3 className={styles.chartTitle}>
-                {activeTab === 'fastfood' ? 'Order Types Breakdown' : 'Payment Methods'}
+                {activeTab === 'fastfood' ? 'Order types' : 'Payment methods'}
               </h3>
             </div>
             <p className={mergeClasses(styles.chartSub, isDark ? styles.textSecondaryDark : styles.textSecondaryLight)}>
@@ -894,7 +821,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 {metrics.totalOrders}
               </span>
               <span className={mergeClasses(styles.donutCenterLabel, isDark ? styles.textMutedDark : styles.textMutedLight)}>
-                Total Tickets
+                Total orders
               </span>
             </div>
           </div>
@@ -926,7 +853,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
             <div className={styles.donutLegendRow}>
               <div className={styles.donutLegendLeft}>
                 <span className={styles.donutLegendDotGreen} />
-                <span className={styles.fw700}>Online Delivery</span>
+                <span className={styles.fw700}>Delivery</span>
               </div>
               <div className={styles.donutLegendRight}>
                 <span className={styles.fw800}>{metrics.deliveryCount}</span>
@@ -958,7 +885,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
               onClick={() => navigate('/kitchen')}
               className={mergeClasses(styles.openKitchenBtn, isDark ? styles.openKitchenBtnDark : styles.openKitchenBtnLight)}
             >
-              <span>Open Kitchen</span>
+              <span>Open kitchen</span>
               <Open20Regular className={styles.icon14} />
             </button>
           </div>
@@ -1008,7 +935,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
               <AlertUrgent20Filled className={styles.noticeIcon} />
               <div>
                 <div className={mergeClasses(styles.noticeTitle, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
-                  Kitchen Prep Inventory Notice
+                  Kitchen stock notice
                 </div>
                 <div className={mergeClasses(styles.noticeSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>
                   Burger Buns (35 left) • Cooking Oil (Sufficient) • Mozzarella Cheese (Good)
@@ -1020,7 +947,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
               onClick={() => navigate('/inventory/dashboard')}
               className={styles.restockBtn}
             >
-              Restock Hub
+              Restock
             </button>
           </div>
         </div>
@@ -1128,7 +1055,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                   </h3>
                   {selectedHourDetails.isCurrentHour && (
                     <span className={styles.currentHourPill}>
-                      CURRENT HOUR
+                      Current hour
                     </span>
                   )}
                 </div>

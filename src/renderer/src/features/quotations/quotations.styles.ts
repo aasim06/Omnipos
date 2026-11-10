@@ -302,7 +302,6 @@ export const useQuotationsStyles = makeStyles({
     padding: '3px 10px',
     borderRadius: '999px',
     fontWeight: 600,
-    textTransform: 'uppercase',
   },
   statusConverted: {
     backgroundColor: tokens.colorStatusSuccessBackground1,

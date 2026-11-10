@@ -32,7 +32,6 @@ export const useVendorsStyles = makeStyles({
     fontWeight: 600,
     color: tokens.colorNeutralForeground1,
     display: 'block',
-    letterSpacing: '-0.2px',
   },
   cardForm: {
     display: 'flex',
@@ -42,8 +41,6 @@ export const useVendorsStyles = makeStyles({
   fieldLabel: {
     fontSize: '11px',
     fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.6px',
     color: tokens.colorNeutralForeground2,
     marginBottom: '6px',
     display: 'block',
@@ -114,8 +111,6 @@ export const useVendorsStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     fontSize: '11px',
     fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.6px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     whiteSpace: 'nowrap',
   },
@@ -398,7 +393,6 @@ export const useVendorsStyles = makeStyles({
   slipStoreTitle: {
     fontWeight: 600,
     fontSize: '16px',
-    letterSpacing: '1px',
   },
   slipDateText: {
     fontSize: '10px',
@@ -428,7 +422,6 @@ export const useVendorsStyles = makeStyles({
     fontWeight: 600,
     fontSize: '11px',
     marginBottom: '4px',
-    textTransform: 'uppercase',
     color: '#333333',
   },
   slipInvoiceRow: {

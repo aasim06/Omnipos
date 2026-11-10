@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { createPortal } from 'react-dom';
 import {
   Text,
   Badge,
@@ -13,6 +12,7 @@ import {
   makeStyles,
   tokens,
   mergeClasses,
+  Portal,
 } from '@fluentui/react-components';
 import {
   Food24Regular,
@@ -1385,7 +1385,10 @@ export function FluentSidebar(): React.JSX.Element {
         </DialogSurface>
       </Dialog>
 
-      {/* ── Collapsed Flyout Submenu Portal (Zero-Blink Pure React Portal) ── */}
+      {/* ── Collapsed Flyout Submenu ──
+          Rendered through Fluent's Portal (not react-dom createPortal on document.body) so the
+          mount node carries the theme's CSS variables; otherwise the token-based surface
+          colours resolve to nothing and the flyout has no background. */}
       {flyout && (() => {
         const flyoutPositionStyle: React.CSSProperties = {
           position: 'fixed',
@@ -1395,7 +1398,8 @@ export function FluentSidebar(): React.JSX.Element {
           width: 'max-content',
           minWidth: '220px',
         };
-        return createPortal(
+        return (
+          <Portal>
           <div
             style={flyoutPositionStyle}
             onMouseEnter={() => {
@@ -1444,8 +1448,8 @@ export function FluentSidebar(): React.JSX.Element {
                   );
                 })}
             </div>
-          </div>,
-          document.body
+          </div>
+          </Portal>
         );
       })()}
     </nav>

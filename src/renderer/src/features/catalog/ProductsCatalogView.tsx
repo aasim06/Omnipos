@@ -23,6 +23,7 @@ import {
   DialogActions,
   DialogContent,
   TabList,
+  Link,
   Tab } from '@fluentui/react-components';
 import {
   Add20Regular,
@@ -97,6 +98,7 @@ const categorySchema = z.object({
 type CategoryFormData = z.infer<typeof categorySchema>;
 
 import { useProductsCatalogStyles, useStyles } from './productsCatalog.styles';
+import { KpiTile, PageHeader } from '@/components/win11';
 
 export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fastfood' | 'minimart' | 'categories' } = {}): React.JSX.Element {
   const styles = useProductsCatalogStyles();
@@ -449,163 +451,89 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
   return (
     <div className={styles.container}>
-      {/* ── Page Header ────────────────────────────────────────── */}
-      <div className={styles.pageHeader}>
-        <div className={styles.headerTitleWrap}>
-          <div className={styles.headerTitleRow}>
-            <Subtitle1 as="h1" className={styles.headerTitle}>
-              {activeTab === 'fastfood'
-                ? 'Fast Food Menu Catalog'
-                : activeTab === 'minimart'
-                ? 'Omnimart Supermarket Catalog'
-                : 'Catalog Executive Dashboard'}
-            </Subtitle1>
+      {/* ── Page Header (Windows 11) ───────────────────────────── */}
+      <PageHeader
+        title={activeTab === 'fastfood' ? 'Fast food menu' : activeTab === 'minimart' ? 'Omnimart catalog' : 'Catalog'}
+        subtitle={
+          activeTab === 'fastfood'
+            ? 'Burgers, pizzas, snacks and kitchen prep items'
+            : activeTab === 'minimart'
+            ? 'Retail groceries, SKU barcodes, rack locations and loose scale items'
+            : 'Products, departments and stock value at a glance'
+        }
+        actions={
+          <>
             {activeTab === 'all' && (
-              <span className={styles.headerBadge}>
-                INTELLIGENCE HUB
-              </span>
+              <Button appearance="secondary" icon={<Grid20Regular />} onClick={() => navigate('/catalog/categories')}>
+                Categories
+              </Button>
             )}
-          </div>
-          <Caption1 as="p" className={styles.headerSubtitle}>
-            {activeTab === 'fastfood'
-              ? 'Manage fast food burgers, pizzas, snacks, and kitchen prep items'
-              : activeTab === 'minimart'
-              ? 'Manage retail groceries, SKU barcodes, rack locations, and loose scale items'
-              : 'Real-time catalog performance, departmental division hubs & stock valuation'}
-          </Caption1>
-        </div>
-
-        <div className={styles.headerActions}>
-          {activeTab === 'all' && (
+            {/* One accent (primary) command per page */}
             <Button
-              appearance="outline"
-              icon={<Grid20Regular />}
-              className={styles.categoriesMgrBtn}
-              onClick={() => navigate('/catalog/categories')}
+              appearance="primary"
+              icon={<Add20Regular />}
+              onClick={() => {
+                if (activeTab === 'fastfood') {
+                  navigate('/catalog/new?module=fastfood');
+                } else if (activeTab === 'minimart') {
+                  navigate('/catalog/new?module=minimart');
+                } else {
+                  navigate('/catalog/new');
+                }
+              }}
             >
-              Categories Manager
+              {activeTab === 'fastfood' ? 'Add food item' : activeTab === 'minimart' ? 'Add product' : 'Add new product'}
             </Button>
-          )}
-
-          {/* Primary Action Button */}
-          <Button
-            appearance="primary"
-            icon={<Add20Regular />}
-            className={styles.addProductBtn}
-            onClick={() => {
-              if (activeTab === 'fastfood') {
-                navigate('/catalog/new?module=fastfood');
-              } else if (activeTab === 'minimart') {
-                navigate('/catalog/new?module=minimart');
-              } else {
-                navigate('/catalog/new');
-              }
-            }}
-          >
-            {activeTab === 'fastfood'
-              ? '+ Add Fast Food Item'
-              : activeTab === 'minimart'
-              ? '+ Add Omnimart Product'
-              : '+ Add New Product'}
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* ── Condition: Dashboard vs Detailed Table View ─────────── */}
       {activeTab === 'all' ? (
         <div className={styles.kpiContainer}>
-          {/* 1. Futuristic KPI Pulse HUD */}
+          {/* 1. Key numbers (Windows 11 cards) */}
           <div className={styles.kpiGrid}>
-            <div className={styles.hudCard}>
-              <div className={styles.kpiHeaderRow}>
-                <div>
-                  <div className={styles.kpiLabel}>
-                    Catalog Inventory
-                  </div>
-                  <div className={styles.kpiValue}>
-                    {activeProducts.length} <span className={styles.kpiSkus}>SKUs</span>
-                  </div>
-                </div>
-                <div className={hasFastFood && !hasOmnimart ? styles.kpiIconFastFood : styles.kpiIconBlue}>
-                  <Box20Regular className={styles.icon22} />
-                </div>
-              </div>
-              <div className={styles.kpiSubRow}>
-                {hasFastFood && hasOmnimart ? (
+            <KpiTile
+              label="Products"
+              value={activeProducts.length}
+              unit="SKUs"
+              icon={<Box20Regular />}
+              footer={
+                hasFastFood && hasOmnimart ? (
                   <>
-                    <span className={styles.kpiRedText}>{fastFoodProducts.length} Fast Food</span>
-                    <span className={styles.kpiDot}>•</span>
-                    <span className={styles.kpiBlueText}>{omnimartProducts.length} Omnimart</span>
+                    <span>{fastFoodProducts.length} fast food</span>
+                    <span aria-hidden>·</span>
+                    <span>{omnimartProducts.length} Omnimart</span>
                   </>
                 ) : hasFastFood ? (
-                  <span className={styles.kpiRedText}>{fastFoodProducts.length} Fast Food Items</span>
+                  <span>{fastFoodProducts.length} fast food items</span>
                 ) : (
-                  <span className={styles.kpiBlueText}>{omnimartProducts.length} Omnimart Retail Items</span>
-                )}
-              </div>
-            </div>
-
-            <div className={styles.hudCard}>
-              <div className={styles.kpiHeaderRow}>
-                <div>
-                  <div className={styles.kpiLabel}>
-                    Retail Valuation
-                  </div>
-                  <div className={styles.kpiValueGreen}>
-                    {formatPKR(totalRetailValue)}
-                  </div>
-                </div>
-                <div className={styles.kpiIconGreen}>
-                  <Money20Regular className={styles.icon22} />
-                </div>
-              </div>
-              <div className={mergeClasses(styles.kpiSubRow, styles.kpiSubRowColored)}>
-                <span>Estimated Cost: <strong className={styles.totalCostVal}>{formatPKR(totalCostValue)}</strong></span>
-              </div>
-            </div>
-
-            <div className={styles.hudCard}>
-              <div className={styles.kpiHeaderRow}>
-                <div>
-                  <div className={styles.kpiLabel}>
-                    Stock Health
-                  </div>
-                  <div className={outOfStockProducts.length > 0 ? styles.kpiValueRed : styles.kpiValueGreen}>
-                    {outOfStockProducts.length} <span className={styles.kpiSkus}>Zero Stock</span>
-                  </div>
-                </div>
-                <div className={styles.kpiIconRed}>
-                  <Warning20Regular className={styles.icon22} />
-                </div>
-              </div>
-              <div className={styles.kpiSubRow}>
-                <span className={styles.kpiAmberText}>{lowStockProducts.length} Low Stock Warnings</span>
-              </div>
-            </div>
-
-            <div className={styles.hudCard}>
-              <div className={styles.kpiHeaderRow}>
-                <div>
-                  <div className={styles.kpiLabel}>
-                    Active Categories
-                  </div>
-                  <div className={styles.kpiValue}>
-                    {activeCategories.length} <span className={styles.kpiSkus}>Departments</span>
-                  </div>
-                </div>
-                <div className={styles.kpiIconPurple}>
-                  <Grid20Regular className={styles.icon22} />
-                </div>
-              </div>
-              <div className={styles.kpiSubRow}>
-                <span
-                  onClick={() => navigate('/catalog/categories')}
-                  className={styles.kpiManageCatsLink}
-                >
-                  Manage Categories →
-                </span>
-              </div>
-            </div>
+                  <span>{omnimartProducts.length} retail items</span>
+                )
+              }
+            />
+            <KpiTile
+              label="Retail value"
+              value={formatPKR(totalRetailValue)}
+              tone="success"
+              icon={<Money20Regular />}
+              footer={<span>Estimated cost {formatPKR(totalCostValue)}</span>}
+            />
+            <KpiTile
+              label="Stock health"
+              value={outOfStockProducts.length}
+              unit="out of stock"
+              tone={outOfStockProducts.length > 0 ? 'danger' : 'success'}
+              icon={<Warning20Regular />}
+              footer={<span>{lowStockProducts.length} low stock {lowStockProducts.length === 1 ? 'warning' : 'warnings'}</span>}
+            />
+            <KpiTile
+              label="Categories"
+              value={activeCategories.length}
+              unit="active"
+              icon={<Grid20Regular />}
+              footer={<Link onClick={() => navigate('/catalog/categories')}>Manage categories</Link>}
+            />
           </div>
 
           {/* 2. Department Division Command Hubs */}
@@ -621,16 +549,13 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                       </div>
                       <div>
                         <div className={styles.divisionTitle}>
-                          Fast Food Division
+                          Fast food
                         </div>
                         <div className={styles.divisionSubtitle}>
                           Burgers, pizzas, snacks, prep times &amp; kitchen addons
                         </div>
                       </div>
                     </div>
-                    <span className={styles.divisionTagFastFood}>
-                      RESTAURANT
-                    </span>
                   </div>
 
                   <div className={styles.divisionStatBox}>
@@ -647,27 +572,19 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                       </div>
                     </div>
                     <div>
-                      <div className={styles.divisionStatHead}>Avg Price</div>
-                      <div className={styles.divisionStatNumGreen}>
+                      <div className={styles.divisionStatHead}>Avg price</div>
+                      <div className={styles.divisionStatNum}>
                         {formatPKR(fastFoodAvgPrice)}
                       </div>
                     </div>
                   </div>
 
                   <div className={styles.divisionBtnRow}>
-                    <Button
-                      appearance="primary"
-                      className={styles.btnFastFoodHero}
-                      onClick={() => navigate('/catalog/fastfood')}
-                    >
-                      Open Fast Food Catalog →
+                    <Button appearance="secondary" onClick={() => navigate('/catalog/fastfood')}>
+                      Open fast food menu
                     </Button>
-                    <Button
-                      appearance="outline"
-                      className={styles.btnOutlineRounded}
-                      onClick={() => navigate('/catalog/new?module=fastfood')}
-                    >
-                      + Add Food Item
+                    <Button appearance="subtle" icon={<Add20Regular />} onClick={() => navigate('/catalog/new?module=fastfood')}>
+                      Add food item
                     </Button>
                   </div>
                 </div>
@@ -683,16 +600,13 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                       </div>
                       <div>
                         <div className={styles.divisionTitle}>
-                          Omnimart Supermarket
+                          Omnimart supermarket
                         </div>
                         <div className={styles.divisionSubtitle}>
                           Retail goods, SKU barcodes, racks &amp; scale units
                         </div>
                       </div>
                     </div>
-                    <span className={styles.divisionTagOmnimart}>
-                      RETAIL &amp; MART
-                    </span>
                   </div>
 
                   <div className={styles.divisionStatBox}>
@@ -709,27 +623,19 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                       </div>
                     </div>
                     <div>
-                      <div className={styles.divisionStatHead}>Total Stock</div>
-                      <div className={styles.divisionStatNumBlue}>
+                      <div className={styles.divisionStatHead}>Total stock</div>
+                      <div className={styles.divisionStatNum}>
                         {omnimartProducts.reduce((sum, p) => sum + (p.openingStock || 0), 0)} units
                       </div>
                     </div>
                   </div>
 
                   <div className={styles.divisionBtnRow}>
-                    <Button
-                      appearance="primary"
-                      className={styles.btnOmnimartHero}
-                      onClick={() => navigate('/catalog/omnimart')}
-                    >
-                      Open Omnimart Catalog →
+                    <Button appearance="secondary" onClick={() => navigate('/catalog/omnimart')}>
+                      Open Omnimart catalog
                     </Button>
-                    <Button
-                      appearance="outline"
-                      className={styles.btnOutlineRounded}
-                      onClick={() => navigate('/catalog/new?module=minimart')}
-                    >
-                      + Add Retail Item
+                    <Button appearance="subtle" icon={<Add20Regular />} onClick={() => navigate('/catalog/new?module=minimart')}>
+                      Add retail item
                     </Button>
                   </div>
                 </div>
@@ -744,10 +650,10 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                 <div className={styles.radarTitleWrap}>
                   <Warning20Regular className={styles.radarIcon} />
                   <span className={styles.radarTitle}>
-                    Critical Stock Attention Radar
+                    Stock alerts
                   </span>
                   <span className={styles.radarBadge}>
-                    {outOfStockProducts.length + lowStockProducts.length} Items Require Action
+                    {outOfStockProducts.length + lowStockProducts.length} {outOfStockProducts.length + lowStockProducts.length === 1 ? 'item needs' : 'items need'} attention
                   </span>
                 </div>
                 <Button
@@ -756,7 +662,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                   className={styles.radarActionBtn}
                   onClick={() => navigate('/inventory')}
                 >
-                  Go to Inventory Manager →
+                  Open inventory
                 </Button>
               </div>
 
@@ -799,17 +705,17 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
             <div className={styles.liveHeader}>
               <div className={styles.liveTitleWrap}>
                 <span className={styles.liveTitle}>
-                  Live Store Catalog Visuals
+                  Products
                 </span>
                 <span className={styles.liveSubtitle}>
-                  Showing {filteredProducts.length} Items (6:4 Live POS Cards)
+                  Showing {filteredProducts.length} {filteredProducts.length === 1 ? 'item' : 'items'}
                 </span>
               </div>
 
               <div className={styles.liveSearchWrap}>
                 <CustomInput
-                  label="Instant SKU / Search"
-                  placeholder="Search products..."
+                  label="Search"
+                  placeholder="Name, SKU or category"
                   icon={<Search20Regular />}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}

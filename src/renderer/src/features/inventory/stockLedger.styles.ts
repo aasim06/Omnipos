@@ -48,8 +48,6 @@ export const useStockLedgerStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     fontSize: '12px',
     fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
   },
   td: {
@@ -231,8 +229,6 @@ export const useStockLedgerStyles = makeStyles({
     fontSize: '11px',
     fontWeight: 600,
     color: tokens.colorNeutralForeground3,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
   },
   scopeTabList: {
     display: 'inline-flex',
