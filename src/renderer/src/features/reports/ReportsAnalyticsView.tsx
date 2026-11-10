@@ -253,20 +253,19 @@ export function ReportsAnalyticsView(): React.JSX.Element {
       <div className={styles.pageHeader}>
         <div className={styles.headerTitleCol}>
           <Subtitle1 as="h1" className={styles.headerTitle}>
-            Profit &amp; Loss Financial Analytics
+            Reports
           </Subtitle1>
           <Caption1 as="p" className={styles.headerSubtitle}>
-            Live revenue, sales returns/refunds, inventory cost of goods, daily expenses, and real profit margins
+            Profit and loss: sales, returns, cost of goods, expenses and margin
           </Caption1>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <Button
-            size="small"
-            appearance="subtle"
+            appearance="secondary"
             icon={<ArrowDownload20Regular />}
             onClick={handleExportCsv}
             disabled={isInitialLoading}
-            title="Export summary to CSV Excel"
+            title="Export the summary as a CSV file (opens in Excel)"
           >
             Export CSV
           </Button>
@@ -370,7 +369,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
         <div className={styles.metricCard}>
           <div className={styles.metricHeader}>
             <ShoppingBag24Regular className={styles.salesIcon} />
-            <Caption1 className={styles.metricLabel}>Total Gross Sales</Caption1>
+            <Caption1 className={styles.metricLabel}>Gross sales</Caption1>
           </div>
           {isInitialLoading ? (
             <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
@@ -388,7 +387,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
         <div className={styles.metricCard}>
           <div className={styles.metricHeader}>
             <ArrowCounterclockwise24Regular className={styles.refundIcon} />
-            <Caption1 className={styles.metricLabel}>Sales Returns &amp; Refunds</Caption1>
+            <Caption1 className={styles.metricLabel}>Returns and refunds</Caption1>
           </div>
           {isInitialLoading ? (
             <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
@@ -407,7 +406,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
           <div className={styles.metricCard}>
             <div className={styles.metricHeader}>
               <Tag24Regular className={styles.refundIcon} />
-              <Caption1 className={styles.metricLabel}>Discounts Granted</Caption1>
+              <Caption1 className={styles.metricLabel}>Discounts</Caption1>
             </div>
             {isInitialLoading ? (
               <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
@@ -426,7 +425,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
         <div className={styles.metricCard}>
           <div className={styles.metricHeader}>
             <ShoppingBag24Regular className={styles.salesIcon} />
-            <Caption1 className={styles.metricLabel}>Net Realized Sales</Caption1>
+            <Caption1 className={styles.metricLabel}>Net sales</Caption1>
           </div>
           {isInitialLoading ? (
             <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
@@ -445,9 +444,9 @@ export function ReportsAnalyticsView(): React.JSX.Element {
           <div className={styles.metricHeader}>
             <BuildingShop24Regular className={styles.cogsIcon} />
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Caption1 className={styles.metricLabel}>Cost of Goods (COGS)</Caption1>
+              <Caption1 className={styles.metricLabel}>Cost of goods (COGS)</Caption1>
               <Badge size="extra-small" appearance="tint" color={isRealCostUsed ? 'success' : 'informative'}>
-                {isRealCostUsed ? 'Exact Cost' : 'Est. 45%'}
+                {isRealCostUsed ? 'Exact cost' : 'Estimated 45%'}
               </Badge>
             </div>
           </div>
@@ -469,7 +468,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
         <div className={styles.metricCard}>
           <div className={styles.metricHeader}>
             <Money24Regular className={styles.expenseIcon} />
-            <Caption1 className={styles.metricLabel}>Operational Expenses</Caption1>
+            <Caption1 className={styles.metricLabel}>Expenses</Caption1>
           </div>
           {isInitialLoading ? (
             <Skeleton animation="wave" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
@@ -495,7 +494,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
               className={netProfit >= 0 ? styles.netProfitIconSuccess : styles.netProfitIconDanger}
             />
             <Caption1 className={netProfit >= 0 ? styles.netProfitLabelSuccess : styles.netProfitLabelDanger}>
-              Clean Net Profit (Earnings)
+              Net profit
             </Caption1>
           </div>
           {isInitialLoading ? (
@@ -509,7 +508,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
                 {formatPKR(netProfit)}
               </Subtitle1>
               <Caption1 className={styles.metricSubtext}>
-                Net Margin: <strong>{netMarginPct}%</strong> take-home
+                Net margin <strong>{netMarginPct}%</strong>
               </Caption1>
             </>
           )}
@@ -522,7 +521,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
         <div className={styles.sectionCard}>
           <div className={styles.sectionTitleRow}>
             <Body1 className={styles.sectionTitle}>
-              <ArrowTrendingLines24Regular /> Top 5 Best Selling Items &amp; Profit
+              <ArrowTrendingLines24Regular /> Top 5 items by profit
             </Body1>
           </div>
 
@@ -565,7 +564,7 @@ export function ReportsAnalyticsView(): React.JSX.Element {
         <div className={styles.sectionCard}>
           <div className={styles.sectionTitleRow}>
             <Body1 className={styles.sectionTitle}>
-              <Receipt24Regular /> Profit Margin Efficiency
+              <Receipt24Regular /> Profit margin
             </Body1>
           </div>
 

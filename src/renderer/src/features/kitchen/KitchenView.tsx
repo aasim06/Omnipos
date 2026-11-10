@@ -400,14 +400,14 @@ export function KitchenView(): React.JSX.Element {
             as="h1"
             className={styles.pageTitle}
           >
-            Kitchen Display System (KDS)
+            Kitchen
           </Subtitle1>
           <Text
             as="p"
             size={200}
             className={styles.pageSubtitle}
           >
-            Chef order queue — auto-synced live with POS counter &amp; online orders
+            Order queue, synced live with the POS and online orders
           </Text>
         </div>
 
@@ -418,21 +418,21 @@ export function KitchenView(): React.JSX.Element {
               className={tickets.length > 0 ? styles.timerIconActive : styles.timerIconClear}
             />
             <span className={styles.chipCount}>{tickets.length}</span>
-            <span className={styles.chipLabel}>Active Order{tickets.length !== 1 ? 's' : ''}</span>
+            <span className={styles.chipLabel}>active order{tickets.length !== 1 ? 's' : ''}</span>
           </div>
 
           {/* Manual Rush Ticket Dialog Trigger */}
           <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
             <DialogTrigger disableButtonEnhancement>
               <Button appearance="primary" icon={<Add20Regular />}>
-                Manual Rush Ticket
+                Add rush ticket
               </Button>
             </DialogTrigger>
             <DialogSurface className={styles.dialogSurface} style={{ overflow: 'visible' }}>
               <form onSubmit={handleSubmit(onSubmit, onFormError)}>
                 <DialogBody style={{ overflow: 'visible' }}>
                   <DialogTitle className={styles.dialogTitle}>
-                    Add Manual Rush Order Ticket
+                    Add rush ticket
                   </DialogTitle>
                   <DialogContent className={styles.dialogContent} style={{ overflow: 'visible' }}>
                     
