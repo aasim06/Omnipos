@@ -20,6 +20,30 @@ import { printCustomerReceipt } from '@/lib/receiptPrinter';
  * All state, data loading, effects and handlers of the POS counter screen.
  * Moved verbatim from PosCounterView (P3 split) — hook order is unchanged.
  */
+export type PosViewMode = 'grid' | 'table' | 'tiles';
+// v2: the tile board became the default for both terminals, so older saved choices start fresh.
+const VIEW_MODE_KEY = 'omnipos_pos_view_mode_v2';
+
+function readViewMode(module: string): PosViewMode {
+  const fallback: PosViewMode = 'tiles';
+  try {
+    const saved = JSON.parse(localStorage.getItem(VIEW_MODE_KEY) || '{}')[module];
+    if (saved === 'tiles' || saved === 'grid' || (saved === 'table' && module !== 'fastfood')) return saved;
+  } catch {
+    /* storage unavailable or corrupt */
+  }
+  return fallback;
+}
+
+function writeViewMode(module: string, mode: PosViewMode) {
+  try {
+    const all = JSON.parse(localStorage.getItem(VIEW_MODE_KEY) || '{}');
+    localStorage.setItem(VIEW_MODE_KEY, JSON.stringify({ ...all, [module]: mode }));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 export function usePosCounter({ module, modeType }: PosCounterProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -133,7 +157,18 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
   /* Line Item Kitchen Prep Notes */
   const [editingNoteItem, setEditingNoteItem] = useState<{ productId: string; variantLabel?: string; currentNote: string } | null>(null);
   /* Mini Mart Specific: Barcode Scanner, Dual View Mode & Scale Calculator */
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  // Catalog view per module, remembered on this terminal. Fast food defaults to the touch tile board.
+  const [viewMode, setViewModeState] = useState<PosViewMode>(() => readViewMode(module));
+  React.useEffect(() => {
+    setViewModeState(readViewMode(module));
+  }, [module]);
+  const setViewMode = React.useCallback(
+    (mode: PosViewMode) => {
+      setViewModeState(mode);
+      writeViewMode(module, mode);
+    },
+    [module],
+  );
   const [barcodeInput, setBarcodeInput] = useState('');
   const [lastScannedFeedback, setLastScannedFeedback] = useState<{ isSuccess: boolean; text: string } | null>(null);
   const scannerInputRef = React.useRef<HTMLInputElement>(null);

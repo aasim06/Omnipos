@@ -22,6 +22,11 @@ function onKeyDown(e: KeyboardEvent) {
   escapeStack[escapeStack.length - 1].close();
 }
 
+/** True while any POS dialog is open and will take the next Escape press. */
+export function hasOpenPosDialog(): boolean {
+  return escapeStack.length > 0;
+}
+
 /**
  * Close a POS dialog with Escape, like every Windows dialog.
  * When several are open (e.g. a dialog over the expanded cart), only the top-most closes.

@@ -5,6 +5,7 @@ import { CategoryPivot } from '@/features/pos/catalog/CategoryPivot';
 import { ScanFeedback } from '@/features/pos/catalog/ScanFeedback';
 import { MealBuilderCard } from '@/features/pos/catalog/MealBuilderCard';
 import { ProductCatalog } from '@/features/pos/catalog/ProductCatalog';
+import { TileBoard } from '@/features/pos/catalog/TileBoard';
 
 const FEATURED_KEY = 'omnipos_pos_show_featured';
 
@@ -35,8 +36,8 @@ export function CatalogPane({ pos }: { pos: PosCounterState }) {
       {/* Scanner, search, mode and view switches in one row */}
       <CommandBar pos={pos} showFeatured={showFeatured} onToggleFeatured={toggleFeatured} />
 
-      {/* Category pivot */}
-      <CategoryPivot pos={pos} />
+      {/* Category pivot (the tile board has its own category tiles instead) */}
+      {pos.viewMode !== 'tiles' && <CategoryPivot pos={pos} />}
 
       {/* Scanner result (floating, takes no space) */}
       <ScanFeedback pos={pos} />
@@ -46,8 +47,8 @@ export function CatalogPane({ pos }: { pos: PosCounterState }) {
         {/* ── Featured item / meal builder (fast food, optional) ── */}
         {showFeatured && <MealBuilderCard pos={pos} />}
 
-        {/* ── Product Catalog Section (Grid View vs Supermarket Table View) ── */}
-        <ProductCatalog pos={pos} highlightSelected={showFeatured} />
+        {/* ── Catalog: touch tile board, product cards, or the mart's dense table ── */}
+        {pos.viewMode === 'tiles' ? <TileBoard pos={pos} /> : <ProductCatalog pos={pos} highlightSelected={showFeatured} />}
       </div>
     </div>
   );

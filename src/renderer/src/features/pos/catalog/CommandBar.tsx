@@ -6,6 +6,7 @@ import {
   Dismiss16Regular,
   Food20Regular,
   Grid20Regular,
+  GridKanban20Regular,
   Search20Regular,
   ShoppingBag20Regular,
   Sparkle20Regular,
@@ -252,15 +253,16 @@ export function CommandBar({
 
       <div style={{ flex: 1 }} />
 
-      {/* Grid / table view (mart) */}
-      {module === 'minimart' && (
-        <div style={segmentTrack} role="group" aria-label="Catalog view">
-          {segmentButton({ active: viewMode === 'grid', onClick: () => setViewMode('grid'), title: "Card grid", children: <>
-            <Grid20Regular style={{ width: 16, height: 16 }} /></> })}
-          {segmentButton({ active: viewMode === 'table', onClick: () => setViewMode('table'), title: "Dense table", children: <>
+      {/* Catalog view: touch tiles / cards / dense table (mart only) */}
+      <div style={segmentTrack} role="group" aria-label="Catalog view">
+        {segmentButton({ active: viewMode === 'tiles', onClick: () => setViewMode('tiles'), title: 'Touch tiles', children: <>
+          <GridKanban20Regular style={{ width: 16, height: 16 }} /></> })}
+        {segmentButton({ active: viewMode === 'grid', onClick: () => setViewMode('grid'), title: 'Product cards', children: <>
+          <Grid20Regular style={{ width: 16, height: 16 }} /></> })}
+        {module === 'minimart' &&
+          segmentButton({ active: viewMode === 'table', onClick: () => setViewMode('table'), title: 'Dense table', children: <>
             <Table20Regular style={{ width: 16, height: 16 }} /></> })}
-        </div>
-      )}
+      </div>
 
       {/* Featured item / meal builder card (fast food), hidden by default to save space */}
       {module === 'fastfood' && (

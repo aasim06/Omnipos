@@ -1,10 +1,8 @@
 import { Product } from '@shared/types';
 import { getTokens } from '@/features/pos/posTokens';
-import { playBeep } from '@/lib/soundFx';
 import React from 'react';
 import { decodeProductVariants } from '@/lib/variants';
-import { ProductIcon } from '@/features/pos/posIcons';
-import { Add20Regular, BarcodeScanner20Regular, Checkmark20Filled, Scales20Regular } from '@fluentui/react-icons';
+import { Add16Filled, Delete16Regular, Options16Regular, Scales16Regular, Subtract16Filled } from '@fluentui/react-icons';
 
 export interface FastFoodVisualCardProps {
   product: Product;
@@ -13,6 +11,8 @@ export interface FastFoodVisualCardProps {
   F: ReturnType<typeof getTokens>;
   inCartMap: Record<string, number>;
   addToCart: (product: Product, qty?: number, variantLabel?: string, customUnitPrice?: number) => void;
+  removeFromCart: (productId: string, variantLabel?: string) => void;
+  updateCartQty: (productId: string, delta: number, variantLabel?: string) => void;
   setSelectedProduct: (p: Product) => void;
   setSelectedQty: (qty: number) => void;
   playBeep: () => void;
@@ -22,6 +22,43 @@ export interface FastFoodVisualCardProps {
   setVariantPickerProduct: (p: Product) => void;
 }
 
+/* Muted per-category swatches: [light bg, light ink, dark bg, dark ink]. */
+const SWATCHES = [
+  ['#F3E8E6', '#9A3B2E', '#3A2724', '#E8A598'],
+  ['#F4ECDF', '#8A5A12', '#3A3022', '#E2BC7E'],
+  ['#E6F0E4', '#2F6B2A', '#24332A', '#9DD196'],
+  ['#E2EFEE', '#1E6660', '#20332F', '#8ED0C8'],
+  ['#E4ECF5', '#2A5A8C', '#222D3A', '#9CC0E8'],
+  ['#ECE8F5', '#57439A', '#2C2838', '#BCADEB'],
+  ['#F4E6EE', '#8E3466', '#38242F', '#E6A3C8'],
+  ['#ECEBE4', '#5A5A3C', '#2F2F28', '#C9C9A3'],
+] as const;
+
+function swatchFor(key: string, isDark: boolean) {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  const s = SWATCHES[Math.abs(h) % SWATCHES.length];
+  return isDark ? { bg: s[2], ink: s[3] } : { bg: s[0], ink: s[1] };
+}
+
+/** "Fresh Milk (1 Liter)" -> "FM", "suger" -> "SU". */
+function initials(name: string): string {
+  const words = name.replace(/\(.*?\)/g, ' ').split(/[^A-Za-z0-9؀-ۿ]+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+/** Trim long fractional quantities (119.706 -> 119.71) and drop trailing zeros. */
+function formatQty(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+}
+
+/**
+ * Retail POS product tile.
+ * Tap anywhere to add (weighed items open the scale, items with sizes open the picker).
+ * A plain item already in the order shows a - qty + stepper in place of the add button.
+ */
 export const FastFoodVisualCard = React.memo(
   function FastFoodVisualCard({
     product: rawProduct,
@@ -30,8 +67,8 @@ export const FastFoodVisualCard = React.memo(
     F,
     inCartMap,
     addToCart,
-    setSelectedProduct,
-    setSelectedQty,
+    removeFromCart,
+    updateCartQty,
     playBeep,
     isWeightItem,
     setWeighingProduct,
@@ -39,21 +76,35 @@ export const FastFoodVisualCard = React.memo(
     setVariantPickerProduct,
   }: FastFoodVisualCardProps) {
     const product = React.useMemo(() => decodeProductVariants(rawProduct), [rawProduct]);
-    const variants = React.useMemo(() => product.variants || [], [product.variants]);
+    const variants = product.variants || [];
     const hasVariants = variants.length > 0;
 
     const isFood = product.module === 'fastfood';
-    const isOut = !isFood && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
-    const isLowStock = !isFood && !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= (product.minThreshold ?? 10);
+    const stock = product.openingStock;
+    const hasStock = stock !== null && stock !== undefined;
+    const isOut = !isFood && hasStock && (stock as number) <= 0;
+    const isLowStock = !isFood && !isOut && hasStock && (stock as number) <= (product.minThreshold ?? 10);
+
+    // inCartMap[id] already totals every variant line of this product.
     const inCartQty = inCartMap[product.id] ?? 0;
+    const isWeighed = isWeightItem || product.pricingType === 'perkg' || product.pricingType === 'amountse';
+    const usesStepper = !isWeighed && !hasVariants && inCartQty > 0;
+    const isActive = isSelected || inCartQty > 0;
 
-    const isWeighedOrAmount = isWeightItem || product.pricingType === 'perkg' || product.pricingType === 'amountse';
+    const unitLabel = (product.unit || 'kg').toLowerCase();
+    const hasImage = Boolean(product.imageBase64 || product.imageUrl);
+    const [imgFailed, setImgFailed] = React.useState(false);
+    const [hover, setHover] = React.useState(false);
+    const [pressed, setPressed] = React.useState(false);
+    const showPhoto = hasImage && !imgFailed;
 
-    const handleAction = (e?: React.MouseEvent) => {
-      if (e) e.stopPropagation();
+    const sw = React.useMemo(() => swatchFor(product.category || product.name, isDark), [product.category, product.name, isDark]);
+    const accent = F.accentRed;
+    const code = product.skuCode || product.barcode;
+
+    const handleAction = () => {
       if (isOut) return;
-
-      if (isWeighedOrAmount || isWeightItem) {
+      if (isWeighed) {
         setWeighingProduct(product);
         setWeightAmount(1.0);
         playBeep();
@@ -61,421 +112,323 @@ export const FastFoodVisualCard = React.memo(
         setVariantPickerProduct(product);
         playBeep();
       } else {
-        addToCart(product, 1);
-        playBeep();
+        addToCart(product, 1); // addToCart plays its own beep
       }
+    };
+
+    const decrement = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (inCartQty <= 1) removeFromCart(product.id);
+      else updateCartQty(product.id, -1);
+    };
+    const increment = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      addToCart(product, 1);
+    };
+
+    let stockText = '';
+    if (hasStock && !isOut) stockText = `${formatQty(stock as number)}${isWeighed ? ` ${unitLabel}` : ''} left`;
+    else if (isFood && !hasStock) stockText = 'Made to order';
+    const stockColor = isLowStock ? (isDark ? '#F2C661' : '#A15C00') : F.textMuted;
+
+    const lift = hover && !isOut;
+    const ring = isActive ? accent : lift ? (isDark ? '#5A5A5A' : '#C4C4C4') : F.border;
+
+    const iconBtn: React.CSSProperties = {
+      width: '32px',
+      height: '32px',
+      padding: 0,
+      border: 'none',
+      borderRadius: '8px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+      transition: 'background-color 0.12s ease, color 0.12s ease',
     };
 
     return (
       <div
-        onClick={() => handleAction()}
+        role="button"
+        tabIndex={isOut ? -1 : 0}
+        aria-disabled={isOut}
+        aria-label={`${product.name}, Rs ${product.price}${isWeighed ? ` per ${unitLabel}` : ''}${inCartQty ? `, ${formatQty(inCartQty)} in order` : ''}`}
+        className="pos-tile"
+        onClick={handleAction}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleAction();
+          }
+        }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => {
+          setHover(false);
+          setPressed(false);
+        }}
+        onMouseDown={() => setPressed(true)}
+        onMouseUp={() => setPressed(false)}
         style={{
-          backgroundColor: F.bgCard,
-          borderRadius: '8px',
-          border: `1px solid ${isSelected ? F.accentRed : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-          overflow: 'hidden',
+          position: 'relative',
           display: 'flex',
           flexDirection: 'column',
-          height: '100%',
-          minHeight: '275px',
-          cursor: isOut ? 'default' : 'pointer',
-          opacity: isOut ? 0.6 : 1,
-          boxShadow: isSelected
-            ? '0 0 0 2px #E51937, 0 8px 24px rgba(229, 25, 55, 0.25)'
-            : isDark
-            ? '0 4px 16px rgba(0, 0, 0, 0.3)'
-            : '0 2px 10px rgba(0, 0, 0, 0.04)',
-          transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-          position: 'relative',
-        }}
-        onMouseEnter={(e) => {
-          if (!isOut) {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            if (!isSelected) {
-              e.currentTarget.style.boxShadow = isDark
-                ? '0 12px 30px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.15)'
-                : '0 12px 28px rgba(0,0,0,0.09), 0 0 0 1px rgba(229,25,55,0.2)';
-              e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(229,25,55,0.3)';
-            }
-            const img = e.currentTarget.querySelector('img');
-            if (img) img.style.transform = 'scale(1.08)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isOut) {
-            e.currentTarget.style.transform = 'translateY(0)';
-            if (!isSelected) {
-              e.currentTarget.style.boxShadow = isDark
-                ? '0 4px 16px rgba(0, 0, 0, 0.3)'
-                : '0 2px 10px rgba(0, 0, 0, 0.04)';
-              e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-            }
-            const img = e.currentTarget.querySelector('img');
-            if (img) img.style.transform = 'scale(1)';
-          }
+          height: '232px',
+          backgroundColor: F.bgCard,
+          border: `1px solid ${ring}`,
+          boxShadow: isActive
+            ? `inset 0 0 0 1px ${accent}`
+            : lift
+            ? isDark
+              ? '0 8px 20px rgba(0,0,0,0.45)'
+              : '0 8px 20px rgba(15,23,42,0.08)'
+            : 'none',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          cursor: isOut ? 'not-allowed' : 'pointer',
+          userSelect: 'none',
+          outline: 'none',
+          fontFamily: F.font,
+          transform: pressed && !isOut ? 'scale(0.98)' : 'none',
+          transition: 'border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease',
         }}
       >
-        {/* ── Top Media Showcase: 145px ── */}
+        {/* Media */}
         <div
           style={{
             position: 'relative',
-            width: '100%',
-            height: '145px',
-            overflow: 'hidden',
-            backgroundColor: isDark ? '#18181B' : '#F3F4F6',
+            height: '116px',
+            flexShrink: 0,
+            backgroundColor: showPhoto || isOut ? F.bgSubtle : sw.bg,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            overflow: 'hidden',
           }}
         >
-          {product.imageBase64 || product.imageUrl ? (
+          {isOut && !showPhoto ? null : showPhoto ? (
             <img
               src={product.imageBase64 || product.imageUrl}
-              alt={product.name}
+              alt=""
+              draggable={false}
+              onError={() => setImgFailed(true)}
               style={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                transition: 'transform 0.35s ease',
-              }}
-              onError={(e) => {
-                (e.currentTarget as HTMLElement).style.display = 'none';
-                const fallback = (e.currentTarget as HTMLElement).nextElementSibling;
-                if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                filter: isOut ? 'grayscale(1)' : 'none',
+                opacity: isOut ? 0.45 : 1,
+                transform: lift ? 'scale(1.04)' : 'none',
+                transition: 'transform 0.3s ease',
               }}
             />
-          ) : null}
+          ) : (
+            <span
+              aria-hidden
+              style={{
+                fontSize: '34px',
+                fontWeight: 700,
+                letterSpacing: '0.02em',
+                color: sw.ink,
+                lineHeight: 1,
+              }}
+            >
+              {initials(product.name)}
+            </span>
+          )}
 
-          {/* Fallback Graphic Pattern */}
-          <div
-            style={{
-              display: product.imageBase64 || product.imageUrl ? 'none' : 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-              height: '100%',
-              background: isDark
-                ? 'linear-gradient(135deg, #1f1f24 0%, #161619 100%)'
-                : 'linear-gradient(135deg, #F8FAFC 0%, #EDF2F7 100%)',
-            }}
-          >
-            <ProductIcon name={product.name} category={product.category} size={46} color={isSelected ? F.accentRed : F.textPrimary} />
-          </div>
-
-          {/* Subtle Ambient Dark Gradient on bottom edge of image */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 65%)',
-              pointerEvents: 'none',
-            }}
-          />
-
-          {/* Floating Stock Badge (Glassmorphic Top-Right) */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '8px',
-              right: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '3px 8px',
-              borderRadius: '20px',
-              background: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(8px)',
-              border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(0, 0, 0, 0.08)',
-              fontSize: '11px',
-              fontWeight: 600,
-              color: isOut ? '#EF4444' : isLowStock ? '#F59E0B' : isDark ? '#FFFFFF' : '#111827',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
-            }}
-          >
+          {(isWeighed || hasVariants) && (
             <span
               style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: isOut ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981',
-                boxShadow: `0 0 6px ${isOut ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981'}`,
+                position: 'absolute',
+                left: '8px',
+                bottom: '8px',
+                height: '22px',
+                padding: '0 8px',
+                borderRadius: '6px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: isDark ? '#F5F5F5' : '#1A1A1A',
+                backgroundColor: isDark ? 'rgba(20,20,20,0.75)' : 'rgba(255,255,255,0.88)',
+                backdropFilter: 'blur(6px)',
               }}
-            />
-            <span>{isOut ? 'OUT' : isFood && (product.openingStock === null || product.openingStock === undefined) ? 'Fresh' : `${product.openingStock ?? '—'} left`}</span>
-          </div>
+            >
+              {isWeighed ? <Scales16Regular style={{ width: 13, height: 13 }} /> : <Options16Regular style={{ width: 13, height: 13 }} />}
+              {isWeighed ? `Sold by ${unitLabel}` : `${variants.length} options`}
+            </span>
+          )}
 
-          {/* In-Cart Glowing Indicator Pill */}
-          {inCartQty > 0 && (
-            <div
+          {inCartQty > 0 && !usesStepper && (
+            <span
               style={{
                 position: 'absolute',
                 top: '8px',
-                left: '8px',
-                padding: '3px 8px',
-                borderRadius: '8px',
-                backgroundColor: '#107C41',
+                right: '8px',
+                minWidth: '24px',
+                height: '24px',
+                padding: '0 7px',
+                boxSizing: 'border-box',
+                borderRadius: '12px',
+                backgroundColor: accent,
                 color: '#FFFFFF',
-                fontSize: '10.5px',
-                fontWeight: 600,
-                display: 'flex',
+                fontSize: '12px',
+                fontWeight: 700,
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '4px',
-                boxShadow: '0 2px 8px rgba(16, 124, 65, 0.45)',
+                justifyContent: 'center',
+                fontVariantNumeric: 'tabular-nums',
+                boxShadow: '0 2px 6px rgba(229,25,55,0.35)',
               }}
             >
-              <Checkmark20Filled style={{ width: 12, height: 12 }} />
-              <span>{inCartQty} in cart</span>
-            </div>
+              {formatQty(inCartQty)}
+              {isWeighed ? ` ${unitLabel}` : ''}
+            </span>
+          )}
+
+          {isOut && (
+            <span
+              style={{
+                position: 'absolute',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                backgroundColor: isDark ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.92)',
+                color: '#C42B1C',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+              }}
+            >
+              SOLD OUT
+            </span>
           )}
         </div>
 
-        {/* ── Card Content Body ── */}
-        <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', justifyContent: 'space-between' }}>
-          <div>
-            {/* SKU / Code & Category Pill */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '10.5px',
-                  fontFamily: 'monospace',
-                  fontWeight: 600,
-                  color: isDark ? '#94A3B8' : '#475569',
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
-                  padding: '1px 6px',
-                  borderRadius: '4px',
-                  border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0'}`,
-                  letterSpacing: '0.02em',
-                }}
-                title={`SKU / Code: ${product.skuCode || product.barcode || 'N/A'}`}
-              >
-                <BarcodeScanner20Regular style={{ width: 12, height: 12, opacity: 0.8 }} />
-                <span>{product.skuCode || product.barcode || 'NO-SKU'}</span>
-              </span>
-
-              {product.category && (
-                <span
-                  style={{
-                    fontSize: '10.5px',
-                    color: F.textMuted,
-                    fontWeight: 500,
-                    maxWidth: '110px',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                  title={product.category}
-                >
-                  {product.category}
-                </span>
-              )}
-            </div>
-
-            {/* Product Name */}
-            <div
-              style={{
-                fontSize: '14px',
-                fontWeight: 600,
-                color: F.textPrimary,
-                lineHeight: 1.3,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-              title={product.name}
-            >
-              {product.name}
-            </div>
-
-            {/* Description */}
-            <div
-              style={{
-                fontSize: '11.5px',
-                color: isDark ? '#A1A1AA' : '#6B7280',
-                lineHeight: 1.3,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                marginTop: '2px',
-              }}
-              title={product.description || (product.category ? `${product.category} special` : '')}
-            >
-              {product.description || (product.category ? `${product.category} special` : 'Fresh store item')}
-            </div>
-          </div>
-
-          {/* ── Bottom Row: Price & Clean Action Button ── */}
+        {/* Body */}
+        <div style={{ flex: 1, minHeight: 0, padding: '10px 12px 10px', display: 'flex', flexDirection: 'column' }}>
           <div
+            title={product.name}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginTop: '12px',
-              paddingTop: '8px',
-              borderTop: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.06)'}`,
+              fontSize: '13.5px',
+              fontWeight: 600,
+              lineHeight: '18px',
+              maxHeight: '36px',
+              color: isOut ? F.textMuted : F.textPrimary,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              wordBreak: 'break-word',
             }}
           >
-            <div
-              style={{
-                fontSize: '14.5px',
-                fontWeight: 600,
-                color: '#10B981',
-                letterSpacing: '-0.01em',
-                display: 'flex',
-                alignItems: 'baseline',
-              }}
-            >
-              <span>{product.price.toLocaleString()} PKR</span>
-              {isWeighedOrAmount && (
-                <span style={{ fontSize: '10.5px', fontWeight: 600, color: isDark ? '#9CA3AF' : '#6B7280', marginLeft: '3px' }}>
-                  / {product.unit || 'kg'}
-                </span>
-              )}
+            {product.name}
+          </div>
+
+          <div
+            style={{
+              marginTop: '3px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              color: F.textMuted,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+            }}
+          >
+            {code && (
+              <span style={{ fontFamily: 'Consolas, "Cascadia Mono", monospace', overflow: 'hidden', textOverflow: 'ellipsis' }}>{code}</span>
+            )}
+            {code && stockText && <span aria-hidden>·</span>}
+            {stockText && (
+              <span style={{ color: stockColor, fontWeight: isLowStock ? 600 : 400, flexShrink: 0 }}>
+                {isLowStock ? `Only ${stockText}` : stockText}
+              </span>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <div style={{ minWidth: 0, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: F.textSecondary, marginRight: '3px' }}>Rs</span>
+              <span style={{ fontSize: '17px', fontWeight: 700, letterSpacing: '-0.01em', color: isOut ? F.textMuted : F.textPrimary }}>
+                {product.price.toLocaleString()}
+              </span>
+              {isWeighed && <span style={{ fontSize: '12px', color: F.textMuted }}> /{unitLabel}</span>}
             </div>
 
-            {isWeighedOrAmount || isWeightItem ? (
-              <button
-                type="button"
-                disabled={isOut}
-                onClick={handleAction}
+            {isOut ? null : usesStepper ? (
+              <div
+                onClick={(e) => e.stopPropagation()}
                 style={{
-                  height: '32px',
-                  padding: '0 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: '#10B981',
-                  color: '#FFFFFF',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '5px',
-                  cursor: isOut ? 'not-allowed' : 'pointer',
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isOut) {
-                    e.currentTarget.style.backgroundColor = '#059669';
-                    e.currentTarget.style.transform = 'scale(1.03)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isOut) {
-                    e.currentTarget.style.backgroundColor = '#10B981';
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }
+                  borderRadius: '8px',
+                  border: `1px solid ${accent}`,
+                  flexShrink: 0,
+                  overflow: 'hidden',
                 }}
               >
-                <Scales20Regular style={{ width: 14, height: 14 }} />
-                <span>Weigh</span>
-              </button>
-            ) : hasVariants ? (
-              <button
-                type="button"
-                disabled={isOut}
-                onClick={handleAction}
-                style={{
-                  height: '32px',
-                  padding: '0 12px',
-                  borderRadius: '6px',
-                  border: `1px solid ${inCartQty > 0 ? '#E51937' : isDark ? 'rgba(255,255,255,0.15)' : '#E2E8F0'}`,
-                  backgroundColor: inCartQty > 0 ? '#E51937' : isDark ? '#27272A' : '#F8FAFC',
-                  color: inCartQty > 0 ? '#FFFFFF' : isDark ? '#F4F4F5' : '#1E293B',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '5px',
-                  cursor: isOut ? 'not-allowed' : 'pointer',
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  boxShadow: inCartQty > 0 ? '0 2px 8px rgba(229, 25, 55, 0.35)' : 'none',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isOut) {
-                    e.currentTarget.style.transform = 'scale(1.03)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isOut) {
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }
-                }}
-              >
-                <Add20Regular style={{ width: 14, height: 14 }} />
-                <span>Options ({variants.length})</span>
-              </button>
+                <button
+                  type="button"
+                  aria-label={inCartQty <= 1 ? `Remove ${product.name}` : `One less ${product.name}`}
+                  onClick={decrement}
+                  style={{ ...iconBtn, width: '28px', height: '30px', borderRadius: 0, backgroundColor: 'transparent', color: accent }}
+                >
+                  {inCartQty <= 1 ? <Delete16Regular /> : <Subtract16Filled />}
+                </button>
+                <span
+                  style={{
+                    minWidth: '22px',
+                    textAlign: 'center',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: F.textPrimary,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {formatQty(inCartQty)}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`One more ${product.name}`}
+                  onClick={increment}
+                  style={{ ...iconBtn, width: '28px', height: '30px', borderRadius: 0, backgroundColor: accent, color: '#FFFFFF' }}
+                >
+                  <Add16Filled />
+                </button>
+              </div>
             ) : (
-              <button
-                type="button"
-                disabled={isOut}
-                onClick={handleAction}
+              <span
+                aria-hidden
                 style={{
-                  height: '32px',
-                  padding: '0 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: '#E51937',
-                  color: '#FFFFFF',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '5px',
-                  cursor: isOut ? 'not-allowed' : 'pointer',
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  boxShadow: '0 2px 8px rgba(229, 25, 55, 0.35)',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isOut) {
-                    e.currentTarget.style.backgroundColor = '#be123c';
-                    e.currentTarget.style.transform = 'scale(1.03)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isOut) {
-                    e.currentTarget.style.backgroundColor = '#E51937';
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }
+                  ...iconBtn,
+                  backgroundColor: lift ? accent : F.bgSubtle,
+                  color: lift ? '#FFFFFF' : F.textPrimary,
                 }}
               >
-                <Add20Regular style={{ width: 14, height: 14 }} />
-                <span>Add</span>
-              </button>
+                {isWeighed ? <Scales16Regular /> : hasVariants ? <Options16Regular /> : <Add16Filled />}
+              </span>
             )}
           </div>
         </div>
+
+        <style>{`.pos-tile:focus-visible{outline:2px solid ${F.textPrimary};outline-offset:2px}`}</style>
       </div>
     );
   },
-(prev, next) => {
-  if (prev.product.id !== next.product.id) return false;
-  if (prev.isSelected !== next.isSelected) return false;
-  if (prev.isDark !== next.isDark) return false;
-  if (prev.isWeightItem !== next.isWeightItem) return false;
-  if (prev.product !== next.product) return false;
-
-  // Compare inCart counts specifically for this product
-  const prevCount = prev.inCartMap[prev.product.id] || 0;
-  const nextCount = next.inCartMap[next.product.id] || 0;
-  if (prevCount !== nextCount) return false;
-
-  if (prev.product.variants && prev.product.variants.length > 0) {
-    for (const v of prev.product.variants) {
-      const key = `${prev.product.id}__${v.label}`;
-      if ((prev.inCartMap[key] || 0) !== (next.inCartMap[key] || 0)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-});
+  (prev, next) =>
+    prev.product === next.product &&
+    prev.isSelected === next.isSelected &&
+    prev.isDark === next.isDark &&
+    prev.isWeightItem === next.isWeightItem &&
+    prev.F === next.F &&
+    prev.addToCart === next.addToCart &&
+    prev.removeFromCart === next.removeFromCart &&
+    prev.updateCartQty === next.updateCartQty &&
+    (prev.inCartMap[prev.product.id] || 0) === (next.inCartMap[next.product.id] || 0),
+);

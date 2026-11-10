@@ -20,6 +20,7 @@ import {
   LockClosed16Regular,
   Flash20Regular,
   Sparkle20Regular,
+  GridKanban20Regular,
 } from '@fluentui/react-icons';
 import {
   Footprints,
@@ -40,6 +41,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { posApi } from '@/lib/api';
+import { PosBoardDialog } from '@/features/catalog/PosBoardDialog';
 import { Category, Product, ModuleKey, CategoryProfile } from '@shared/types';
 import { uid } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
@@ -113,6 +115,7 @@ export function CategoriesView(): React.JSX.Element {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCustomName, setIsCustomName] = useState(false);
   const [targetModule, setTargetModule] = useState<ModuleKey>(hasFastFood ? 'fastfood' : 'minimart');
+  const [boardModule, setBoardModule] = useState<ModuleKey | null>(null);
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
     queryKey: ['categories'],
@@ -308,6 +311,9 @@ export function CategoriesView(): React.JSX.Element {
             >
               + Add Food Category
             </Button>
+            <Button size="small" appearance="subtle" icon={<GridKanban20Regular />} onClick={() => setBoardModule('fastfood')} title="Tile colour, icon and order on the POS screen">
+              POS board
+            </Button>
           </div>
           <div className={styles.categoryGrid}>
             {fastFoodCategories.map((cat) => {
@@ -377,6 +383,9 @@ export function CategoriesView(): React.JSX.Element {
               onClick={() => handleOpenDialog('minimart')}
             >
               + Add Mart Category
+            </Button>
+            <Button size="small" appearance="subtle" icon={<GridKanban20Regular />} onClick={() => setBoardModule('minimart')} title="Tile colour, icon and order on the POS screen">
+              POS board
             </Button>
           </div>
           <div className={styles.categoryGrid}>
@@ -630,6 +639,13 @@ export function CategoriesView(): React.JSX.Element {
           </form>
         </DialogSurface>
       </Dialog>
+      <PosBoardDialog
+        open={boardModule !== null}
+        module={boardModule ?? 'fastfood'}
+        categories={categories}
+        onClose={() => setBoardModule(null)}
+        onSaved={() => notifySuccess('POS board saved')}
+      />
     </div>
   );
 }
