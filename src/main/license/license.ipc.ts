@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { disconnectPrisma, initializeDatabase } from '../database/client';
+import { isDeviceOrKeyRemovedError } from '@shared/licenseStatus';
 import os from 'node:os';
 import nodeMachineId from 'node-machine-id';
 
@@ -59,7 +60,7 @@ export type LicenseCache = {
 
 export type LicenseGate =
   | { state: 'ok'; modules?: Record<string, boolean>; businessProfiles?: string[] }
-  | { state: 'none' }
+  | { state: 'none'; reason?: string }
   | { state: 'blocked'; reason: string };
 
 export type OmniSupportContact = { phone: string; email: string };
@@ -162,13 +163,18 @@ function isLocallyExpired(key: string): boolean {
   return Date.now() > end.getTime();
 }
 
-function clearLocalLicense(): void {
+async function clearLocalLicense(): Promise<void> {
   for (const file of [getLicenseFilePath(), getModulesCacheFilePath(), getLicenseCacheFilePath()]) {
     try {
       if (existsSync(file)) unlinkSync(file);
     } catch {
       /* ignore */
     }
+  }
+  try {
+    await disconnectPrisma();
+  } catch {
+    /* ignore */
   }
 }
 
@@ -313,9 +319,13 @@ export async function getLicenseGate(): Promise<LicenseGate> {
       body: JSON.stringify({ key: savedKey, hwid }),
     });
 
-    const data = (await response.json()) as {
-      ok: boolean;
-      valid: boolean;
+    if (response.status >= 500) {
+      throw new Error(`License server temporary error: ${response.status}`);
+    }
+
+    const data = (await response.json().catch(() => ({}))) as {
+      ok?: boolean;
+      valid?: boolean;
       error?: string;
       code?: string;
       modules?: Record<string, boolean>;
@@ -325,9 +335,12 @@ export async function getLicenseGate(): Promise<LicenseGate> {
     };
 
     if (!data.valid || response.status !== 200) {
-      if (data.code === 'not_found' || response.status === 404) {
-        clearLocalLicense();
-        return { state: 'none' };
+      if (isDeviceOrKeyRemovedError(response.status, data.code, data.error)) {
+        await clearLocalLicense();
+        return {
+          state: 'none',
+          reason: String(data.error || '').trim() || undefined,
+        };
       }
 
       const reason = String(data.error || '').trim() || DISABLED_FALLBACK;
@@ -362,6 +375,10 @@ export async function getLicenseGate(): Promise<LicenseGate> {
       return { state: 'blocked', reason: EXPIRED_REASON };
     }
     if (cache?.lastGate === 'blocked') {
+      if (isDeviceOrKeyRemovedError(0, undefined, cache.lastReason)) {
+        await clearLocalLicense();
+        return { state: 'none', reason: cache.lastReason };
+      }
       return { state: 'blocked', reason: cache.lastReason || DISABLED_FALLBACK };
     }
     return {

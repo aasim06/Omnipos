@@ -242,7 +242,7 @@ const useStyles = makeStyles({
   },
 });
 
-export function LicensePage({ onActivated }: { onActivated: () => void }): React.JSX.Element {
+export function LicensePage({ onActivated, initialNotice }: { onActivated: () => void; initialNotice?: string }): React.JSX.Element {
   const styles = useStyles();
   const [suffix, setSuffix] = useState('');
   const [error, setError] = useState('');
@@ -270,6 +270,9 @@ export function LicensePage({ onActivated }: { onActivated: () => void }): React
             resetTenantMeta();
           }
           localStorage.setItem('omnipos_active_key', fullKey);
+          if (result.schemaId) {
+            localStorage.setItem('omnipos_active_schema', result.schemaId);
+          }
           if ((result as any).businessProfiles) {
             localStorage.setItem('omnipos_business_profiles', JSON.stringify((result as any).businessProfiles));
           }
@@ -337,10 +340,10 @@ export function LicensePage({ onActivated }: { onActivated: () => void }): React
           </div>
         </div>
 
-        {error && (
+        {(error || initialNotice) && (
           <div className={styles.errorBox}>
             <ShieldAlert className={styles.shieldIcon} />
-            <span>{error}</span>
+            <span>{error || initialNotice}</span>
           </div>
         )}
 

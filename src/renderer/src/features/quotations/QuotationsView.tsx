@@ -39,6 +39,8 @@ import { CustomInput, CustomSelect } from '@/components/ui';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { decodeProductVariants } from '@/lib/variants';
 import { QuotationPrintTemplate } from '@/components/print/QuotationPrintTemplate';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
+import { resolveStoreModules } from '@/lib/categoryProfiles';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
 
 import { useQuotationsStyles, useStyles } from './quotations.styles';
@@ -49,6 +51,11 @@ export function QuotationsView(): React.JSX.Element {
   const queryClient = useQueryClient();
   const { notifySuccess, notifyWarning, notifyError } = useAppToast();
   const confirmModal = useConfirmDialog();
+  const { can, businessProfiles } = useLicense();
+  const storeMod = React.useMemo(
+    () => resolveStoreModules(can('fastfood'), can('omnimart'), businessProfiles),
+    [can, businessProfiles],
+  );
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'draft' | 'sent' | 'converted' | 'expired'>('all');
@@ -61,7 +68,7 @@ export function QuotationsView(): React.JSX.Element {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
-  const [targetModule, setTargetModule] = useState<ModuleKey>('minimart');
+  const [targetModule, setTargetModule] = useState<ModuleKey>(storeMod.defaultModule);
   const [validDays, setValidDays] = useState(7);
   const [lines, setLines] = useState<CartLine[]>([]);
   const [discountPercent, setDiscountPercent] = useState(0);
@@ -707,15 +714,14 @@ export function QuotationsView(): React.JSX.Element {
               onChange={(e) => setQuoteNumber(e.target.value)}
             />
 
-            <CustomSelect
-              label="Target Store Module"
-              value={targetModule}
-              options={[
-                { value: 'minimart', label: 'Mart / Retail & Solutions' },
-                { value: 'fastfood', label: 'Food & Catering' },
-              ]}
-              onChange={(val) => setTargetModule(val as ModuleKey)}
-            />
+            {storeMod.hasMultipleModules && (
+              <CustomSelect
+                label="Target Store Module"
+                value={targetModule}
+                options={storeMod.moduleOptions}
+                onChange={(val) => setTargetModule(val as ModuleKey)}
+              />
+            )}
 
             <CustomInput
               label="Validity Duration (Days)"

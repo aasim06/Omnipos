@@ -49,6 +49,7 @@ import {
   CATEGORY_PROFILES,
   detectCategoryProfile,
   getFilteredProfileOptions,
+  resolveStoreModules,
   type ProfileOption,
 } from '@/lib/categoryProfiles';
 import { CustomInput, CustomSelect } from '@/components/ui';
@@ -107,6 +108,10 @@ export function CategoriesView(): React.JSX.Element {
   const { can, businessProfiles = ['standard', 'food'], refreshModules } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
+  const storeMod = React.useMemo(
+    () => resolveStoreModules(hasFastFood, hasOmnimart, businessProfiles),
+    [hasFastFood, hasOmnimart, businessProfiles],
+  );
 
   useEffect(() => {
     void refreshModules();
@@ -114,7 +119,13 @@ export function CategoriesView(): React.JSX.Element {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCustomName, setIsCustomName] = useState(false);
-  const [targetModule, setTargetModule] = useState<ModuleKey>(hasFastFood ? 'fastfood' : 'minimart');
+  const [targetModule, setTargetModule] = useState<ModuleKey>(storeMod.defaultModule);
+
+  useEffect(() => {
+    if (!isDialogOpen) {
+      setTargetModule(storeMod.defaultModule);
+    }
+  }, [storeMod.defaultModule, isDialogOpen]);
   const [boardModule, setBoardModule] = useState<ModuleKey | null>(null);
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
@@ -192,17 +203,8 @@ export function CategoriesView(): React.JSX.Element {
   const watchedCategoryProfile = categoryForm.watch('profile') || (watchedCategoryModule === 'fastfood' ? 'food' : 'standard');
   const currentProfileConfig = CATEGORY_PROFILES[watchedCategoryProfile as CategoryProfile] || CATEGORY_PROFILES.standard;
 
-  // Target Store Module options - strictly Food and Mart only
-  const moduleOptions = React.useMemo(() => {
-    const opts = [
-      ...(hasFastFood ? [{ value: 'fastfood', label: 'Food' }] : []),
-      ...(hasOmnimart ? [{ value: 'minimart', label: 'Mart' }] : []),
-    ];
-    return opts.length > 0 ? opts : [
-      { value: 'fastfood', label: 'Food' },
-      { value: 'minimart', label: 'Mart' },
-    ];
-  }, [hasFastFood, hasOmnimart]);
+  // Target Store Module options derived strictly from active license modules & businessProfiles
+  const moduleOptions = storeMod.moduleOptions;
 
   const existingCategoryNames = React.useMemo(() => {
     return new Set(categories.filter((c) => c.module === watchedCategoryModule).map((c) => c.name.toLowerCase().trim()));
@@ -229,7 +231,7 @@ export function CategoriesView(): React.JSX.Element {
   }, [defaultTemplates, watchedCategoryProfile, existingCategoryNames]);
 
   const handleOpenDialog = (module?: ModuleKey) => {
-    const selectedModule: ModuleKey = module || (hasFastFood ? 'fastfood' : 'minimart');
+    const selectedModule: ModuleKey = module || storeMod.defaultModule;
     const available = getFilteredProfileOptions(selectedModule, businessProfiles);
     const selectedProfile: CategoryProfile =
       available[0]?.value || (selectedModule === 'fastfood' ? 'food' : 'standard');
@@ -298,7 +300,7 @@ export function CategoriesView(): React.JSX.Element {
       </div>
 
       {/* ── Fast Food Categories Section ──────────────────────── */}
-      {hasFastFood && (
+      {storeMod.allowFastFood && (
         <div className={styles.sectionBox}>
           <div className={styles.sectionTitle}>
             <Food24Regular className={styles.sectionIconRed} />
@@ -311,9 +313,11 @@ export function CategoriesView(): React.JSX.Element {
             >
               + Add Food Category
             </Button>
-            <Button size="small" appearance="subtle" icon={<GridKanban20Regular />} onClick={() => setBoardModule('fastfood')} title="Tile colour, icon and order on the POS screen">
-              POS board
-            </Button>
+            {hasFastFood && (
+              <Button size="small" appearance="subtle" icon={<GridKanban20Regular />} onClick={() => setBoardModule('fastfood')} title="Tile colour, icon and order on the POS screen">
+                POS board
+              </Button>
+            )}
           </div>
           <div className={styles.categoryGrid}>
             {fastFoodCategories.map((cat) => {
@@ -370,23 +374,25 @@ export function CategoriesView(): React.JSX.Element {
         </div>
       )}
 
-      {/* ── Omnimart Supermarket Categories Section ──────────── */}
-      {hasOmnimart && (
+      {/* ── Omnimart / Retail Categories Section ──────────────── */}
+      {storeMod.allowMinimart && (
         <div className={`${styles.sectionBox} ${styles.sectionBoxSpaced}`}>
           <div className={styles.sectionTitle}>
             <BuildingRetail24Regular className={styles.sectionIconRed} />
-            <span>Mart Categories ({omnimartCategories.length})</span>
+            <span>{storeMod.shortRetailLabel} Categories ({omnimartCategories.length})</span>
             <Button
               size="small"
               appearance="subtle"
               className={styles.sectionAddBtn}
               onClick={() => handleOpenDialog('minimart')}
             >
-              + Add Mart Category
+              + Add {storeMod.shortRetailLabel} Category
             </Button>
-            <Button size="small" appearance="subtle" icon={<GridKanban20Regular />} onClick={() => setBoardModule('minimart')} title="Tile colour, icon and order on the POS screen">
-              POS board
-            </Button>
+            {hasOmnimart && (
+              <Button size="small" appearance="subtle" icon={<GridKanban20Regular />} onClick={() => setBoardModule('minimart')} title="Tile colour, icon and order on the POS screen">
+                POS board
+              </Button>
+            )}
           </div>
           <div className={styles.categoryGrid}>
             {omnimartCategories.map((cat) => {
@@ -456,7 +462,7 @@ export function CategoriesView(): React.JSX.Element {
                 <div>
                   <div className={styles.dialogTitleText}>Create New Category</div>
                   <div className={styles.dialogSubtitleText}>
-                    Configure classification &amp; presets for {targetModule === 'fastfood' ? 'Food' : 'Mart'}
+                    Configure classification &amp; presets for {targetModule === 'fastfood' ? storeMod.fastfoodLabel : storeMod.minimartLabel}
                   </div>
                 </div>
               </div>
@@ -472,27 +478,29 @@ export function CategoriesView(): React.JSX.Element {
 
             {/* Form Fields with Floating Notch Labels */}
             <div className={styles.dialogFieldsContainer}>
-              {/* 1. Target Store Module */}
-              <Controller
-                control={categoryForm.control}
-                name="module"
-                render={({ field }) => (
-                  <CustomSelect
-                    label="Target Store Module"
-                    required
-                    value={field.value}
-                    options={moduleOptions}
-                    onChange={(val) => {
-                      const newMod = val as ModuleKey;
-                      field.onChange(newMod);
-                      setTargetModule(newMod);
-                      const available = getFilteredProfileOptions(newMod, businessProfiles);
-                      const defaultProf = available[0]?.value || (newMod === 'fastfood' ? 'food' : 'standard');
-                      categoryForm.setValue('profile', defaultProf);
-                    }}
-                  />
-                )}
-              />
+              {/* 1. Target Store Module (shown only when multiple modules are active) */}
+              {storeMod.hasMultipleModules && (
+                <Controller
+                  control={categoryForm.control}
+                  name="module"
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="Target Store Module"
+                      required
+                      value={field.value}
+                      options={moduleOptions}
+                      onChange={(val) => {
+                        const newMod = val as ModuleKey;
+                        field.onChange(newMod);
+                        setTargetModule(newMod);
+                        const available = getFilteredProfileOptions(newMod, businessProfiles);
+                        const defaultProf = available[0]?.value || (newMod === 'fastfood' ? 'food' : 'standard');
+                        categoryForm.setValue('profile', defaultProf);
+                      }}
+                    />
+                  )}
+                />
+              )}
 
               {/* 2. Industry Profile */}
               <div>

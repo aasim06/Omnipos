@@ -31,6 +31,19 @@ import { FastFoodDashboardView } from '@/features/dashboard/FastFoodDashboardVie
 import { makeStyles, Spinner, tokens } from '@fluentui/react-components';
 
 import { getOrCreateBrowserHwid, getWebLicenseApiBase } from '@/lib/webLicense';
+import { resetTenantMeta } from '@/lib/api';
+import { isDeviceOrKeyRemovedError } from '@shared/licenseStatus';
+
+function clearLocalRendererLicense(): void {
+  localStorage.removeItem('omnipos_active_key');
+  localStorage.removeItem('omnipos_license_key');
+  localStorage.removeItem('omnipos_active_schema');
+  localStorage.removeItem('omnipos_cached_modules');
+  localStorage.removeItem('omnipos_business_profiles');
+  localStorage.removeItem('omnipos_user_session');
+  document.cookie = 'omnipos_user_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+  resetTenantMeta();
+}
 
 export interface PosLicenseGate {
   state: 'ok' | 'none' | 'blocked';
@@ -130,6 +143,9 @@ export default function App(): React.JSX.Element {
     try {
       if (window.posApi?.license?.gate) {
         const next = await window.posApi.license.gate();
+        if (next.state === 'none') {
+          clearLocalRendererLicense();
+        }
         setGate(next);
         if (next.state === 'ok') {
           if ((next as any).businessProfiles) {
@@ -164,35 +180,36 @@ export default function App(): React.JSX.Element {
             body: JSON.stringify({ key: savedKey, hwid }),
           });
 
-          if (res.ok) {
-            const data = await res.json();
-            if (!data.valid) {
-              if (data.code === 'not_found' || data.code === 'device') {
-                // Key removed or device unlinked
-                localStorage.removeItem('omnipos_active_key');
-                localStorage.removeItem('omnipos_active_schema');
-                setGate({ state: 'none' });
-              } else {
-                setGate({
-                  state: 'blocked',
-                  reason: data.error || 'This license has been suspended by the administrator.',
-                });
-              }
+          if (res.status >= 500) {
+            throw new Error(`Server temporary error: ${res.status}`);
+          }
+
+          const data = await res.json().catch(() => ({}));
+          if (!data.valid || !res.ok) {
+            if (isDeviceOrKeyRemovedError(res.status, data.code, data.error)) {
+              // Key removed or device unlinked -> clear previous local key and show Add Key screen
+              clearLocalRendererLicense();
+              setGate({
+                state: 'none',
+                reason: String(data.error || '').trim() || undefined,
+              });
             } else {
-              if (data.schemaId) {
-                localStorage.setItem('omnipos_active_schema', data.schemaId);
-              }
-              if (data.modules) {
-                localStorage.setItem('omnipos_cached_modules', JSON.stringify(data.modules));
-              }
-              if (data.businessProfiles) {
-                localStorage.setItem('omnipos_business_profiles', JSON.stringify(data.businessProfiles));
-              }
-              setGate({ state: 'ok', modules: data.modules });
+              setGate({
+                state: 'blocked',
+                reason: data.error || 'This license has been suspended by the administrator.',
+              });
             }
           } else {
-            // If offline, check if previously cached as ok
-            setGate((prev) => prev ?? { state: 'ok' });
+            if (data.schemaId) {
+              localStorage.setItem('omnipos_active_schema', data.schemaId);
+            }
+            if (data.modules) {
+              localStorage.setItem('omnipos_cached_modules', JSON.stringify(data.modules));
+            }
+            if (data.businessProfiles) {
+              localStorage.setItem('omnipos_business_profiles', JSON.stringify(data.businessProfiles));
+            }
+            setGate({ state: 'ok', modules: data.modules });
           }
         } catch {
           // Network offline resilience
@@ -247,7 +264,7 @@ export default function App(): React.JSX.Element {
 
   // Not activated yet -> Show License Page
   if (gate.state === 'none') {
-    return <LicensePage onActivated={() => void refreshGate()} />;
+    return <LicensePage initialNotice={gate.reason} onActivated={() => void refreshGate()} />;
   }
 
   // License blocked / disabled from backend -> Show Disabled Overlay

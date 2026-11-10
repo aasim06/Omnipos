@@ -50,6 +50,7 @@ import {
   isSanitaryCategory,
   ALL_PROFILE_OPTIONS,
   getFilteredProfileOptions,
+  resolveStoreModules,
 } from '@/lib/categoryProfiles';
 import { UNIT_OPTIONS } from '@/lib/units';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
@@ -483,6 +484,10 @@ export function AddProductView(): React.JSX.Element {
   }, [refreshModules]);
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
+  const storeMod = React.useMemo(
+    () => resolveStoreModules(hasFastFood, hasOmnimart, businessProfiles),
+    [hasFastFood, hasOmnimart, businessProfiles],
+  );
 
   const rawUrlModule = searchParams.get('module');
   const normalizedUrlModule: ModuleKey | null =
@@ -493,7 +498,11 @@ export function AddProductView(): React.JSX.Element {
       : null;
 
   const defaultModule: ModuleKey =
-    normalizedUrlModule || (hasFastFood ? 'fastfood' : 'minimart');
+    normalizedUrlModule &&
+    ((normalizedUrlModule === 'fastfood' && storeMod.allowFastFood) ||
+      (normalizedUrlModule === 'minimart' && storeMod.allowMinimart))
+      ? normalizedUrlModule
+      : storeMod.defaultModule;
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
@@ -702,6 +711,16 @@ export function AddProductView(): React.JSX.Element {
   );
 
   const watchedModule = productForm.watch('module');
+
+  React.useEffect(() => {
+    const allowed =
+      (watchedModule === 'fastfood' && storeMod.allowFastFood) ||
+      (watchedModule === 'minimart' && storeMod.allowMinimart);
+    if (!allowed) {
+      productForm.setValue('module', storeMod.defaultModule);
+      setActiveDepartmentTab(storeMod.defaultModule);
+    }
+  }, [watchedModule, storeMod.allowFastFood, storeMod.allowMinimart, storeMod.defaultModule, productForm]);
   const watchedCategory = productForm.watch('category');
   const watchedName = productForm.watch('name');
   const watchedPrice = productForm.watch('price');
@@ -2125,13 +2144,7 @@ export function AddProductView(): React.JSX.Element {
   const watchedCatProfile = categoryForm.watch('profile') || (watchedCatModule === 'fastfood' ? 'food' : 'standard');
   const addCatProfileConfig = CATEGORY_PROFILES[watchedCatProfile as CategoryProfile] || CATEGORY_PROFILES.standard;
 
-  const addCatModuleOptions = React.useMemo(() => {
-    const opts = [
-      ...(hasFastFood ? [{ value: 'fastfood', label: 'Food' }] : []),
-      ...(hasOmnimart ? [{ value: 'minimart', label: 'Mart' }] : []),
-    ];
-    return opts.length > 0 ? opts : [{ value: watchedModule || 'fastfood', label: watchedModule === 'minimart' ? 'Mart' : 'Food' }];
-  }, [hasFastFood, hasOmnimart, watchedModule]);
+  const addCatModuleOptions = storeMod.moduleOptions;
 
   const addCatProfileOptions = React.useMemo(() => {
     return getFilteredProfileOptions(watchedCatModule, businessProfiles);
@@ -2279,13 +2292,13 @@ export function AddProductView(): React.JSX.Element {
               >
                 {activeDepartmentTab === 'fastfood'
                   ? '● Active: Fast Food & Kitchen Menu'
-                  : '● Active: Retail Mini Mart'}
+                  : `● Active: ${storeMod.minimartLabel === 'Mart' ? 'Retail Mini Mart' : storeMod.minimartLabel}`}
               </span>
             </div>
           </div>
 
           {/* Department Selection Cards (Shown only when multiple modules exist) */}
-          {hasFastFood && hasOmnimart ? (
+          {storeMod.hasMultipleModules ? (
             <div className={styles.apStyle_8}>
               {/* Fast Food Card */}
               <button
@@ -2368,7 +2381,7 @@ export function AddProductView(): React.JSX.Element {
             <div
               className={styles.apRemCard2}
             >
-              {hasFastFood ? (
+              {storeMod.allowFastFood ? (
                 <>
                   <div
                     className={styles.apRemIconRed36}
@@ -2393,7 +2406,7 @@ export function AddProductView(): React.JSX.Element {
                   </div>
                   <div>
                     <span className={styles.apStyle_24}>
-                      Retail Mini Mart Catalog
+                      {storeMod.minimartLabel === 'Mart' ? 'Retail Mini Mart Catalog' : `${storeMod.minimartLabel} Catalog`}
                     </span>
                     <span className={styles.apStyle_16}>
                       Supermarket, Footwear, Garments, Sanitary & Retail Inventory
@@ -2437,10 +2450,11 @@ export function AddProductView(): React.JSX.Element {
                     role="button"
                     tabIndex={0}
                     onClick={() => {
+                      const available = getFilteredProfileOptions(watchedModule, businessProfiles);
                       categoryForm.reset({
                         name: '',
                         module: watchedModule,
-                        profile: watchedModule === 'fastfood' ? 'food' : 'standard',
+                        profile: available[0]?.value || (watchedModule === 'fastfood' ? 'food' : 'standard'),
                       });
                       setIsCategoryDialogOpen(true);
                     }}
@@ -4777,28 +4791,31 @@ export function AddProductView(): React.JSX.Element {
 
             {/* Form Fields */}
             <div className={styles.dialogFieldsContainer}>
-              {/* 1. Target Store Module */}
-              <Controller
-                control={categoryForm.control}
-                name="module"
-                render={({ field }) => (
-                  <CustomSelect
-                    label="Target Store Module"
-                    required
-                    value={field.value}
-                    options={addCatModuleOptions}
-                    onChange={(val) => {
-                      const newMod = val as ModuleKey;
-                      field.onChange(newMod);
-                      if (newMod === 'fastfood') {
-                        categoryForm.setValue('profile', 'food');
-                      } else {
-                        categoryForm.setValue('profile', 'standard');
-                      }
-                    }}
-                  />
-                )}
-              />
+              {/* 1. Target Store Module (shown only when multiple modules exist) */}
+              {storeMod.hasMultipleModules && (
+                <Controller
+                  control={categoryForm.control}
+                  name="module"
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="Target Store Module"
+                      required
+                      value={field.value}
+                      options={addCatModuleOptions}
+                      onChange={(val) => {
+                        const newMod = val as ModuleKey;
+                        field.onChange(newMod);
+                        if (newMod === 'fastfood') {
+                          categoryForm.setValue('profile', 'food');
+                        } else {
+                          const available = getFilteredProfileOptions('minimart', businessProfiles);
+                          categoryForm.setValue('profile', available[0]?.value || 'standard');
+                        }
+                      }}
+                    />
+                  )}
+                />
+              )}
 
               {/* 2. Industry Profile */}
               <div>

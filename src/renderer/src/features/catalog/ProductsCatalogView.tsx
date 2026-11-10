@@ -53,7 +53,7 @@ import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { CustomInput, CustomSelect } from '@/components/ui';
-import { CATEGORY_PROFILES, detectCategoryProfile, ALL_PROFILE_OPTIONS, getFilteredProfileOptions } from '@/lib/categoryProfiles';
+import { CATEGORY_PROFILES, detectCategoryProfile, ALL_PROFILE_OPTIONS, getFilteredProfileOptions, resolveStoreModules } from '@/lib/categoryProfiles';
 import { UNIT_OPTIONS } from '@/lib/units';
 import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext';
 
@@ -135,6 +135,10 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
   }, [refreshModules]);
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
+  const storeMod = React.useMemo(
+    () => resolveStoreModules(hasFastFood, hasOmnimart, businessProfiles),
+    [hasFastFood, hasOmnimart, businessProfiles],
+  );
   const { notifySuccess, notifyError } = useAppToast();
   const confirmModal = useConfirmDialog();
 
@@ -151,7 +155,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: '',
-      module: 'fastfood',
+      module: storeMod.defaultModule,
       category: 'General',
       price: undefined,
       costPrice: undefined,
@@ -168,8 +172,8 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     resolver: zodResolver(categorySchema) as any,
     defaultValues: {
       name: '',
-      module: hasFastFood ? 'fastfood' : 'minimart',
-      profile: hasFastFood ? 'food' : 'standard',
+      module: storeMod.defaultModule,
+      profile: storeMod.defaultModule === 'fastfood' ? 'food' : (getFilteredProfileOptions('minimart', businessProfiles)[0]?.value || 'standard'),
     },
   });
   const [isCatCustomName, setIsCatCustomName] = useState(false);
@@ -283,7 +287,12 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
   const handleOpenAddProduct = () => {
     setEditingProduct(null);
     setImagePreview(null);
-    const defaultMod = activeTab === 'minimart' ? 'minimart' : 'fastfood';
+    const defaultMod: ModuleKey =
+      activeTab === 'minimart' && storeMod.allowMinimart
+        ? 'minimart'
+        : activeTab === 'fastfood' && storeMod.allowFastFood
+          ? 'fastfood'
+          : storeMod.defaultModule;
     const firstCat = categories.find((c) => c.module === defaultMod)?.name || 'General';
     productForm.reset({
       name: '',
@@ -434,12 +443,12 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
   // Dashboard KPI metrics calculations
   const activeProducts = products.filter((p) =>
-    p.module === 'fastfood' ? hasFastFood : hasOmnimart,
+    p.module === 'fastfood' ? storeMod.allowFastFood : storeMod.allowMinimart,
   );
   const fastFoodProducts = activeProducts.filter((p) => p.module === 'fastfood');
   const omnimartProducts = activeProducts.filter((p) => p.module === 'minimart');
   const activeCategories = categories.filter((c) =>
-    c.module === 'fastfood' ? hasFastFood : hasOmnimart,
+    c.module === 'fastfood' ? storeMod.allowFastFood : storeMod.allowMinimart,
   );
   const totalRetailValue = activeProducts.reduce((acc, p) => acc + (p.price * (p.openingStock || 0)), 0);
   const totalCostValue = activeProducts.reduce((acc, p) => acc + ((p.costPrice || (p.price * 0.7)) * (p.openingStock || 0)), 0);
@@ -499,13 +508,13 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
               unit="SKUs"
               icon={<Box20Regular />}
               footer={
-                hasFastFood && hasOmnimart ? (
+                storeMod.hasMultipleModules ? (
                   <>
                     <span>{fastFoodProducts.length} fast food</span>
                     <span aria-hidden>·</span>
-                    <span>{omnimartProducts.length} Omnimart</span>
+                    <span>{omnimartProducts.length} {storeMod.shortRetailLabel}</span>
                   </>
-                ) : hasFastFood ? (
+                ) : storeMod.allowFastFood ? (
                   <span>{fastFoodProducts.length} fast food items</span>
                 ) : (
                   <span>{omnimartProducts.length} retail items</span>
@@ -537,10 +546,10 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
           </div>
 
           {/* 2. Department Division Command Hubs */}
-          {(hasFastFood || hasOmnimart) && (
-            <div className={mergeClasses(styles.divisionGrid, (hasFastFood && hasOmnimart) ? styles.divisionGrid2 : styles.divisionGrid1)}>
+          {(storeMod.allowFastFood || storeMod.allowMinimart) && (
+            <div className={mergeClasses(styles.divisionGrid, storeMod.hasMultipleModules ? styles.divisionGrid2 : styles.divisionGrid1)}>
               {/* Fast Food Hub Card */}
-              {hasFastFood && (
+              {storeMod.allowFastFood && (
                 <div className={styles.divisionHeroCard}>
                   <div className={styles.divisionHeroTop}>
                     <div className={styles.divisionHeroTitleWrap}>
@@ -590,8 +599,8 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                 </div>
               )}
 
-              {/* Omnimart Supermarket Hub Card */}
-              {hasOmnimart && (
+              {/* Omnimart / Retail Hub Card */}
+              {storeMod.allowMinimart && (
                 <div className={styles.divisionHeroCard}>
                   <div className={styles.divisionHeroTop}>
                     <div className={styles.divisionHeroTitleWrap}>
@@ -600,7 +609,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                       </div>
                       <div>
                         <div className={styles.divisionTitle}>
-                          Omnimart supermarket
+                          {storeMod.minimartLabel === 'Mart' ? 'Omnimart supermarket' : storeMod.minimartLabel}
                         </div>
                         <div className={styles.divisionSubtitle}>
                           Retail goods, SKU barcodes, racks &amp; scale units
@@ -1110,28 +1119,27 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                   
                   {/* Module & Category Row */}
                   <div className={styles.formGrid2Col}>
-                    <div className={styles.formBottomAlign}>
-                      <Controller
-                        control={productForm.control}
-                        name="module"
-                        render={({ field }) => (
-                          <CustomSelect
-                            label="Target Module"
-                            required
-                            value={field.value}
-                            options={[
-                              ...(hasFastFood ? [{ value: 'fastfood', label: 'Food' }] : []),
-                              ...(hasOmnimart ? [{ value: 'minimart', label: 'Mart' }] : []),
-                            ]}
-                            onChange={(val) => {
-                              field.onChange(val as ModuleKey);
-                              const firstCat = categories.find((c) => c.module === val)?.name || 'General';
-                              productForm.setValue('category', firstCat);
-                            }}
-                          />
-                        )}
-                      />
-                    </div>
+                    {storeMod.hasMultipleModules && (
+                      <div className={styles.formBottomAlign}>
+                        <Controller
+                          control={productForm.control}
+                          name="module"
+                          render={({ field }) => (
+                            <CustomSelect
+                              label="Target Module"
+                              required
+                              value={field.value}
+                              options={storeMod.moduleOptions}
+                              onChange={(val) => {
+                                field.onChange(val as ModuleKey);
+                                const firstCat = categories.find((c) => c.module === val)?.name || 'General';
+                                productForm.setValue('category', firstCat);
+                              }}
+                            />
+                          )}
+                        />
+                      </div>
+                    )}
 
                     <div className={styles.formBottomAlign}>
                       <div className={styles.categoryHeaderRow}>
@@ -1559,31 +1567,31 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
             {/* Form Fields */}
             <div className={styles.catFieldsCol}>
-              {/* 1. Target Store Module */}
-              <Controller
-                control={categoryForm.control}
-                name="module"
-                render={({ field }) => (
-                  <CustomSelect
-                    label="Assign to Module"
-                    required
-                    value={field.value}
-                    options={[
-                      ...(hasFastFood ? [{ value: 'fastfood', label: 'Food' }] : []),
-                      ...(hasOmnimart ? [{ value: 'minimart', label: 'Mart' }] : []),
-                    ]}
-                    onChange={(val) => {
-                      const newMod = val as ModuleKey;
-                      field.onChange(newMod);
-                      if (newMod === 'fastfood') {
-                        categoryForm.setValue('profile', 'food');
-                      } else {
-                        categoryForm.setValue('profile', 'standard');
-                      }
-                    }}
-                  />
-                )}
-              />
+              {/* 1. Target Store Module (shown only when multiple modules exist) */}
+              {storeMod.hasMultipleModules && (
+                <Controller
+                  control={categoryForm.control}
+                  name="module"
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="Assign to Module"
+                      required
+                      value={field.value}
+                      options={storeMod.moduleOptions}
+                      onChange={(val) => {
+                        const newMod = val as ModuleKey;
+                        field.onChange(newMod);
+                        if (newMod === 'fastfood') {
+                          categoryForm.setValue('profile', 'food');
+                        } else {
+                          const available = getFilteredProfileOptions('minimart', businessProfiles);
+                          categoryForm.setValue('profile', available[0]?.value || 'standard');
+                        }
+                      }}
+                    />
+                  )}
+                />
+              )}
 
               {/* 2. Industry Profile */}
               <div>

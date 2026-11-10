@@ -57,6 +57,7 @@ import {
   DocumentBulletList24Filled,
 } from '@fluentui/react-icons';
 import { posApi } from '@/lib/api';
+import { resolveStoreModules } from '@/lib/categoryProfiles';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useLicense, LicenseModules } from '@/features/auth/LicenseModulesContext';
 import { MODULE_TO_PERMISSION } from './RouteAccessGate';
@@ -622,7 +623,10 @@ export function FluentSidebar(): React.JSX.Element {
   const styles = useStyles();
   const { mode, toggleTheme } = useAppTheme();
   const { user, logout, hasPermission } = useAuth();
-  const { can } = useLicense();
+  const { can, businessProfiles } = useLicense();
+  const storeMod = resolveStoreModules(can('fastfood'), can('omnimart'), businessProfiles);
+  const retailPosLabel = storeMod.shortRetailLabel === 'Mart' ? 'Mart Counter' : `${storeMod.shortRetailLabel} POS`;
+  const retailItemsLabel = storeMod.shortRetailLabel === 'Mart' ? 'Mart Items' : `${storeMod.shortRetailLabel} Items`;
   const navigate = useNavigate();
   const location = useLocation();
   const isAdmin = user?.role === 'admin' || hasPermission('admin');
@@ -795,7 +799,7 @@ export function FluentSidebar(): React.JSX.Element {
         },
         {
           to: '/pos/omnimart',
-          label: 'Mart Counter',
+          label: retailPosLabel,
           moduleKey: 'omnimart' as const,
           icon: <BuildingRetail24Regular className={styles.icon19} />,
           activeIcon: <BuildingRetail24Filled className={styles.icon19} />,
@@ -827,7 +831,7 @@ export function FluentSidebar(): React.JSX.Element {
           subItems: [
             { to: '/catalog', label: 'All Products', icon: <Tag20Regular className={styles.icon15} /> },
             { to: '/catalog/fastfood', label: 'Fast Food Menu', moduleKey: 'fastfood' as const, icon: <Food24Regular className={styles.icon15} /> },
-            { to: '/catalog/omnimart', label: 'Mart Items', moduleKey: 'omnimart' as const, icon: <BuildingRetail24Regular className={styles.icon15} /> },
+            { to: '/catalog/omnimart', label: retailItemsLabel, moduleKey: 'omnimart' as const, icon: <BuildingRetail24Regular className={styles.icon15} /> },
             { to: '/catalog/categories', label: 'Categories', icon: <Grid20Regular className={styles.icon15} /> },
             { to: '/catalog/barcode-labels', label: 'Barcode Stickers', icon: <BarcodeScanner20Regular className={styles.icon15} /> },
             { to: '/catalog/new', label: '+ Add New Item', icon: <Add20Regular className={styles.icon15Red} />, isSpecial: true },

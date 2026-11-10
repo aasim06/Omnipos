@@ -1106,3 +1106,78 @@ export function getFilteredProfileOptions(
   });
 }
 
+export interface ResolvedStoreModules {
+  allowFastFood: boolean;
+  allowMinimart: boolean;
+  hasMultipleModules: boolean;
+  defaultModule: ModuleKey;
+  minimartLabel: string;
+  shortRetailLabel: string;
+  fastfoodLabel: string;
+  moduleOptions: Array<{ value: ModuleKey; label: string }>;
+}
+
+/**
+ * Resolves active store modules (Food vs Retail/Mart) from license toggles and businessProfiles.
+ * Never falls back to showing Food when Food is disabled and a non-food business profile (e.g. Pharmacy) is active.
+ */
+export function resolveStoreModules(
+  hasFastFood: boolean,
+  hasOmnimart: boolean,
+  businessProfiles?: CategoryProfile[],
+): ResolvedStoreModules {
+  const profiles = Array.isArray(businessProfiles) ? businessProfiles : [];
+  const hasFoodProfile = profiles.includes('food');
+  const retailProfiles = profiles.filter((p) => p !== 'food');
+  const hasRetailProfile = retailProfiles.length > 0;
+
+  let allowFastFood = hasFastFood;
+  let allowMinimart = hasOmnimart;
+
+  if (!allowFastFood && !allowMinimart) {
+    if (hasFoodProfile && !hasRetailProfile) {
+      allowFastFood = true;
+      allowMinimart = false;
+    } else {
+      allowFastFood = false;
+      allowMinimart = true;
+    }
+  }
+
+  const singleRetailProfile = retailProfiles.length === 1 ? retailProfiles[0] : null;
+  const profileCfg =
+    singleRetailProfile && singleRetailProfile !== 'standard'
+      ? CATEGORY_PROFILES[singleRetailProfile]
+      : undefined;
+
+  const minimartLabel = profileCfg ? profileCfg.label : 'Mart';
+  const shortRetailLabel = profileCfg ? profileCfg.shortTag : 'Mart';
+  const fastfoodLabel = 'Food';
+
+  const moduleOptions: Array<{ value: ModuleKey; label: string }> = [
+    ...(allowFastFood ? [{ value: 'fastfood' as const, label: fastfoodLabel }] : []),
+    ...(allowMinimart ? [{ value: 'minimart' as const, label: minimartLabel }] : []),
+  ];
+
+  const defaultModule: ModuleKey =
+    allowMinimart && !allowFastFood
+      ? 'minimart'
+      : allowFastFood && !allowMinimart
+        ? 'fastfood'
+        : allowFastFood
+          ? 'fastfood'
+          : 'minimart';
+
+  return {
+    allowFastFood,
+    allowMinimart,
+    hasMultipleModules: moduleOptions.length > 1,
+    defaultModule,
+    minimartLabel,
+    shortRetailLabel,
+    fastfoodLabel,
+    moduleOptions,
+  };
+}
+
+
