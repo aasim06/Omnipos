@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/win11';
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
@@ -559,37 +560,26 @@ export function AdminSettingsView(): React.JSX.Element {
 
   return (
     <div className={styles.container}>
-      {/* ── Page Header ──────────────────────────────────── */}
-      <div className={styles.pageHeader}>
-        <div>
-          <Subtitle1 as="h1" className={styles.pageTitle}>
-            Store Settings &amp; Preferences
-          </Subtitle1>
-          <Text as="p" size={200} className={styles.pageSubtitle}>
-            Customize store identity, receipt branding, cashier accounts &amp; granular role permissions.
-          </Text>
-        </div>
-
-        {activeTab === 'staff' ? (
-          <Button
-            appearance="primary"
-            icon={<PersonAdd20Regular />}
-            onClick={handleOpenAddUser}
-            className={styles.primaryRedButton}
-          >
-            Add New Cashier / Staff
-          </Button>
-        ) : activeTab === 'updates' ? null : (
-          <Button
-            appearance="primary"
-            icon={saveSuccess ? <Checkmark20Filled /> : <Save20Regular />}
-            onClick={handleSave}
-            className={styles.saveButton}
-          >
-            {saveSuccess ? 'Saved!' : 'Save Changes'}
-          </Button>
-        )}
-      </div>
+      {/* ── Page header (Windows 11): one accent command per tab ── */}
+      <PageHeader
+        title="Settings"
+        subtitle="Staff, store details, receipts, printers, backups and updates"
+        actions={
+          activeTab === 'staff' ? (
+            <Button appearance="primary" icon={<PersonAdd20Regular />} onClick={handleOpenAddUser}>
+              Add staff
+            </Button>
+          ) : activeTab === 'updates' ? null : (
+            <Button
+              appearance="primary"
+              icon={saveSuccess ? <Checkmark20Filled /> : <Save20Regular />}
+              onClick={handleSave}
+            >
+              {saveSuccess ? 'Saved' : 'Save changes'}
+            </Button>
+          )
+        }
+      />
 
       {/* ── Settings body: section list on the left, content on the right (Windows 11 Settings) ── */}
       <div className={styles.settingsBody}>
@@ -602,13 +592,13 @@ export function AdminSettingsView(): React.JSX.Element {
           className={mergeClasses(styles.tabButton, activeTab === 'staff' && styles.tabButtonActive)}
         >
           <PeopleCommunity24Regular className={mergeClasses(styles.tabIcon, activeTab === 'staff' && styles.tabIconActive)} />
-          <span>Staff &amp; Cashier Accounts</span>
+          <span>Staff</span>
           <Badge
             appearance="tint"
             color="brand"
             className={activeTab === 'staff' ? styles.tabBadgeActive : styles.tabBadge}
           >
-            {users.length} Users
+            {users.length} {users.length === 1 ? 'user' : 'users'}
           </Badge>
         </button>
 
@@ -619,7 +609,7 @@ export function AdminSettingsView(): React.JSX.Element {
           className={mergeClasses(styles.tabButton, activeTab === 'profile' && styles.tabButtonActive)}
         >
           <BuildingShop24Regular className={mergeClasses(styles.tabIcon, activeTab === 'profile' && styles.tabIconActive)} />
-          <span>Store Profile &amp; Receipts</span>
+          <span>Store profile</span>
         </button>
 
         <button
@@ -629,7 +619,7 @@ export function AdminSettingsView(): React.JSX.Element {
           className={mergeClasses(styles.tabButton, activeTab === 'hardware' && styles.tabButtonActive)}
         >
           <Print24Regular className={mergeClasses(styles.tabIcon, activeTab === 'hardware' && styles.tabIconActive)} />
-          <span>Printer, Drawer &amp; Billing</span>
+          <span>Printer and billing</span>
         </button>
 
         <button
@@ -639,7 +629,7 @@ export function AdminSettingsView(): React.JSX.Element {
           className={mergeClasses(styles.tabButton, activeTab === 'backup' && styles.tabButtonActive)}
         >
           <Database24Regular className={mergeClasses(styles.tabIcon, activeTab === 'backup' && styles.tabIconActive)} />
-          <span>Database &amp; Data Backup</span>
+          <span>Backup</span>
           <Badge
             appearance="tint"
             color="success"
@@ -656,7 +646,7 @@ export function AdminSettingsView(): React.JSX.Element {
           className={mergeClasses(styles.tabButton, activeTab === 'updates' && styles.tabButtonActive)}
         >
           <ArrowSync20Regular className={mergeClasses(styles.tabIcon, activeTab === 'updates' && styles.tabIconActive)} />
-          <span>App Updates</span>
+          <span>Updates</span>
           {isUpdateReady ? (
             <Badge appearance="filled" color="success">
               Ready
@@ -689,10 +679,10 @@ export function AdminSettingsView(): React.JSX.Element {
               <div className={styles.headerTextCol}>
                 <div className={styles.headerTitleRow}>
                   <Body1 className={styles.headerTitle}>
-                    Staff, Cashiers &amp; Role Permissions
+                    Staff and permissions
                   </Body1>
                   <Badge appearance="tint" color="brand" className={styles.headerBadge}>
-                    {users.length} Users
+                    {users.length} {users.length === 1 ? 'user' : 'users'}
                   </Badge>
                 </div>
                 <Caption1 className={styles.headerSubtitle}>
@@ -701,14 +691,6 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
             </div>
 
-            <Button
-              appearance="primary"
-              icon={<PersonAdd20Regular />}
-              onClick={handleOpenAddUser}
-              className={styles.primaryRedButton}
-            >
-              Add New Cashier / Staff
-            </Button>
           </div>
 
           <div className={styles.tableWrapper}>
@@ -832,15 +814,15 @@ export function AdminSettingsView(): React.JSX.Element {
       {/* ── TAB 2: Store Profile & Receipts ── */}
       {activeTab === 'profile' && (
         <div className={styles.grid}>
-          {/* CARD 1: Store Profile & Receipt Branding */}
-          <div className={styles.card}>
+          {/* CARD 1: Store Profile & Receipt Branding (wide card, fields in two columns) */}
+          <div className={mergeClasses(styles.card, styles.cardWide)}>
             <div className={styles.cardHeader}>
               <div className={styles.cardIconBox}>
                 <BuildingShop24Regular className={styles.icon20} />
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Store Profile &amp; Branding
+                  Store profile
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Appears at the top of every customer receipt
@@ -849,6 +831,7 @@ export function AdminSettingsView(): React.JSX.Element {
             </div>
 
             <div className={styles.cardBody}>
+              <div className={styles.fieldGrid}>
               <CustomInput
                 label="Store / Restaurant Name"
                 value={settings.storeName}
@@ -883,6 +866,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 onChange={(e) => setSettings({ ...settings, footerNote: e.target.value })}
                 placeholder="Thank you for your visit!"
               />
+              </div>
 
               <Divider style={{ margin: '14px 0 10px 0' }} />
 
@@ -912,6 +896,7 @@ export function AdminSettingsView(): React.JSX.Element {
                     اردو رسید کے لیے اضافی معلومات (اختیاری):
                   </Text>
 
+                  <div className={styles.fieldGrid}>
                   <CustomInput
                     label="دکان کا نام (اردو میں)"
                     value={settings.storeNameUrdu || ''}
@@ -932,6 +917,7 @@ export function AdminSettingsView(): React.JSX.Element {
                     onChange={(e) => setSettings({ ...settings, footerNoteUrdu: e.target.value })}
                     placeholder="مثلاً: تشریف آوری کا شکریہ! خریدا ہوا مال واپس نہیں ہو سکتا۔"
                   />
+                  </div>
                 </div>
               )}
             </div>
@@ -945,7 +931,7 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Scan-to-Pay Digital QR Code
+                  Scan-to-pay QR code
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Print Raast / EasyPaisa / JazzCash / Bank QR code on customer bills
@@ -1066,10 +1052,9 @@ export function AdminSettingsView(): React.JSX.Element {
                   </Caption1>
                 </div>
                 <Button
-                  appearance="primary"
+                  appearance="secondary"
                   icon={<Open20Regular />}
                   onClick={handleOpenGoogleBusinessRegistration}
-                  className={styles.primaryRedButton}
                 >
                   Register on Google Maps
                 </Button>
@@ -1181,7 +1166,7 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Offline-First Database Engine
+                  Database
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Local storage resilience and cloud synchronization
@@ -1212,15 +1197,15 @@ export function AdminSettingsView(): React.JSX.Element {
       {/* ── TAB 3: Hardware, Printer & Taxes ── */}
       {activeTab === 'hardware' && (
         <div className={styles.grid}>
-          {/* CARD 2: Thermal Receipt Printer & Drawer */}
-          <div className={styles.card}>
+          {/* CARD 2: Thermal Receipt Printer & Drawer (wide card, two columns) */}
+          <div className={mergeClasses(styles.card, styles.cardWide)}>
             <div className={styles.cardHeader}>
               <div className={styles.cardIconBox}>
                 <Print24Regular className={styles.icon20} />
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Thermal Receipt Printer &amp; Drawer
+                  Receipt printer and cash drawer
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Hardware configuration for 80mm / 58mm ESC/POS printers
@@ -1228,7 +1213,9 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
             </div>
 
-            <div className={styles.cardBody}>
+            <div className={mergeClasses(styles.cardBody, styles.cardBodySplit)}>
+              {/* Left column: printers and paper */}
+              <div className={styles.cardBodyCol}>
               {/* Printer Hardware Selection */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
@@ -1296,9 +1283,10 @@ export function AdminSettingsView(): React.JSX.Element {
                   </button>
                 </div>
               </div>
+              </div>
 
-              <Divider />
-
+              {/* Right column: print behaviour and test print */}
+              <div className={styles.cardBodyCol}>
               <div className={styles.switchRow}>
                 <div className={styles.switchLabel}>
                   <Body2 className={styles.switchRowTitle}>Silent Print (Direct ESC/POS)</Body2>
@@ -1366,6 +1354,7 @@ export function AdminSettingsView(): React.JSX.Element {
                   <Caption1 className={styles.testPrintSuccess}>{printTestMsg}</Caption1>
                 )}
               </div>
+              </div>
             </div>
           </div>
 
@@ -1377,7 +1366,7 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Billing, Taxes &amp; Currency
+                  Currency and tax
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Currency symbol and tax calculations at checkout
@@ -1424,7 +1413,7 @@ export function AdminSettingsView(): React.JSX.Element {
                 <div className={styles.headerTextCol}>
                   <div className={styles.headerTitleRow}>
                     <Body1 className={styles.headerTitle}>
-                      Windows Offline Database &amp; Data Safety
+                      Local database and backups
                     </Body1>
                     <Badge appearance="tint" color="success">
                       SQLite 3 (WAL Mode Active)
@@ -1628,7 +1617,7 @@ export function AdminSettingsView(): React.JSX.Element {
               <div className={styles.headerTextCol}>
                 <div className={styles.headerTitleRow}>
                   <Body1 className={styles.headerTitle}>
-                    Software Updates &amp; GitHub Releases
+                    Software updates
                   </Body1>
                   <Badge appearance="tint" color="brand">
                     v{currentVersion}
@@ -1928,7 +1917,7 @@ export function AdminSettingsView(): React.JSX.Element {
         <DialogSurface className={styles.dialogSurfaceLarge}>
           <form onSubmit={handleSaveNewUser}>
             <DialogBody className={styles.dialogBodyNoOverflow}>
-              <DialogTitle>Add New Cashier / Staff Member</DialogTitle>
+              <DialogTitle>Add staff member</DialogTitle>
               <DialogContent className={styles.dialogContentFlex}>
                 <Text size={200} className={styles.dialogDescText}>
                   Create login credentials and grant access only to the modules this staff member is allowed to operate.
