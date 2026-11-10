@@ -412,11 +412,23 @@ export const posApi = {
         if (res.ok) {
           const remoteCats = await res.json();
           if (Array.isArray(remoteCats) && remoteCats.length > 0) {
-            try { await offlineDb.categories.bulkPut(remoteCats); } catch {}
+            // Merge onto the local copy: the server does not store every field (e.g. profile),
+            // and empty server values must not wipe a colour or icon saved locally.
+            const localById = new Map(localCats.map((c) => [c.id, c]));
+            const merged: Category[] = remoteCats.map((r: Category) => {
+              const l = localById.get(r.id);
+              if (!l) return r;
+              const out: Category = { ...l };
+              (Object.keys(r) as (keyof Category)[]).forEach((k) => {
+                if (r[k] !== null && r[k] !== undefined) (out as any)[k] = r[k];
+              });
+              return out;
+            });
+            try { await offlineDb.categories.bulkPut(merged); } catch {}
             try {
               const currentLocal = storage.getList<Category>(KEYS.categories);
               const map = new Map(currentLocal.map((c) => [c.id, c]));
-              remoteCats.forEach((c) => map.set(c.id, c));
+              merged.forEach((c) => map.set(c.id, c));
               storage.setList(KEYS.categories, Array.from(map.values()));
             } catch {}
           }

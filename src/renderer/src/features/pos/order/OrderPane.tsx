@@ -54,7 +54,7 @@ function useOrderPaneWidth() {
   return { width, setWidth };
 }
 
-export function OrderPane({ pos }: { pos: PosCounterState }) {
+export function OrderPane({ pos, sheet }: { pos: PosCounterState; sheet?: boolean }) {
   const { F, isDark } = pos;
   const { width, setWidth } = useOrderPaneWidth();
   const [dragging, setDragging] = React.useState(false);
@@ -92,16 +92,17 @@ export function OrderPane({ pos }: { pos: PosCounterState }) {
     <div
       style={{
         position: 'relative',
-        width: `${width}px`,
+        width: sheet ? '100%' : `${width}px`,
         height: '100%',
         backgroundColor: F.bgCard,
-        borderLeft: `1px solid ${F.border}`,
+        borderLeft: sheet ? 'none' : `1px solid ${F.border}`,
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
       }}
     >
-      {/* Splitter: drag to resize, double-click to reset, arrow keys when focused */}
+      {/* Splitter: drag to resize, double-click to reset, arrow keys when focused (not in the bottom sheet) */}
+      {!sheet && (
       <div
         role="separator"
         aria-orientation="vertical"
@@ -139,6 +140,7 @@ export function OrderPane({ pos }: { pos: PosCounterState }) {
           }}
         />
       </div>
+      )}
 
       {/* Docked Panel Header */}
       <OrderPaneHeader pos={pos} />

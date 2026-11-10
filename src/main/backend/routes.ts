@@ -76,10 +76,17 @@ export function sanitizeProduct(raw: any) {
 
 export function sanitizeCategory(raw: any) {
   if (!raw || typeof raw !== 'object') return {};
-  const allowed = ['id', 'module', 'name'];
+  const allowed = ['id', 'module', 'name', 'color', 'icon', 'displayOrder'];
   const out: any = {};
   for (const k of allowed) {
-    if (raw[k] !== undefined) out[k] = raw[k];
+    if (raw[k] === undefined) continue;
+    if (k === 'displayOrder') {
+      out[k] = raw[k] === null || raw[k] === '' ? 0 : Math.round(Number(raw[k])) || 0;
+    } else if (k === 'color' || k === 'icon') {
+      out[k] = raw[k] === null ? null : String(raw[k]).slice(0, 40);
+    } else {
+      out[k] = raw[k];
+    }
   }
   return out;
 }
@@ -503,7 +510,7 @@ export function registerRoutes(app: Express): void {
     try {
       const module = req.query.module as string | undefined;
       const where = module ? { module } : {};
-      const categories = await db.category.findMany({ where, orderBy: { name: 'asc' } });
+      const categories = await db.category.findMany({ where, orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }] });
       res.json(categories);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -513,7 +520,10 @@ export function registerRoutes(app: Express): void {
   app.post('/api/categories', async (req: Request, res: Response) => {
     try {
       const safeData = sanitizeCategory(req.body);
-      const cat = await db.category.create({ data: safeData });
+      // Upsert so editing a category (colour, icon, order) updates the existing row.
+      const cat = safeData.id
+        ? await db.category.upsert({ where: { id: safeData.id }, update: safeData, create: safeData })
+        : await db.category.create({ data: safeData });
       res.json(cat);
     } catch (err: any) {
       console.error('[API POST /api/categories] Error:', err.message);

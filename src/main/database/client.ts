@@ -292,6 +292,15 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     /* Ignore if column already exists */
   }
 
+  // POS tile board: category colour, icon and order
+  for (const col of [`"color" TEXT`, `"icon" TEXT`, `"displayOrder" INTEGER DEFAULT 0`]) {
+    try {
+      await database.$executeRawUnsafe(`ALTER TABLE "Category" ADD COLUMN ${col}`);
+    } catch {
+      /* Ignore if column already exists */
+    }
+  }
+
   isInitialized = true;
 }
 

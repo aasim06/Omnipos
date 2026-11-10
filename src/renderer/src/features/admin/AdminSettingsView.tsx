@@ -57,6 +57,7 @@ import {
   Location20Regular,
   Open20Regular,
   Star20Filled,
+  GridKanban20Regular,
 } from '@fluentui/react-icons';
 import { posApi } from '@/lib/api';
 import { clearAllLocalData } from '@/lib/offlineDb';
@@ -133,6 +134,7 @@ const ROLE_OPTIONS = [
 ];
 
 import { useAdminSettingsStyles, useStyles } from './adminSettings.styles';
+import { readTileSize, writeTileSize, type TileSize } from '@/features/pos/catalog/TileBoard';
 
 export function AdminSettingsView(): React.JSX.Element {
   const styles = useAdminSettingsStyles();
@@ -231,6 +233,9 @@ export function AdminSettingsView(): React.JSX.Element {
       }, 4000);
     }
   };
+
+  // POS tile board size (Touch layout card)
+  const [tileSize, setTileSize] = useState<TileSize>(readTileSize);
 
   // ── Tab State ──
   const [activeTab, setActiveTab] = useState<'staff' | 'profile' | 'hardware' | 'backup' | 'updates'>(() => {
@@ -1197,6 +1202,65 @@ export function AdminSettingsView(): React.JSX.Element {
       {/* ── TAB 3: Hardware, Printer & Taxes ── */}
       {activeTab === 'hardware' && (
         <div className={styles.grid}>
+          {/* CARD: Touch layout (POS tile board size) */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.cardIconBox}>
+                <GridKanban20Regular className={styles.icon20} />
+              </div>
+              <div className={styles.headerTextCol}>
+                <Body1 className={styles.headerTitle}>Touch layout</Body1>
+                <Caption1 className={styles.headerSubtitle}>
+                  Size of the category and item tiles on the POS tile board
+                </Caption1>
+              </div>
+            </div>
+            <div className={styles.cardBody}>
+              <div role="radiogroup" aria-label="Tile size" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {([
+                  ['S', 'Small', 'More tiles, 6 per row'],
+                  ['M', 'Medium', 'Default, 5 per row'],
+                  ['L', 'Large', 'Big touch targets, 4 per row'],
+                ] as [TileSize, string, string][]).map(([key, label, hint]) => {
+                  const active = tileSize === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => {
+                        setTileSize(key);
+                        writeTileSize(key);
+                      }}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        gap: '2px',
+                        padding: '10px 12px',
+                        borderRadius: '6px',
+                        border: active ? '2px solid currentColor' : '1px solid rgba(128,128,128,0.35)',
+                        background: 'transparent',
+                        color: 'inherit',
+                        font: 'inherit',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ fontSize: '14px', fontWeight: 600 }}>
+                        {key} · {label}
+                      </span>
+                      <span style={{ fontSize: '12px', opacity: 0.7 }}>{hint}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <Caption1 style={{ display: 'block', marginTop: '8px', opacity: 0.75 }}>
+                Applies at once on this computer. On a narrow window the board uses fewer columns automatically.
+              </Caption1>
+            </div>
+          </div>
           {/* CARD 2: Thermal Receipt Printer & Drawer (wide card, two columns) */}
           <div className={mergeClasses(styles.card, styles.cardWide)}>
             <div className={styles.cardHeader}>

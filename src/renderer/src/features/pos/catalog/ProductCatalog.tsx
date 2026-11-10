@@ -20,6 +20,8 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
     isWeighableOrLiquid,
     inCartMap,
     addToCart,
+    removeFromCart,
+    updateCartQty,
   } = pos;
 
   return (
@@ -212,8 +214,8 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
             </table>
           </div>
         ) : (
-          /* ── Visual Grid View: Exactly 4 Cards Per Row ── */
-          <div style={{ display: 'grid', gridTemplateColumns: filteredProducts.length === 0 ? '1fr' : 'repeat(auto-fill, minmax(168px, 1fr))', gap: '12px' }}>
+          /* ── Visual Grid View: compact POS tiles ── */
+          <div style={{ display: 'grid', gridTemplateColumns: filteredProducts.length === 0 ? '1fr' : 'repeat(auto-fill, minmax(164px, 1fr))', gap: '12px' }}>
             {filteredProducts.length === 0 ? (
               <div
                 style={{
@@ -246,6 +248,8 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                     F={F}
                     inCartMap={inCartMap}
                     addToCart={addToCart}
+                    removeFromCart={removeFromCart}
+                    updateCartQty={updateCartQty}
                     setSelectedProduct={setSelectedProduct}
                     setSelectedQty={setSelectedQty}
                     playBeep={playBeep}

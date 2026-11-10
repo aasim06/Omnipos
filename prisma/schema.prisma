@@ -37,8 +37,11 @@ model Product {
 model Category {
   id        String   @id @default(cuid())
   module    String   // "fastfood" | "minimart"
-  name      String
-  createdAt DateTime @default(now())
+  name         String
+  color        String?  // POS tile colour key ("" = automatic)
+  icon         String?  // POS tile icon key ("" = automatic)
+  displayOrder Int?     @default(0)
+  createdAt    DateTime @default(now())
 }
 
 model Order {

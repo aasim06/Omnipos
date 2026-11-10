@@ -209,6 +209,12 @@ export interface Category {
   profile?: CategoryProfile;
   suggestedSizes?: string[];
   suggestedUnits?: string[];
+  /** POS tile colour key from CATEGORY_COLORS ("" or missing = automatic). */
+  color?: string | null;
+  /** POS tile icon key from CATEGORY_ICONS ("" or missing = picked from the name). */
+  icon?: string | null;
+  /** Position on the POS category board (lower first). */
+  displayOrder?: number | null;
   createdAt?: string;
   updatedAt?: string;
 }
