@@ -384,32 +384,75 @@ export function FastFoodDashboardView(): React.JSX.Element {
     };
   }, [hourlyData]);
 
-  // Donut chart calculations
+  // Donut chart: order types for fast food, payment methods (by amount) for the mart
   const donutData = React.useMemo(() => {
-    const total = metrics.totalOrders || 1;
-    const dineInPct = Math.round((metrics.dineInCount / total) * 100);
-    const takeawayPct = Math.round((metrics.takeawayCount / total) * 100);
-    const deliveryPct = Math.max(0, 100 - dineInPct - takeawayPct);
+    const C = 439.82; // circumference for r = 70
+    type Seg = { key: string; label: string; color: string; value: number; display: string };
+    let segments: Seg[];
+    let centerValue: string;
+    let centerLabel: string;
+    let subtitle: string;
 
-    // Circumference for r=70 is 2 * PI * 70 = 439.82
-    const C = 439.82;
-    const stroke1 = (dineInPct / 100) * C;
-    const stroke2 = (takeawayPct / 100) * C;
-    const stroke3 = (deliveryPct / 100) * C;
+    if (activeTab === 'fastfood') {
+      segments = [
+        { key: 'dine-in', label: 'Dine-In', color: '#E51937', value: metrics.dineInCount, display: String(metrics.dineInCount) },
+        { key: 'takeaway', label: 'Takeaway', color: '#F59E0B', value: metrics.takeawayCount, display: String(metrics.takeawayCount) },
+        { key: 'delivery', label: 'Delivery', color: '#10B981', value: metrics.deliveryCount, display: String(metrics.deliveryCount) },
+      ];
+      centerValue = String(metrics.totalOrders);
+      centerLabel = 'Total orders';
+      subtitle = 'Dine-In, Takeaway, and Delivery orders';
+    } else {
+      // Sales amount per payment method; split bills count each part separately
+      const amounts: Record<string, number> = { cash: 0, card: 0, online: 0, khata: 0, other: 0 };
+      const bucket = (mode?: string) => {
+        const m = (mode || 'cash').toLowerCase();
+        if (m === 'cash') return 'cash';
+        if (m === 'card') return 'card';
+        if (m === 'online' || m === 'bank' || m === 'easypaisa' || m === 'jazzcash') return 'online';
+        if (m === 'khata' || m === 'credit' || m === 'udhaar') return 'khata';
+        return 'other';
+      };
+      for (const o of filteredOrders) {
+        if (o.stage && o.stage !== 'paid') continue; // only settled bills have a payment method
+        const subtotal = o.lines.reduce((sum, l) => sum + (l.unitPrice || 0) * (l.quantity || 1), 0);
+        const total =
+          typeof o.totalAmount === 'number' && o.totalAmount >= 0
+            ? o.totalAmount
+            : Math.max(0, subtotal - (subtotal * (o.discountPercent || 0)) / 100);
+        const mode = (o as any).paymentMode as string | undefined;
+        const split = (o as any).splitPayments as Record<string, number> | undefined;
+        if (mode === 'split' && split) {
+          for (const [k, v] of Object.entries(split)) amounts[bucket(k)] += Number(v) || 0;
+        } else {
+          amounts[bucket(mode)] += total;
+        }
+      }
+      const fmt = (n: number) => `PKR ${Math.round(n).toLocaleString()}`;
+      segments = [
+        { key: 'cash', label: 'Cash', color: '#10B981', value: amounts.cash, display: fmt(amounts.cash) },
+        { key: 'card', label: 'Card', color: '#2563EB', value: amounts.card, display: fmt(amounts.card) },
+        { key: 'online', label: 'Online / Bank', color: '#8B5CF6', value: amounts.online, display: fmt(amounts.online) },
+        { key: 'khata', label: 'Khata (Credit)', color: '#F59E0B', value: amounts.khata, display: fmt(amounts.khata) },
+        ...(amounts.other > 0 ? [{ key: 'other', label: 'Other', color: '#64748B', value: amounts.other, display: fmt(amounts.other) }] : []),
+      ];
+      const sum = segments.reduce((a, b) => a + b.value, 0);
+      centerValue = sum >= 100000 ? `${Math.round(sum / 1000)}k` : Math.round(sum).toLocaleString();
+      centerLabel = 'PKR collected';
+      subtitle = 'Paid bills by payment method';
+    }
 
-    return {
-      C,
-      dineInPct,
-      takeawayPct,
-      deliveryPct,
-      stroke1,
-      stroke2,
-      stroke3,
-      offset1: 0,
-      offset2: -stroke1,
-      offset3: -(stroke1 + stroke2),
-    };
-  }, [metrics]);
+    const total = segments.reduce((a, b) => a + b.value, 0);
+    let offset = 0;
+    const arcs = segments.map((seg) => {
+      const pct = total > 0 ? Math.round((seg.value / total) * 100) : 0;
+      const stroke = total > 0 ? (seg.value / total) * C : 0;
+      const arc = { ...seg, pct, stroke, offset: -offset };
+      offset += stroke;
+      return arc;
+    });
+    return { C, arcs, centerValue, centerLabel, subtitle };
+  }, [metrics, activeTab, filteredOrders]);
 
   return (
     <div className={mergeClasses(styles.root, isDark ? styles.rootDark : styles.rootLight)}>
@@ -826,7 +869,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
               </h3>
             </div>
             <p className={mergeClasses(styles.chartSub, isDark ? styles.textSecondaryDark : styles.textSecondaryLight)}>
-              Dine-In, Takeaway, and Delivery orders
+              {donutData.subtitle}
             </p>
           </div>
 
@@ -835,93 +878,49 @@ export function FastFoodDashboardView(): React.JSX.Element {
             <svg width="180" height="180" viewBox="0 0 180 180" className={styles.donutSvg}>
               {/* Background Track */}
               <circle cx="90" cy="90" r="70" fill="none" stroke={isDark ? '#333333' : '#EBEBEB'} strokeWidth="18" />
-
-              {/* Segment 1: Dine-In (Red) */}
-              <circle
-                cx="90"
-                cy="90"
-                r="70"
-                fill="none"
-                stroke="#E51937"
-                strokeWidth="18"
-                strokeDasharray={`${donutData.stroke1} ${donutData.C}`}
-                strokeDashoffset={donutData.offset1}
-                strokeLinecap="round"
-                className={styles.donutSegmentDineIn}
-              />
-
-              {/* Segment 2: Takeaway (Amber) */}
-              <circle
-                cx="90"
-                cy="90"
-                r="70"
-                fill="none"
-                stroke="#F59E0B"
-                strokeWidth="18"
-                strokeDasharray={`${donutData.stroke2} ${donutData.C}`}
-                strokeDashoffset={donutData.offset2}
-                strokeLinecap="round"
-              />
-
-              {/* Segment 3: Delivery (Green) */}
-              <circle
-                cx="90"
-                cy="90"
-                r="70"
-                fill="none"
-                stroke="#10B981"
-                strokeWidth="18"
-                strokeDasharray={`${donutData.stroke3} ${donutData.C}`}
-                strokeDashoffset={donutData.offset3}
-                strokeLinecap="round"
-              />
+              {donutData.arcs
+                .filter((a) => a.stroke > 0)
+                .map((a) => (
+                  <circle
+                    key={a.key}
+                    cx="90"
+                    cy="90"
+                    r="70"
+                    fill="none"
+                    stroke={a.color}
+                    strokeWidth="18"
+                    strokeDasharray={`${a.stroke} ${donutData.C}`}
+                    strokeDashoffset={a.offset}
+                    strokeLinecap="butt"
+                  />
+                ))}
             </svg>
 
             {/* Center Label */}
             <div className={styles.donutCenter}>
               <span className={mergeClasses(styles.donutCenterCount, isDark ? styles.textPrimaryDark : styles.textPrimaryLight)}>
-                {metrics.totalOrders}
+                {donutData.centerValue}
               </span>
               <span className={mergeClasses(styles.donutCenterLabel, isDark ? styles.textMutedDark : styles.textMutedLight)}>
-                Total orders
+                {donutData.centerLabel}
               </span>
             </div>
           </div>
 
           {/* Legends */}
           <div className={styles.donutLegendList}>
-            <div className={styles.donutLegendRow}>
-              <div className={styles.donutLegendLeft}>
-                <span className={styles.donutLegendDotRed} />
-                <span className={styles.fw700}>Dine-In</span>
+            {donutData.arcs.map((a) => (
+              <div key={a.key} className={styles.donutLegendRow}>
+                <div className={styles.donutLegendLeft}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: a.color, display: 'inline-block', flexShrink: 0 }} />
+                  <span className={styles.fw700}>{a.label}</span>
+                </div>
+                <div className={styles.donutLegendRight}>
+                  <span className={styles.fw800}>{a.display}</span>
+                  <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>({a.pct}%)</span>
+                </div>
               </div>
-              <div className={styles.donutLegendRight}>
-                <span className={styles.fw800}>{metrics.dineInCount}</span>
-                <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>({donutData.dineInPct}%)</span>
-              </div>
-            </div>
-
-            <div className={styles.donutLegendRow}>
-              <div className={styles.donutLegendLeft}>
-                <span className={styles.donutLegendDotAmber} />
-                <span className={styles.fw700}>Takeaway</span>
-              </div>
-              <div className={styles.donutLegendRight}>
-                <span className={styles.fw800}>{metrics.takeawayCount}</span>
-                <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>({donutData.takeawayPct}%)</span>
-              </div>
-            </div>
-
-            <div className={styles.donutLegendRow}>
-              <div className={styles.donutLegendLeft}>
-                <span className={styles.donutLegendDotGreen} />
-                <span className={styles.fw700}>Delivery</span>
-              </div>
-              <div className={styles.donutLegendRight}>
-                <span className={styles.fw800}>{metrics.deliveryCount}</span>
-                <span className={isDark ? styles.textMutedDark : styles.textMutedLight}>({donutData.deliveryPct}%)</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
