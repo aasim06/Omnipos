@@ -28,6 +28,8 @@ model Product {
   imageBase64  String?
   imageUrl     String?
   variants     String?         // JSON string of ProductVariant[]
+  batchNumber  String?
+  expiryDate   String?         // ISO date (yyyy-mm-dd)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -122,9 +124,65 @@ model StockMovement {
   quantity    Int
   unitCost    Float?
   unitPrice   Float?
-  reason      String?
-  note        String?
-  date        DateTime @default(now())
+  reason           String?
+  note             String?
+  vendorName       String?
+  referenceInvoice String?
+  batchNumber      String?
+  expiryDate       String?
+  date             DateTime @default(now())
+}
+
+model Vendor {
+  id             String   @id @default(cuid())
+  name           String
+  companyName    String?
+  contactPerson  String?
+  phone          String?
+  email          String?
+  address        String?
+  category       String?
+  notes          String?
+  openingBalance Float    @default(0) // balance owed when the vendor was added
+  currentBalance Float    @default(0) // running payable = opening + bills - payments ± adjustments
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  transactions   VendorTransaction[]
+}
+
+model VendorTransaction {
+  id            String   @id @default(cuid())
+  vendorId      String
+  vendor        Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  type          String   // "BILL" | "PAYMENT" | "ADJUSTMENT" (signed)
+  amount        Float
+  balanceAfter  Float
+  description   String?
+  billId        String?
+  paymentMethod String?
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+}
+
+model PurchaseBill {
+  id            String   @id @default(cuid())
+  billNumber    String   @unique
+  vendorId      String?
+  vendorName    String
+  vendorPhone   String?
+  billDate      String
+  lines         String   // JSON string of PurchaseBillLine[]
+  subtotal      Float    @default(0)
+  discountAmount Float   @default(0)
+  taxAmount     Float    @default(0)
+  grandTotal    Float    @default(0)
+  paidAmount    Float    @default(0)
+  paymentMode   String   @default("cash")
+  paymentStatus String   @default("unpaid")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model SyncOutbox {

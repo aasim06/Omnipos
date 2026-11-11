@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { vendorStorage } from './vendorStorage';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   makeStyles,
@@ -11,8 +13,10 @@ import {
   ArrowCircleUp20Regular,
   Add20Regular,
   Receipt20Regular,
+  ClipboardCheckmark20Regular,
 } from '@fluentui/react-icons';
 import { PurchaseBillModal } from './PurchaseBillModal';
+import { StockCountDialog } from './StockCountDialog';
 import { PageHeader } from '@/components/win11';
 
 const useStyles = makeStyles({
@@ -144,6 +148,23 @@ export function InventoryLayout(): React.JSX.Element {
   const isStockOutPage = location.pathname === '/inventory/stock-out';
   const meta = pageMeta[location.pathname] || pageMeta['/inventory/dashboard'];
   const [isPurchaseBillOpen, setIsPurchaseBillOpen] = useState(false);
+  const [isStockCountOpen, setIsStockCountOpen] = useState(false);
+  const queryClient = useQueryClient();
+  // Bumped after vendors / ledger / bills are refreshed from the database so the
+  // current screen re-reads the synchronous vendor cache.
+  const [vendorDataVersion, setVendorDataVersion] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    vendorStorage.syncWithServer().then((refreshed) => {
+      if (cancelled || !refreshed) return;
+      setVendorDataVersion((v) => v + 1);
+      queryClient.invalidateQueries({ queryKey: ['inventory-dashboard'] });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [queryClient]);
 
   return (
     <div className={styles.layoutContainer}>
@@ -156,6 +177,9 @@ export function InventoryLayout(): React.JSX.Element {
             <>
               <Button appearance="secondary" icon={<Receipt20Regular />} onClick={() => setIsPurchaseBillOpen(true)}>
                 Purchase bill
+              </Button>
+              <Button appearance="secondary" icon={<ClipboardCheckmark20Regular />} onClick={() => setIsStockCountOpen(true)}>
+                Stock count
               </Button>
               {!isStockOutPage && (
                 <Button appearance="secondary" icon={<ArrowCircleUp20Regular />} onClick={() => navigate('/inventory/stock-out')}>
@@ -174,8 +198,11 @@ export function InventoryLayout(): React.JSX.Element {
 
       {/* ── Main Dynamic Content Area ── */}
       <div className={styles.contentArea}>
-        <Outlet />
+        <Outlet key={vendorDataVersion} />
       </div>
+
+      {/* ── Physical Stock Count ── */}
+      <StockCountDialog isOpen={isStockCountOpen} onClose={() => setIsStockCountOpen(false)} />
 
       {/* ── Global Purchase Bill Modal ── */}
       <PurchaseBillModal

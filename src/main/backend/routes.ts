@@ -69,7 +69,7 @@ export function sanitizeProduct(raw: any) {
     'id', 'module', 'name', 'description', 'costPrice', 'price',
     'category', 'skuCode', 'rackLocation', 'unit', 'minThreshold',
     'openingStock', 'prepTime', 'displayOrder', 'tags', 'allergens',
-    'isAvailable', 'imageBase64', 'imageUrl', 'variants'
+    'isAvailable', 'imageBase64', 'imageUrl', 'variants', 'batchNumber', 'expiryDate'
   ];
   const out: any = {};
   for (const k of allowed) {
@@ -989,6 +989,47 @@ export function registerRoutes(app: Express): void {
   });
 
   // ── Stock Movements ──
+  // Every write is atomic (movement + product stock in one transaction) and idempotent
+  // (re-posting the same id, or deleting an already-deleted id, is a no-op) so offline
+  // retries from the client outbox can never double-apply stock or get stuck.
+
+  /** Resolve the product a movement refers to: by id, else by name only when the name is unambiguous. */
+  async function resolveMovementProduct(tx: any, productId?: string | null, productName?: string | null) {
+    if (productId) {
+      const byId = await tx.product.findUnique({ where: { id: String(productId) } });
+      if (byId) return byId;
+    }
+    if (productName) {
+      const byName = await tx.product.findMany({ where: { name: String(productName) }, take: 2 });
+      if (byName.length === 1) return byName[0];
+    }
+    return null;
+  }
+
+  const movementDelta = (m: { type: string; quantity: number }) => (m.type === 'in' ? m.quantity : -m.quantity);
+
+  /**
+   * Weighted average cost after adding (qty > 0) or removing (qty < 0) units bought at unitCost.
+   * Falls back to the incoming cost when there is no prior valued stock, and keeps the current
+   * cost when a removal would leave no stock or a non-positive value.
+   */
+  function weightedAverageCost(stock: number, cost: number | null | undefined, qty: number, unitCost: number): number | null {
+    const curStock = Math.max(0, stock || 0);
+    const curCost = Number(cost || 0);
+    const nextStock = curStock + qty;
+    if (qty > 0) {
+      if (curStock <= 0 || curCost <= 0) return round2(unitCost);
+      return round2((curStock * curCost + qty * unitCost) / nextStock);
+    }
+    if (nextStock <= 0) return cost ?? null;
+    const value = curStock * curCost + qty * unitCost;
+    return value > 0 ? round2(value / nextStock) : cost ?? null;
+  }
+
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+
+  const toOptionalString = (v: unknown) => (v === undefined || v === null || v === '' ? null : String(v));
+
   app.get('/api/stock-movements', async (req: Request, res: Response) => {
     try {
       const module = req.query.module as string | undefined;
@@ -1005,49 +1046,52 @@ export function registerRoutes(app: Express): void {
 
   app.post('/api/stock-movements', async (req: Request, res: Response) => {
     try {
-      const { id, module, productId, productName, type, quantity, unitCost, unitPrice, reason, note, referenceInvoice, date } = req.body;
-      const movement = await db.stockMovement.create({
-        data: {
-          ...(id ? { id } : {}),
-          module: module || 'minimart',
-          productId: productId || '',
-          productName: productName || 'Unknown Product',
-          type: type || 'in',
-          quantity: Number(quantity || 0),
-          unitCost: unitCost ? Number(unitCost) : null,
-          unitPrice: unitPrice ? Number(unitPrice) : null,
-          reason: reason || null,
-          note: note || referenceInvoice || null,
-          ...(date ? { date: new Date(date) } : {}),
-        },
-      });
+      const { id, module, productId, productName, type, quantity, unitCost, unitPrice, reason, note, referenceInvoice, vendorName, batchNumber, expiryDate, date } = req.body;
 
-      // Automatically synchronize Product stock in database
-      if (req.body.productId || req.body.productName) {
-        try {
-          const product = await db.product.findFirst({
-            where: {
-              OR: [
-                ...(req.body.productId ? [{ id: req.body.productId }] : []),
-                ...(req.body.productName ? [{ name: req.body.productName }] : []),
-              ],
+      if (id) {
+        const existing = await db.stockMovement.findUnique({ where: { id: String(id) } });
+        if (existing) return res.json(existing);
+      }
+
+      const movement = await db.$transaction(async (tx: any) => {
+        const created = await tx.stockMovement.create({
+          data: {
+            ...(id ? { id: String(id) } : {}),
+            module: module || 'minimart',
+            productId: productId || '',
+            productName: productName || 'Unknown Product',
+            type: type === 'out' ? 'out' : 'in',
+            quantity: Math.max(0, Math.round(Number(quantity || 0))),
+            unitCost: unitCost ? Number(unitCost) : null,
+            unitPrice: unitPrice ? Number(unitPrice) : null,
+            reason: reason || null,
+            note: note || referenceInvoice || null,
+            vendorName: toOptionalString(vendorName),
+            referenceInvoice: toOptionalString(referenceInvoice),
+            batchNumber: toOptionalString(batchNumber),
+            expiryDate: toOptionalString(expiryDate),
+            ...(date ? { date: new Date(date) } : {}),
+          },
+        });
+
+        const product = await resolveMovementProduct(tx, productId, productName);
+        if (product) {
+          const isIn = created.type === 'in';
+          await tx.product.update({
+            where: { id: product.id },
+            data: {
+              openingStock: Math.max(0, (product.openingStock || 0) + movementDelta(created)),
+              costPrice:
+                isIn && created.unitCost
+                  ? weightedAverageCost(product.openingStock || 0, product.costPrice, created.quantity, created.unitCost)
+                  : product.costPrice,
+              ...(isIn && created.batchNumber ? { batchNumber: created.batchNumber } : {}),
+              ...(isIn && created.expiryDate ? { expiryDate: created.expiryDate } : {}),
             },
           });
-          if (product) {
-            const delta = movement.type === 'in' ? movement.quantity : -movement.quantity;
-            const updatedStock = Math.max(0, (product.openingStock || 0) + delta);
-            await db.product.update({
-              where: { id: product.id },
-              data: {
-                openingStock: updatedStock,
-                costPrice: (movement.type === 'in' && movement.unitCost) ? movement.unitCost : product.costPrice,
-              },
-            });
-          }
-        } catch (stockErr) {
-          console.error('[Stock Sync Error]:', stockErr);
         }
-      }
+        return created;
+      });
 
       res.json(movement);
     } catch (err: any) {
@@ -1058,33 +1102,26 @@ export function registerRoutes(app: Express): void {
   app.delete('/api/stock-movements/:id', async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id);
-      const existing = await db.stockMovement.findUnique({ where: { id } });
-      if (existing) {
-        try {
-          const product = await db.product.findFirst({
-            where: {
-              OR: [
-                ...(existing.productId ? [{ id: existing.productId }] : []),
-                ...(existing.productName ? [{ name: existing.productName }] : []),
-              ],
+      const result = await db.$transaction(async (tx: any) => {
+        const existing = await tx.stockMovement.findUnique({ where: { id } });
+        if (!existing) return { success: true, alreadyDeleted: true };
+        const product = await resolveMovementProduct(tx, existing.productId, existing.productName);
+        if (product) {
+          await tx.product.update({
+            where: { id: product.id },
+            data: {
+              openingStock: Math.max(0, (product.openingStock || 0) - movementDelta(existing)),
+              // Undo this receipt's contribution to the weighted average cost
+              ...(existing.type === 'in' && existing.unitCost
+                ? { costPrice: weightedAverageCost(product.openingStock || 0, product.costPrice, -existing.quantity, existing.unitCost) }
+                : {}),
             },
           });
-          if (product) {
-            // Revert stock delta
-            const delta = existing.type === 'in' ? -existing.quantity : existing.quantity;
-            const updatedStock = Math.max(0, (product.openingStock || 0) + delta);
-            await db.product.update({
-              where: { id: product.id },
-              data: { openingStock: updatedStock },
-            });
-          }
-        } catch (stockErr) {
-          console.error('[Stock Revert Error]:', stockErr);
         }
-      }
-
-      await db.stockMovement.delete({ where: { id } });
-      res.json({ success: true });
+        await tx.stockMovement.delete({ where: { id } });
+        return { success: true };
+      });
+      res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -1093,53 +1130,319 @@ export function registerRoutes(app: Express): void {
   app.put('/api/stock-movements/:id', async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id);
-      const prev = await db.stockMovement.findUnique({ where: { id } });
-      const { id: _id, module, productId, productName, type, quantity, unitCost, unitPrice, reason, note, referenceInvoice, date } = req.body;
-      const updated = await db.stockMovement.update({
-        where: { id },
-        data: {
-          ...(module ? { module } : {}),
-          ...(productId ? { productId } : {}),
-          ...(productName ? { productName } : {}),
-          ...(type ? { type } : {}),
-          ...(quantity !== undefined ? { quantity: Number(quantity) } : {}),
-          ...(unitCost !== undefined ? { unitCost: unitCost ? Number(unitCost) : null } : {}),
-          ...(unitPrice !== undefined ? { unitPrice: unitPrice ? Number(unitPrice) : null } : {}),
-          ...(reason !== undefined ? { reason } : {}),
-          ...(note !== undefined || referenceInvoice !== undefined ? { note: note || referenceInvoice || null } : {}),
-          ...(date ? { date: new Date(date) } : {}),
-        },
-      });
+      const { module, productId, productName, type, quantity, unitCost, unitPrice, reason, note, referenceInvoice, vendorName, batchNumber, expiryDate, date } = req.body;
 
-      if (prev && req.body.quantity !== undefined) {
-        try {
-          const product = await db.product.findFirst({
-            where: {
-              OR: [
-                ...(updated.productId ? [{ id: updated.productId }] : []),
-                ...(updated.productName ? [{ name: updated.productName }] : []),
-              ],
-            },
-          });
+      const updated = await db.$transaction(async (tx: any) => {
+        const prev = await tx.stockMovement.findUnique({ where: { id } });
+        if (!prev) return null;
+        const next = await tx.stockMovement.update({
+          where: { id },
+          data: {
+            ...(module ? { module } : {}),
+            ...(productId ? { productId } : {}),
+            ...(productName ? { productName } : {}),
+            ...(type ? { type: type === 'out' ? 'out' : 'in' } : {}),
+            ...(quantity !== undefined ? { quantity: Math.max(0, Math.round(Number(quantity))) } : {}),
+            ...(unitCost !== undefined ? { unitCost: unitCost ? Number(unitCost) : null } : {}),
+            ...(unitPrice !== undefined ? { unitPrice: unitPrice ? Number(unitPrice) : null } : {}),
+            ...(reason !== undefined ? { reason } : {}),
+            ...(note !== undefined ? { note: note || null } : {}),
+            ...(vendorName !== undefined ? { vendorName: toOptionalString(vendorName) } : {}),
+            ...(referenceInvoice !== undefined ? { referenceInvoice: toOptionalString(referenceInvoice) } : {}),
+            ...(batchNumber !== undefined ? { batchNumber: toOptionalString(batchNumber) } : {}),
+            ...(expiryDate !== undefined ? { expiryDate: toOptionalString(expiryDate) } : {}),
+            ...(date ? { date: new Date(date) } : {}),
+          },
+        });
+
+        const diff = movementDelta(next) - movementDelta(prev);
+        const costChanged = next.type === 'in' && !!next.unitCost && next.unitCost !== prev.unitCost;
+        if (diff !== 0 || costChanged) {
+          const product = await resolveMovementProduct(tx, next.productId, next.productName);
           if (product) {
-            const prevDelta = prev.type === 'in' ? prev.quantity : -prev.quantity;
-            const newDelta = updated.type === 'in' ? updated.quantity : -updated.quantity;
-            const diff = newDelta - prevDelta;
-            const updatedStock = Math.max(0, (product.openingStock || 0) + diff);
-            await db.product.update({
+            // Re-value: remove the old receipt from the average, then add the edited one
+            let cost = product.costPrice;
+            let stock = product.openingStock || 0;
+            if (prev.type === 'in' && prev.unitCost) {
+              cost = weightedAverageCost(stock, cost, -prev.quantity, prev.unitCost);
+              stock -= prev.quantity;
+            } else {
+              stock -= movementDelta(prev);
+            }
+            if (next.type === 'in' && next.unitCost) {
+              cost = weightedAverageCost(stock, cost, next.quantity, next.unitCost);
+            }
+            await tx.product.update({
               where: { id: product.id },
               data: {
-                openingStock: updatedStock,
-                costPrice: (updated.type === 'in' && updated.unitCost) ? updated.unitCost : product.costPrice,
+                openingStock: Math.max(0, (product.openingStock || 0) + diff),
+                costPrice: cost,
               },
             });
           }
-        } catch (stockErr) {
-          console.error('[Stock Update Error]:', stockErr);
         }
-      }
+        return next;
+      });
 
+      if (!updated) return res.status(404).json({ error: `Stock movement ${id} not found` });
       res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Vendors, Vendor Ledger & Purchase Bills ──
+  // currentBalance is the running payable and only ever changes together with a
+  // VendorTransaction row, inside one database transaction.
+
+  const signedVendorAmount = (type: string, amount: number) => (type === 'PAYMENT' ? -amount : amount);
+
+  const vendorData = (b: any) => ({
+    name: String(b.name || b.companyName || 'Unnamed Vendor'),
+    companyName: toOptionalString(b.companyName),
+    contactPerson: toOptionalString(b.contactPerson),
+    phone: toOptionalString(b.phone),
+    email: toOptionalString(b.email),
+    address: toOptionalString(b.address),
+    category: toOptionalString(b.category),
+    notes: toOptionalString(b.notes),
+  });
+
+  app.get('/api/vendors', async (_req: Request, res: Response) => {
+    try {
+      res.json(await (db as any).vendor.findMany({ orderBy: { createdAt: 'desc' } }));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/vendors', async (req: Request, res: Response) => {
+    try {
+      const b = req.body || {};
+      const opening = Number(b.openingBalance || 0);
+      const vendor = await db.$transaction(async (tx: any) => {
+        const existing = b.id ? await tx.vendor.findUnique({ where: { id: String(b.id) } }) : null;
+        if (existing) {
+          // Editing the opening balance shifts the running balance by the same amount
+          const shift = b.openingBalance !== undefined ? opening - (existing.openingBalance || 0) : 0;
+          return tx.vendor.update({
+            where: { id: existing.id },
+            data: {
+              ...vendorData({ ...existing, ...b }),
+              ...(b.openingBalance !== undefined ? { openingBalance: opening } : {}),
+              currentBalance: (existing.currentBalance || 0) + shift,
+            },
+          });
+        }
+        return tx.vendor.create({
+          data: {
+            ...(b.id ? { id: String(b.id) } : {}),
+            ...vendorData(b),
+            openingBalance: opening,
+            currentBalance: opening,
+          },
+        });
+      });
+      res.json(vendor);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/vendors/:id', async (req: Request, res: Response) => {
+    try {
+      await (db as any).vendor.deleteMany({ where: { id: String(req.params.id) } });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/vendor-transactions', async (req: Request, res: Response) => {
+    try {
+      const vendorId = req.query.vendorId as string | undefined;
+      res.json(
+        await (db as any).vendorTransaction.findMany({
+          where: vendorId ? { vendorId } : {},
+          orderBy: { date: 'desc' },
+        })
+      );
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  /** Post a ledger entry and move the vendor's running balance atomically (idempotent by id). */
+  async function postVendorTransaction(tx: any, t: any) {
+    if (t.id) {
+      const existing = await tx.vendorTransaction.findUnique({ where: { id: String(t.id) } });
+      if (existing) return { transaction: existing, vendor: await tx.vendor.findUnique({ where: { id: existing.vendorId } }) };
+    }
+    const vendor = await tx.vendor.findUnique({ where: { id: String(t.vendorId) } });
+    if (!vendor) throw Object.assign(new Error(`Vendor ${t.vendorId} not found`), { status: 404 });
+    const type = ['BILL', 'PAYMENT', 'ADJUSTMENT'].includes(t.type) ? t.type : 'BILL';
+    const amount = Number(t.amount || 0);
+    const balanceAfter = (vendor.currentBalance || 0) + signedVendorAmount(type, amount);
+    const transaction = await tx.vendorTransaction.create({
+      data: {
+        ...(t.id ? { id: String(t.id) } : {}),
+        vendorId: vendor.id,
+        type,
+        amount,
+        balanceAfter,
+        description: toOptionalString(t.description),
+        billId: toOptionalString(t.billId),
+        paymentMethod: toOptionalString(t.paymentMethod),
+        ...(t.date ? { date: new Date(t.date) } : {}),
+      },
+    });
+    const updatedVendor = await tx.vendor.update({ where: { id: vendor.id }, data: { currentBalance: balanceAfter } });
+    return { transaction, vendor: updatedVendor };
+  }
+
+  app.post('/api/vendor-transactions', async (req: Request, res: Response) => {
+    try {
+      const result = await db.$transaction((tx: any) => postVendorTransaction(tx, req.body || {}));
+      res.json(result);
+    } catch (err: any) {
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  const billData = (b: any) => ({
+    billNumber: String(b.billNumber || '').trim(),
+    vendorId: toOptionalString(b.vendorId),
+    vendorName: String(b.vendorName || 'Supplier'),
+    vendorPhone: toOptionalString(b.vendorPhone),
+    billDate: String(b.billDate || new Date().toISOString().slice(0, 10)),
+    lines: typeof b.lines === 'string' ? b.lines : JSON.stringify(Array.isArray(b.lines) ? b.lines : []),
+    subtotal: Number(b.subtotal || 0),
+    discountAmount: Number(b.discountAmount || 0),
+    taxAmount: Number(b.taxAmount || 0),
+    grandTotal: Number(b.grandTotal || 0),
+    paidAmount: Number(b.paidAmount || 0),
+    paymentMode: String(b.paymentMode || 'cash'),
+    paymentStatus: String(b.paymentStatus || 'unpaid'),
+    notes: toOptionalString(b.notes),
+    ...(b.createdAt ? { createdAt: new Date(b.createdAt) } : {}),
+  });
+
+  const parseBill = (row: any) => {
+    if (!row) return row;
+    let lines: any[] = [];
+    try {
+      lines = JSON.parse(row.lines || '[]');
+    } catch {
+      lines = [];
+    }
+    return { ...row, lines };
+  };
+
+  app.get('/api/purchase-bills', async (_req: Request, res: Response) => {
+    try {
+      const rows = await (db as any).purchaseBill.findMany({ orderBy: { createdAt: 'desc' } });
+      res.json(rows.map(parseBill));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/purchase-bills', async (req: Request, res: Response) => {
+    try {
+      const b = req.body || {};
+      const data = billData(b);
+      if (!data.billNumber) return res.status(400).json({ error: 'Bill number is required' });
+
+      const sameNumber = await (db as any).purchaseBill.findUnique({ where: { billNumber: data.billNumber } });
+      if (sameNumber && sameNumber.id !== b.id) {
+        return res.status(409).json({ error: `Purchase bill #${data.billNumber} already exists`, code: 'DUPLICATE_BILL' });
+      }
+      const existing = b.id ? await (db as any).purchaseBill.findUnique({ where: { id: String(b.id) } }) : null;
+      const saved = existing
+        ? await (db as any).purchaseBill.update({ where: { id: existing.id }, data })
+        : await (db as any).purchaseBill.create({ data: { ...(b.id ? { id: String(b.id) } : {}), ...data } });
+      res.json(parseBill(saved));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  /**
+   * Catch-up import of vendor data held in the renderer's localStorage (first run after
+   * upgrade, or entries written while the backend was unreachable). Inserts only what the
+   * server does not have. Ledger rows for vendors created in this same import are stored
+   * as-is (the vendor's balance already includes them); rows for vendors the server already
+   * had are posted normally so the running balance moves.
+   */
+  app.post('/api/vendors/import', async (req: Request, res: Response) => {
+    try {
+      const { vendors = [], transactions = [], bills = [] } = req.body || {};
+      const summary = await db.$transaction(async (tx: any) => {
+        const created = new Set<string>();
+        let txCount = 0;
+        let billCount = 0;
+
+        for (const v of Array.isArray(vendors) ? vendors : []) {
+          if (!v?.id) continue;
+          const exists = await tx.vendor.findUnique({ where: { id: String(v.id) } });
+          if (exists) continue;
+          const opening = Number(v.openingBalance || 0);
+          await tx.vendor.create({
+            data: {
+              id: String(v.id),
+              ...vendorData(v),
+              openingBalance: opening,
+              currentBalance: Number(v.currentBalance ?? opening),
+              ...(v.createdAt ? { createdAt: new Date(v.createdAt) } : {}),
+            },
+          });
+          created.add(String(v.id));
+        }
+
+        const sortedTx = (Array.isArray(transactions) ? [...transactions] : []).sort(
+          (a: any, b: any) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
+        );
+        for (const t of sortedTx) {
+          if (!t?.id || !t.vendorId) continue;
+          const exists = await tx.vendorTransaction.findUnique({ where: { id: String(t.id) } });
+          if (exists) continue;
+          const vendorExists = await tx.vendor.findUnique({ where: { id: String(t.vendorId) } });
+          if (!vendorExists) continue;
+          if (created.has(String(t.vendorId))) {
+            await tx.vendorTransaction.create({
+              data: {
+                id: String(t.id),
+                vendorId: String(t.vendorId),
+                type: String(t.type || 'BILL'),
+                amount: Number(t.amount || 0),
+                balanceAfter: Number(t.balanceAfter || 0),
+                description: toOptionalString(t.description),
+                billId: toOptionalString(t.billId),
+                paymentMethod: toOptionalString(t.paymentMethod),
+                ...(t.date ? { date: new Date(t.date) } : {}),
+              },
+            });
+          } else {
+            await postVendorTransaction(tx, t);
+          }
+          txCount++;
+        }
+
+        for (const b of Array.isArray(bills) ? bills : []) {
+          if (!b?.id || !b.billNumber) continue;
+          const exists = await tx.purchaseBill.findUnique({ where: { id: String(b.id) } });
+          if (exists) continue;
+          const data = billData(b);
+          const numberTaken = await tx.purchaseBill.findUnique({ where: { billNumber: data.billNumber } });
+          await tx.purchaseBill.create({
+            data: { id: String(b.id), ...data, ...(numberTaken ? { billNumber: `${data.billNumber}-${String(b.id).slice(-4)}` } : {}) },
+          });
+          billCount++;
+        }
+
+        return { vendors: created.size, transactions: txCount, bills: billCount };
+      });
+      res.json({ ok: true, imported: summary });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -1510,6 +1813,9 @@ export function registerRoutes(app: Express): void {
         db.khataTransaction.deleteMany(),
         db.customerKhata.deleteMany(),
         db.stockMovement.deleteMany(),
+        (db as any).vendorTransaction.deleteMany(),
+        (db as any).vendor.deleteMany(),
+        (db as any).purchaseBill.deleteMany(),
         db.expense.deleteMany(),
         db.cashDrawer.deleteMany(),
         db.syncOutbox.deleteMany(),

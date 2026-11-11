@@ -38,6 +38,10 @@ import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 import { useInventoryDashboardStyles, useStyles } from './inventoryDashboard.styles';
 
+/** Sales history window and stock cover used for reorder suggestions. */
+const REORDER_LOOKBACK_DAYS = 30;
+const REORDER_COVER_DAYS = 14;
+
 export function InventoryDashboardView(): React.JSX.Element {
   const styles = useInventoryDashboardStyles();
   const navigate = useNavigate();
@@ -107,8 +111,32 @@ export function InventoryDashboardView(): React.JSX.Element {
   const estimatedProfit = Math.max(0, totalRetailValue - totalPurchaseValue);
   const profitMarginPercent = totalRetailValue > 0 ? Math.round((estimatedProfit / totalRetailValue) * 100) : 0;
 
-  // Low Stock Items (threshold <= 10 or minThreshold)
+  // Units sold per product over the last 30 days (from POS Sale ledger entries)
+  const soldLast30Days = React.useMemo(() => {
+    const since = Date.now() - REORDER_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+    const map = new Map<string, number>();
+    for (const m of movements) {
+      if (m.type !== 'out' || m.reason !== 'POS Sale') continue;
+      if (new Date(m.date).getTime() < since) continue;
+      map.set(m.productId, (map.get(m.productId) || 0) + (Number(m.quantity) || 0));
+    }
+    return map;
+  }, [movements]);
+
+  /**
+   * Suggested reorder quantity: enough to cover REORDER_COVER_DAYS of average sales
+   * on top of the safety (minimum) level, minus what is already on hand.
+   */
+  const suggestedReorderQty = (p: Product): number => {
+    const minLevel = p.minThreshold ?? 10;
+    const dailyRate = (soldLast30Days.get(p.id) || 0) / REORDER_LOOKBACK_DAYS;
+    const target = Math.ceil(dailyRate * REORDER_COVER_DAYS) + minLevel;
+    return Math.max(1, target - Math.max(0, p.openingStock || 0));
+  };
+
+  // Low Stock Items (at or below the product's minimum level, default 10) — stock-tracked items only
   const lowStockProducts = displayedProducts
+    .filter((p) => p.openingStock !== undefined && p.openingStock !== null)
     .filter((p) => (p.openingStock || 0) <= (p.minThreshold ?? 10))
     .sort((a, b) => (a.openingStock || 0) - (b.openingStock || 0));
 
@@ -319,10 +347,13 @@ export function InventoryDashboardView(): React.JSX.Element {
                   <Badge appearance="tint" color="danger" className={styles.badgeBold}>
                     {prod.openingStock || 0} units left
                   </Badge>
+                  <Caption1 title={`Covers ${REORDER_COVER_DAYS} days of average sales plus the minimum level`}>
+                    Reorder ~{suggestedReorderQty(prod)}
+                  </Caption1>
                   <Button
                     appearance="primary"
                     size="small"
-                    onClick={() => navigate('/inventory/stock-in', { state: { productName: prod.name, productId: prod.id, costPrice: prod.costPrice } })}
+                    onClick={() => navigate('/inventory/stock-in', { state: { productName: prod.name, productId: prod.id, costPrice: prod.costPrice, quantity: suggestedReorderQty(prod) } })}
                     className={styles.restockBtn}
                   >
                     Restock

@@ -393,6 +393,10 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
       notifyWarning('Please provide a Bill / Invoice Number');
       return;
     }
+    if (vendorStorage.isBillNumberTaken(billNumber) || (await vendorStorage.isBillNumberTakenOnServer(billNumber))) {
+      notifyWarning(`Bill #${billNumber.trim()} is already recorded. Use a different Bill / Invoice Number.`);
+      return;
+    }
 
     const validLines = lines.filter((l) => l.productName.trim() && l.quantity > 0);
     if (validLines.length === 0) {
@@ -500,8 +504,12 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
       const productMap = new Map<string, Product>();
       products.forEach((p) => productMap.set(p.id, { ...p }));
 
+      // Spread the bill-level discount across lines in proportion to their value (landed cost)
+      const landedFactor = subtotal > 0 ? Math.min(1, Math.max(0, grandTotal / subtotal)) : 1;
+
       for (const line of validLines) {
         const prod = line.productId ? productMap.get(line.productId) : undefined;
+        const landedUnitCost = Math.round(Number(line.unitCost || 0) * landedFactor * 100) / 100;
         const prodModule = prod?.module || (hasFastFood && !hasOmnimart ? 'fastfood' : 'minimart');
 
         // Update variant stock if product has variants
@@ -528,7 +536,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
           productName: line.productName,
           type: 'in',
           quantity: line.quantity,
-          unitCost: line.unitCost,
+          unitCost: landedUnitCost,
           unitPrice: line.retailPrice,
           batchNumber: line.batchNumber || undefined,
           expiryDate: line.expiryDate || undefined,
@@ -546,7 +554,13 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
           const updatedProd: Product = {
             ...prod,
             openingStock: currentProdStock + Number(line.quantity),
-            costPrice: line.unitCost > 0 ? line.unitCost : prod.costPrice,
+            // Weighted average of existing stock and this receipt at landed (post-discount) cost
+            costPrice:
+              landedUnitCost > 0
+                ? currentProdStock > 0 && Number(prod.costPrice) > 0
+                  ? Math.round(((currentProdStock * Number(prod.costPrice) + Number(line.quantity) * landedUnitCost) / (currentProdStock + Number(line.quantity))) * 100) / 100
+                  : landedUnitCost
+                : prod.costPrice,
             price: line.retailPrice && line.retailPrice > 0 ? line.retailPrice : prod.price,
             batchNumber: line.batchNumber || prod.batchNumber,
             expiryDate: line.expiryDate || prod.expiryDate,

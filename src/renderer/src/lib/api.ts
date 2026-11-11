@@ -1403,6 +1403,9 @@ export const posApi = {
       referenceInvoice: data.referenceInvoice || '',
       vendorName: data.vendorName || '',
       unitCost: data.unitCost,
+      unitPrice: data.unitPrice,
+      batchNumber: data.batchNumber || undefined,
+      expiryDate: data.expiryDate || undefined,
       date: data.date || new Date().toISOString(),
     };
 
@@ -1423,6 +1426,14 @@ export const posApi = {
             openingStock: updatedStock,
             updatedAt: new Date().toISOString(),
           };
+          // Weighted average cost on receipts (mirrors the backend)
+          if (record.type === 'in' && record.unitCost && record.unitCost > 0) {
+            const curCost = Number(prod.costPrice || 0);
+            updates.costPrice =
+              currentStock > 0 && curCost > 0
+                ? Math.round(((currentStock * curCost + record.quantity * record.unitCost) / (currentStock + record.quantity)) * 100) / 100
+                : record.unitCost;
+          }
 
           if (data.variants && data.variants.length > 0) {
             updates.variants = data.variants;
@@ -2056,6 +2067,10 @@ export const posApi = {
       storage.setList(KEYS.categories, []);
       storage.setList(KEYS.orders, []);
       storage.setList(KEYS.stockMovements, []);
+      // Vendor / ledger / purchase-bill cache (backed by the SQLite tables wiped below)
+      storage.setList('pos.vendors', []);
+      storage.setList('pos.vendor_transactions', []);
+      storage.setList('pos.purchase_bills', []);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('omnipos_variant_registry');
         localStorage.removeItem('omnipos_demo_orders_cleared');

@@ -1,4 +1,5 @@
 import { storage } from '@/lib/storage';
+import { resolveApiUrl, getTenantHeaders } from '@/lib/api';
 import { uid } from '@/lib/utils';
 import { PurchaseBill } from '@shared/types';
 
@@ -35,6 +36,46 @@ export interface VendorTransaction {
 const STORAGE_KEY = 'pos.vendors';
 const TX_STORAGE_KEY = 'pos.vendor_transactions';
 const BILLS_STORAGE_KEY = 'pos.purchase_bills';
+
+const SYNC_DIRTY_KEY = 'pos.vendor_sync_dirty';
+
+/*
+ * Vendors, the vendor ledger and purchase bills live in the SQLite database (Vendor,
+ * VendorTransaction, PurchaseBill tables). localStorage is kept as a synchronous
+ * read cache so the existing screens stay instant: every write updates the cache and
+ * is pushed to the backend in order; syncWithServer() uploads anything the backend
+ * is missing (including pre-upgrade data) and then refreshes the cache from it.
+ */
+let pushChain: Promise<unknown> = Promise.resolve();
+
+function pushToServer(path: string, method: 'POST' | 'DELETE', body?: unknown): Promise<Response | null> {
+  const run = async (): Promise<Response | null> => {
+    try {
+      const base = await resolveApiUrl();
+      const headers = await getTenantHeaders();
+      const res = await fetch(`${base}${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      if (!res.ok && res.status !== 409) storage.setItem(SYNC_DIRTY_KEY, true);
+      return res;
+    } catch {
+      storage.setItem(SYNC_DIRTY_KEY, true);
+      return null;
+    }
+  };
+  // Serialise pushes so a vendor is always created before its ledger rows arrive
+  const next = pushChain.then(run, run);
+  pushChain = next.catch(() => undefined);
+  return next;
+}
+
+const nullToUndefined = <T extends Record<string, any>>(row: T): T => {
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(row)) out[k] = v === null ? undefined : v;
+  return out as T;
+};
 
 const LEGACY_DUMMY_IDS = new Set(['vend_1', 'vend_2', 'vend_3', 'vend_4']);
 const LEGACY_DUMMY_NAMES = new Set([
@@ -88,7 +129,11 @@ export const vendorStorage = {
     return migrated;
   },
 
-  saveVendor(vendor: Omit<Vendor, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Vendor {
+  saveVendor(
+    vendor: Omit<Vendor, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    opts: { push?: boolean } = {}
+  ): Vendor {
+    const push = opts.push !== false;
     const list = this.getVendors();
     const now = new Date().toISOString();
 
@@ -113,6 +158,11 @@ export const vendorStorage = {
         };
         list[idx] = updated;
         storage.setList(STORAGE_KEY, list);
+        if (push) {
+          // The backend recomputes currentBalance itself (opening-balance shift only)
+          const { currentBalance: _cb, ...profile } = updated;
+          void pushToServer('/api/vendors', 'POST', profile);
+        }
         return updated;
       }
     }
@@ -126,12 +176,14 @@ export const vendorStorage = {
     };
     list.unshift(newVendor);
     storage.setList(STORAGE_KEY, list);
+    if (push) void pushToServer('/api/vendors', 'POST', newVendor);
     return newVendor;
   },
 
   deleteVendor(id: string): void {
     const list = this.getVendors().filter((v) => v.id !== id);
     storage.setList(STORAGE_KEY, list);
+    void pushToServer(`/api/vendors/${encodeURIComponent(id)}`, 'DELETE');
   },
 
   /** Payable balance we owe this vendor (running ledger balance). */
@@ -178,7 +230,7 @@ export const vendorStorage = {
 
     if (vendor) {
       vendor.currentBalance = newBalance;
-      this.saveVendor(vendor);
+      this.saveVendor(vendor, { push: false });
     }
 
     const txs = storage.getList<VendorTransaction>(TX_STORAGE_KEY) || [];
@@ -198,12 +250,38 @@ export const vendorStorage = {
 
     txs.unshift(newTx);
     storage.setList(TX_STORAGE_KEY, txs);
+    void pushToServer('/api/vendor-transactions', 'POST', newTx);
     return newTx;
   },
 
   /* ── Multi-Item Purchase Bills Storage ── */
   getPurchaseBills(): PurchaseBill[] {
     return storage.getList<PurchaseBill>(BILLS_STORAGE_KEY) || [];
+  },
+
+  /** True when another bill (not `exceptId`) already uses this bill number (case-insensitive). */
+  isBillNumberTaken(billNumber: string, exceptId?: string): boolean {
+    const n = billNumber.trim().toLowerCase();
+    if (!n) return false;
+    return this.getPurchaseBills().some((b) => b.id !== exceptId && (b.billNumber || '').trim().toLowerCase() === n);
+  },
+
+  /**
+   * Ask the backend whether a bill number is already used. Resolves false when it is free
+   * or the backend cannot be reached (the local check still applies).
+   */
+  async isBillNumberTakenOnServer(billNumber: string, exceptId?: string): Promise<boolean> {
+    try {
+      const base = await resolveApiUrl();
+      const headers = await getTenantHeaders();
+      const res = await fetch(`${base}/api/purchase-bills`, { headers });
+      if (!res.ok) return false;
+      const rows: PurchaseBill[] = await res.json();
+      const n = billNumber.trim().toLowerCase();
+      return rows.some((b) => b.id !== exceptId && (b.billNumber || '').trim().toLowerCase() === n);
+    } catch {
+      return false;
+    }
   },
 
   savePurchaseBill(bill: PurchaseBill): PurchaseBill {
@@ -215,6 +293,65 @@ export const vendorStorage = {
       bills.unshift(bill);
     }
     storage.setList(BILLS_STORAGE_KEY, bills);
+    void pushToServer('/api/purchase-bills', 'POST', bill);
     return bill;
+  },
+
+  /** Wait until every queued push has reached the backend (or failed). */
+  async flush(): Promise<void> {
+    await pushChain;
+  },
+
+  /**
+   * Upload anything the backend is missing (first run after upgrade, or writes made while it
+   * was unreachable), then replace the local cache with the backend's data.
+   * Returns true when the cache was refreshed from the backend.
+   */
+  async syncWithServer(): Promise<boolean> {
+    try {
+      await pushChain;
+      const base = await resolveApiUrl();
+      const headers = await getTenantHeaders();
+      const jsonHeaders = { 'Content-Type': 'application/json', ...headers };
+
+      const ping = await fetch(`${base}/api/vendors`, { headers });
+      if (!ping.ok) return false;
+
+      const localVendors = storage.getList<Vendor>(STORAGE_KEY);
+      const localTx = storage.getList<VendorTransaction>(TX_STORAGE_KEY);
+      const localBills = storage.getList<PurchaseBill>(BILLS_STORAGE_KEY);
+      if (localVendors.length || localTx.length || localBills.length) {
+        const imp = await fetch(`${base}/api/vendors/import`, {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({ vendors: localVendors, transactions: localTx, bills: localBills }),
+        });
+        if (!imp.ok) return false;
+      }
+
+      const [vRes, tRes, bRes] = await Promise.all([
+        fetch(`${base}/api/vendors`, { headers }),
+        fetch(`${base}/api/vendor-transactions`, { headers }),
+        fetch(`${base}/api/purchase-bills`, { headers }),
+      ]);
+      if (!vRes.ok || !tRes.ok || !bRes.ok) return false;
+      const [vendors, txs, bills] = await Promise.all([vRes.json(), tRes.json(), bRes.json()]);
+
+      storage.setList(STORAGE_KEY, (vendors as Vendor[]).map(nullToUndefined));
+      storage.setList(TX_STORAGE_KEY, (txs as VendorTransaction[]).map(nullToUndefined));
+      storage.setList(BILLS_STORAGE_KEY, (bills as PurchaseBill[]).map(nullToUndefined));
+      storage.setItem(SYNC_DIRTY_KEY, false);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /** Drop the local cache (used by the full data wipe). */
+  clearLocalCache(): void {
+    storage.setList(STORAGE_KEY, []);
+    storage.setList(TX_STORAGE_KEY, []);
+    storage.setList(BILLS_STORAGE_KEY, []);
+    storage.setItem(SYNC_DIRTY_KEY, false);
   },
 };

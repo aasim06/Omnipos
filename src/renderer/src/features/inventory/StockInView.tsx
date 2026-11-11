@@ -116,6 +116,29 @@ function getMovementLineTotal(mov: Pick<StockMovement, 'quantity' | 'unitCost' |
   return (Number(mov.quantity) || 0) * (Number(mov.unitCost) || 0);
 }
 
+/** Gross (pre-discount) unit price recorded in the note as "Gross: PKR 120/unit". */
+function getMovementGrossUnitPrice(mov: Pick<StockMovement, 'unitCost' | 'note' | 'referenceInvoice'>): number {
+  const text = `${mov.note || ''} ${mov.referenceInvoice || ''}`;
+  const match = text.match(/Gross:\s*PKR\s*([\d,]+(?:\.\d+)?)\s*\/unit/i);
+  if (match) {
+    const parsed = Number(match[1].replace(/,/g, ''));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return Number(mov.unitCost) || 0;
+}
+
+/** Remove the auto-generated "Vendor / Discount / Gross / Sizes / Line Total" parts so edits don't pile them up. */
+function stripAutoNoteParts(note?: string): string {
+  return (note || '')
+    .split(' • ')
+    .map((part) => part.trim())
+    .filter((part) => part && !/^(Vendor|Discount|Gross|Sizes|Line Total):/i.test(part))
+    .join(' • ');
+}
+
+/** Net (after-discount) unit cost, rounded to paisa. */
+const netUnitCost = (lineTotal: number, qty: number) => (qty > 0 ? Math.round((lineTotal / qty) * 100) / 100 : 0);
+
 import { useStockInStyles, useStyles } from './stockIn.styles';
 import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext';
 
@@ -476,6 +499,7 @@ export function StockInView(): React.JSX.Element {
       form.setValue('productName', s.productName);
       if (s.productId) form.setValue('selectedProductId', s.productId);
       if (s.costPrice) form.setValue('unitPrice', s.costPrice);
+      if (s.quantity && Number(s.quantity) > 0) form.setValue('quantity', Number(s.quantity));
     }
     if (s?.vendorName) {
       form.setValue('vendorName', s.vendorName);
@@ -618,6 +642,7 @@ export function StockInView(): React.JSX.Element {
       const noteDetails = [
         data.vendorName ? `Vendor: ${data.vendorName}` : null,
         data.discountPercent && data.discountPercent > 0 ? `Discount: ${data.discountPercent}% (-PKR ${discAmt.toLocaleString()})` : null,
+        data.discountPercent && data.discountPercent > 0 ? `Gross: PKR ${unitCost.toLocaleString()}/unit` : null,
         variantSummary ? `Sizes: ${variantSummary}` : null,
         `Line Total: PKR ${calcTotal.toLocaleString()}`,
       ]
@@ -630,7 +655,8 @@ export function StockInView(): React.JSX.Element {
         productId: data.selectedProductId || uid('prod_'),
         productName: data.productName,
         quantity: data.quantity,
-        unitCost: unitCost,
+        // Net (after discount) cost drives weighted average costing and stock valuation
+        unitCost: netUnitCost(calcTotal, data.quantity),
         vendorName: data.vendorName || 'Supplier Purchase',
         reason: data.vendorName || 'Supplier Purchase',
         referenceInvoice: noteDetails,
@@ -680,8 +706,9 @@ export function StockInView(): React.JSX.Element {
       const noteDetails = [
         data.vendorName ? `Vendor: ${data.vendorName}` : null,
         data.discountPercent && data.discountPercent > 0 ? `Discount: ${data.discountPercent}% (-PKR ${discAmt.toLocaleString()})` : null,
+        data.discountPercent && data.discountPercent > 0 ? `Gross: PKR ${data.unitPrice.toLocaleString()}/unit` : null,
         `Line Total: PKR ${calcTotal.toLocaleString()}`,
-        data.note ? data.note : null,
+        stripAutoNoteParts(data.note) || null,
       ]
         .filter(Boolean)
         .join(' • ');
@@ -691,7 +718,7 @@ export function StockInView(): React.JSX.Element {
       await posApi.updateStockMovement(data.id, {
         productName: data.productName,
         quantity: data.quantity,
-        unitCost: data.unitPrice,
+        unitCost: netUnitCost(calcTotal, data.quantity),
         vendorName: data.vendorName || 'Supplier Purchase',
         reason: data.vendorName || 'Supplier Purchase',
         date: updatedDate,
@@ -799,9 +826,9 @@ export function StockInView(): React.JSX.Element {
       productName: mov.productName,
       vendorName: resolvedVendor === 'Direct Supplier / Purchase' ? '' : resolvedVendor,
       quantity: mov.quantity,
-      unitPrice: mov.unitCost || 0,
+      unitPrice: parsedDiscount > 0 ? getMovementGrossUnitPrice(mov) : mov.unitCost || 0,
       discountPercent: parsedDiscount,
-      note: mov.note || '',
+      note: stripAutoNoteParts(mov.note),
       date: localDateTimeStr,
     });
     setIsDrawerOpen(true);

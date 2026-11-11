@@ -301,6 +301,80 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     }
   }
 
+  // Stock manager (Phase 2): batch / expiry on products, vendor + invoice details on movements
+  for (const col of [`"batchNumber" TEXT`, `"expiryDate" TEXT`]) {
+    try {
+      await database.$executeRawUnsafe(`ALTER TABLE "Product" ADD COLUMN ${col}`);
+    } catch {
+      /* Ignore if column already exists */
+    }
+  }
+  for (const col of [`"vendorName" TEXT`, `"referenceInvoice" TEXT`, `"batchNumber" TEXT`, `"expiryDate" TEXT`]) {
+    try {
+      await database.$executeRawUnsafe(`ALTER TABLE "StockMovement" ADD COLUMN ${col}`);
+    } catch {
+      /* Ignore if column already exists */
+    }
+  }
+
+  await database.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "Vendor" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "name" TEXT NOT NULL,
+      "companyName" TEXT,
+      "contactPerson" TEXT,
+      "phone" TEXT,
+      "email" TEXT,
+      "address" TEXT,
+      "category" TEXT,
+      "notes" TEXT,
+      "openingBalance" REAL NOT NULL DEFAULT 0,
+      "currentBalance" REAL NOT NULL DEFAULT 0,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL
+    )
+  `);
+
+  await database.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "VendorTransaction" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "vendorId" TEXT NOT NULL,
+      "type" TEXT NOT NULL,
+      "amount" REAL NOT NULL,
+      "balanceAfter" REAL NOT NULL,
+      "description" TEXT,
+      "billId" TEXT,
+      "paymentMethod" TEXT,
+      "date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE CASCADE
+    )
+  `);
+
+  await database.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "PurchaseBill" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "billNumber" TEXT NOT NULL,
+      "vendorId" TEXT,
+      "vendorName" TEXT NOT NULL,
+      "vendorPhone" TEXT,
+      "billDate" TEXT NOT NULL,
+      "lines" TEXT NOT NULL,
+      "subtotal" REAL NOT NULL DEFAULT 0,
+      "discountAmount" REAL NOT NULL DEFAULT 0,
+      "taxAmount" REAL NOT NULL DEFAULT 0,
+      "grandTotal" REAL NOT NULL DEFAULT 0,
+      "paidAmount" REAL NOT NULL DEFAULT 0,
+      "paymentMode" TEXT NOT NULL DEFAULT 'cash',
+      "paymentStatus" TEXT NOT NULL DEFAULT 'unpaid',
+      "notes" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL
+    )
+  `);
+  await database.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "PurchaseBill_billNumber_key" ON "PurchaseBill"("billNumber")`);
+  await database.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "VendorTransaction_vendorId_idx" ON "VendorTransaction"("vendorId")`);
+
   isInitialized = true;
 }
 

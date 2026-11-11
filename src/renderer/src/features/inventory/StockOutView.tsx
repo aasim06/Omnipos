@@ -44,6 +44,14 @@ import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
+import { vendorStorage } from './vendorStorage';
+
+/** Stock sent back to the supplier: reduces stock AND what we owe that vendor. */
+const RETURN_TO_VENDOR = 'Return to Vendor';
+
+/** Value credited back to the vendor for a purchase-return movement. */
+const returnValue = (m: { quantity?: number; unitCost?: number | null }) =>
+  Math.round((Number(m.quantity) || 0) * (Number(m.unitCost) || 0) * 100) / 100;
 
 const STOCK_OUT_REASONS = [
   { value: 'Kitchen Usage', label: 'Kitchen Usage / Consumption' },
@@ -52,6 +60,7 @@ const STOCK_OUT_REASONS = [
   { value: 'Audit Adjustment', label: 'Audit Adjustment / Physical Discrepancy' },
   { value: 'Theft / Lost', label: 'Theft / Unaccounted Lost' },
   { value: 'Staff Meal', label: 'Staff Meal / Sampling' },
+  { value: RETURN_TO_VENDOR, label: 'Return to Vendor (Purchase Return)' },
   { value: 'Other Reason', label: 'Other Reason' },
 ];
 
@@ -63,6 +72,7 @@ const stockOutSchema = z.object({
   quantity: z.coerce.number().min(1, 'Qty must be at least 1 unit'),
   unitCost: z.coerce.number().min(0, 'Unit cost cannot be negative').optional(),
   note: z.string().optional(),
+  vendorName: z.string().optional(),
 });
 
 type StockOutFormData = z.infer<typeof stockOutSchema>;
@@ -178,7 +188,15 @@ export function StockOutView(): React.JSX.Element {
       if (tracked && data.quantity > tracked.stock) {
         throw new Error(`Only ${tracked.stock} unit(s) of "${tracked.name}" in stock — cannot deduct ${data.quantity}.`);
       }
-      await posApi.saveStockMovement({
+      const isReturn = data.reason === RETURN_TO_VENDOR;
+      const returnVendor = isReturn ? vendorStorage.findVendor({ name: data.vendorName }) : undefined;
+      if (isReturn && !returnVendor) {
+        throw new Error('Select the vendor this stock is being returned to.');
+      }
+      if (isReturn && !(Number(data.unitCost) > 0)) {
+        throw new Error('Enter the unit cost so the vendor can be credited for the return.');
+      }
+      const saved = await posApi.saveStockMovement({
         module: data.module || 'fastfood',
         type: 'out',
         productId: data.selectedProductId || uid('prod_'),
@@ -187,7 +205,22 @@ export function StockOutView(): React.JSX.Element {
         unitCost: data.unitCost ?? null,
         reason: data.reason,
         referenceInvoice: data.note || '',
+        ...(returnVendor ? { vendorName: returnVendor.name } : {}),
       });
+
+      // Purchase return: credit the vendor (reduces what we owe)
+      if (returnVendor) {
+        const value = returnValue(saved);
+        if (value > 0) {
+          vendorStorage.recordTransaction(
+            returnVendor.id,
+            'ADJUSTMENT',
+            -value,
+            `Purchase return: ${data.productName} × ${data.quantity}`,
+            'return'
+          );
+        }
+      }
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
@@ -206,6 +239,7 @@ export function StockOutView(): React.JSX.Element {
         quantity: 1,
         unitCost: 0,
         note: '',
+        vendorName: '',
       });
     },
     onError: (err: any) => {
@@ -223,6 +257,14 @@ export function StockOutView(): React.JSX.Element {
       if (tracked && extra > tracked.stock) {
         throw new Error(`Only ${tracked.stock} more unit(s) of "${tracked.name}" available — cannot increase deduction by ${extra}.`);
       }
+      const prev = editingMovement?.id === data.id ? editingMovement : null;
+      const wasReturn = prev?.reason === RETURN_TO_VENDOR;
+      const isReturn = data.reason === RETURN_TO_VENDOR;
+      const returnVendor = vendorStorage.findVendor({ name: prev?.vendorName || undefined });
+      if (isReturn && !returnVendor) {
+        throw new Error('Purchase returns can only be edited when the original entry has a vendor. Delete it and record the return again.');
+      }
+
       await posApi.updateStockMovement(data.id, {
         productName: data.productName,
         quantity: data.quantity,
@@ -230,6 +272,22 @@ export function StockOutView(): React.JSX.Element {
         reason: data.reason,
         note: data.note || '',
       });
+
+      // Keep the vendor credit in step with the edited return value
+      if (returnVendor && (wasReturn || isReturn)) {
+        const prevCredit = wasReturn && prev ? returnValue(prev) : 0;
+        const nextCredit = isReturn ? returnValue({ quantity: data.quantity, unitCost: data.unitCost }) : 0;
+        const delta = nextCredit - prevCredit;
+        if (delta !== 0) {
+          vendorStorage.recordTransaction(
+            returnVendor.id,
+            'ADJUSTMENT',
+            -delta,
+            `Purchase return edited: ${data.productName} (${prevCredit.toLocaleString()} → ${nextCredit.toLocaleString()})`,
+            'return'
+          );
+        }
+      }
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
@@ -251,7 +309,23 @@ export function StockOutView(): React.JSX.Element {
   // Mutation to Delete Stock Out Entry
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const target = movements.find((m) => m.id === id);
       await posApi.deleteStockMovement(id);
+
+      // Deleting a purchase return takes the vendor credit back
+      if (target?.reason === RETURN_TO_VENDOR) {
+        const vendor = vendorStorage.findVendor({ name: target.vendorName || undefined });
+        const value = returnValue(target);
+        if (vendor && value > 0) {
+          vendorStorage.recordTransaction(
+            vendor.id,
+            'ADJUSTMENT',
+            value,
+            `Purchase return deleted: ${target.productName} × ${target.quantity}`,
+            'return'
+          );
+        }
+      }
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
@@ -542,18 +616,38 @@ export function StockOutView(): React.JSX.Element {
             </div>
 
             <div>
-              <Controller
-                control={form.control}
-                name="note"
-                render={({ field }) => (
-                  <CustomInput
-                    label="DISPOSAL / AUDIT NOTE"
-                    placeholder="e.g. Broken in fridge, expired batch..."
-                    value={field.value || ''}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
+              {form.watch('reason') === RETURN_TO_VENDOR ? (
+                <Controller
+                  control={form.control}
+                  name="vendorName"
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="RETURN TO VENDOR *"
+                      required
+                      placeholder="Select vendor..."
+                      value={field.value || ''}
+                      options={vendorStorage.getVendors().map((v) => ({
+                        value: v.name,
+                        label: `${v.name} (Payable: PKR ${vendorStorage.getBalance(v).toLocaleString()})`,
+                      }))}
+                      onChange={(val) => field.onChange(val)}
+                    />
+                  )}
+                />
+              ) : (
+                <Controller
+                  control={form.control}
+                  name="note"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="DISPOSAL / AUDIT NOTE"
+                      placeholder="e.g. Broken in fridge, expired batch..."
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              )}
             </div>
 
             <div>
