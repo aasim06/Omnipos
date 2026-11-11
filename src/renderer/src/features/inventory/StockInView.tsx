@@ -149,7 +149,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 export function StockInView(): React.JSX.Element {
   const styles = useStockInStyles();
   const queryClient = useQueryClient();
-  const { notifySuccess } = useAppToast();
+  const { notifySuccess, notifyError } = useAppToast();
   const confirmModal = useConfirmDialog();
   // Editing / reversing stock entries needs the "Stock Corrections" permission
   const { hasPermission } = useAuth();
@@ -688,6 +688,15 @@ export function StockInView(): React.JSX.Element {
         reason: data.vendorName || 'Supplier Purchase',
         referenceInvoice: noteDetails,
         variants: updatedVariants,
+        // Size split ({ S: 2, M: 3 }) so the backend updates size stock and can reverse it
+        variantAllocations:
+          selectedProduct?.variants && hasAnyVariantQty
+            ? Object.fromEntries(
+                selectedProduct.variants
+                  .filter((v) => (Number(variantStockInQty[v.id]) || 0) > 0)
+                  .map((v) => [v.label, Number(variantStockInQty[v.id])])
+              )
+            : undefined,
         date: new Date().toISOString(),
       });
 
@@ -724,6 +733,7 @@ export function StockInView(): React.JSX.Element {
         expiryDate: '',
       });
     },
+    onError: (err: any) => notifyError(err?.message || 'Failed to save stock in entry'),
   });
 
   // Mutation to Update via Right Drawer
@@ -798,6 +808,7 @@ export function StockInView(): React.JSX.Element {
       setIsDrawerOpen(false);
       setEditingMovement(null);
     },
+    onError: (err: any) => notifyError(err?.message || 'Failed to update stock in entry'),
   });
 
   // Mutation to Delete Stock In Entry
@@ -826,6 +837,7 @@ export function StockInView(): React.JSX.Element {
       queryClient.invalidateQueries({ queryKey: ['inventory-dashboard'] });
       setSelectedIds([]);
     },
+    onError: (err: any) => notifyError(err?.message || 'Failed to reverse stock in entry'),
   });
 
   const onSave = (data: StockInFormData) => {
@@ -1287,8 +1299,7 @@ export function StockInView(): React.JSX.Element {
       intent: 'danger',
     });
     if (ok) {
-      deleteMutation.mutate(id);
-      notifySuccess('Stock in entry reversed.');
+      deleteMutation.mutate(id, { onSuccess: () => notifySuccess('Stock in entry reversed.') });
     }
   };
 

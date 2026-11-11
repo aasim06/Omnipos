@@ -20,7 +20,27 @@ export function resetTenantMeta(): void {
   cachedApiUrl = null;
 }
 
+/**
+ * Signed-in user, sent to the local backend so it can refuse stock corrections from users
+ * without the "Stock Corrections" permission. Base64(URI-encoded JSON) keeps it header-safe.
+ */
+function getUserHeader(): Record<string, string> {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('omnipos_user_session') : null;
+    if (!raw) return {};
+    const s = JSON.parse(raw);
+    const payload = { name: s?.name || s?.username, role: s?.role, permissions: Array.isArray(s?.permissions) ? s.permissions : [] };
+    return { 'x-omnipos-user': btoa(encodeURIComponent(JSON.stringify(payload))) };
+  } catch {
+    return {};
+  }
+}
+
 export async function getTenantHeaders(): Promise<Record<string, string>> {
+  return { ...(await getLicenseHeaders()), ...getUserHeader() };
+}
+
+async function getLicenseHeaders(): Promise<Record<string, string>> {
   if (cachedTenantMeta?.schemaId || cachedTenantMeta?.key) {
     return {
       ...(cachedTenantMeta.key ? { 'x-license-key': cachedTenantMeta.key } : {}),
@@ -258,6 +278,108 @@ async function applyLocalProductStockDelta(productId: string, delta: number): Pr
   await offlineDb.products.update(productId, updates);
   const cached = storage.getList<Product>(KEYS.products);
   storage.setList(KEYS.products, cached.map((p) => (p.id === productId ? { ...p, ...updates } : p)));
+}
+
+/** Parse a movement's size/variant split ({ S: 2, M: 3 }) from an object or JSON string. */
+export function parseVariantAllocations(raw: StockMovement['variantAllocations']): Record<string, number> {
+  let v: any = raw;
+  try {
+    if (typeof v === 'string') v = v.trim() ? JSON.parse(v) : {};
+  } catch {
+    return {};
+  }
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+  const out: Record<string, number> = {};
+  for (const [label, qty] of Object.entries(v)) {
+    const n = round3(Number(qty));
+    if (label && n > 0) out[label] = n;
+  }
+  return out;
+}
+
+/** True when a patch changes stock or value (and so must be posted as a correction). Mirrors the backend. */
+function movementStockChanged(prev: StockMovement, patch: Partial<StockMovement>): boolean {
+  if (patch.quantity !== undefined && round3(Number(patch.quantity)) !== round3(Number(prev.quantity))) return true;
+  if (patch.type !== undefined && patch.type !== prev.type) return true;
+  if (patch.unitCost !== undefined && (patch.unitCost ? Number(patch.unitCost) : null) !== (prev.unitCost ?? null)) return true;
+  if (patch.productId !== undefined && patch.productId !== prev.productId) return true;
+  if (
+    patch.variantAllocations !== undefined &&
+    JSON.stringify(parseVariantAllocations(patch.variantAllocations)) !== JSON.stringify(parseVariantAllocations(prev.variantAllocations))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Apply (sign 1) or undo (sign -1) a movement's effect on local stock and size stock. */
+async function applyLocalMovementEffect(m: StockMovement, sign: 1 | -1): Promise<void> {
+  try {
+    await applyLocalProductStockDelta(m.productId, sign * movementDelta(m));
+    const allocations = parseVariantAllocations(m.variantAllocations);
+    if (Object.keys(allocations).length === 0) return;
+    let prod = await offlineDb.products.get(m.productId);
+    if (!prod) return;
+    for (const [label, qty] of Object.entries(allocations)) {
+      const next = applyVariantStockDelta(prod, label, sign * (m.type === 'in' ? qty : -qty));
+      if (next) prod = { ...prod, variants: next };
+    }
+    await offlineDb.products.update(prod.id, { variants: prod.variants });
+  } catch (err) {
+    console.warn('[OfflineDB] local stock effect failed:', err);
+  }
+}
+
+/** Mark a movement reversed locally, add its reversal entry and undo its stock effect. */
+async function reverseLocally(existing: StockMovement, by: string | null, why?: string): Promise<void> {
+  const now = new Date().toISOString();
+  await offlineDb.stockMovements.put({
+    ...existing,
+    id: `rev_${existing.id}`,
+    type: existing.type === 'in' ? 'out' : 'in',
+    reason: 'Reversal',
+    note: `Reversal of "${existing.reason || existing.type}" entry #${existing.id.slice(-8)}${why ? ` — ${why}` : ''}`,
+    createdBy: by,
+    reversalOf: existing.id,
+    reversedAt: null,
+    reversedBy: null,
+    correctionOf: null,
+    date: now,
+  });
+  await offlineDb.stockMovements.update(existing.id, { reversedAt: now, reversedBy: by });
+  await applyLocalMovementEffect(existing, -1);
+}
+
+/**
+ * Send a stock request to the backend. Resolves null when offline / unreachable (caller queues
+ * it), otherwise { ok, status, error }.
+ */
+async function sendStockRequest(
+  method: 'POST' | 'PUT',
+  path: string,
+  body: unknown
+): Promise<{ ok: boolean; status: number; error?: string } | null> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return null;
+  try {
+    const base = await resolveApiUrl();
+    const tenantHeaders = await getTenantHeaders();
+    const res = await fetch(`${base}${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+      body: JSON.stringify(body),
+    });
+    let error: string | undefined;
+    if (!res.ok) {
+      try {
+        error = (await res.json())?.error;
+      } catch {
+        /* ignore */
+      }
+    }
+    return { ok: res.ok || res.status === 404, status: res.status, error };
+  } catch {
+    return null;
+  }
 }
 
 export const posApi = {
@@ -1460,6 +1582,7 @@ export const posApi = {
       quantity: Math.max(0, round3(Number(data.quantity || 0))),
       reason: data.reason || 'Inventory Adjustment',
       createdBy: data.createdBy || currentUserName() || null,
+      variantAllocations: data.variantAllocations ? parseVariantAllocations(data.variantAllocations) : undefined,
       note: data.note || data.referenceInvoice || '',
       referenceInvoice: data.referenceInvoice || '',
       vendorName: data.vendorName || '',
@@ -1541,95 +1664,88 @@ export const posApi = {
     return this.saveStockMovement(data);
   },
 
+  /**
+   * Edit a stock entry. Descriptive changes (note, reason, vendor, date) update it in place.
+   * Changes to quantity, type, cost, product or size split reverse the original and post a
+   * corrected entry (same as the backend), so the ledger keeps full history.
+   * Throws when the backend refuses (no permission, reversed entry).
+   */
   async updateStockMovement(id: string, patch: Partial<StockMovement>): Promise<void> {
-    try {
-      // 1. Instant local update in Dexie
-      const existing = await offlineDb.stockMovements.get(id);
-      if (existing) {
+    const existing = await offlineDb.stockMovements.get(id);
+    const by = currentUserName() || null;
+    const stockChanged = !!existing && movementStockChanged(existing, patch);
+    const newId = stockChanged ? `${id}_c${Date.now().toString(36)}` : undefined;
+    const body = { ...patch, ...(newId ? { newId } : {}), createdBy: by };
+
+    const remote = await sendStockRequest('PUT', `/api/stock-movements/${encodeURIComponent(id)}`, body);
+    if (remote && !remote.ok && (remote.status === 400 || remote.status === 403)) {
+      throw new Error(remote.error || 'The stock entry could not be changed.');
+    }
+
+    if (existing) {
+      if (stockChanged && newId) {
+        await reverseLocally(existing, by, 'corrected');
+        const corrected: StockMovement = {
+          ...existing,
+          ...patch,
+          id: newId,
+          quantity: round3(Number(patch.quantity ?? existing.quantity)),
+          createdBy: by,
+          correctionOf: id,
+          reversalOf: null,
+          reversedAt: null,
+          reversedBy: null,
+        };
+        await offlineDb.stockMovements.put(corrected);
+        await applyLocalMovementEffect(corrected, 1);
+      } else {
         await offlineDb.stockMovements.update(id, patch);
-
-        // Keep local product stock in step with the server's diff logic
-        if (patch.quantity !== undefined || patch.type !== undefined) {
-          const next = { ...existing, ...patch };
-          const diff = movementDelta(next) - movementDelta(existing);
-          try {
-            await applyLocalProductStockDelta(existing.productId, diff);
-          } catch (err) {
-            console.warn('[OfflineDB] local stock re-adjust on edit failed:', err);
-          }
-        }
       }
+    }
 
-      // 2. Enqueue for offline sync
-      await syncEngine.enqueue('stockMovement', id, 'UPDATE', { id, ...patch });
-
-      // 3. Push to backend if online
-      if (typeof navigator === 'undefined' || navigator.onLine) {
-        const base = await resolveApiUrl();
-        const tenantHeaders = await getTenantHeaders();
-        await fetch(`${base}/api/stock-movements/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-          body: JSON.stringify(patch),
-        });
-      }
-    } catch (err) {
-      console.error('[OfflineDB] updateStockMovement error:', err);
+    if (!remote) {
+      await syncEngine.enqueue('stockMovement', id, 'UPDATE', { id, ...body });
     }
   },
 
   /**
    * Reverse a stock entry (history is never deleted): posts an equal and opposite
    * "Reversal" entry, marks the original as reversed and restores stock.
-   * Throws for entries that cannot be reversed.
+   * Throws for entries that cannot be reversed or when the user lacks permission.
    */
   async reverseStockMovement(id: string, reason?: string): Promise<void> {
     const existing = await offlineDb.stockMovements.get(id);
     if (existing?.reversalOf) throw new Error('A reversal entry cannot itself be reversed.');
     if (existing?.reversedAt) return;
     const by = currentUserName() || null;
-    const now = new Date().toISOString();
 
-    // 1. Local: reversal entry + mark original + restore stock
-    if (existing) {
-      await offlineDb.stockMovements.put({
-        ...existing,
-        id: `rev_${existing.id}`,
-        type: existing.type === 'in' ? 'out' : 'in',
-        reason: 'Reversal',
-        note: `Reversal of "${existing.reason || existing.type}" entry #${existing.id.slice(-8)}${reason ? ` — ${reason}` : ''}`,
-        createdBy: by,
-        reversalOf: existing.id,
-        reversedAt: null,
-        reversedBy: null,
-        date: now,
-      });
-      await offlineDb.stockMovements.update(id, { reversedAt: now, reversedBy: by });
-      try {
-        await applyLocalProductStockDelta(existing.productId, -movementDelta(existing));
-      } catch (err) {
-        console.warn('[OfflineDB] local stock restore on reversal failed:', err);
-      }
+    const remote = await sendStockRequest('POST', `/api/stock-movements/${encodeURIComponent(id)}/reverse`, { createdBy: by, reason });
+    if (remote && !remote.ok && (remote.status === 400 || remote.status === 403)) {
+      throw new Error(remote.error || 'The stock entry could not be reversed.');
     }
 
-    // 2. Backend (DELETE on the server also reverses, so the queued fallback is safe)
-    let pushed = false;
-    if (typeof navigator === 'undefined' || navigator.onLine) {
-      try {
-        const base = await resolveApiUrl();
-        const tenantHeaders = await getTenantHeaders();
-        const res = await fetch(`${base}/api/stock-movements/${encodeURIComponent(id)}/reverse`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-          body: JSON.stringify({ createdBy: by, reason }),
-        });
-        pushed = res.ok || res.status === 404;
-      } catch {
-        pushed = false;
-      }
-    }
-    if (!pushed) {
-      await syncEngine.enqueue('stockMovement', id, 'DELETE', { id });
+    if (existing) await reverseLocally(existing, by, reason);
+    // The backend's DELETE also reverses, so the queued fallback is safe to replay
+    if (!remote) await syncEngine.enqueue('stockMovement', id, 'DELETE', { id });
+  },
+
+  /**
+   * Record a purchase bill atomically on the backend (bill + stock + vendor ledger + prices).
+   * Resolves null when the backend cannot be reached (caller falls back to the offline path).
+   */
+  async receivePurchaseBill(payload: Record<string, unknown>): Promise<{ ok: boolean; status: number; error?: string } | null> {
+    const res = await sendStockRequest('POST', '/api/purchase-bills/receive', payload);
+    return res;
+  },
+
+  /** Update fields of the local (offline) product copy only — the backend is already up to date. */
+  async patchLocalProduct(id: string, patch: Partial<Product>): Promise<void> {
+    try {
+      await offlineDb.products.update(id, { ...patch, updatedAt: new Date().toISOString() });
+      const cached = storage.getList<Product>(KEYS.products);
+      storage.setList(KEYS.products, cached.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    } catch (err) {
+      console.warn('[OfflineDB] patchLocalProduct failed:', err);
     }
   },
 

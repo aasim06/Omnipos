@@ -51,6 +51,32 @@ export function baseQuantity(line: { quantity?: unknown; selectedUnit?: unknown 
 }
 
 /** Deterministic id for the 'out' movement of a POS sale line (client writes the same id offline). */
+/** User sent by the app in the x-omnipos-user header (base64 of URI-encoded JSON), if any. */
+export function requestUser(req: Request): { name?: string; role?: string; permissions: string[] } | null {
+  const raw = req.header('x-omnipos-user');
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(decodeURIComponent(Buffer.from(raw, 'base64').toString('utf8')));
+    return { name: parsed?.name, role: parsed?.role, permissions: Array.isArray(parsed?.permissions) ? parsed.permissions : [] };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Stock corrections (edit, reverse, physical count) need the "Stock Corrections" permission.
+ * Requests that carry no user (queued offline sync, older app versions) are allowed so retries
+ * never get stuck; the app always sends the signed-in user. Not a security boundary: the local
+ * backend has no login of its own. Returns true when the request was refused.
+ */
+export function refuseWithoutStockAdjust(req: Request, res: Response): boolean {
+  const user = requestUser(req);
+  if (!user) return false;
+  if (user.role === 'admin' || user.permissions.includes('stock_adjust')) return false;
+  res.status(403).json({ error: `${user.name || 'This user'} does not have the "Stock Corrections" permission.`, code: 'FORBIDDEN' });
+  return true;
+}
+
 const toOptionalStr = (v: unknown): string | null => (v === undefined || v === null || v === '' ? null : String(v));
 
 export function saleMovementId(orderId: string, lineIndex: number): string {
@@ -1185,63 +1211,105 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  /** Parse a movement's size/variant split ({ "S": 2, "M": 3 }) from JSON or object. */
+  function parseAllocations(raw: unknown): Record<string, number> {
+    let v: any = raw;
+    try {
+      if (typeof v === 'string') v = v.trim() ? JSON.parse(v) : {};
+    } catch {
+      return {};
+    }
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+    const out: Record<string, number> = {};
+    for (const [label, qty] of Object.entries(v)) {
+      const n = round3(Number(qty));
+      if (label && n > 0) out[label] = n;
+    }
+    return out;
+  }
+
+  /** Apply a size/variant split to a product's variants JSON (sign +1 adds, -1 removes). */
+  function applyVariantAllocations(variantsRaw: unknown, allocations: Record<string, number>, sign: 1 | -1): string | null {
+    let current: unknown = variantsRaw;
+    let changed = false;
+    for (const [label, qty] of Object.entries(allocations)) {
+      const next = adjustVariantStockJson(current, label, sign * qty);
+      if (next !== null) {
+        current = next;
+        changed = true;
+      }
+    }
+    return changed ? (current as string) : null;
+  }
+
+  /**
+   * Create one stock movement and apply it (stock, weighted average cost, size split, batches)
+   * inside the caller's transaction. Idempotent by id: an existing id is returned unchanged.
+   */
+  async function createMovementTx(tx: any, b: any) {
+    if (b.id) {
+      const existing = await tx.stockMovement.findUnique({ where: { id: String(b.id) } });
+      if (existing) return existing;
+    }
+    const allocations = parseAllocations(b.variantAllocations);
+    const created = await tx.stockMovement.create({
+      data: {
+        ...(b.id ? { id: String(b.id) } : {}),
+        module: b.module || 'minimart',
+        productId: b.productId || '',
+        productName: b.productName || 'Unknown Product',
+        type: b.type === 'out' ? 'out' : 'in',
+        quantity: Math.max(0, round3(Number(b.quantity || 0))),
+        unitCost: b.unitCost ? Number(b.unitCost) : null,
+        unitPrice: b.unitPrice ? Number(b.unitPrice) : null,
+        reason: b.reason || null,
+        note: b.note || b.referenceInvoice || null,
+        vendorName: toOptionalString(b.vendorName),
+        referenceInvoice: toOptionalString(b.referenceInvoice),
+        batchNumber: toOptionalString(b.batchNumber),
+        expiryDate: toOptionalString(b.expiryDate),
+        createdBy: toOptionalString(b.createdBy),
+        variantAllocations: Object.keys(allocations).length ? JSON.stringify(allocations) : null,
+        correctionOf: toOptionalString(b.correctionOf),
+        ...(b.date ? { date: new Date(b.date) } : {}),
+      },
+    });
+
+    const product = await resolveMovementProduct(tx, b.productId, b.productName);
+    if (product) {
+      const isIn = created.type === 'in';
+      const variants = Object.keys(allocations).length ? applyVariantAllocations(product.variants, allocations, isIn ? 1 : -1) : null;
+      await tx.product.update({
+        where: { id: product.id },
+        data: {
+          openingStock: Math.max(0, round3((product.openingStock || 0) + movementDelta(created))),
+          costPrice:
+            isIn && created.unitCost
+              ? weightedAverageCost(product.openingStock || 0, product.costPrice, created.quantity, created.unitCost)
+              : product.costPrice,
+          ...(variants !== null ? { variants } : {}),
+          ...(isIn && created.batchNumber ? { batchNumber: created.batchNumber } : {}),
+          ...(isIn && created.expiryDate ? { expiryDate: created.expiryDate } : {}),
+        },
+      });
+      // Batch-wise stock: receipts with a batch / expiry open a batch, outflows draw FEFO
+      if (isIn) {
+        await openBatchForReceipt(tx, { ...created, productId: product.id });
+      } else {
+        await consumeFefo(tx, product.id, created.quantity, created.id);
+      }
+      await syncProductNearestBatch(tx, product.id);
+    }
+    return created;
+  }
+
   app.post('/api/stock-movements', async (req: Request, res: Response) => {
     try {
-      const { id, module, productId, productName, type, quantity, unitCost, unitPrice, reason, note, referenceInvoice, vendorName, batchNumber, expiryDate, createdBy, date } = req.body;
-
-      if (id) {
-        const existing = await db.stockMovement.findUnique({ where: { id: String(id) } });
-        if (existing) return res.json(existing);
-      }
-
-      const movement = await db.$transaction(async (tx: any) => {
-        const created = await tx.stockMovement.create({
-          data: {
-            ...(id ? { id: String(id) } : {}),
-            module: module || 'minimart',
-            productId: productId || '',
-            productName: productName || 'Unknown Product',
-            type: type === 'out' ? 'out' : 'in',
-            quantity: Math.max(0, round3(Number(quantity || 0))),
-            unitCost: unitCost ? Number(unitCost) : null,
-            unitPrice: unitPrice ? Number(unitPrice) : null,
-            reason: reason || null,
-            note: note || referenceInvoice || null,
-            vendorName: toOptionalString(vendorName),
-            referenceInvoice: toOptionalString(referenceInvoice),
-            batchNumber: toOptionalString(batchNumber),
-            expiryDate: toOptionalString(expiryDate),
-            createdBy: toOptionalString(createdBy),
-            ...(date ? { date: new Date(date) } : {}),
-          },
-        });
-
-        const product = await resolveMovementProduct(tx, productId, productName);
-        if (product) {
-          const isIn = created.type === 'in';
-          await tx.product.update({
-            where: { id: product.id },
-            data: {
-              openingStock: Math.max(0, round3((product.openingStock || 0) + movementDelta(created))),
-              costPrice:
-                isIn && created.unitCost
-                  ? weightedAverageCost(product.openingStock || 0, product.costPrice, created.quantity, created.unitCost)
-                  : product.costPrice,
-              ...(isIn && created.batchNumber ? { batchNumber: created.batchNumber } : {}),
-              ...(isIn && created.expiryDate ? { expiryDate: created.expiryDate } : {}),
-            },
-          });
-          // Batch-wise stock: receipts with a batch / expiry open a batch, outflows draw FEFO
-          if (isIn) {
-            await openBatchForReceipt(tx, { ...created, productId: product.id });
-          } else {
-            await consumeFefo(tx, product.id, created.quantity, created.id);
-          }
-          await syncProductNearestBatch(tx, product.id);
-        }
-        return created;
-      });
-
+      const body = req.body || {};
+      if (body.reason === 'Stock Count Adjustment' && refuseWithoutStockAdjust(req, res)) return;
+      const movement = await db.$transaction((tx: any) =>
+        createMovementTx(tx, { ...body, createdBy: body.createdBy || requestUser(req)?.name })
+      );
       res.json(movement);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -1250,8 +1318,8 @@ export function registerRoutes(app: Express): void {
 
   /**
    * Reverse a stock entry: instead of deleting history, post an equal and opposite entry
-   * (reason "Reversal") and mark the original as reversed. Stock, average cost and batches
-   * are restored. Idempotent: reversing an already-reversed entry returns the existing reversal.
+   * (reason "Reversal") and mark the original as reversed. Stock, average cost, size split and
+   * batches are restored. Idempotent: reversing again returns the existing reversal.
    */
   async function reverseMovement(tx: any, id: string, by?: string | null, why?: string | null) {
     const original = await tx.stockMovement.findUnique({ where: { id } });
@@ -1278,6 +1346,7 @@ export function registerRoutes(app: Express): void {
         referenceInvoice: original.referenceInvoice,
         batchNumber: original.batchNumber,
         expiryDate: original.expiryDate,
+        variantAllocations: original.variantAllocations,
         createdBy: toOptionalString(by),
         reversalOf: original.id,
         date: new Date(),
@@ -1290,6 +1359,10 @@ export function registerRoutes(app: Express): void {
 
     const product = await resolveMovementProduct(tx, original.productId, original.productName);
     if (product) {
+      const allocations = parseAllocations(original.variantAllocations);
+      const variants = Object.keys(allocations).length
+        ? applyVariantAllocations(product.variants, allocations, original.type === 'in' ? -1 : 1)
+        : null;
       await tx.product.update({
         where: { id: product.id },
         data: {
@@ -1298,6 +1371,7 @@ export function registerRoutes(app: Express): void {
           ...(original.type === 'in' && original.unitCost
             ? { costPrice: weightedAverageCost(product.openingStock || 0, product.costPrice, -original.quantity, original.unitCost) }
             : {}),
+          ...(variants !== null ? { variants } : {}),
         },
       });
       if (original.type === 'in') {
@@ -1312,8 +1386,10 @@ export function registerRoutes(app: Express): void {
 
   app.post('/api/stock-movements/:id/reverse', async (req: Request, res: Response) => {
     try {
+      if (refuseWithoutStockAdjust(req, res)) return;
       const id = String(req.params.id);
-      const result: any = await db.$transaction((tx: any) => reverseMovement(tx, id, req.body?.createdBy, req.body?.reason));
+      const by = req.body?.createdBy || requestUser(req)?.name;
+      const result: any = await db.$transaction((tx: any) => reverseMovement(tx, id, by, req.body?.reason));
       if (result.notFound) return res.status(404).json({ error: `Stock movement ${id} not found` });
       res.json(result);
     } catch (err: any) {
@@ -1325,8 +1401,10 @@ export function registerRoutes(app: Express): void {
   // (history is never erased). Unknown ids are a no-op so retries never get stuck.
   app.delete('/api/stock-movements/:id', async (req: Request, res: Response) => {
     try {
+      if (refuseWithoutStockAdjust(req, res)) return;
       const id = String(req.params.id);
-      const result: any = await db.$transaction((tx: any) => reverseMovement(tx, id, req.query.by as string | undefined));
+      const by = (req.query.by as string | undefined) || requestUser(req)?.name;
+      const result: any = await db.$transaction((tx: any) => reverseMovement(tx, id, by));
       if (result.notFound) return res.json({ success: true, alreadyDeleted: true });
       res.json({ success: true, reversed: true, ...result });
     } catch (err: any) {
@@ -1334,80 +1412,93 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  /** Fields whose change alters stock or value; editing any of them posts a correction. */
+  const STOCK_FIELDS = ['quantity', 'type', 'unitCost', 'productId', 'variantAllocations'] as const;
+
+  /**
+   * Edit a stock entry.
+   * - Descriptive fields only (note, reason, vendor, invoice, date, name): updated in place.
+   * - Anything that moves stock or value (qty, type, cost, product, size split): the original is
+   *   reversed and a corrected entry is posted (id from `newId`, linked by `correctionOf`), so the
+   *   ledger keeps the full history. Response: the corrected entry (or the updated one).
+   */
   app.put('/api/stock-movements/:id', async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id);
-      const { module, productId, productName, type, quantity, unitCost, unitPrice, reason, note, referenceInvoice, vendorName, batchNumber, expiryDate, date } = req.body;
+      const b = { ...(req.body || {}) };
+      b.createdBy = b.createdBy || requestUser(req)?.name;
+      // Descriptive-only edits (e.g. the legacy label clean-up) are allowed for any inventory user;
+      // anything that changes stock or value needs Stock Corrections.
+      const touchesStock = ['quantity', 'type', 'unitCost', 'productId', 'variantAllocations'].some((f) => b[f] !== undefined);
+      if (touchesStock && refuseWithoutStockAdjust(req, res)) return;
 
-      const updated = await db.$transaction(async (tx: any) => {
+      const result = await db.$transaction(async (tx: any) => {
         const prev = await tx.stockMovement.findUnique({ where: { id } });
         if (!prev) return null;
         if (prev.reversedAt || prev.reversalOf) {
           throw Object.assign(new Error('Reversed entries and reversal entries cannot be edited.'), { status: 400 });
         }
-        const next = await tx.stockMovement.update({
-          where: { id },
-          data: {
-            ...(module ? { module } : {}),
-            ...(productId ? { productId } : {}),
-            ...(productName ? { productName } : {}),
-            ...(type ? { type: type === 'out' ? 'out' : 'in' } : {}),
-            ...(quantity !== undefined ? { quantity: Math.max(0, round3(Number(quantity))) } : {}),
-            ...(unitCost !== undefined ? { unitCost: unitCost ? Number(unitCost) : null } : {}),
-            ...(unitPrice !== undefined ? { unitPrice: unitPrice ? Number(unitPrice) : null } : {}),
-            ...(reason !== undefined ? { reason } : {}),
-            ...(note !== undefined ? { note: note || null } : {}),
-            ...(vendorName !== undefined ? { vendorName: toOptionalString(vendorName) } : {}),
-            ...(referenceInvoice !== undefined ? { referenceInvoice: toOptionalString(referenceInvoice) } : {}),
-            ...(batchNumber !== undefined ? { batchNumber: toOptionalString(batchNumber) } : {}),
-            ...(expiryDate !== undefined ? { expiryDate: toOptionalString(expiryDate) } : {}),
-            ...(date ? { date: new Date(date) } : {}),
-          },
+
+        const nextAlloc = b.variantAllocations !== undefined ? JSON.stringify(parseAllocations(b.variantAllocations)) : undefined;
+        const prevAlloc = JSON.stringify(parseAllocations(prev.variantAllocations));
+        const stockChanged = STOCK_FIELDS.some((f) => {
+          if (b[f] === undefined) return false;
+          if (f === 'quantity') return round3(Number(b.quantity)) !== prev.quantity;
+          if (f === 'unitCost') return (b.unitCost ? Number(b.unitCost) : null) !== prev.unitCost;
+          if (f === 'type') return (b.type === 'out' ? 'out' : 'in') !== prev.type;
+          if (f === 'variantAllocations') return nextAlloc !== prevAlloc;
+          return String(b[f]) !== String(prev[f]);
         });
 
-        const diff = round3(movementDelta(next) - movementDelta(prev));
-        const costChanged = next.type === 'in' && !!next.unitCost && next.unitCost !== prev.unitCost;
-        if (diff !== 0 || costChanged) {
-          const product = await resolveMovementProduct(tx, next.productId, next.productName);
-          if (product) {
-            // Re-value: remove the old receipt from the average, then add the edited one
-            let cost = product.costPrice;
-            let stock = product.openingStock || 0;
-            if (prev.type === 'in' && prev.unitCost) {
-              cost = weightedAverageCost(stock, cost, -prev.quantity, prev.unitCost);
-              stock -= prev.quantity;
-            } else {
-              stock -= movementDelta(prev);
-            }
-            if (next.type === 'in' && next.unitCost) {
-              cost = weightedAverageCost(stock, cost, next.quantity, next.unitCost);
-            }
-            await tx.product.update({
-              where: { id: product.id },
-              data: {
-                openingStock: Math.max(0, round3((product.openingStock || 0) + diff)),
-                costPrice: cost,
-              },
-            });
-            // Keep batches in step with the edited quantity
-            if (prev.type === next.type) {
-              const qtyChange = round3(next.quantity - prev.quantity);
-              if (next.type === 'in') {
-                await resizeReceiptBatch(tx, next.id, qtyChange);
-              } else if (qtyChange > 0) {
-                await consumeFefo(tx, product.id, qtyChange, next.id);
-              } else if (qtyChange < 0) {
-                await restoreAllocations(tx, next.id, -qtyChange);
-              }
-              await syncProductNearestBatch(tx, product.id);
-            }
-          }
+        const meta = {
+          ...(b.module ? { module: b.module } : {}),
+          ...(b.productName ? { productName: b.productName } : {}),
+          ...(b.unitPrice !== undefined ? { unitPrice: b.unitPrice ? Number(b.unitPrice) : null } : {}),
+          ...(b.reason !== undefined ? { reason: b.reason } : {}),
+          ...(b.note !== undefined ? { note: b.note || null } : {}),
+          ...(b.vendorName !== undefined ? { vendorName: toOptionalString(b.vendorName) } : {}),
+          ...(b.referenceInvoice !== undefined ? { referenceInvoice: toOptionalString(b.referenceInvoice) } : {}),
+          ...(b.date ? { date: new Date(b.date) } : {}),
+        };
+
+        if (!stockChanged) {
+          return tx.stockMovement.update({ where: { id }, data: meta });
         }
-        return next;
+
+        await reverseMovement(tx, id, b.createdBy, 'corrected');
+        const merged = {
+          module: prev.module,
+          productId: prev.productId,
+          productName: prev.productName,
+          type: prev.type,
+          quantity: prev.quantity,
+          unitCost: prev.unitCost,
+          unitPrice: prev.unitPrice,
+          reason: prev.reason,
+          note: prev.note,
+          vendorName: prev.vendorName,
+          referenceInvoice: prev.referenceInvoice,
+          batchNumber: prev.batchNumber,
+          expiryDate: prev.expiryDate,
+          variantAllocations: prev.variantAllocations,
+          date: prev.date,
+          ...meta,
+          ...(b.productId !== undefined ? { productId: b.productId } : {}),
+          ...(b.type !== undefined ? { type: b.type } : {}),
+          ...(b.quantity !== undefined ? { quantity: b.quantity } : {}),
+          ...(b.unitCost !== undefined ? { unitCost: b.unitCost } : {}),
+          ...(b.batchNumber !== undefined ? { batchNumber: b.batchNumber } : {}),
+          ...(b.expiryDate !== undefined ? { expiryDate: b.expiryDate } : {}),
+          ...(b.variantAllocations !== undefined ? { variantAllocations: b.variantAllocations } : {}),
+          id: b.newId ? String(b.newId) : `${id}_c${Date.now().toString(36)}`,
+          createdBy: b.createdBy ?? prev.createdBy,
+          correctionOf: id,
+        };
+        return createMovementTx(tx, merged);
       });
 
-      if (!updated) return res.status(404).json({ error: `Stock movement ${id} not found` });
-      res.json(updated);
+      if (!result) return res.status(404).json({ error: `Stock movement ${id} not found` });
+      res.json(result);
     } catch (err: any) {
       res.status(err.status || 500).json({ error: err.message });
     }
@@ -1602,6 +1693,58 @@ export function registerRoutes(app: Express): void {
       res.json(parseBill(saved));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  /**
+   * Receive a purchase bill atomically: the bill, its stock-in entries (with size split, batch,
+   * expiry, landed cost), the vendor ledger rows and retail price updates are written in ONE
+   * transaction — all or nothing. Idempotent by bill id (a retry returns the stored bill).
+   * Body: { bill, vendor?, movements[], vendorTransactions[], productUpdates[] }.
+   */
+  app.post('/api/purchase-bills/receive', async (req: Request, res: Response) => {
+    try {
+      const { bill, vendor, movements = [], vendorTransactions = [], productUpdates = [] } = req.body || {};
+      if (!bill?.id) return res.status(400).json({ error: 'Bill id is required' });
+      const data = billData(bill);
+      if (!data.billNumber) return res.status(400).json({ error: 'Bill number is required' });
+      const by = toOptionalString(bill.createdBy) || requestUser(req)?.name || null;
+
+      const result = await db.$transaction(async (tx: any) => {
+        const existing = await tx.purchaseBill.findUnique({ where: { id: String(bill.id) } });
+        if (existing) return { bill: parseBill(existing), alreadyReceived: true };
+
+        const sameNumber = await tx.purchaseBill.findUnique({ where: { billNumber: data.billNumber } });
+        if (sameNumber) {
+          throw Object.assign(new Error(`Purchase bill #${data.billNumber} already exists`), { status: 409, code: 'DUPLICATE_BILL' });
+        }
+
+        // Vendor typed in on the bill may not have reached the backend yet
+        if (vendor?.id && !(await tx.vendor.findUnique({ where: { id: String(vendor.id) } }))) {
+          const opening = Number(vendor.openingBalance || 0);
+          await tx.vendor.create({ data: { id: String(vendor.id), ...vendorData(vendor), openingBalance: opening, currentBalance: opening } });
+        }
+
+        const saved = await tx.purchaseBill.create({ data: { id: String(bill.id), ...data, createdBy: by } });
+
+        const createdMovements = [];
+        for (const m of Array.isArray(movements) ? movements : []) {
+          createdMovements.push(await createMovementTx(tx, { ...m, type: 'in', createdBy: m.createdBy || by }));
+        }
+        const ledger = [];
+        for (const t of Array.isArray(vendorTransactions) ? vendorTransactions : []) {
+          ledger.push((await postVendorTransaction(tx, { ...t, createdBy: t.createdBy || by })).transaction);
+        }
+        for (const u of Array.isArray(productUpdates) ? productUpdates : []) {
+          if (!u?.id || !(Number(u.price) > 0)) continue;
+          await tx.product.updateMany({ where: { id: String(u.id) }, data: { price: Number(u.price) } });
+        }
+        return { bill: parseBill(saved), movements: createdMovements, ledger };
+      });
+
+      res.json(result);
+    } catch (err: any) {
+      res.status(err.status || 500).json({ error: err.message, ...(err.code ? { code: err.code } : {}) });
     }
   });
 

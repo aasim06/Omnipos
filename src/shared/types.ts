@@ -164,6 +164,8 @@ export interface StockMovement {
   reversalOf?: string | null; // set on a reversal entry: the id it reverses
   reversedAt?: string | null; // set on an entry that has been reversed
   reversedBy?: string | null;
+  correctionOf?: string | null; // set on a corrected entry: the id it replaces
+  variantAllocations?: Record<string, number> | string | null; // size/variant split, e.g. { S: 2, M: 3 }
   date: string;
 }
 
@@ -173,8 +175,9 @@ export interface PurchaseBillLine {
   productName: string;
   variantId?: string;
   variantLabel?: string;
-  quantity: number;
-  unitCost: number;
+  quantity: number; // in the line's unit (see unitMode)
+  unitMode?: 'base' | 'wholesale'; // 'wholesale' = quantity / cost are per carton / box
+  unitCost: number; // per the line's unit
   retailPrice?: number;
   batchNumber?: string;
   expiryDate?: string;

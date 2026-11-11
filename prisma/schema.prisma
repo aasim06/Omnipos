@@ -141,6 +141,8 @@ model StockMovement {
   reversalOf       String?  // id of the entry this one reverses
   reversedAt       DateTime? // set on an entry that has been reversed
   reversedBy       String?
+  correctionOf     String?  // set on a corrected entry: the id it replaces
+  variantAllocations String? // JSON { "S": 2, "M": 3 }: size/variant split of the quantity
   date             DateTime @default(now())
 }
 

@@ -220,7 +220,8 @@ export const vendorStorage = {
     amount: number,
     description: string,
     paymentMethod = 'cash',
-    billId?: string
+    billId?: string,
+    opts: { id?: string } = {}
   ): VendorTransaction {
     const vendors = this.getVendors();
     const vendor = vendors.find((v) => v.id === vendorId);
@@ -237,7 +238,7 @@ export const vendorStorage = {
     const txs = storage.getList<VendorTransaction>(TX_STORAGE_KEY) || [];
     const now = new Date().toISOString();
     const newTx: VendorTransaction = {
-      id: uid('vtx_'),
+      id: opts.id || uid('vtx_'),
       vendorId,
       type,
       amount,

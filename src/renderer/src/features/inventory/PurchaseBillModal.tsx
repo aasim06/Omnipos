@@ -26,7 +26,7 @@ import {
   Calendar20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { posApi } from '@/lib/api';
+import { posApi, round3 } from '@/lib/api';
 import { Product, PurchaseBill, PurchaseBillLine, StockMovement, ProductVariant } from '@shared/types';
 import { uid, formatPKR, nowISO } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
@@ -386,6 +386,12 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
     ]);
   };
 
+  /** Base units per entered unit for a line (1, or the carton/box conversion rate). */
+  const lineConversionRate = (line: PurchaseBillLine, prod?: Product): number => {
+    const rate = Number(prod?.conversionRate || 0);
+    return line.unitMode === 'wholesale' && prod?.primaryUnit && rate > 1 ? rate : 1;
+  };
+
   // Save Purchase Bill Handler
   const handleSaveBill = async () => {
     const activeVendorName = vendorName.trim() || (vendors.find((v) => v.id === selectedVendorId)?.name) || 'General Supplier';
@@ -454,7 +460,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
         }
       }
 
-      // 1. Create Purchase Bill record
+      // 1. Purchase bill record
       const purchaseBill: PurchaseBill = {
         id: uid('pb_'),
         billNumber: billNumber.trim(),
@@ -473,69 +479,39 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
         updatedAt: movementDate,
       };
 
-      vendorStorage.savePurchaseBill(purchaseBill);
-
-      // 2. Record Vendor Ledger entry if vendor selected
+      // 2. Vendor ledger rows (ids fixed up-front so the atomic save and the local cache match)
+      const ledgerRows: { id: string; type: 'BILL' | 'PAYMENT'; amount: number; description: string }[] = [];
       if (finalVendorId) {
-        // Record total bill on vendor credit
-        vendorStorage.recordTransaction(
-          finalVendorId,
-          'BILL',
-          grandTotal,
-          `Purchase Bill #${purchaseBill.billNumber} (${validLines.length} items)`,
-          paymentMode,
-          purchaseBill.id
-        );
-
-        // Record payment debit if any paid
+        ledgerRows.push({
+          id: uid('vtx_'),
+          type: 'BILL',
+          amount: grandTotal,
+          description: `Purchase Bill #${purchaseBill.billNumber} (${validLines.length} items)`,
+        });
         if (finalPaid > 0) {
-          vendorStorage.recordTransaction(
-            finalVendorId,
-            'PAYMENT',
-            finalPaid,
-            `Payment for Bill #${purchaseBill.billNumber}`,
-            paymentMode,
-            purchaseBill.id
-          );
+          ledgerRows.push({ id: uid('vtx_'), type: 'PAYMENT', amount: finalPaid, description: `Payment for Bill #${purchaseBill.billNumber}` });
         }
       }
 
-      // 3. For each line: add StockMovement (type: 'in') & update product stock/costPrice (with variant tracking)
+      // 3. Stock-in entries, in base units at landed (post-discount) cost
       const productMap = new Map<string, Product>();
       products.forEach((p) => productMap.set(p.id, { ...p }));
-
       // Spread the bill-level discount across lines in proportion to their value (landed cost)
       const landedFactor = subtotal > 0 ? Math.min(1, Math.max(0, grandTotal / subtotal)) : 1;
 
-      for (const line of validLines) {
+      const planned = validLines.map((line) => {
         const prod = line.productId ? productMap.get(line.productId) : undefined;
-        const landedUnitCost = Math.round(Number(line.unitCost || 0) * landedFactor * 100) / 100;
-        const prodModule = prod?.module || (hasFastFood && !hasOmnimart ? 'fastfood' : 'minimart');
-
-        // Update variant stock if product has variants
-        let updatedVariants: ProductVariant[] | undefined = undefined;
-        if (prod?.variants && prod.variants.length > 0) {
-          updatedVariants = prod.variants.map((v) => {
-            const isTarget =
-              (line.variantId && v.id === line.variantId) ||
-              (line.variantLabel && v.label.toLowerCase() === line.variantLabel.toLowerCase());
-            if (isTarget) {
-              const currentVStock = Number(v.stock) || 0;
-              return {
-                ...v,
-                stock: Math.max(0, currentVStock + Number(line.quantity)),
-              };
-            }
-            return v;
-          });
-        }
-
-        const movement: Omit<StockMovement, 'id'> & { variants?: ProductVariant[] } = {
-          module: prodModule,
+        const rate = lineConversionRate(line, prod);
+        const baseQty = round3(Number(line.quantity) * rate);
+        // cost is entered per the line's unit; store it per base unit
+        const landedUnitCost = Math.round(((Number(line.unitCost || 0) * landedFactor) / rate) * 100) / 100;
+        const movement: Omit<StockMovement, 'id'> & { id: string } = {
+          id: uid('mov_'),
+          module: prod?.module || (hasFastFood && !hasOmnimart ? 'fastfood' : 'minimart'),
           productId: line.productId || uid('prod_'),
           productName: line.productName,
           type: 'in',
-          quantity: line.quantity,
+          quantity: baseQty,
           unitCost: landedUnitCost,
           unitPrice: line.retailPrice,
           batchNumber: line.batchNumber || undefined,
@@ -543,31 +519,89 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
           reason: activeVendorName || 'Supplier Purchase',
           referenceInvoice: billNumber.trim(),
           vendorName: activeVendorName,
+          note:
+            rate > 1 && prod?.primaryUnit
+              ? `Bill #${billNumber.trim()} • Received: ${line.quantity} ${prod.primaryUnit} × ${rate} = ${baseQty} ${prod.secondaryUnit || prod.unit || 'PCS'}`
+              : undefined,
+          variantAllocations: line.variantLabel ? { [line.variantLabel]: baseQty } : undefined,
           date: movementDate,
-          variants: updatedVariants,
         };
-        await posApi.saveStockMovement(movement as any);
+        return { line, prod, baseQty, landedUnitCost, movement };
+      });
 
-        // Update product in local state & database
+      const vendorForServer = finalVendorId ? vendorStorage.findVendor({ id: finalVendorId }) : undefined;
+      const remote = await posApi.receivePurchaseBill({
+        bill: purchaseBill,
+        vendor: vendorForServer,
+        movements: planned.map((p) => p.movement),
+        vendorTransactions: ledgerRows.map((r) => ({
+          ...r,
+          vendorId: finalVendorId,
+          billId: purchaseBill.id,
+          paymentMethod: paymentMode,
+          date: movementDate,
+        })),
+        productUpdates: planned
+          .filter((p) => p.prod && p.line.retailPrice && p.line.retailPrice > 0 && !p.line.variantLabel)
+          .map((p) => ({ id: p.prod!.id, price: p.line.retailPrice })),
+      });
+      if (remote && !remote.ok) {
+        if (remote.status === 409) {
+          notifyWarning(`Bill #${billNumber.trim()} is already recorded. Use a different Bill / Invoice Number.`);
+          return;
+        }
+        throw new Error(remote.error || 'The backend could not record this purchase bill.');
+      }
+      const savedOnServer = !!remote;
+
+      // 4. Mirror into the local cache (re-posts are no-ops on the backend: same ids)
+      vendorStorage.savePurchaseBill(purchaseBill);
+      for (const r of ledgerRows) {
+        vendorStorage.recordTransaction(finalVendorId, r.type, r.amount, r.description, paymentMode, purchaseBill.id, { id: r.id });
+      }
+
+      for (const { line, prod, baseQty, landedUnitCost, movement } of planned) {
+        // Size stock for the local copy (the backend applies the size split itself)
+        let updatedVariants: ProductVariant[] | undefined = undefined;
+        if (prod?.variants && prod.variants.length > 0) {
+          updatedVariants = prod.variants.map((v) => {
+            const isTarget =
+              (line.variantId && v.id === line.variantId) ||
+              (line.variantLabel && v.label.toLowerCase() === line.variantLabel.toLowerCase());
+            return isTarget ? { ...v, stock: Math.max(0, (Number(v.stock) || 0) + baseQty) } : v;
+          });
+        }
+        await posApi.saveStockMovement({ ...movement, variants: updatedVariants } as any);
+
         if (prod) {
           const currentProdStock = Number(prod.openingStock) || 0;
           const updatedProd: Product = {
             ...prod,
-            openingStock: currentProdStock + Number(line.quantity),
+            openingStock: round3(currentProdStock + baseQty),
             // Weighted average of existing stock and this receipt at landed (post-discount) cost
             costPrice:
               landedUnitCost > 0
                 ? currentProdStock > 0 && Number(prod.costPrice) > 0
-                  ? Math.round(((currentProdStock * Number(prod.costPrice) + Number(line.quantity) * landedUnitCost) / (currentProdStock + Number(line.quantity))) * 100) / 100
+                  ? Math.round(((currentProdStock * Number(prod.costPrice) + baseQty * landedUnitCost) / (currentProdStock + baseQty)) * 100) / 100
                   : landedUnitCost
                 : prod.costPrice,
-            price: line.retailPrice && line.retailPrice > 0 ? line.retailPrice : prod.price,
+            price: line.retailPrice && line.retailPrice > 0 && !line.variantLabel ? line.retailPrice : prod.price,
             batchNumber: line.batchNumber || prod.batchNumber,
             expiryDate: line.expiryDate || prod.expiryDate,
             variants: updatedVariants || prod.variants,
           };
           productMap.set(prod.id, updatedProd);
-          await posApi.saveProduct(updatedProd);
+          if (savedOnServer) {
+            // Stock, cost and price are already correct on the backend; only refresh the local copy
+            await posApi.patchLocalProduct(prod.id, {
+              price: updatedProd.price,
+              batchNumber: updatedProd.batchNumber,
+              expiryDate: updatedProd.expiryDate,
+            });
+          } else {
+            // Offline: queue the whole product so the backend catches up later
+            await posApi.saveProduct(updatedProd);
+          }
         }
       }
 
@@ -757,12 +791,32 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                         <td style={{ padding: '6px 6px', verticalAlign: 'middle' }}>
                           <input
                             type="number"
-                            min="1"
+                            min="0"
+                            step="any"
                             value={line.quantity}
                             onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })}
                             className={styles.tableInput}
                             style={{ textAlign: 'center' }}
                           />
+                          {(() => {
+                            const prod = line.productId ? products.find((x) => x.id === line.productId) : undefined;
+                            const rate = Number(prod?.conversionRate || 0);
+                            if (!prod?.primaryUnit || rate <= 1 || line.variantLabel) return null;
+                            const base = prod.secondaryUnit || prod.unit || 'PCS';
+                            return (
+                              <select
+                                aria-label="Quantity unit"
+                                value={line.unitMode || 'base'}
+                                onChange={(e) => updateLine(idx, { unitMode: e.target.value as 'base' | 'wholesale' })}
+                                className={styles.tableInput}
+                                style={{ marginTop: 4, fontSize: 11, padding: '2px 4px' }}
+                                title={`1 ${prod.primaryUnit} = ${rate} ${base}`}
+                              >
+                                <option value="base">{base}</option>
+                                <option value="wholesale">{prod.primaryUnit} (×{rate})</option>
+                              </select>
+                            );
+                          })()}
                         </td>
 
                         {/* Purchase Cost */}
