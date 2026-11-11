@@ -14,9 +14,12 @@ import {
   Add20Regular,
   Receipt20Regular,
   ClipboardCheckmark20Regular,
+  Food20Regular,
 } from '@fluentui/react-icons';
 import { PurchaseBillModal } from './PurchaseBillModal';
 import { StockCountDialog } from './StockCountDialog';
+import { RecipeDialog } from './RecipeDialog';
+import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { PageHeader } from '@/components/win11';
 
 const useStyles = makeStyles({
@@ -149,6 +152,9 @@ export function InventoryLayout(): React.JSX.Element {
   const meta = pageMeta[location.pathname] || pageMeta['/inventory/dashboard'];
   const [isPurchaseBillOpen, setIsPurchaseBillOpen] = useState(false);
   const [isStockCountOpen, setIsStockCountOpen] = useState(false);
+  const [isRecipeOpen, setIsRecipeOpen] = useState(false);
+  const { can } = useLicense();
+  const hasFastFood = can('fastfood');
   const queryClient = useQueryClient();
   // Bumped after vendors / ledger / bills are refreshed from the database so the
   // current screen re-reads the synchronous vendor cache.
@@ -181,6 +187,11 @@ export function InventoryLayout(): React.JSX.Element {
               <Button appearance="secondary" icon={<ClipboardCheckmark20Regular />} onClick={() => setIsStockCountOpen(true)}>
                 Stock count
               </Button>
+              {hasFastFood && (
+                <Button appearance="secondary" icon={<Food20Regular />} onClick={() => setIsRecipeOpen(true)}>
+                  Recipes
+                </Button>
+              )}
               {!isStockOutPage && (
                 <Button appearance="secondary" icon={<ArrowCircleUp20Regular />} onClick={() => navigate('/inventory/stock-out')}>
                   Stock out
@@ -200,6 +211,9 @@ export function InventoryLayout(): React.JSX.Element {
       <div className={styles.contentArea}>
         <Outlet key={vendorDataVersion} />
       </div>
+
+      {/* ── Recipes / ingredient deduction ── */}
+      <RecipeDialog isOpen={isRecipeOpen} onClose={() => setIsRecipeOpen(false)} />
 
       {/* ── Physical Stock Count ── */}
       <StockCountDialog isOpen={isStockCountOpen} onClose={() => setIsStockCountOpen(false)} />

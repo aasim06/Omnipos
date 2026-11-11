@@ -63,13 +63,98 @@ export function adjustVariantStockJson(variantsRaw: unknown, variantLabel: unkno
   }
 }
 
+export interface RecipeLine {
+  ingredientId: string;
+  ingredientName?: string;
+  quantity: number; // ingredient stock units consumed per 1 unit of the menu item sold
+  variantLabel?: string; // only for this size/variant; omitted = every variant
+}
+
+/** Parse a product's recipe column (JSON string or array) into clean lines. */
+export function parseRecipe(raw: unknown): RecipeLine[] {
+  let value: any = raw;
+  try {
+    if (typeof value === 'string') value = value.trim() ? JSON.parse(value) : [];
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((r: any) => r && r.ingredientId && Number(r.quantity) > 0)
+    .map((r: any) => ({
+      ingredientId: String(r.ingredientId),
+      ingredientName: r.ingredientName ? String(r.ingredientName) : undefined,
+      quantity: Number(r.quantity),
+      variantLabel: r.variantLabel ? String(r.variantLabel) : undefined,
+    }));
+}
+
+/**
+ * Recipe lines that apply to a sold variant: lines for that exact variant when any exist,
+ * otherwise the lines that apply to every variant.
+ */
+export function recipeLinesFor(recipe: RecipeLine[], variantLabel?: string | null): RecipeLine[] {
+  const label = (variantLabel || '').trim().toLowerCase();
+  const generic = recipe.filter((r) => !r.variantLabel);
+  if (!label) return generic;
+  const specific = recipe.filter((r) => (r.variantLabel || '').trim().toLowerCase() === label);
+  return specific.length > 0 ? specific : generic;
+}
+
+/** Deterministic id for the ingredient movement of a sale line (client writes the same id offline). */
+export function recipeMovementId(orderId: string, lineIndex: number, ingredientIndex: number): string {
+  return `sale_${orderId}_${lineIndex}_r${ingredientIndex}`;
+}
+
+/** Deduct a sold menu item's recipe ingredients and log each as a 'Recipe Usage' out movement. */
+async function consumeRecipeIngredients(order: any, lineIndex: number, line: any, product: any): Promise<void> {
+  const db = getPrisma();
+  const lines = recipeLinesFor(parseRecipe(product.recipe), line.variantLabel);
+  if (lines.length === 0) return;
+  const soldQty = Number(line.quantity || 1);
+
+  for (let k = 0; k < lines.length; k++) {
+    const r = lines[k];
+    const used = Math.round(r.quantity * soldQty);
+    if (used <= 0) continue;
+    try {
+      await db.$transaction(async (tx: any) => {
+        const ingredient = await tx.product.findUnique({ where: { id: r.ingredientId } });
+        if (!ingredient || ingredient.openingStock === null || ingredient.openingStock === undefined) return;
+        const id = recipeMovementId(order.id, lineIndex, k);
+        if (await tx.stockMovement.findUnique({ where: { id } })) return;
+        await tx.stockMovement.create({
+          data: {
+            id,
+            module: order.module || ingredient.module || 'fastfood',
+            productId: ingredient.id,
+            productName: ingredient.name,
+            type: 'out',
+            quantity: used,
+            unitCost: ingredient.costPrice ?? null,
+            reason: 'Recipe Usage',
+            note: `Sale Order #${order.id}: ${soldQty} × ${product.name}${line.variantLabel ? ` (${line.variantLabel})` : ''}`,
+            date: order.createdAt || new Date(),
+          },
+        });
+        await tx.product.update({
+          where: { id: ingredient.id },
+          data: { openingStock: Math.max(0, (ingredient.openingStock || 0) - used), updatedAt: new Date() },
+        });
+      });
+    } catch (err) {
+      console.warn(`[Recipe] Failed to consume ingredient ${r.ingredientId} for ${product.id}:`, err);
+    }
+  }
+}
+
 export function sanitizeProduct(raw: any) {
   if (!raw || typeof raw !== 'object') return {};
   const allowed = [
     'id', 'module', 'name', 'description', 'costPrice', 'price',
     'category', 'skuCode', 'rackLocation', 'unit', 'minThreshold',
     'openingStock', 'prepTime', 'displayOrder', 'tags', 'allergens',
-    'isAvailable', 'imageBase64', 'imageUrl', 'variants', 'batchNumber', 'expiryDate'
+    'isAvailable', 'imageBase64', 'imageUrl', 'variants', 'batchNumber', 'expiryDate', 'recipe'
   ];
   const out: any = {};
   for (const k of allowed) {
@@ -79,6 +164,8 @@ export function sanitizeProduct(raw: any) {
       } else if (k === 'openingStock' || k === 'minThreshold' || k === 'prepTime' || k === 'displayOrder') {
         out[k] = raw[k] === null || raw[k] === '' || raw[k] === undefined ? null : Math.round(Number(raw[k]));
       } else if (k === 'variants') {
+        out[k] = Array.isArray(raw[k]) ? JSON.stringify(raw[k]) : typeof raw[k] === 'string' ? raw[k] : null;
+      } else if (k === 'recipe') {
         out[k] = Array.isArray(raw[k]) ? JSON.stringify(raw[k]) : typeof raw[k] === 'string' ? raw[k] : null;
       } else if (k === 'tags' || k === 'allergens') {
         out[k] = Array.isArray(raw[k]) ? JSON.stringify(raw[k]) : typeof raw[k] === 'string' ? raw[k] : null;
@@ -754,6 +841,11 @@ export function registerRoutes(app: Express): void {
                 } catch (movErr) {
                   console.warn(`[Inventory] Sale movement not recorded for ${product.id}:`, movErr);
                 }
+              }
+
+              // Recipe (bill of materials): consume the ingredients of the sold menu item
+              if (product) {
+                await consumeRecipeIngredients(order, idx, line, product);
               }
             } catch (stockErr) {
               console.error(`[Inventory] Failed to deduct stock for product ${line.productId}:`, stockErr);

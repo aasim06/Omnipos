@@ -3,6 +3,7 @@ import { offlineDb, LocalOrder, LocalCustomerKhata, LocalKhataTx, LocalExpense }
 import { syncEngine } from './syncEngine';
 import { KEYS, storage } from './storage';
 import { uid } from './utils';
+import { parseRecipe, recipeLinesFor, recipeMovementId, RECIPE_USAGE_REASON } from './recipes';
 import { decodeProductVariants, encodeProductVariants, setLocalVariantRegistry } from './variants';
 import {
   CATEGORY_PROFILES,
@@ -178,6 +179,42 @@ function applyVariantStockDelta(product: Product, variantLabel: string | undefin
   if (!changed) return null;
   setLocalVariantRegistry(product.id, next, decoded.pricingType);
   return next;
+}
+
+/** Deduct a sold menu item's recipe ingredients in Dexie and log 'Recipe Usage' movements (idempotent). */
+async function consumeLocalRecipe(
+  order: Pick<Order, 'id' | 'module' | 'createdAt'>,
+  lineIndex: number,
+  line: { quantity?: number; variantLabel?: string },
+  product: Product
+): Promise<void> {
+  const lines = recipeLinesFor(parseRecipe(product.recipe), line.variantLabel);
+  const soldQty = Number(line.quantity || 1);
+  for (let k = 0; k < lines.length; k++) {
+    const r = lines[k];
+    const used = Math.round(r.quantity * soldQty);
+    if (used <= 0) continue;
+    const id = recipeMovementId(order.id, lineIndex, k);
+    if (await offlineDb.stockMovements.get(id)) continue;
+    const ingredient = await offlineDb.products.get(r.ingredientId);
+    if (!ingredient || ingredient.openingStock === undefined || ingredient.openingStock === null) continue;
+    await offlineDb.products.update(ingredient.id, {
+      openingStock: Math.max(0, Number(ingredient.openingStock || 0) - used),
+      updatedAt: new Date().toISOString(),
+    });
+    await offlineDb.stockMovements.put({
+      id,
+      module: order.module || ingredient.module || 'fastfood',
+      productId: ingredient.id,
+      productName: ingredient.name,
+      type: 'out',
+      quantity: used,
+      unitCost: ingredient.costPrice ?? null,
+      reason: RECIPE_USAGE_REASON,
+      note: `Sale Order #${order.id}: ${soldQty} × ${product.name}${line.variantLabel ? ` (${line.variantLabel})` : ''}`,
+      date: order.createdAt || new Date().toISOString(),
+    });
+  }
 }
 
 /** Signed effect of a movement on product stock (+ for 'in', − for 'out'). */
@@ -1580,7 +1617,8 @@ export const posApi = {
           if (line.productId) {
             try {
               const localProd = await offlineDb.products.get(line.productId);
-              if (localProd && localProd.openingStock !== undefined && localProd.openingStock !== null) {
+              const alreadyRecorded = !!(await offlineDb.stockMovements.get(`sale_${order.id}_${idx}`));
+              if (localProd && !alreadyRecorded && localProd.openingStock !== undefined && localProd.openingStock !== null) {
                 const soldQty = Number(line.quantity || 1);
                 const newStock = Math.max(0, localProd.openingStock - soldQty);
                 const updatedVariants = applyVariantStockDelta(localProd, line.variantLabel, -soldQty);
@@ -1607,6 +1645,11 @@ export const posApi = {
                     date: order.createdAt || new Date().toISOString(),
                   });
                 }
+              }
+
+              // Recipe (bill of materials): consume the menu item's ingredients locally
+              if (localProd) {
+                await consumeLocalRecipe(order, idx, line, localProd);
               }
             } catch (dexieErr) {
               console.warn('[Offline DB] Error updating local stock:', dexieErr);

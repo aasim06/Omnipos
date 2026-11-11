@@ -302,7 +302,7 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
   }
 
   // Stock manager (Phase 2): batch / expiry on products, vendor + invoice details on movements
-  for (const col of [`"batchNumber" TEXT`, `"expiryDate" TEXT`]) {
+  for (const col of [`"batchNumber" TEXT`, `"expiryDate" TEXT`, `"recipe" TEXT`]) {
     try {
       await database.$executeRawUnsafe(`ALTER TABLE "Product" ADD COLUMN ${col}`);
     } catch {

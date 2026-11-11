@@ -35,8 +35,17 @@ export interface Product {
   imageUrl?: string;
   hasVariants?: boolean;
   variants?: ProductVariant[]; // e.g. Small/Medium/Large or Sizes S/M/L
+  recipe?: RecipeLine[] | string; // ingredients consumed per unit sold (string when straight from the DB)
   createdAt: string;
   updatedAt: string;
+}
+
+/** One ingredient of a menu item's recipe (bill of materials). */
+export interface RecipeLine {
+  ingredientId: string;
+  ingredientName?: string;
+  quantity: number; // ingredient stock units used per 1 unit sold
+  variantLabel?: string; // only for this size/variant; omitted = every variant
 }
 
 export interface ProductVariant {
