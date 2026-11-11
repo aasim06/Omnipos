@@ -163,8 +163,21 @@ export function StockOutView(): React.JSX.Element {
   const editTotalLossValue = editWatchedQty * editWatchedCost;
 
   // Mutation to Save Stock Out Entry: Offline-First
+  /** Current tracked stock for a product, or null when the product does not track stock. */
+  const getTrackedStock = (productId?: string, productName?: string): { name: string; stock: number } | null => {
+    const prod = allProducts.find(
+      (p) => (productId && p.id === productId) || (!!productName && p.name.toLowerCase() === productName.toLowerCase())
+    );
+    if (!prod || prod.openingStock === undefined || prod.openingStock === null) return null;
+    return { name: prod.name, stock: Number(prod.openingStock) || 0 };
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (data: StockOutFormData) => {
+      const tracked = getTrackedStock(data.selectedProductId, data.productName);
+      if (tracked && data.quantity > tracked.stock) {
+        throw new Error(`Only ${tracked.stock} unit(s) of "${tracked.name}" in stock — cannot deduct ${data.quantity}.`);
+      }
       await posApi.saveStockMovement({
         module: data.module || 'fastfood',
         type: 'out',
@@ -203,6 +216,13 @@ export function StockOutView(): React.JSX.Element {
   // Mutation to Update Stock Out Entry via Right Drawer
   const updateMutation = useMutation({
     mutationFn: async (data: EditOutFormData) => {
+      // Only the extra quantity beyond the original deduction needs to be available
+      const prevQty = editingMovement?.id === data.id ? Number(editingMovement.quantity || 0) : 0;
+      const extra = data.quantity - prevQty;
+      const tracked = getTrackedStock(editingMovement?.productId, data.productName);
+      if (tracked && extra > tracked.stock) {
+        throw new Error(`Only ${tracked.stock} more unit(s) of "${tracked.name}" available — cannot increase deduction by ${extra}.`);
+      }
       await posApi.updateStockMovement(data.id, {
         productName: data.productName,
         quantity: data.quantity,
@@ -310,6 +330,8 @@ export function StockOutView(): React.JSX.Element {
   // Only Outflow Movements (filtered by licensed modules)
   const stockOutMovements = movements.filter((m) => {
     if (m.type !== 'out') return false;
+    // POS sales are logged in the Stock Movement Ledger; this page is for manual deductions only
+    if (m.reason === 'POS Sale') return false;
     if (!hasFastFood && m.module === 'fastfood') return false;
     if (!hasOmnimart && m.module !== 'fastfood') return false;
     return true;

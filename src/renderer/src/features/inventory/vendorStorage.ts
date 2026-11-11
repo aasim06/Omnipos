@@ -21,7 +21,8 @@ export interface Vendor {
 export interface VendorTransaction {
   id: string;
   vendorId: string;
-  type: 'BILL' | 'PAYMENT';
+  /** BILL = we owe more, PAYMENT = we paid, ADJUSTMENT = signed correction (edit/delete of a purchase) */
+  type: 'BILL' | 'PAYMENT' | 'ADJUSTMENT';
   amount: number;
   balanceAfter: number;
   description: string;
@@ -94,11 +95,20 @@ export const vendorStorage = {
     if (vendor.id) {
       const idx = list.findIndex((v) => v.id === vendor.id);
       if (idx !== -1) {
+        const prev = list[idx];
+        const prevOpening = prev.openingBalance ?? 0;
+        const prevCurrent = prev.currentBalance ?? prevOpening;
+        // currentBalance is the single source of truth for what we owe the vendor.
+        // Editing the opening balance shifts the running balance by the same delta.
+        let nextCurrent = vendor.currentBalance ?? prevCurrent;
+        if (vendor.currentBalance === undefined && vendor.openingBalance !== undefined) {
+          nextCurrent = prevCurrent + ((vendor.openingBalance ?? 0) - prevOpening);
+        }
         const updated: Vendor = {
-          ...list[idx],
+          ...prev,
           ...vendor,
           id: vendor.id,
-          currentBalance: vendor.currentBalance ?? list[idx].currentBalance ?? vendor.openingBalance ?? 0,
+          currentBalance: nextCurrent,
           updatedAt: now,
         };
         list[idx] = updated;
@@ -124,6 +134,26 @@ export const vendorStorage = {
     storage.setList(STORAGE_KEY, list);
   },
 
+  /** Payable balance we owe this vendor (running ledger balance). */
+  getBalance(vendor: Pick<Vendor, 'currentBalance' | 'openingBalance'> | null | undefined): number {
+    if (!vendor) return 0;
+    return vendor.currentBalance ?? vendor.openingBalance ?? 0;
+  },
+
+  /** Find a vendor by id first, then by (company) name, case-insensitive. */
+  findVendor(idOrName?: { id?: string; name?: string }): Vendor | undefined {
+    const all = this.getVendors();
+    if (idOrName?.id) {
+      const byId = all.find((v) => v.id === idOrName.id);
+      if (byId) return byId;
+    }
+    const n = (idOrName?.name || '').trim().toLowerCase();
+    if (!n) return undefined;
+    return all.find(
+      (v) => (v.name || '').trim().toLowerCase() === n || (v.companyName || '').trim().toLowerCase() === n
+    );
+  },
+
   /* ── Vendor Running Ledger Transactions ── */
   getTransactions(vendorId?: string): VendorTransaction[] {
     const all = storage.getList<VendorTransaction>(TX_STORAGE_KEY) || [];
@@ -133,7 +163,7 @@ export const vendorStorage = {
 
   recordTransaction(
     vendorId: string,
-    type: 'BILL' | 'PAYMENT',
+    type: 'BILL' | 'PAYMENT' | 'ADJUSTMENT',
     amount: number,
     description: string,
     paymentMethod = 'cash',
@@ -143,7 +173,8 @@ export const vendorStorage = {
     const vendor = vendors.find((v) => v.id === vendorId);
     const prevBalance = vendor?.currentBalance ?? vendor?.openingBalance ?? 0;
     // BILL increases what we owe (+amount), PAYMENT decreases what we owe (-amount)
-    const newBalance = type === 'BILL' ? prevBalance + amount : prevBalance - amount;
+    // ADJUSTMENT carries a signed amount (+ increases payable, - reduces it)
+    const newBalance = type === 'PAYMENT' ? prevBalance - amount : prevBalance + amount;
 
     if (vendor) {
       vendor.currentBalance = newBalance;

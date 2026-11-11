@@ -157,6 +157,49 @@ export function recordDeletedMovementId(id: string): void {
   } catch {}
 }
 
+/**
+ * Apply a stock delta to the variant matching `variantLabel` on a local product.
+ * Returns the updated variants array (and refreshes the local variant registry),
+ * or null when the line has no variant or that variant does not track stock.
+ */
+function applyVariantStockDelta(product: Product, variantLabel: string | undefined, delta: number): ProductVariant[] | null {
+  if (!variantLabel) return null;
+  const decoded = decodeProductVariants(product);
+  const variants = Array.isArray(decoded.variants) ? decoded.variants : [];
+  const label = variantLabel.trim().toLowerCase();
+  let changed = false;
+  const next = variants.map((v) => {
+    if (!changed && (v.label || '').trim().toLowerCase() === label && v.stock !== undefined && v.stock !== null) {
+      changed = true;
+      return { ...v, stock: Math.max(0, Number(v.stock || 0) + delta) };
+    }
+    return v;
+  });
+  if (!changed) return null;
+  setLocalVariantRegistry(product.id, next, decoded.pricingType);
+  return next;
+}
+
+/** Signed effect of a movement on product stock (+ for 'in', − for 'out'). */
+function movementDelta(m: Pick<StockMovement, 'type' | 'quantity'>): number {
+  const qty = Number(m.quantity || 0);
+  return m.type === 'in' ? qty : -qty;
+}
+
+/** Apply a stock delta to a local product (Dexie + synchronous storage cache). */
+async function applyLocalProductStockDelta(productId: string, delta: number): Promise<void> {
+  if (!productId || !delta) return;
+  const prod = await offlineDb.products.get(productId);
+  if (!prod) return;
+  const updates: Partial<Product> = {
+    openingStock: Math.max(0, Number(prod.openingStock || 0) + delta),
+    updatedAt: new Date().toISOString(),
+  };
+  await offlineDb.products.update(productId, updates);
+  const cached = storage.getList<Product>(KEYS.products);
+  storage.setList(KEYS.products, cached.map((p) => (p.id === productId ? { ...p, ...updates } : p)));
+}
+
 export const posApi = {
   /**
    * Fetch products: Cache-First for instant UI load (<5ms).
@@ -982,8 +1025,13 @@ export const posApi = {
       for (const line of payload.returnedLines) {
         const p = await offlineDb.products.get(line.productId);
         if (p && p.openingStock !== undefined && p.openingStock !== null) {
-          const newStock = (p.openingStock || 0) + Number(line.quantity || 1);
-          await offlineDb.products.update(p.id, { openingStock: newStock });
+          const returnedQty = Number(line.quantity || 1);
+          const newStock = (p.openingStock || 0) + returnedQty;
+          const updatedVariants = applyVariantStockDelta(p, line.variantLabel, returnedQty);
+          await offlineDb.products.update(p.id, {
+            openingStock: newStock,
+            ...(updatedVariants ? { variants: updatedVariants } : {}),
+          });
         }
       }
     } catch (dexErr) {
@@ -1427,6 +1475,17 @@ export const posApi = {
       const existing = await offlineDb.stockMovements.get(id);
       if (existing) {
         await offlineDb.stockMovements.update(id, patch);
+
+        // Keep local product stock in step with the server's diff logic
+        if (patch.quantity !== undefined || patch.type !== undefined) {
+          const next = { ...existing, ...patch };
+          const diff = movementDelta(next) - movementDelta(existing);
+          try {
+            await applyLocalProductStockDelta(existing.productId, diff);
+          } catch (err) {
+            console.warn('[OfflineDB] local stock re-adjust on edit failed:', err);
+          }
+        }
       }
 
       // 2. Enqueue for offline sync
@@ -1452,8 +1511,16 @@ export const posApi = {
       // 1. Permanently record in tombstone blacklist so remote GET never resurrects it
       recordDeletedMovementId(id);
 
-      // 2. Instant local removal from Dexie IndexedDB
+      // 2. Instant local removal from Dexie IndexedDB, reverting its effect on local stock
+      const existing = await offlineDb.stockMovements.get(id);
       await offlineDb.stockMovements.delete(id);
+      if (existing) {
+        try {
+          await applyLocalProductStockDelta(existing.productId, -movementDelta(existing));
+        } catch (err) {
+          console.warn('[OfflineDB] local stock revert on delete failed:', err);
+        }
+      }
 
       // 3. Enqueue deletion for sync engine
       await syncEngine.enqueue('stockMovement', id, 'DELETE', { id });
@@ -1494,19 +1561,41 @@ export const posApi = {
         window.dispatchEvent(new CustomEvent('pos_orders_updated', { detail: order }));
       }
 
-      // Deduct stock in local Dexie database
+      // Deduct stock (incl. size/variant stock) in local Dexie database and log an
+      // 'out' movement locally. The server writes the same movement id, so they merge.
       if (Array.isArray(order.lines)) {
-        for (const line of order.lines) {
+        for (let idx = 0; idx < order.lines.length; idx++) {
+          const line = order.lines[idx];
           if (line.productId) {
             try {
               const localProd = await offlineDb.products.get(line.productId);
               if (localProd && localProd.openingStock !== undefined && localProd.openingStock !== null) {
                 const soldQty = Number(line.quantity || 1);
                 const newStock = Math.max(0, localProd.openingStock - soldQty);
+                const updatedVariants = applyVariantStockDelta(localProd, line.variantLabel, -soldQty);
                 await offlineDb.products.update(line.productId, {
                   openingStock: newStock,
+                  ...(updatedVariants ? { variants: updatedVariants } : {}),
                   updatedAt: new Date().toISOString(),
                 });
+
+                const movementId = `sale_${order.id}_${idx}`;
+                const existingMovement = await offlineDb.stockMovements.get(movementId);
+                if (!existingMovement) {
+                  await offlineDb.stockMovements.put({
+                    id: movementId,
+                    module: order.module || localProd.module || 'minimart',
+                    productId: localProd.id,
+                    productName: line.variantLabel ? `${localProd.name} (${line.variantLabel})` : localProd.name,
+                    type: 'out',
+                    quantity: soldQty,
+                    unitCost: localProd.costPrice ?? null,
+                    unitPrice: Number(line.unitPrice || 0) || null,
+                    reason: 'POS Sale',
+                    note: `Sale Order #${order.id}`,
+                    date: order.createdAt || new Date().toISOString(),
+                  });
+                }
               }
             } catch (dexieErr) {
               console.warn('[Offline DB] Error updating local stock:', dexieErr);

@@ -468,8 +468,8 @@ export function InventoryView(): React.JSX.Element {
   // Live valuation
   const totalStockItems = products.length;
   const totalUnitsInStock = products.reduce((acc, p) => acc + (p.openingStock || 0), 0);
-  const totalPurchaseValue = products.reduce((acc, p) => acc + (p.costPrice || 0) * (p.openingStock || 1), 0);
-  const totalRetailValue = products.reduce((acc, p) => acc + (p.price || 0) * (p.openingStock || 1), 0);
+  const totalPurchaseValue = products.reduce((acc, p) => acc + (p.costPrice || 0) * Math.max(0, p.openingStock || 0), 0);
+  const totalRetailValue = products.reduce((acc, p) => acc + (p.price || 0) * Math.max(0, p.openingStock || 0), 0);
 
   const filteredMovements = movements.filter((m) => {
     if (activeTab === 'in') return m.type === 'in';

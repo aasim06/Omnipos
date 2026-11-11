@@ -32,6 +32,37 @@ export function saveBase64Image(dataUrlOrBase64: string, prefix: string): string
   }
 }
 
+/** Deterministic id for the 'out' movement of a POS sale line (client writes the same id offline). */
+export function saleMovementId(orderId: string, lineIndex: number): string {
+  return `sale_${orderId}_${lineIndex}`;
+}
+
+/**
+ * Apply a stock delta to the variant whose label matches, inside a product's
+ * JSON-encoded variants column. Returns the new JSON string, or null when there
+ * is nothing to change (no label, no parsable variants, or the variant has no stock tracking).
+ */
+export function adjustVariantStockJson(variantsRaw: unknown, variantLabel: unknown, delta: number): string | null {
+  if (!variantLabel || variantsRaw === null || variantsRaw === undefined) return null;
+  try {
+    let vars: any = typeof variantsRaw === 'string' ? JSON.parse(variantsRaw) : variantsRaw;
+    if (typeof vars === 'string') vars = JSON.parse(vars);
+    if (!Array.isArray(vars)) return null;
+    const label = String(variantLabel).trim().toLowerCase();
+    let changed = false;
+    const next = vars.map((v: any) => {
+      if (!changed && v && String(v.label || '').trim().toLowerCase() === label && v.stock !== undefined && v.stock !== null) {
+        changed = true;
+        return { ...v, stock: Math.max(0, Number(v.stock || 0) + delta) };
+      }
+      return v;
+    });
+    return changed ? JSON.stringify(next) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function sanitizeProduct(raw: any) {
   if (!raw || typeof raw !== 'object') return {};
   const allowed = [
@@ -681,9 +712,11 @@ export function registerRoutes(app: Express): void {
         }
       }
 
-      // Deduct inventory stock for each sold product line
+      // Deduct inventory stock (incl. size/variant stock) for each sold product line
+      // and write an 'out' movement so the Stock Movement Ledger reconciles with sales.
       if (Array.isArray(lines)) {
-        for (const line of lines) {
+        for (let idx = 0; idx < lines.length; idx++) {
+          const line = lines[idx];
           if (line.productId) {
             try {
               const product = await db.product.findUnique({
@@ -692,13 +725,35 @@ export function registerRoutes(app: Express): void {
               if (product && product.openingStock !== null && product.openingStock !== undefined) {
                 const soldQty = Number(line.quantity || 1);
                 const newStock = Math.max(0, product.openingStock - soldQty);
+                const updatedVariants = adjustVariantStockJson(product.variants, line.variantLabel, -soldQty);
                 await db.product.update({
                   where: { id: String(line.productId) },
                   data: {
                     openingStock: newStock,
+                    ...(updatedVariants !== null ? { variants: updatedVariants } : {}),
                     updatedAt: new Date(),
                   },
                 });
+
+                try {
+                  await db.stockMovement.create({
+                    data: {
+                      id: saleMovementId(order.id, idx),
+                      module: order.module || product.module || 'minimart',
+                      productId: product.id,
+                      productName: line.variantLabel ? `${product.name} (${line.variantLabel})` : product.name,
+                      type: 'out',
+                      quantity: soldQty,
+                      unitCost: product.costPrice ?? null,
+                      unitPrice: Number(line.unitPrice || 0) || null,
+                      reason: 'POS Sale',
+                      note: `Sale Order #${order.id}`,
+                      date: order.createdAt || new Date(),
+                    },
+                  });
+                } catch (movErr) {
+                  console.warn(`[Inventory] Sale movement not recorded for ${product.id}:`, movErr);
+                }
               }
             } catch (stockErr) {
               console.error(`[Inventory] Failed to deduct stock for product ${line.productId}:`, stockErr);

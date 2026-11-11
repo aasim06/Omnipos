@@ -56,7 +56,7 @@ export function InventoryDashboardView(): React.JSX.Element {
   });
 
   const vendors = vendorStorage.getVendors();
-  const totalVendorPayables = vendors.reduce((acc, v) => acc + (v.openingBalance || 0), 0);
+  const totalVendorPayables = vendors.reduce((acc, v) => acc + vendorStorage.getBalance(v), 0);
 
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
@@ -102,8 +102,8 @@ export function InventoryDashboardView(): React.JSX.Element {
   // Valuations based on displayed products
   const totalStockItems = displayedProducts.length;
   const totalUnitsInStock = displayedProducts.reduce((acc, p) => acc + (p.openingStock || 0), 0);
-  const totalPurchaseValue = displayedProducts.reduce((acc, p) => acc + (p.costPrice || 0) * (p.openingStock || 1), 0);
-  const totalRetailValue = displayedProducts.reduce((acc, p) => acc + (p.price || 0) * (p.openingStock || 1), 0);
+  const totalPurchaseValue = displayedProducts.reduce((acc, p) => acc + (p.costPrice || 0) * Math.max(0, p.openingStock || 0), 0);
+  const totalRetailValue = displayedProducts.reduce((acc, p) => acc + (p.price || 0) * Math.max(0, p.openingStock || 0), 0);
   const estimatedProfit = Math.max(0, totalRetailValue - totalPurchaseValue);
   const profitMarginPercent = totalRetailValue > 0 ? Math.round((estimatedProfit / totalRetailValue) * 100) : 0;
 
@@ -216,7 +216,7 @@ export function InventoryDashboardView(): React.JSX.Element {
           tone={totalVendorPayables > 0 ? 'danger' : 'success'}
           footer={
             <Link onClick={() => navigate('/inventory/vendors')}>
-              {vendors.filter((v) => (v.openingBalance || 0) > 0).length} suppliers pending
+              {vendors.filter((v) => vendorStorage.getBalance(v) > 0).length} suppliers pending
             </Link>
           }
         />

@@ -268,7 +268,10 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
                     </tr>
                   ) : (
                     transactions.map((tx) => {
-                      const isBill = tx.type === 'BILL';
+                      const isAdjustment = tx.type === 'ADJUSTMENT';
+                      // Adjustments go in the debit column when they increase the payable, credit when they reduce it
+                      const isBill = tx.type === 'BILL' || (isAdjustment && tx.amount >= 0);
+                      const shownAmount = Math.abs(tx.amount);
                       return (
                         <tr key={tx.id} style={{ borderBottom: '1px solid #F3F2F1', color: '#323130' }}>
                           <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
@@ -277,10 +280,10 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
                           <td style={{ padding: '10px 12px' }}>
                             <Badge
                               appearance="tint"
-                              color={isBill ? 'danger' : 'success'}
+                              color={isAdjustment ? 'warning' : isBill ? 'danger' : 'success'}
                               icon={isBill ? <ArrowUp20Regular /> : <ArrowDown20Regular />}
                             >
-                              {isBill ? 'Purchase Bill' : 'Payment'}
+                              {isAdjustment ? 'Adjustment' : isBill ? 'Purchase Bill' : 'Payment'}
                             </Badge>
                           </td>
                           <td style={{ padding: '10px 12px' }}>
@@ -292,10 +295,10 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
                             )}
                           </td>
                           <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: isBill ? '#D13438' : '#8A8886' }}>
-                            {isBill ? formatPKR(tx.amount) : '—'}
+                            {isBill ? formatPKR(shownAmount) : '—'}
                           </td>
                           <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: !isBill ? '#107C41' : '#8A8886' }}>
-                            {!isBill ? formatPKR(tx.amount) : '—'}
+                            {!isBill ? formatPKR(shownAmount) : '—'}
                           </td>
                           <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: tx.balanceAfter > 0 ? '#D13438' : '#107C41' }}>
                             {formatPKR(tx.balanceAfter)}

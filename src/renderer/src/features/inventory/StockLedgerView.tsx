@@ -67,6 +67,10 @@ export function StockLedgerView(): React.JSX.Element {
   const queryClient = useQueryClient();
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const target = movements.find((m) => m.id === id);
+      if (target?.reason === 'POS Sale') {
+        throw new Error('POS sale entries cannot be deleted here. Use Customers & Returns to process a return.');
+      }
       await posApi.deleteStockMovement(id);
     },
     onSuccess: async () => {

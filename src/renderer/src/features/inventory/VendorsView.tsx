@@ -455,8 +455,8 @@ export function VendorsView(): React.JSX.Element {
                           {v.address || '—'}
                         </span>
                       </td>
-                      <td className={mergeClasses(styles.td, (v.openingBalance || 0) > 0 ? styles.tdBalanceDebit : styles.tdBalanceCredit)}>
-                        {formatPKR(v.openingBalance || 0)}
+                      <td className={mergeClasses(styles.td, vendorStorage.getBalance(v) > 0 ? styles.tdBalanceDebit : styles.tdBalanceCredit)}>
+                        {formatPKR(vendorStorage.getBalance(v))}
                       </td>
                       <td className={styles.td}>
                         <span className={styles.secondaryText}>
@@ -643,7 +643,7 @@ export function VendorsView(): React.JSX.Element {
                   control={editForm.control}
                   render={({ field }) => (
                     <CustomInput
-                      label="Opening / Current Balance (PKR)"
+                      label="Opening Balance (PKR)"
                       type="number"
                       placeholder="0"
                       value={field.value !== undefined ? String(field.value) : '0'}
@@ -758,7 +758,7 @@ export function VendorsView(): React.JSX.Element {
                   <div className={styles.slipBalanceBox}>
                     <div className={styles.slipBalanceRow}>
                       <span>CURRENT BALANCE:</span>
-                      <span>{formatPKR(printingVendor.openingBalance || 0)}</span>
+                      <span>{formatPKR(vendorStorage.getBalance(printingVendor))}</span>
                     </div>
                   </div>
 

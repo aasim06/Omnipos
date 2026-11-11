@@ -30,8 +30,8 @@ export default function StockInPage() {
   // Compute live inventory valuation metrics
   const totalItemsCount = products.length;
   const totalStockUnits = products.reduce((sum, p) => sum + (p.openingStock || 0), 0);
-  const totalPurchaseCost = products.reduce((sum, p) => sum + (p.costPrice || 0) * (p.openingStock || 1), 0);
-  const totalRetailValuation = products.reduce((sum, p) => sum + (p.price || 0) * (p.openingStock || 1), 0);
+  const totalPurchaseCost = products.reduce((sum, p) => sum + (p.costPrice || 0) * Math.max(0, p.openingStock || 0), 0);
+  const totalRetailValuation = products.reduce((sum, p) => sum + (p.price || 0) * Math.max(0, p.openingStock || 0), 0);
 
   function handleStockInSubmit(data: {
     module: "fastfood" | "minimart";

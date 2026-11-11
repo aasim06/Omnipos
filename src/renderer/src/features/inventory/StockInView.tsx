@@ -102,6 +102,20 @@ const editSchema = z.object({
 
 type EditFormData = z.infer<typeof editSchema>;
 
+/**
+ * Net (after-discount) value of a stock-in line. The net total is stored in the
+ * note as "Line Total: PKR 1,234"; fall back to qty × unit cost when absent.
+ */
+function getMovementLineTotal(mov: Pick<StockMovement, 'quantity' | 'unitCost' | 'note' | 'referenceInvoice'>): number {
+  const text = `${mov.note || ''} ${mov.referenceInvoice || ''}`;
+  const match = text.match(/Line Total:\s*PKR\s*([\d,]+(?:\.\d+)?)/i);
+  if (match) {
+    const parsed = Number(match[1].replace(/,/g, ''));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return (Number(mov.quantity) || 0) * (Number(mov.unitCost) || 0);
+}
+
 import { useStockInStyles, useStyles } from './stockIn.styles';
 import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext';
 
@@ -188,12 +202,18 @@ export function StockInView(): React.JSX.Element {
       let anyChanged = false;
 
       for (const m of movements) {
+        // Only heal legacy purchase inflows. Stock-out, sales-return and POS-sale
+        // movements must never have their reason/date rewritten.
+        if (m.type !== 'in') continue;
+        const isLegacyPurchaseLabel = m.reason === 'purchase_invoice' || m.vendorName === 'purchase_invoice';
+        if (!isLegacyPurchaseLabel) continue;
+
         let needsPatch = false;
         const patch: Partial<StockMovement> = {};
         const linked = m.referenceInvoice ? bMap.get(m.referenceInvoice.trim().toLowerCase()) : null;
 
         // Fix 'purchase_invoice' vendor label
-        if (m.reason === 'purchase_invoice' || !m.vendorName || m.vendorName === 'purchase_invoice') {
+        if (isLegacyPurchaseLabel) {
           const vName = linked?.vendorName || (m.vendorName && m.vendorName !== 'purchase_invoice' ? m.vendorName : null) || 'General Supplier';
           patch.vendorName = vName;
           patch.reason = vName;
@@ -618,20 +638,17 @@ export function StockInView(): React.JSX.Element {
         date: new Date().toISOString(),
       });
 
-      // Update Vendor Payable Balance in real-time
-      if (data.vendorName) {
-        const vName = data.vendorName.trim().toLowerCase();
-        const allVendors = vendorStorage.getVendors();
-        const matched = allVendors.find(
-          (v) =>
-            (v.companyName || v.name).trim().toLowerCase() === vName ||
-            (data.vendorId && v.id === data.vendorId)
-        );
+      // Post the purchase to the vendor ledger (updates the running payable balance)
+      if (data.vendorName && calcTotal > 0) {
+        const matched = vendorStorage.findVendor({ id: data.vendorId, name: data.vendorName });
         if (matched) {
-          vendorStorage.saveVendor({
-            ...matched,
-            openingBalance: (matched.openingBalance || 0) + calcTotal,
-          });
+          vendorStorage.recordTransaction(
+            matched.id,
+            'BILL',
+            calcTotal,
+            `Stock In: ${data.productName} × ${data.quantity}`,
+            'credit'
+          );
         }
       }
     },
@@ -681,21 +698,39 @@ export function StockInView(): React.JSX.Element {
         note: noteDetails,
       });
 
-      // Update Vendor Payable Balance difference
-      if (data.vendorName) {
-        const vName = data.vendorName.trim().toLowerCase();
-        const prev = editingMovement;
-        const allVendors = vendorStorage.getVendors();
-        const matched = allVendors.find(
-          (v) => (v.companyName || v.name).trim().toLowerCase() === vName
-        );
-        if (matched) {
-          const prevCost = prev ? (prev.quantity || 0) * (prev.unitCost || 0) : 0;
-          const diff = calcTotal - prevCost;
-          vendorStorage.saveVendor({
-            ...matched,
-            openingBalance: Math.max(0, (matched.openingBalance || 0) + diff),
-          });
+      // Adjust vendor ledger: reverse the old amount on the old vendor, post the new amount on the new vendor
+      const prev = editingMovement;
+      const prevVendor = prev ? vendorStorage.findVendor({ name: prev.vendorName || prev.reason }) : undefined;
+      const nextVendor = data.vendorName ? vendorStorage.findVendor({ name: data.vendorName }) : undefined;
+      const prevTotal = prev ? getMovementLineTotal(prev) : 0;
+
+      if (prevVendor && nextVendor && prevVendor.id === nextVendor.id) {
+        const diff = calcTotal - prevTotal;
+        if (diff !== 0) {
+          vendorStorage.recordTransaction(
+            nextVendor.id,
+            'ADJUSTMENT',
+            diff,
+            `Stock In edited: ${data.productName} (${prevTotal.toLocaleString()} → ${calcTotal.toLocaleString()})`
+          );
+        }
+      } else {
+        if (prevVendor && prevTotal > 0) {
+          vendorStorage.recordTransaction(
+            prevVendor.id,
+            'ADJUSTMENT',
+            -prevTotal,
+            `Stock In moved to another vendor: ${prev?.productName || data.productName}`
+          );
+        }
+        if (nextVendor && calcTotal > 0) {
+          vendorStorage.recordTransaction(
+            nextVendor.id,
+            'BILL',
+            calcTotal,
+            `Stock In: ${data.productName} × ${data.quantity}`,
+            'credit'
+          );
         }
       }
     },
@@ -714,18 +749,17 @@ export function StockInView(): React.JSX.Element {
       const target = movements.find((m) => m.id === id);
       await posApi.deleteStockMovement(id);
 
-      // Revert vendor payable balance if linked
-      if (target && target.reason && target.reason !== 'Supplier Purchase') {
-        const allVendors = vendorStorage.getVendors();
-        const matched = allVendors.find(
-          (v) => (v.companyName || v.name).trim().toLowerCase() === target.reason?.trim().toLowerCase()
-        );
-        if (matched) {
-          const lineCost = (target.quantity || 0) * (target.unitCost || 0);
-          vendorStorage.saveVendor({
-            ...matched,
-            openingBalance: Math.max(0, (matched.openingBalance || 0) - lineCost),
-          });
+      // Reverse the purchase on the vendor ledger if it was posted to a vendor
+      if (target) {
+        const matched = vendorStorage.findVendor({ name: target.vendorName || target.reason });
+        const lineCost = getMovementLineTotal(target);
+        if (matched && lineCost > 0) {
+          vendorStorage.recordTransaction(
+            matched.id,
+            'ADJUSTMENT',
+            -lineCost,
+            `Stock In deleted: ${target.productName} × ${target.quantity}`
+          );
         }
       }
     },
@@ -797,7 +831,7 @@ export function StockInView(): React.JSX.Element {
     : 0;
   const printDiscountAmount = (printGrossTotal * printDiscountPercent) / 100;
   const printNetTotal = printGrossTotal - printDiscountAmount;
-  const printVendorBalance = currentPrintVendor?.openingBalance || printNetTotal;
+  const printVendorBalance = (currentPrintVendor ? vendorStorage.getBalance(currentPrintVendor) : 0) || printNetTotal;
   const printPrevBalance = Math.max(0, printVendorBalance - printNetTotal);
   const resolvedPrintDate = printingMovement ? getResolvedDate(printingMovement) : null;
   const printDocNo = printingMovement && resolvedPrintDate
