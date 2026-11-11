@@ -214,7 +214,10 @@ export function sanitizeProduct(raw: any) {
       } else if (k === 'openingStock') {
         // Decimal stock is allowed (KG, L, meters)
         out[k] = raw[k] === null || raw[k] === '' || raw[k] === undefined ? null : round3(Number(raw[k]));
-      } else if (k === 'minThreshold' || k === 'prepTime' || k === 'displayOrder') {
+      } else if (k === 'minThreshold') {
+        // Low-stock alert limit: decimals allowed, empty = use the store default
+        out[k] = raw[k] === null || raw[k] === '' || raw[k] === undefined ? null : Math.max(0, round3(Number(raw[k])));
+      } else if (k === 'prepTime' || k === 'displayOrder') {
         out[k] = raw[k] === null || raw[k] === '' || raw[k] === undefined ? null : Math.round(Number(raw[k]));
       } else if (k === 'variants') {
         out[k] = Array.isArray(raw[k]) ? JSON.stringify(raw[k]) : typeof raw[k] === 'string' ? raw[k] : null;
@@ -1502,6 +1505,32 @@ export function registerRoutes(app: Express): void {
       res.json(result);
     } catch (err: any) {
       res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  /**
+   * Set low-stock alert limits for many products at once. Only minThreshold is written, so
+   * stock and prices can never be overwritten from a stale screen.
+   * Body: { items: [{ id, minThreshold: number | null }] } (null = use the store default).
+   */
+  app.post('/api/products/alert-limits', async (req: Request, res: Response) => {
+    try {
+      const items = Array.isArray(req.body?.items) ? req.body.items : [];
+      let updated = 0;
+      await db.$transaction(async (tx: any) => {
+        for (const it of items) {
+          if (!it?.id) continue;
+          const value = it.minThreshold === null || it.minThreshold === '' || it.minThreshold === undefined
+            ? null
+            : Math.max(0, round3(Number(it.minThreshold)));
+          if (value !== null && !Number.isFinite(value)) continue;
+          const r = await tx.product.updateMany({ where: { id: String(it.id) }, data: { minThreshold: value } });
+          updated += r.count;
+        }
+      });
+      res.json({ ok: true, updated });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
     }
   });
 

@@ -3,6 +3,7 @@ import { getTokens } from '@/features/pos/posTokens';
 import React from 'react';
 import { decodeProductVariants } from '@/lib/variants';
 import { Add16Filled, Delete16Regular, Options16Regular, Scales16Regular, Subtract16Filled } from '@fluentui/react-icons';
+import { lowStockLimit } from '@/lib/stockStatus';
 
 export interface FastFoodVisualCardProps {
   product: Product;
@@ -83,7 +84,7 @@ export const FastFoodVisualCard = React.memo(
     const stock = product.openingStock;
     const hasStock = stock !== null && stock !== undefined;
     const isOut = !isFood && hasStock && (stock as number) <= 0;
-    const isLowStock = !isFood && !isOut && hasStock && (stock as number) <= (product.minThreshold ?? 10);
+    const isLowStock = !isFood && !isOut && hasStock && (stock as number) <= lowStockLimit(product);
 
     // inCartMap[id] already totals every variant line of this product.
     const inCartQty = inCartMap[product.id] ?? 0;

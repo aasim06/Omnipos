@@ -95,7 +95,7 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
       "skuCode" TEXT,
       "rackLocation" TEXT,
       "unit" TEXT,
-      "minThreshold" INTEGER,
+      "minThreshold" REAL,
       "openingStock" REAL,
       "prepTime" INTEGER,
       "displayOrder" INTEGER DEFAULT 0,

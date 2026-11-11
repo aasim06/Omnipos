@@ -82,6 +82,7 @@ import {
 } from 'lucide-react';
 import { setLocalVariantRegistry } from '@/lib/variants';
 import { CategoryProfile } from '@/lib/types';
+import { getLowStockDefault } from '@/lib/stockStatus';
 
 export const PRICING_TYPES_FASTFOOD = [
   {
@@ -435,7 +436,11 @@ const productSchema = z.object({
   rackLocation: z.string().optional(),
   prepTime: z.coerce.number().min(0).optional(),
   openingStock: z.coerce.number().min(0, 'Stock cannot be negative').nullable().optional(),
-  minThreshold: z.coerce.number().min(0).default(10),
+  // Low-stock alert limit: empty = store default, 0 = alert off, decimals allowed
+  minThreshold: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+    z.number().min(0, 'Alert limit cannot be negative').optional()
+  ),
   imageUrl: z.string().optional(),
   description: z.string().optional(),
   primaryUnit: z.string().optional(),
@@ -535,7 +540,7 @@ export function AddProductView(): React.JSX.Element {
       skuCode: generateRandomSku(),
       rackLocation: '',
       openingStock: defaultModule === 'fastfood' ? undefined : 0,
-      minThreshold: 10,
+      minThreshold: undefined,
       imageUrl: '',
       description: '',
       primaryUnit: '',
@@ -2108,7 +2113,8 @@ export function AddProductView(): React.JSX.Element {
         rackLocation: data.rackLocation,
         prepTime: data.prepTime,
         openingStock: data.openingStock !== undefined && data.openingStock !== null ? data.openingStock : (data.module === 'fastfood' ? undefined : 0),
-        minThreshold: data.minThreshold,
+        // null clears the item's own limit so the store default applies
+        minThreshold: (data.minThreshold ?? null) as number | undefined,
         imageUrl: imagePreview || data.imageUrl || undefined,
         description: combinedNotes || undefined,
         primaryUnit: data.primaryUnit?.trim() || undefined,
@@ -4202,6 +4208,31 @@ export function AddProductView(): React.JSX.Element {
                 )}
               </div>
             )}
+
+            {/* Low-stock alert limit */}
+            <div className={styles.twoColGrid}>
+              <div>
+                <Controller
+                  control={productForm.control}
+                  name="minThreshold"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Low Stock Alert At (Optional)"
+                      type="number"
+                      step="any"
+                      min={0}
+                      placeholder={`Store default (${getLowStockDefault()})`}
+                      value={field.value !== undefined && field.value !== null ? String(field.value) : ''}
+                      onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                      error={productForm.formState.errors.minThreshold?.message as string | undefined}
+                    />
+                  )}
+                />
+                <span className={styles.apStyle_101} style={{ display: 'block', marginTop: 4 }}>
+                  Warn when stock falls to this level. Empty = store default, 0 = no alert for this item.
+                </span>
+              </div>
+            </div>
 
             {/* Unit & Barcode / SKU / Kitchen Prep Time */}
             <div className={watchedModule === 'fastfood' ? styles.twoColGrid : styles.threeColGrid}>

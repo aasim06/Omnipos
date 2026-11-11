@@ -1738,6 +1738,19 @@ export const posApi = {
     return res;
   },
 
+  /**
+   * Save low-stock alert limits for many products (only minThreshold changes; null = store default).
+   * Updates the local copy first, then the backend; throws if the backend rejects the save.
+   */
+  async setAlertLimits(items: { id: string; minThreshold: number | null }[]): Promise<void> {
+    for (const it of items) {
+      // undefined clears the item's own limit so the store default applies
+      await this.patchLocalProduct(it.id, { minThreshold: it.minThreshold ?? undefined } as Partial<Product>);
+    }
+    const res = await sendStockRequest('POST', '/api/products/alert-limits', { items });
+    if (res && !res.ok) throw new Error(res.error || 'Could not save alert limits');
+  },
+
   /** Update fields of the local (offline) product copy only — the backend is already up to date. */
   async patchLocalProduct(id: string, patch: Partial<Product>): Promise<void> {
     try {

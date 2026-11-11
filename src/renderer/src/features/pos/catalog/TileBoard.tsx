@@ -8,6 +8,7 @@ import { playBeep } from '@/lib/soundFx';
 import { hasOpenPosDialog } from '@/features/pos/posDialog';
 import { Add16Filled, Apps24Regular, ArrowLeft20Regular, ChevronRight16Regular, MoreVertical16Regular, Options16Regular, Scales16Regular, Star16Filled, Star16Regular } from '@fluentui/react-icons';
 import { CategoryTileIcon, TileTint, autoTintIndex, categoryTint, sortCategoryNames } from '@/features/pos/categoryStyle';
+import { lowStockLimit } from '@/lib/stockStatus';
 
 type Tint = TileTint;
 
@@ -510,7 +511,7 @@ function ItemTile({
   const stock = product.openingStock;
   const hasStock = stock !== null && stock !== undefined;
   const isOut = !isFood && hasStock && (stock as number) <= 0;
-  const isLow = !isFood && !isOut && hasStock && (stock as number) <= (product.minThreshold ?? 10);
+  const isLow = !isFood && !isOut && hasStock && (stock as number) <= lowStockLimit(product);
   const inCart = inCartMap[product.id] ?? 0;
   const unit = (product.unit || 'kg').toLowerCase();
   const photo = product.imageBase64 || product.imageUrl;

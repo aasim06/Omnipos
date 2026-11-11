@@ -18,7 +18,7 @@ model Product {
   skuCode      String?
   rackLocation String?
   unit         String?
-  minThreshold Int?
+  minThreshold Float?          // low-stock alert limit; 0 = alert off, null = store default
   openingStock Float?          // current stock in the base (retail) unit; decimals allowed (KG, L)
   prepTime     Int?
   displayOrder Int?            @default(0)

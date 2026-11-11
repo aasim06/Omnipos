@@ -2,6 +2,7 @@ import { PosCounterState } from '@/features/pos/usePosCounter';
 import { playBeep } from '@/lib/soundFx';
 import { Add16Filled, Scales20Regular } from '@fluentui/react-icons';
 import { FastFoodVisualCard } from '@/features/pos/catalog/FastFoodVisualCard';
+import { lowStockLimit } from '@/lib/stockStatus';
 
 export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCounterState; highlightSelected?: boolean }) {
   const {
@@ -70,7 +71,7 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                   filteredProducts.map((product) => {
                     const isFood = product.module === 'fastfood';
                     const isOut = !isFood && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= 0;
-                    const isLowStock = !isFood && !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= (product.minThreshold ?? 10);
+                    const isLowStock = !isFood && !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= lowStockLimit(product);
                     const inCartCount = inCartMap[product.id] || 0;
                     const isWeightItem = isWeighableOrLiquid(product.unit);
 

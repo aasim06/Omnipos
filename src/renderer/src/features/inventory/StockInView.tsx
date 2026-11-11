@@ -54,6 +54,7 @@ import { vendorStorage } from './vendorStorage';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { detectCategoryProfile, getFilteredProfileOptions } from '@/lib/categoryProfiles';
+import { lowStockLimit } from '@/lib/stockStatus';
 
 export const FOOD_GROUPS: Record<string, { label: string; match: RegExp }> = {
   burgers: { label: 'Burgers & Sandwiches', match: /(burger|sandwich|shawarma|roll|wrap|patty)/i },
@@ -1629,7 +1630,7 @@ export function StockInView(): React.JSX.Element {
                         color={
                           (selectedProduct.openingStock ?? 0) <= 0
                             ? 'danger'
-                            : (selectedProduct.openingStock ?? 0) <= (selectedProduct.minThreshold ?? 10)
+                            : (selectedProduct.openingStock ?? 0) <= lowStockLimit(selectedProduct)
                             ? 'warning'
                             : 'success'
                         }
@@ -1637,7 +1638,7 @@ export function StockInView(): React.JSX.Element {
                       >
                         {(selectedProduct.openingStock ?? 0) <= 0
                           ? 'Out of Stock'
-                          : (selectedProduct.openingStock ?? 0) <= (selectedProduct.minThreshold ?? 10)
+                          : (selectedProduct.openingStock ?? 0) <= lowStockLimit(selectedProduct)
                           ? 'Low Stock Alert'
                           : 'In Stock'}
                       </Badge>

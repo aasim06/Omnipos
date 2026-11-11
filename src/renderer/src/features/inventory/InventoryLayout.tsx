@@ -15,10 +15,13 @@ import {
   Receipt20Regular,
   ClipboardCheckmark20Regular,
   Food20Regular,
+  AlertUrgent20Regular,
 } from '@fluentui/react-icons';
 import { PurchaseBillModal } from './PurchaseBillModal';
 import { StockCountDialog } from './StockCountDialog';
 import { RecipeDialog } from './RecipeDialog';
+import { StockAlertLimitsDialog } from './StockAlertLimitsDialog';
+import { loadLowStockDefault } from '@/lib/stockStatus';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAuth } from '@/features/auth/AuthContext';
 import { PageHeader } from '@/components/win11';
@@ -154,6 +157,7 @@ export function InventoryLayout(): React.JSX.Element {
   const [isPurchaseBillOpen, setIsPurchaseBillOpen] = useState(false);
   const [isStockCountOpen, setIsStockCountOpen] = useState(false);
   const [isRecipeOpen, setIsRecipeOpen] = useState(false);
+  const [isAlertLimitsOpen, setIsAlertLimitsOpen] = useState(false);
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
   // Stock counts and recipes change stock levels directly: "Stock Corrections" permission only
@@ -166,6 +170,10 @@ export function InventoryLayout(): React.JSX.Element {
 
   useEffect(() => {
     let cancelled = false;
+    // Store-wide low-stock alert default lives in the backend settings
+    loadLowStockDefault().then(() => {
+      if (!cancelled) queryClient.invalidateQueries({ queryKey: ['inventory-dashboard'] });
+    });
     vendorStorage.syncWithServer().then((refreshed) => {
       if (cancelled || !refreshed) return;
       setVendorDataVersion((v) => v + 1);
@@ -187,6 +195,9 @@ export function InventoryLayout(): React.JSX.Element {
             <>
               <Button appearance="secondary" icon={<Receipt20Regular />} onClick={() => setIsPurchaseBillOpen(true)}>
                 Purchase bill
+              </Button>
+              <Button appearance="secondary" icon={<AlertUrgent20Regular />} onClick={() => setIsAlertLimitsOpen(true)}>
+                Alert limits
               </Button>
               {canAdjust && (
                 <Button appearance="secondary" icon={<ClipboardCheckmark20Regular />} onClick={() => setIsStockCountOpen(true)}>
@@ -217,6 +228,9 @@ export function InventoryLayout(): React.JSX.Element {
       <div className={styles.contentArea}>
         <Outlet key={vendorDataVersion} />
       </div>
+
+      {/* ── Low stock alert limits ── */}
+      <StockAlertLimitsDialog isOpen={isAlertLimitsOpen} onClose={() => setIsAlertLimitsOpen(false)} />
 
       {/* ── Recipes / ingredient deduction ── */}
       <RecipeDialog isOpen={isRecipeOpen} onClose={() => setIsRecipeOpen(false)} />

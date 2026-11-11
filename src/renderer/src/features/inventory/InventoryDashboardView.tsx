@@ -37,6 +37,7 @@ import { vendorStorage } from './vendorStorage';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 
 import { useInventoryDashboardStyles, useStyles } from './inventoryDashboard.styles';
+import { getAlertLimit, getStockStatus } from '@/lib/stockStatus';
 
 /** Sales history window and stock cover used for reorder suggestions. */
 const REORDER_LOOKBACK_DAYS = 30;
@@ -128,16 +129,18 @@ export function InventoryDashboardView(): React.JSX.Element {
    * on top of the safety (minimum) level, minus what is already on hand.
    */
   const suggestedReorderQty = (p: Product): number => {
-    const minLevel = p.minThreshold ?? 10;
+    const minLevel = getAlertLimit(p) ?? 0;
     const dailyRate = (soldLast30Days.get(p.id) || 0) / REORDER_LOOKBACK_DAYS;
     const target = Math.ceil(dailyRate * REORDER_COVER_DAYS) + minLevel;
     return Math.max(1, target - Math.max(0, p.openingStock || 0));
   };
 
-  // Low Stock Items (at or below the product's minimum level, default 10) — stock-tracked items only
+  // Low / out-of-stock items: at or below the item's alert limit (or the store default)
   const lowStockProducts = displayedProducts
-    .filter((p) => p.openingStock !== undefined && p.openingStock !== null)
-    .filter((p) => (p.openingStock || 0) <= (p.minThreshold ?? 10))
+    .filter((p) => {
+      const s = getStockStatus(p);
+      return s === 'low' || s === 'out';
+    })
     .sort((a, b) => (a.openingStock || 0) - (b.openingStock || 0));
 
   // Expiring Soon Products (expired or expiring within 60 days)

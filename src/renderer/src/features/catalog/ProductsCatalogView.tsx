@@ -56,6 +56,7 @@ import { CustomInput, CustomSelect } from '@/components/ui';
 import { CATEGORY_PROFILES, detectCategoryProfile, ALL_PROFILE_OPTIONS, getFilteredProfileOptions, resolveStoreModules } from '@/lib/categoryProfiles';
 import { UNIT_OPTIONS } from '@/lib/units';
 import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext';
+import { getStockStatus, lowStockLimit } from '@/lib/stockStatus';
 
 /* ── Zod Schemas ───────────────────────────────────────────────────── */
 const productSchema = z.object({
@@ -452,8 +453,9 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
   );
   const totalRetailValue = activeProducts.reduce((acc, p) => acc + (p.price * (p.openingStock || 0)), 0);
   const totalCostValue = activeProducts.reduce((acc, p) => acc + ((p.costPrice || (p.price * 0.7)) * (p.openingStock || 0)), 0);
-  const outOfStockProducts = activeProducts.filter((p) => (p.openingStock || 0) <= 0);
-  const lowStockProducts = activeProducts.filter((p) => (p.openingStock || 0) > 0 && (p.openingStock || 0) <= (p.minThreshold || 10));
+  // Made-to-order items (no stock tracking) are neither low nor out
+  const outOfStockProducts = activeProducts.filter((p) => getStockStatus(p) === 'out');
+  const lowStockProducts = activeProducts.filter((p) => getStockStatus(p) === 'low');
   const fastFoodAvgPrice = fastFoodProducts.length > 0
     ? Math.round(fastFoodProducts.reduce((sum, p) => sum + p.price, 0) / fastFoodProducts.length)
     : 0;
@@ -902,7 +904,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                   </TableRow>
                 ) : (
                   filteredProducts.map((p) => {
-                    const isLow = p.openingStock !== null && p.openingStock !== undefined && p.openingStock <= (p.minThreshold ?? 10);
+                    const isLow = p.openingStock !== null && p.openingStock !== undefined && p.openingStock <= lowStockLimit(p);
                     const isFastFood = p.module === 'fastfood';
 
                     return (

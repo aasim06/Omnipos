@@ -34,6 +34,7 @@ import { formatPKR } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useAppToast } from '../../context/AppNotificationContext';
 import { useProductDetailsStyles } from './productDetails.styles';
+import { getStockStatus } from '@/lib/stockStatus';
 
 export function ProductDetailsView(): React.JSX.Element {
   const styles = useProductDetailsStyles();
@@ -266,8 +267,9 @@ export function ProductDetailsView(): React.JSX.Element {
   const totalStockValueRetail = stock * price;
   const img = product.imageBase64 || product.imageUrl;
 
-  const isLowStock = stock > 0 && stock <= (product.minThreshold || 5);
-  const isOutOfStock = stock <= 0;
+  const stockStatus = getStockStatus(product);
+  const isLowStock = stockStatus === 'low';
+  const isOutOfStock = stockStatus === 'out';
 
   return (
     <div className={styles.container}>
