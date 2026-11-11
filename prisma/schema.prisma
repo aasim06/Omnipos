@@ -147,6 +147,21 @@ model StockMovement {
   date             DateTime @default(now())
 }
 
+/// Low-stock alert: at most one active (open / dismissed) alert per product.
+model StockAlert {
+  id           String    @id @default(cuid())
+  productId    String
+  productName  String
+  level        String    // "low" | "out"
+  stockAtAlert Float
+  limitAtAlert Float?
+  status       String    @default("open") // "open" | "dismissed" | "resolved"
+  readAt       DateTime?
+  snoozedUntil DateTime?
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+}
+
 /// Stock received under one batch / expiry; consumed first-expiry-first-out (FEFO).
 model StockBatch {
   id          String    @id @default(cuid())

@@ -11,6 +11,7 @@ import {
   resizeReceiptBatch,
   syncProductNearestBatch,
 } from './stockBatches';
+import { evaluateStockAlerts, readLowStockDefault, alertLimitFor, LOW_STOCK_DEFAULT_SETTING } from './stockAlerts';
 
 export function saveBase64Image(dataUrlOrBase64: string, prefix: string): string | null {
   if (!dataUrlOrBase64 || typeof dataUrlOrBase64 !== 'string') return null;
@@ -190,6 +191,7 @@ async function consumeRecipeIngredients(order: any, lineIndex: number, line: any
         });
         await consumeFefo(tx, ingredient.id, used, id);
         await syncProductNearestBatch(tx, ingredient.id);
+        await evaluateStockAlerts(tx, [ingredient.id]);
       });
     } catch (err) {
       console.warn(`[Recipe] Failed to consume ingredient ${r.ingredientId} for ${product.id}:`, err);
@@ -329,6 +331,7 @@ export function registerRoutes(app: Express): void {
       if (typeof parsedVariants === 'string') {
         try { parsedVariants = JSON.parse(parsedVariants); } catch {}
       }
+      await evaluateStockAlerts(db, [product.id]).catch((e: any) => console.warn('[StockAlert]', e));
       res.json({ ...product, variants: parsedVariants });
     } catch (err: any) {
       console.error('[API POST /api/products] Error:', err.message);
@@ -898,6 +901,7 @@ export function registerRoutes(app: Express): void {
                   });
                   await consumeFefo(db, product.id, soldQty, saleMovementId(order.id, idx));
                   await syncProductNearestBatch(db, product.id);
+                  await evaluateStockAlerts(db, [product.id]);
                 } catch (movErr) {
                   console.warn(`[Inventory] Sale movement not recorded for ${product.id}:`, movErr);
                 }
@@ -1041,6 +1045,7 @@ export function registerRoutes(app: Express): void {
           } catch (batchErr) {
             console.warn('[Refund] Batch restore failed:', batchErr);
           }
+          await evaluateStockAlerts(db, [product.id]).catch(() => undefined);
         }
       }
 
@@ -1303,6 +1308,7 @@ export function registerRoutes(app: Express): void {
         await consumeFefo(tx, product.id, created.quantity, created.id);
       }
       await syncProductNearestBatch(tx, product.id);
+      await evaluateStockAlerts(tx, [product.id]);
     }
     return created;
   }
@@ -1384,6 +1390,7 @@ export function registerRoutes(app: Express): void {
         await restoreAllocations(tx, original.id);
       }
       await syncProductNearestBatch(tx, product.id);
+      await evaluateStockAlerts(tx, [product.id]);
     }
     return { original: updatedOriginal, reversal };
   }
@@ -1527,8 +1534,87 @@ export function registerRoutes(app: Express): void {
           const r = await tx.product.updateMany({ where: { id: String(it.id) }, data: { minThreshold: value } });
           updated += r.count;
         }
+        await evaluateStockAlerts(tx, items.map((it: any) => String(it?.id || '')));
       });
       res.json({ ok: true, updated });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Low-stock alerts ──
+
+  /**
+   * Active alerts (open, not snoozed) with the product's live stock, limit and a suggested
+   * reorder quantity (14 days of average sales over the last 30 days, on top of the limit).
+   * ?include=all also returns dismissed and snoozed alerts.
+   */
+  app.get('/api/stock-alerts', async (req: Request, res: Response) => {
+    try {
+      const includeAll = req.query.include === 'all';
+      const now = new Date();
+      const rows = await (db as any).stockAlert.findMany({
+        where: includeAll
+          ? { status: { in: ['open', 'dismissed'] } }
+          : { status: 'open', OR: [{ snoozedUntil: null }, { snoozedUntil: { lt: now } }] },
+        orderBy: { createdAt: 'desc' },
+      });
+      const storeDefault = await readLowStockDefault(db);
+      const ids = rows.map((r: any) => r.productId);
+      const products = await db.product.findMany({ where: { id: { in: ids } } });
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const sales = await db.stockMovement.findMany({
+        where: { productId: { in: ids }, type: 'out', reason: { in: ['POS Sale', 'Recipe Usage'] }, reversedAt: null, date: { gte: since } },
+        select: { productId: true, quantity: true },
+      });
+      const sold = new Map<string, number>();
+      for (const s of sales) sold.set(s.productId, (sold.get(s.productId) || 0) + s.quantity);
+
+      const out = rows.map((r: any) => {
+        const p: any = products.find((x: any) => x.id === r.productId);
+        const stock = Number(p?.openingStock ?? r.stockAtAlert) || 0;
+        const limit = p ? alertLimitFor(p, storeDefault) : r.limitAtAlert;
+        const daily = (sold.get(r.productId) || 0) / 30;
+        const suggested = Math.max(1, Math.ceil(daily * 14 + (limit || 0) - stock));
+        return {
+          ...r,
+          stock,
+          limit,
+          unit: p?.unit || null,
+          costPrice: p?.costPrice ?? null,
+          module: p?.module || null,
+          suggestedQty: suggested,
+        };
+      });
+      res.json(out);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/stock-alerts/read-all', async (_req: Request, res: Response) => {
+    try {
+      const r = await (db as any).stockAlert.updateMany({ where: { status: 'open', readAt: null }, data: { readAt: new Date() } });
+      res.json({ ok: true, updated: r.count });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/stock-alerts/:id/:action', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      const action = String(req.params.action);
+      let data: any;
+      if (action === 'read') data = { readAt: new Date() };
+      else if (action === 'dismiss') data = { status: 'dismissed', readAt: new Date() };
+      else if (action === 'snooze') {
+        const hours = Math.min(24 * 30, Math.max(1, Number(req.body?.hours) || 24));
+        data = { snoozedUntil: new Date(Date.now() + hours * 60 * 60 * 1000), readAt: new Date() };
+      } else return res.status(400).json({ error: `Unknown action "${action}"` });
+      const r = await (db as any).stockAlert.updateMany({ where: { id }, data });
+      if (r.count === 0) return res.status(404).json({ error: 'Alert not found' });
+      res.json({ ok: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -1878,6 +1964,9 @@ export function registerRoutes(app: Express): void {
         create: { key, value: JSON.stringify(req.body) },
         update: { value: JSON.stringify(req.body) },
       });
+      if (key === LOW_STOCK_DEFAULT_SETTING) {
+        await evaluateStockAlerts(db).catch((e: any) => console.warn('[StockAlert]', e));
+      }
       res.json(JSON.parse(setting.value));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -2229,6 +2318,7 @@ export function registerRoutes(app: Express): void {
         (db as any).purchaseBill.deleteMany(),
         (db as any).stockBatch.deleteMany(),
         (db as any).batchAllocation.deleteMany(),
+        (db as any).stockAlert.deleteMany(),
         db.expense.deleteMany(),
         db.cashDrawer.deleteMany(),
         db.syncOutbox.deleteMany(),

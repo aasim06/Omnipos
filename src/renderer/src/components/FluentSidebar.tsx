@@ -59,6 +59,7 @@ import {
 import { posApi } from '@/lib/api';
 import { resolveStoreModules } from '@/lib/categoryProfiles';
 import { useAuth } from '@/features/auth/AuthContext';
+import { StockAlertBell } from '@/components/shell/StockAlertBell';
 import { useLicense, LicenseModules } from '@/features/auth/LicenseModulesContext';
 import { MODULE_TO_PERMISSION } from './RouteAccessGate';
 import { useAppTheme } from '@/theme/AppProviders';
@@ -1232,7 +1233,19 @@ export function FluentSidebar(): React.JSX.Element {
             isAdmin ? styles.toolbarAdmin : styles.toolbarNonAdmin,
             isDark ? styles.toolbarDark : styles.toolbarLight
           )}
+          // One extra column for the stock-alert bell (inventory users)
+          style={
+            !isCollapsed && (isAdmin || hasPermission('inventory'))
+              ? { gridTemplateColumns: `repeat(${isAdmin ? 6 : 4}, 1fr)` }
+              : undefined
+          }
         >
+          {/* 0. Low-stock alerts bell (inventory users only) */}
+          <StockAlertBell
+            className={mergeClasses(styles.toolbarBtn, isDark ? styles.refreshBtnDark : styles.refreshBtnLight)}
+            iconClassName={styles.icon17}
+          />
+
           {/* 1. Light / Dark Theme Button */}
           <button
             type="button"

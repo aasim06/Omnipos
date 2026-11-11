@@ -382,6 +382,24 @@ async function sendStockRequest(
   }
 }
 
+/** Active low-stock alert as returned by GET /api/stock-alerts. */
+export interface StockAlertRow {
+  id: string;
+  productId: string;
+  productName: string;
+  level: 'low' | 'out';
+  stock: number;
+  limit: number | null;
+  unit: string | null;
+  costPrice: number | null;
+  module: string | null;
+  suggestedQty: number;
+  status: string;
+  readAt: string | null;
+  snoozedUntil: string | null;
+  createdAt: string;
+}
+
 export const posApi = {
   /**
    * Fetch products: Cache-First for instant UI load (<5ms).
@@ -1749,6 +1767,26 @@ export const posApi = {
     }
     const res = await sendStockRequest('POST', '/api/products/alert-limits', { items });
     if (res && !res.ok) throw new Error(res.error || 'Could not save alert limits');
+  },
+
+  /** Active low-stock alerts (empty when the backend cannot be reached). */
+  async fetchStockAlerts(includeAll = false): Promise<StockAlertRow[]> {
+    try {
+      const base = await resolveApiUrl();
+      const headers = await getTenantHeaders();
+      const res = await fetch(`${base}/api/stock-alerts${includeAll ? '?include=all' : ''}`, { headers });
+      return res.ok ? await res.json() : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async stockAlertAction(id: string, action: 'read' | 'dismiss' | 'snooze', hours?: number): Promise<void> {
+    await sendStockRequest('POST', `/api/stock-alerts/${encodeURIComponent(id)}/${action}`, hours ? { hours } : {});
+  },
+
+  async readAllStockAlerts(): Promise<void> {
+    await sendStockRequest('POST', '/api/stock-alerts/read-all', {});
   },
 
   /** Update fields of the local (offline) product copy only — the backend is already up to date. */

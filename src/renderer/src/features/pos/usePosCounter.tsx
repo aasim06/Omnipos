@@ -15,6 +15,7 @@ import { playBeep, playErrorBeep, playSuccessChime } from '@/lib/soundFx';
 import { nowISO, uid } from '@/lib/utils';
 import { printKitchenKot } from '@/lib/kotPrinter';
 import { printCustomerReceipt } from '@/lib/receiptPrinter';
+import { getStockStatus } from '@/lib/stockStatus';
 
 /**
  * All state, data loading, effects and handlers of the POS counter screen.
@@ -968,6 +969,29 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
         updatedAt: nowISO(),
       };
       await posApi.saveOrder(order);
+
+      // Tell the cashier when this sale left an item low or out of stock
+      try {
+        const soldByProduct = new Map<string, number>();
+        for (const l of order.lines) soldByProduct.set(l.productId, (soldByProduct.get(l.productId) || 0) + cartLineBaseQty(l));
+        const warnings: string[] = [];
+        soldByProduct.forEach((sold, pid) => {
+          const prod = products.find((p) => p.id === pid);
+          if (!prod || prod.openingStock === null || prod.openingStock === undefined) return;
+          const before = Number(prod.openingStock) || 0;
+          const after = Math.max(0, Math.round((before - sold) * 1000) / 1000);
+          const statusBefore = getStockStatus({ openingStock: before, minThreshold: prod.minThreshold });
+          const statusAfter = getStockStatus({ openingStock: after, minThreshold: prod.minThreshold });
+          if (statusAfter !== statusBefore && (statusAfter === 'low' || statusAfter === 'out')) {
+            warnings.push(statusAfter === 'out' ? `${prod.name}: out of stock` : `${prod.name}: only ${after} left`);
+          }
+        });
+        if (warnings.length > 0) {
+          notifyWarning('Stock running low', warnings.slice(0, 3).join(' · ') + (warnings.length > 3 ? ` (+${warnings.length - 3} more)` : ''));
+        }
+      } catch {
+        /* never block checkout on a warning */
+      }
 
       // If payment is via Khata or Split Khata, add debit transaction to customer ledger offline-first
       if (

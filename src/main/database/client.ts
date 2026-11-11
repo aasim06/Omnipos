@@ -394,6 +394,23 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     /* Ignore if column already exists */
   }
 
+  await database.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "StockAlert" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "productId" TEXT NOT NULL,
+      "productName" TEXT NOT NULL,
+      "level" TEXT NOT NULL,
+      "stockAtAlert" REAL NOT NULL,
+      "limitAtAlert" REAL,
+      "status" TEXT NOT NULL DEFAULT 'open',
+      "readAt" DATETIME,
+      "snoozedUntil" DATETIME,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "resolvedAt" DATETIME
+    )
+  `);
+  await database.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "StockAlert_productId_status_idx" ON "StockAlert"("productId", "status")`);
+
   // Batch-wise stock (FEFO). Quantity columns elsewhere are declared INTEGER on older
   // databases; SQLite still stores decimals in them, so no table rebuild is needed.
   await database.$executeRawUnsafe(`
