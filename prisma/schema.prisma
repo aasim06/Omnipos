@@ -19,7 +19,7 @@ model Product {
   rackLocation String?
   unit         String?
   minThreshold Int?
-  openingStock Int?
+  openingStock Float?          // current stock in the base (retail) unit; decimals allowed (KG, L)
   prepTime     Int?
   displayOrder Int?            @default(0)
   tags         String?         // JSON string array
@@ -31,6 +31,12 @@ model Product {
   batchNumber  String?
   expiryDate   String?         // ISO date (yyyy-mm-dd)
   recipe       String?         // JSON RecipeLine[]: ingredients consumed per unit sold
+  itemRole     String?         // "food_menu" | "retail_product" | "raw_ingredient"
+  barcode      String?
+  primaryUnit  String?         // wholesale unit, e.g. "Carton"
+  secondaryUnit String?        // retail / base unit, e.g. "Piece"
+  conversionRate Float?        // base units per wholesale unit, e.g. 24
+  secondaryPrice Float?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -74,7 +80,7 @@ model OrderItem {
   product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   name         String
   unitPrice    Float
-  quantity     Int
+  quantity     Float    // decimals for weight / volume sales
   variantLabel String?
   notes        String?
 }
@@ -122,7 +128,7 @@ model StockMovement {
   productId   String
   productName String
   type        String   // "in" | "out"
-  quantity    Int
+  quantity    Float    // base units; decimals allowed
   unitCost    Float?
   unitPrice   Float?
   reason           String?
@@ -131,7 +137,33 @@ model StockMovement {
   referenceInvoice String?
   batchNumber      String?
   expiryDate       String?
+  createdBy        String?  // user who recorded the entry
+  reversalOf       String?  // id of the entry this one reverses
+  reversedAt       DateTime? // set on an entry that has been reversed
+  reversedBy       String?
   date             DateTime @default(now())
+}
+
+/// Stock received under one batch / expiry; consumed first-expiry-first-out (FEFO).
+model StockBatch {
+  id          String    @id @default(cuid())
+  productId   String
+  movementId  String    @unique // the stock-in entry that created the batch
+  batchNumber String?
+  expiryDate  String?   // yyyy-mm-dd
+  quantity    Float     // received (base units)
+  remaining   Float     // still on hand
+  unitCost    Float?
+  receivedAt  DateTime  @default(now())
+}
+
+/// Which batch an out-movement drew from, so reversals and returns restore the same batch.
+model BatchAllocation {
+  id         String   @id @default(cuid())
+  movementId String
+  batchId    String
+  quantity   Float
+  createdAt  DateTime @default(now())
 }
 
 model Vendor {
@@ -162,6 +194,7 @@ model VendorTransaction {
   description   String?
   billId        String?
   paymentMethod String?
+  createdBy     String?
   date          DateTime @default(now())
   createdAt     DateTime @default(now())
 }
@@ -182,6 +215,7 @@ model PurchaseBill {
   paymentMode   String   @default("cash")
   paymentStatus String   @default("unpaid")
   notes         String?
+  createdBy     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

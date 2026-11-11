@@ -45,7 +45,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { resolveApiUrl, posApi } from '@/lib/api';
+import { resolveApiUrl, posApi, round3 } from '@/lib/api';
 import { StockMovement, Product, Category, ProductVariant, PurchaseBill } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
@@ -82,9 +82,12 @@ const stockInSchema = z.object({
   productName: z.string().min(1, 'Please select or enter an item name'),
   vendorId: z.string().optional(),
   vendorName: z.string().optional(),
-  quantity: z.coerce.number().min(1, 'Qty must be at least 1'),
+  quantity: z.coerce.number().positive('Qty must be more than 0'),
   unitPrice: z.coerce.number().min(0, 'Unit price cannot be negative'),
   discountPercent: z.coerce.number().min(0, 'Discount cannot be negative').max(100, 'Discount cannot exceed 100%').optional(),
+  receiveUnit: z.enum(['base', 'wholesale']).optional(),
+  batchNumber: z.string().optional(),
+  expiryDate: z.string().optional(),
 });
 
 type StockInFormData = z.infer<typeof stockInSchema>;
@@ -93,7 +96,7 @@ const editSchema = z.object({
   id: z.string(),
   productName: z.string().min(1, 'Product name is required'),
   vendorName: z.string().optional(),
-  quantity: z.coerce.number().min(1, 'Qty must be at least 1'),
+  quantity: z.coerce.number().positive('Qty must be more than 0'),
   unitPrice: z.coerce.number().min(0, 'Unit price cannot be negative'),
   discountPercent: z.coerce.number().min(0).max(100).optional(),
   note: z.string().optional(),
@@ -141,12 +144,16 @@ const netUnitCost = (lineTotal: number, qty: number) => (qty > 0 ? Math.round((l
 
 import { useStockInStyles, useStyles } from './stockIn.styles';
 import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext';
+import { useAuth } from '@/features/auth/AuthContext';
 
 export function StockInView(): React.JSX.Element {
   const styles = useStockInStyles();
   const queryClient = useQueryClient();
   const { notifySuccess } = useAppToast();
   const confirmModal = useConfirmDialog();
+  // Editing / reversing stock entries needs the "Stock Corrections" permission
+  const { hasPermission } = useAuth();
+  const canAdjust = hasPermission('stock_adjust');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -545,6 +552,19 @@ export function StockInView(): React.JSX.Element {
     return null;
   }, [watchedProductId, watchedProductName, allProducts]);
 
+  // Wholesale ↔ base unit conversion for the selected product (e.g. 1 Carton = 24 Pieces)
+  const conversion = React.useMemo(() => {
+    const rate = Number(selectedProduct?.conversionRate || 0);
+    if (!selectedProduct || !selectedProduct.primaryUnit || rate <= 1) return null;
+    if (selectedProduct.variants && selectedProduct.variants.length > 0) return null;
+    return {
+      rate,
+      wholesale: selectedProduct.primaryUnit,
+      base: selectedProduct.secondaryUnit || selectedProduct.unit || 'PCS',
+    };
+  }, [selectedProduct]);
+  const watchedReceiveUnit = form.watch('receiveUnit') || 'base';
+
   // Per-size / variant allocation state for stock receiving
   const [variantStockInQty, setVariantStockInQty] = useState<Record<string, number>>({});
 
@@ -639,10 +659,15 @@ export function StockInView(): React.JSX.Element {
             .join(', ')
         : null;
 
+      // Wholesale receiving (e.g. Cartons) is stored in the base unit (e.g. Pieces)
+      const unitFactor = data.receiveUnit === 'wholesale' && conversion ? conversion.rate : 1;
+      const baseQty = round3(data.quantity * unitFactor);
+
       const noteDetails = [
         data.vendorName ? `Vendor: ${data.vendorName}` : null,
         data.discountPercent && data.discountPercent > 0 ? `Discount: ${data.discountPercent}% (-PKR ${discAmt.toLocaleString()})` : null,
         data.discountPercent && data.discountPercent > 0 ? `Gross: PKR ${unitCost.toLocaleString()}/unit` : null,
+        unitFactor > 1 && conversion ? `Received: ${data.quantity} ${conversion.wholesale} × ${conversion.rate} = ${baseQty} ${conversion.base}` : null,
         variantSummary ? `Sizes: ${variantSummary}` : null,
         `Line Total: PKR ${calcTotal.toLocaleString()}`,
       ]
@@ -654,9 +679,11 @@ export function StockInView(): React.JSX.Element {
         type: 'in',
         productId: data.selectedProductId || uid('prod_'),
         productName: data.productName,
-        quantity: data.quantity,
-        // Net (after discount) cost drives weighted average costing and stock valuation
-        unitCost: netUnitCost(calcTotal, data.quantity),
+        quantity: baseQty,
+        // Net (after discount) cost per base unit drives weighted average costing and valuation
+        unitCost: netUnitCost(calcTotal, baseQty),
+        batchNumber: data.batchNumber?.trim() || undefined,
+        expiryDate: data.expiryDate || undefined,
         vendorName: data.vendorName || 'Supplier Purchase',
         reason: data.vendorName || 'Supplier Purchase',
         referenceInvoice: noteDetails,
@@ -672,7 +699,7 @@ export function StockInView(): React.JSX.Element {
             matched.id,
             'BILL',
             calcTotal,
-            `Stock In: ${data.productName} × ${data.quantity}`,
+            `Stock In: ${data.productName} × ${baseQty}`,
             'credit'
           );
         }
@@ -692,6 +719,9 @@ export function StockInView(): React.JSX.Element {
         quantity: 1,
         unitPrice: 0,
         discountPercent: 0,
+        receiveUnit: 'base',
+        batchNumber: '',
+        expiryDate: '',
       });
     },
   });
@@ -774,7 +804,7 @@ export function StockInView(): React.JSX.Element {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const target = movements.find((m) => m.id === id);
-      await posApi.deleteStockMovement(id);
+      await posApi.reverseStockMovement(id);
 
       // Reverse the purchase on the vendor ledger if it was posted to a vendor
       if (target) {
@@ -785,7 +815,7 @@ export function StockInView(): React.JSX.Element {
             matched.id,
             'ADJUSTMENT',
             -lineCost,
-            `Stock In deleted: ${target.productName} × ${target.quantity}`
+            `Stock In reversed: ${target.productName} × ${target.quantity}`
           );
         }
       }
@@ -1251,23 +1281,23 @@ export function StockInView(): React.JSX.Element {
 
   const handleDelete = async (id: string) => {
     const ok = await confirmModal({
-      title: 'Delete Stock In Record',
-      message: 'Are you sure you want to delete this stock in shipment record? Product inventory quantities will be recalculated.',
-      confirmLabel: 'Delete Record',
+      title: 'Reverse Stock In Record',
+      message: 'This posts an opposite "Reversal" entry and takes the received quantity back out of stock. The original entry stays in the ledger for audit.',
+      confirmLabel: 'Reverse Entry',
       intent: 'danger',
     });
     if (ok) {
       deleteMutation.mutate(id);
-      notifySuccess('Stock in shipment record deleted.');
+      notifySuccess('Stock in entry reversed.');
     }
   };
 
   const handleBatchDelete = async () => {
     if (selectedIds.length === 0) return;
     const ok = await confirmModal({
-      title: 'Delete Selected Records',
-      message: `Are you sure you want to delete ${selectedIds.length} selected stock in records?`,
-      confirmLabel: `Delete ${selectedIds.length} Records`,
+      title: 'Reverse Selected Records',
+      message: `Post reversal entries for ${selectedIds.length} selected stock in records? The originals stay in the ledger.`,
+      confirmLabel: `Reverse ${selectedIds.length} Records`,
       intent: 'danger',
     });
     if (ok) {
@@ -1275,13 +1305,15 @@ export function StockInView(): React.JSX.Element {
         await deleteMutation.mutateAsync(id);
       }
       setSelectedIds([]);
-      notifySuccess(`${selectedIds.length} records deleted.`);
+      notifySuccess(`${selectedIds.length} records reversed.`);
     }
   };
 
   // Only Inflow Movements
   const stockInMovements = movements.filter((m) => {
     if (m.type !== 'in') return false;
+    // Reversed entries and reversal entries are audit history: shown in the Stock Movement Ledger
+    if (m.reversedAt || m.reversalOf) return false;
     if (activeModule === 'fastfood') {
       if (!hasOmnimart) return m.module !== 'minimart';
       return m.module === 'fastfood';
@@ -1788,9 +1820,10 @@ export function StockInView(): React.JSX.Element {
                 name="quantity"
                 render={({ field }) => (
                   <CustomInput
-                    label="QTY *"
+                    label={conversion && watchedReceiveUnit === 'wholesale' ? `QTY (${conversion.wholesale}) *` : 'QTY *'}
                     required
                     type="number"
+                    step="any"
                     placeholder="1"
                     value={field.value !== undefined ? String(field.value) : ''}
                     onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
@@ -1806,8 +1839,9 @@ export function StockInView(): React.JSX.Element {
                 name="unitPrice"
                 render={({ field }) => (
                   <CustomInput
-                    label="UNIT PRICE (PKR)"
+                    label={conversion && watchedReceiveUnit === 'wholesale' ? `PRICE / ${conversion.wholesale.toUpperCase()} (PKR)` : 'UNIT PRICE (PKR)'}
                     type="number"
+                    step="any"
                     placeholder="0"
                     value={field.value !== undefined ? String(field.value) : ''}
                     onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
@@ -1857,6 +1891,62 @@ export function StockInView(): React.JSX.Element {
                 <Add20Regular className={styles.btnIcon18} />
                 <span>{saveMutation.isPending ? 'Saving...' : 'Save Stock In Invoice'}</span>
               </Button>
+            </div>
+          </div>
+
+          {/* Row 3: Receive unit (when the product has a wholesale unit), Batch No, Expiry */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginTop: '12px' }}>
+            {conversion && (
+              <div>
+                <Controller
+                  control={form.control}
+                  name="receiveUnit"
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="RECEIVE IN"
+                      value={field.value || 'base'}
+                      options={[
+                        { value: 'base', label: `${conversion.base} (stock unit)` },
+                        { value: 'wholesale', label: `${conversion.wholesale} (1 = ${conversion.rate} ${conversion.base})` },
+                      ]}
+                      onChange={(val) => field.onChange(val || 'base')}
+                    />
+                  )}
+                />
+                {watchedReceiveUnit === 'wholesale' && (
+                  <span className={styles.fieldLabel} style={{ display: 'block', marginTop: 4 }}>
+                    = {round3((watchedQty || 0) * conversion.rate)} {conversion.base} into stock
+                  </span>
+                )}
+              </div>
+            )}
+            <div>
+              <Controller
+                control={form.control}
+                name="batchNumber"
+                render={({ field }) => (
+                  <CustomInput
+                    label="BATCH NO (OPTIONAL)"
+                    placeholder="e.g. B-2026-11"
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+            <div>
+              <Controller
+                control={form.control}
+                name="expiryDate"
+                render={({ field }) => (
+                  <CustomInput
+                    label="EXPIRY DATE (OPTIONAL)"
+                    type="date"
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
             </div>
           </div>
         </form>
@@ -1954,7 +2044,7 @@ export function StockInView(): React.JSX.Element {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {selectedIds.length > 0 && (
+            {canAdjust && selectedIds.length > 0 && (
               <Button
                 appearance="primary"
                 size="small"
@@ -1962,7 +2052,7 @@ export function StockInView(): React.JSX.Element {
                 onClick={handleBatchDelete}
                 style={{ backgroundColor: '#D13438', color: '#FFFFFF', fontWeight: 600 }}
               >
-                Delete Selected ({selectedIds.length})
+                Reverse Selected ({selectedIds.length})
               </Button>
             )}
             <Caption1 className={styles.countCaption}>
@@ -2069,25 +2159,29 @@ export function StockInView(): React.JSX.Element {
                             aria-label="Print Receiving Slip"
                           />
 
-                          <Button
-                            appearance="subtle"
-                            size="small"
-                            icon={<Edit20Regular className={styles.iconEdit} />}
-                            onClick={() => handleOpenEdit(mov)}
-                            className={styles.actionBtnEdit}
-                            title="Edit Invoice (Right Drawer)"
-                            aria-label="Edit Invoice (Right Drawer)"
-                          />
+                          {canAdjust && (
+                            <>
+                              <Button
+                                appearance="subtle"
+                                size="small"
+                                icon={<Edit20Regular className={styles.iconEdit} />}
+                                onClick={() => handleOpenEdit(mov)}
+                                className={styles.actionBtnEdit}
+                                title="Edit Invoice (Right Drawer)"
+                                aria-label="Edit Invoice (Right Drawer)"
+                              />
 
-                          <Button
-                            appearance="subtle"
-                            size="small"
-                            icon={<Delete20Regular className={styles.iconDelete} />}
-                            onClick={() => handleDelete(mov.id)}
-                            className={styles.actionBtnDelete}
-                            title="Delete Record"
-                            aria-label="Delete Record"
-                          />
+                              <Button
+                                appearance="subtle"
+                                size="small"
+                                icon={<Delete20Regular className={styles.iconDelete} />}
+                                onClick={() => handleDelete(mov.id)}
+                                className={styles.actionBtnDelete}
+                                title="Reverse Entry"
+                                aria-label="Reverse Entry"
+                              />
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -2177,6 +2271,7 @@ export function StockInView(): React.JSX.Element {
                         label="Quantity (Units)"
                         required
                         type="number"
+                        step="any"
                         placeholder="1"
                         value={field.value !== undefined ? String(field.value) : ''}
                         onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}

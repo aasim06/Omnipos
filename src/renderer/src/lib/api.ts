@@ -185,21 +185,21 @@ function applyVariantStockDelta(product: Product, variantLabel: string | undefin
 async function consumeLocalRecipe(
   order: Pick<Order, 'id' | 'module' | 'createdAt'>,
   lineIndex: number,
-  line: { quantity?: number; variantLabel?: string },
+  line: { quantity?: number; variantLabel?: string; selectedUnit?: string },
   product: Product
 ): Promise<void> {
   const lines = recipeLinesFor(parseRecipe(product.recipe), line.variantLabel);
-  const soldQty = Number(line.quantity || 1);
+  const soldQty = baseQuantity(line, product);
   for (let k = 0; k < lines.length; k++) {
     const r = lines[k];
-    const used = Math.round(r.quantity * soldQty);
+    const used = round3(r.quantity * soldQty);
     if (used <= 0) continue;
     const id = recipeMovementId(order.id, lineIndex, k);
     if (await offlineDb.stockMovements.get(id)) continue;
     const ingredient = await offlineDb.products.get(r.ingredientId);
     if (!ingredient || ingredient.openingStock === undefined || ingredient.openingStock === null) continue;
     await offlineDb.products.update(ingredient.id, {
-      openingStock: Math.max(0, Number(ingredient.openingStock || 0) - used),
+      openingStock: Math.max(0, round3(Number(ingredient.openingStock || 0) - used)),
       updatedAt: new Date().toISOString(),
     });
     await offlineDb.stockMovements.put({
@@ -211,10 +211,33 @@ async function consumeLocalRecipe(
       quantity: used,
       unitCost: ingredient.costPrice ?? null,
       reason: RECIPE_USAGE_REASON,
+      createdBy: 'POS',
       note: `Sale Order #${order.id}: ${soldQty} × ${product.name}${line.variantLabel ? ` (${line.variantLabel})` : ''}`,
       date: order.createdAt || new Date().toISOString(),
     });
   }
+}
+
+/** Round to 3 decimals so decimal stock (KG, L) doesn't drift. Mirrors the backend. */
+export const round3 = (n: number): number => Math.round((Number(n) || 0) * 1000) / 1000;
+
+/** Display name of the signed-in user, recorded on stock and ledger entries. */
+export function currentUserName(): string | undefined {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('omnipos_user_session') : null;
+    if (!raw) return undefined;
+    const s = JSON.parse(raw);
+    return (s?.name || s?.username || undefined) as string | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Quantity of a sale line in the product's base unit (wholesale-unit lines × conversion rate). */
+function baseQuantity(line: { quantity?: number; selectedUnit?: string }, product: Pick<Product, 'conversionRate'> | undefined): number {
+  const qty = Number(line.quantity || 1);
+  const rate = Number(product?.conversionRate || 0);
+  return round3(line.selectedUnit === 'primary' && rate > 1 ? qty * rate : qty);
 }
 
 /** Signed effect of a movement on product stock (+ for 'in', − for 'out'). */
@@ -229,7 +252,7 @@ async function applyLocalProductStockDelta(productId: string, delta: number): Pr
   const prod = await offlineDb.products.get(productId);
   if (!prod) return;
   const updates: Partial<Product> = {
-    openingStock: Math.max(0, Number(prod.openingStock || 0) + delta),
+    openingStock: Math.max(0, round3(Number(prod.openingStock || 0) + delta)),
     updatedAt: new Date().toISOString(),
   };
   await offlineDb.products.update(productId, updates);
@@ -1434,8 +1457,9 @@ export const posApi = {
       productId: data.productId || '',
       productName: data.productName || 'Unknown Product',
       type: data.type || 'in',
-      quantity: Number(data.quantity || 0),
+      quantity: Math.max(0, round3(Number(data.quantity || 0))),
       reason: data.reason || 'Inventory Adjustment',
+      createdBy: data.createdBy || currentUserName() || null,
       note: data.note || data.referenceInvoice || '',
       referenceInvoice: data.referenceInvoice || '',
       vendorName: data.vendorName || '',
@@ -1455,9 +1479,9 @@ export const posApi = {
         const prod = await offlineDb.products.get(record.productId);
         if (prod) {
           const currentStock = Number(prod.openingStock || 0);
-          const updatedStock = record.type === 'in' 
-            ? currentStock + record.quantity 
-            : Math.max(0, currentStock - record.quantity);
+          const updatedStock = record.type === 'in'
+            ? round3(currentStock + record.quantity)
+            : Math.max(0, round3(currentStock - record.quantity));
 
           const updates: Partial<Product> = {
             openingStock: updatedStock,
@@ -1554,41 +1578,64 @@ export const posApi = {
     }
   },
 
-  async deleteStockMovement(id: string): Promise<void> {
-    try {
-      // 1. Permanently record in tombstone blacklist so remote GET never resurrects it
-      recordDeletedMovementId(id);
+  /**
+   * Reverse a stock entry (history is never deleted): posts an equal and opposite
+   * "Reversal" entry, marks the original as reversed and restores stock.
+   * Throws for entries that cannot be reversed.
+   */
+  async reverseStockMovement(id: string, reason?: string): Promise<void> {
+    const existing = await offlineDb.stockMovements.get(id);
+    if (existing?.reversalOf) throw new Error('A reversal entry cannot itself be reversed.');
+    if (existing?.reversedAt) return;
+    const by = currentUserName() || null;
+    const now = new Date().toISOString();
 
-      // 2. Instant local removal from Dexie IndexedDB, reverting its effect on local stock
-      const existing = await offlineDb.stockMovements.get(id);
-      await offlineDb.stockMovements.delete(id);
-      if (existing) {
-        try {
-          await applyLocalProductStockDelta(existing.productId, -movementDelta(existing));
-        } catch (err) {
-          console.warn('[OfflineDB] local stock revert on delete failed:', err);
-        }
+    // 1. Local: reversal entry + mark original + restore stock
+    if (existing) {
+      await offlineDb.stockMovements.put({
+        ...existing,
+        id: `rev_${existing.id}`,
+        type: existing.type === 'in' ? 'out' : 'in',
+        reason: 'Reversal',
+        note: `Reversal of "${existing.reason || existing.type}" entry #${existing.id.slice(-8)}${reason ? ` — ${reason}` : ''}`,
+        createdBy: by,
+        reversalOf: existing.id,
+        reversedAt: null,
+        reversedBy: null,
+        date: now,
+      });
+      await offlineDb.stockMovements.update(id, { reversedAt: now, reversedBy: by });
+      try {
+        await applyLocalProductStockDelta(existing.productId, -movementDelta(existing));
+      } catch (err) {
+        console.warn('[OfflineDB] local stock restore on reversal failed:', err);
       }
-
-      // 3. Enqueue deletion for sync engine
-      await syncEngine.enqueue('stockMovement', id, 'DELETE', { id });
-
-      // 4. Try remote delete, safely ignoring 404/405 if cloud backend route doesn't exist
-      if (typeof navigator === 'undefined' || navigator.onLine) {
-        try {
-          const base = await resolveApiUrl();
-          const tenantHeaders = await getTenantHeaders();
-          await fetch(`${base}/api/stock-movements/${id}`, {
-            method: 'DELETE',
-            headers: tenantHeaders,
-          });
-        } catch {
-          /* Remote DELETE route might be 404 on cloud; handled offline */
-        }
-      }
-    } catch (err) {
-      console.error('[OfflineDB] deleteStockMovement error:', err);
     }
+
+    // 2. Backend (DELETE on the server also reverses, so the queued fallback is safe)
+    let pushed = false;
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      try {
+        const base = await resolveApiUrl();
+        const tenantHeaders = await getTenantHeaders();
+        const res = await fetch(`${base}/api/stock-movements/${encodeURIComponent(id)}/reverse`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+          body: JSON.stringify({ createdBy: by, reason }),
+        });
+        pushed = res.ok || res.status === 404;
+      } catch {
+        pushed = false;
+      }
+    }
+    if (!pushed) {
+      await syncEngine.enqueue('stockMovement', id, 'DELETE', { id });
+    }
+  },
+
+  /** @deprecated History is no longer deleted — this now reverses the entry. */
+  async deleteStockMovement(id: string): Promise<void> {
+    return this.reverseStockMovement(id);
   },
 
   /**
@@ -1619,8 +1666,8 @@ export const posApi = {
               const localProd = await offlineDb.products.get(line.productId);
               const alreadyRecorded = !!(await offlineDb.stockMovements.get(`sale_${order.id}_${idx}`));
               if (localProd && !alreadyRecorded && localProd.openingStock !== undefined && localProd.openingStock !== null) {
-                const soldQty = Number(line.quantity || 1);
-                const newStock = Math.max(0, localProd.openingStock - soldQty);
+                const soldQty = baseQuantity(line, localProd);
+                const newStock = Math.max(0, round3(localProd.openingStock - soldQty));
                 const updatedVariants = applyVariantStockDelta(localProd, line.variantLabel, -soldQty);
                 await offlineDb.products.update(line.productId, {
                   openingStock: newStock,

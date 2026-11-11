@@ -6,6 +6,7 @@ export type UserPermissionKey =
   | 'kitchen'
   | 'catalog'
   | 'inventory'
+  | 'stock_adjust'
   | 'khata'
   | 'expenses'
   | 'reports'
@@ -48,6 +49,12 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
     label: 'Inventory & Stock Hub',
     category: 'Catalog & Stock',
     description: 'Stock in receiving, deductions, vendor ledger, and movement audit',
+  },
+  {
+    key: 'stock_adjust',
+    label: 'Stock Corrections',
+    category: 'Catalog & Stock',
+    description: 'Edit or reverse stock entries, post physical stock counts, and manage recipes',
   },
   {
     key: 'khata',
@@ -104,6 +111,7 @@ const DEFAULT_ADMIN_PERMISSIONS: UserPermissionKey[] = [
   'kitchen',
   'catalog',
   'inventory',
+  'stock_adjust',
   'khata',
   'expenses',
   'reports',

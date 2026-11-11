@@ -1,5 +1,5 @@
 import { storage } from '@/lib/storage';
-import { resolveApiUrl, getTenantHeaders } from '@/lib/api';
+import { resolveApiUrl, getTenantHeaders, currentUserName } from '@/lib/api';
 import { uid } from '@/lib/utils';
 import { PurchaseBill } from '@shared/types';
 
@@ -29,6 +29,7 @@ export interface VendorTransaction {
   description: string;
   billId?: string;
   paymentMethod?: string;
+  createdBy?: string; // user who recorded the entry
   date: string;
   createdAt: string;
 }
@@ -244,6 +245,7 @@ export const vendorStorage = {
       description,
       paymentMethod,
       billId,
+      createdBy: currentUserName(),
       date: now,
       createdAt: now,
     };
@@ -285,6 +287,7 @@ export const vendorStorage = {
   },
 
   savePurchaseBill(bill: PurchaseBill): PurchaseBill {
+    if (!bill.createdBy) bill = { ...bill, createdBy: currentUserName() };
     const bills = this.getPurchaseBills();
     const idx = bills.findIndex((b) => b.id === bill.id);
     if (idx !== -1) {

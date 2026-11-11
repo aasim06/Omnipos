@@ -96,7 +96,7 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
       "rackLocation" TEXT,
       "unit" TEXT,
       "minThreshold" INTEGER,
-      "openingStock" INTEGER,
+      "openingStock" REAL,
       "prepTime" INTEGER,
       "displayOrder" INTEGER DEFAULT 0,
       "tags" TEXT,
@@ -143,7 +143,7 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
       "productId" TEXT,
       "name" TEXT NOT NULL,
       "unitPrice" REAL NOT NULL,
-      "quantity" INTEGER NOT NULL,
+      "quantity" REAL NOT NULL,
       "variantLabel" TEXT,
       "notes" TEXT,
       FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE,
@@ -158,7 +158,7 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
       "productId" TEXT NOT NULL,
       "productName" TEXT NOT NULL,
       "type" TEXT NOT NULL,
-      "quantity" INTEGER NOT NULL,
+      "quantity" REAL NOT NULL,
       "unitCost" REAL,
       "unitPrice" REAL,
       "reason" TEXT,
@@ -302,14 +302,20 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
   }
 
   // Stock manager (Phase 2): batch / expiry on products, vendor + invoice details on movements
-  for (const col of [`"batchNumber" TEXT`, `"expiryDate" TEXT`, `"recipe" TEXT`]) {
+  for (const col of [
+    `"batchNumber" TEXT`, `"expiryDate" TEXT`, `"recipe" TEXT`, `"itemRole" TEXT`, `"barcode" TEXT`,
+    `"primaryUnit" TEXT`, `"secondaryUnit" TEXT`, `"conversionRate" REAL`, `"secondaryPrice" REAL`,
+  ]) {
     try {
       await database.$executeRawUnsafe(`ALTER TABLE "Product" ADD COLUMN ${col}`);
     } catch {
       /* Ignore if column already exists */
     }
   }
-  for (const col of [`"vendorName" TEXT`, `"referenceInvoice" TEXT`, `"batchNumber" TEXT`, `"expiryDate" TEXT`]) {
+  for (const col of [
+    `"vendorName" TEXT`, `"referenceInvoice" TEXT`, `"batchNumber" TEXT`, `"expiryDate" TEXT`,
+    `"createdBy" TEXT`, `"reversalOf" TEXT`, `"reversedAt" DATETIME`, `"reversedBy" TEXT`,
+  ]) {
     try {
       await database.$executeRawUnsafe(`ALTER TABLE "StockMovement" ADD COLUMN ${col}`);
     } catch {
@@ -373,6 +379,41 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     )
   `);
   await database.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "PurchaseBill_billNumber_key" ON "PurchaseBill"("billNumber")`);
+  for (const [table, col] of [["VendorTransaction", `"createdBy" TEXT`], ["PurchaseBill", `"createdBy" TEXT`]]) {
+    try {
+      await database.$executeRawUnsafe(`ALTER TABLE "${table}" ADD COLUMN ${col}`);
+    } catch {
+      /* Ignore if column already exists */
+    }
+  }
+
+  // Batch-wise stock (FEFO). Quantity columns elsewhere are declared INTEGER on older
+  // databases; SQLite still stores decimals in them, so no table rebuild is needed.
+  await database.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "StockBatch" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "productId" TEXT NOT NULL,
+      "movementId" TEXT NOT NULL,
+      "batchNumber" TEXT,
+      "expiryDate" TEXT,
+      "quantity" REAL NOT NULL,
+      "remaining" REAL NOT NULL,
+      "unitCost" REAL,
+      "receivedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await database.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "StockBatch_movementId_key" ON "StockBatch"("movementId")`);
+  await database.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "StockBatch_productId_idx" ON "StockBatch"("productId")`);
+  await database.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "BatchAllocation" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "movementId" TEXT NOT NULL,
+      "batchId" TEXT NOT NULL,
+      "quantity" REAL NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await database.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "BatchAllocation_movementId_idx" ON "BatchAllocation"("movementId")`);
   await database.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "VendorTransaction_vendorId_idx" ON "VendorTransaction"("vendorId")`);
 
   isInitialized = true;

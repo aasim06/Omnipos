@@ -36,7 +36,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { resolveApiUrl, posApi } from '@/lib/api';
+import { resolveApiUrl, posApi, round3 } from '@/lib/api';
 import { StockMovement, Product, Category } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
@@ -44,6 +44,7 @@ import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
+import { useAuth } from '@/features/auth/AuthContext';
 import { vendorStorage } from './vendorStorage';
 
 /** Stock sent back to the supplier: reduces stock AND what we owe that vendor. */
@@ -69,10 +70,11 @@ const stockOutSchema = z.object({
   selectedProductId: z.string().optional(),
   productName: z.string().min(1, 'Please select or enter an item name'),
   reason: z.string().min(1, 'Please select a reason'),
-  quantity: z.coerce.number().min(1, 'Qty must be at least 1 unit'),
+  quantity: z.coerce.number().positive('Qty must be more than 0'),
   unitCost: z.coerce.number().min(0, 'Unit cost cannot be negative').optional(),
   note: z.string().optional(),
   vendorName: z.string().optional(),
+  deductUnit: z.enum(['base', 'wholesale']).optional(),
 });
 
 type StockOutFormData = z.infer<typeof stockOutSchema>;
@@ -95,6 +97,9 @@ export function StockOutView(): React.JSX.Element {
   const queryClient = useQueryClient();
   const { notifySuccess, notifyError } = useAppToast();
   const confirmModal = useConfirmDialog();
+  // Editing / reversing stock entries needs the "Stock Corrections" permission
+  const { hasPermission } = useAuth();
+  const canAdjust = hasPermission('stock_adjust');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -173,6 +178,14 @@ export function StockOutView(): React.JSX.Element {
   const editTotalLossValue = editWatchedQty * editWatchedCost;
 
   // Mutation to Save Stock Out Entry: Offline-First
+  /** Wholesale ↔ base unit conversion of a product (e.g. 1 Carton = 24 Pieces), when it has one. */
+  const getConversion = (productId?: string) => {
+    const p = allProducts.find((x) => x.id === productId);
+    const rate = Number(p?.conversionRate || 0);
+    if (!p || !p.primaryUnit || rate <= 1) return null;
+    return { rate, wholesale: p.primaryUnit, base: p.secondaryUnit || p.unit || 'PCS' };
+  };
+
   /** Current tracked stock for a product, or null when the product does not track stock. */
   const getTrackedStock = (productId?: string, productName?: string): { name: string; stock: number } | null => {
     const prod = allProducts.find(
@@ -184,9 +197,13 @@ export function StockOutView(): React.JSX.Element {
 
   const saveMutation = useMutation({
     mutationFn: async (data: StockOutFormData) => {
+      const conv = data.deductUnit === 'wholesale' ? getConversion(data.selectedProductId) : null;
+      const baseQty = round3(data.quantity * (conv ? conv.rate : 1));
+      // unit cost is entered per the chosen unit; store it per base unit
+      const baseUnitCost = conv && data.unitCost ? round3(Number(data.unitCost) / conv.rate) : data.unitCost;
       const tracked = getTrackedStock(data.selectedProductId, data.productName);
-      if (tracked && data.quantity > tracked.stock) {
-        throw new Error(`Only ${tracked.stock} unit(s) of "${tracked.name}" in stock — cannot deduct ${data.quantity}.`);
+      if (tracked && baseQty > tracked.stock) {
+        throw new Error(`Only ${tracked.stock} unit(s) of "${tracked.name}" in stock — cannot deduct ${baseQty}.`);
       }
       const isReturn = data.reason === RETURN_TO_VENDOR;
       const returnVendor = isReturn ? vendorStorage.findVendor({ name: data.vendorName }) : undefined;
@@ -201,10 +218,12 @@ export function StockOutView(): React.JSX.Element {
         type: 'out',
         productId: data.selectedProductId || uid('prod_'),
         productName: data.productName,
-        quantity: data.quantity,
-        unitCost: data.unitCost ?? null,
+        quantity: baseQty,
+        unitCost: baseUnitCost ?? null,
         reason: data.reason,
-        referenceInvoice: data.note || '',
+        referenceInvoice: [conv ? `Deducted: ${data.quantity} ${conv.wholesale} × ${conv.rate} = ${baseQty} ${conv.base}` : '', data.note || '']
+          .filter(Boolean)
+          .join(' • '),
         ...(returnVendor ? { vendorName: returnVendor.name } : {}),
       });
 
@@ -216,7 +235,7 @@ export function StockOutView(): React.JSX.Element {
             returnVendor.id,
             'ADJUSTMENT',
             -value,
-            `Purchase return: ${data.productName} × ${data.quantity}`,
+            `Purchase return: ${data.productName} × ${baseQty}`,
             'return'
           );
         }
@@ -240,6 +259,7 @@ export function StockOutView(): React.JSX.Element {
         unitCost: 0,
         note: '',
         vendorName: '',
+        deductUnit: 'base',
       });
     },
     onError: (err: any) => {
@@ -262,7 +282,7 @@ export function StockOutView(): React.JSX.Element {
       const isReturn = data.reason === RETURN_TO_VENDOR;
       const returnVendor = vendorStorage.findVendor({ name: prev?.vendorName || undefined });
       if (isReturn && !returnVendor) {
-        throw new Error('Purchase returns can only be edited when the original entry has a vendor. Delete it and record the return again.');
+        throw new Error('Purchase returns can only be edited when the original entry has a vendor. Reverse it and record the return again.');
       }
 
       await posApi.updateStockMovement(data.id, {
@@ -310,7 +330,7 @@ export function StockOutView(): React.JSX.Element {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const target = movements.find((m) => m.id === id);
-      await posApi.deleteStockMovement(id);
+      await posApi.reverseStockMovement(id);
 
       // Deleting a purchase return takes the vendor credit back
       if (target?.reason === RETURN_TO_VENDOR) {
@@ -321,7 +341,7 @@ export function StockOutView(): React.JSX.Element {
             vendor.id,
             'ADJUSTMENT',
             value,
-            `Purchase return deleted: ${target.productName} × ${target.quantity}`,
+            `Purchase return reversed: ${target.productName} × ${target.quantity}`,
             'return'
           );
         }
@@ -375,9 +395,9 @@ export function StockOutView(): React.JSX.Element {
 
   const handleDelete = async (id: string) => {
     const ok = await confirmModal({
-      title: 'Delete Stock Out Entry',
-      message: 'Are you sure you want to delete this stock out deduction record? Stock counts will adjust accordingly.',
-      confirmLabel: 'Delete Record',
+      title: 'Reverse Stock Out Entry',
+      message: 'This posts an opposite "Reversal" entry and puts the quantity back into stock. The original entry stays in the ledger for audit.',
+      confirmLabel: 'Reverse Entry',
       intent: 'danger',
     });
     if (ok) {
@@ -388,9 +408,9 @@ export function StockOutView(): React.JSX.Element {
   const handleBatchDelete = async () => {
     if (selectedIds.length === 0) return;
     const ok = await confirmModal({
-      title: 'Delete Selected Records',
-      message: `Are you sure you want to delete ${selectedIds.length} selected stock out records?`,
-      confirmLabel: 'Delete Selected',
+      title: 'Reverse Selected Records',
+      message: `Post reversal entries for ${selectedIds.length} selected stock out records? The originals stay in the ledger.`,
+      confirmLabel: 'Reverse Selected',
       intent: 'danger',
     });
     if (ok) {
@@ -404,6 +424,8 @@ export function StockOutView(): React.JSX.Element {
   // Only Outflow Movements (filtered by licensed modules)
   const stockOutMovements = movements.filter((m) => {
     if (m.type !== 'out') return false;
+    // Reversed entries and reversal entries are audit history: shown in the Stock Movement Ledger
+    if (m.reversedAt || m.reversalOf) return false;
     // POS sales are logged in the Stock Movement Ledger; this page is for manual deductions only
     if (m.reason === 'POS Sale') return false;
     if (!hasFastFood && m.module === 'fastfood') return false;
@@ -587,9 +609,12 @@ export function StockOutView(): React.JSX.Element {
                 name="quantity"
                 render={({ field }) => (
                   <CustomInput
-                    label="QTY TO DEDUCT *"
+                    label={getConversion(form.watch('selectedProductId')) && form.watch('deductUnit') === 'wholesale'
+                      ? `QTY (${getConversion(form.watch('selectedProductId'))!.wholesale}) *`
+                      : 'QTY TO DEDUCT *'}
                     required
                     type="number"
+                    step="any"
                     placeholder="1"
                     value={field.value !== undefined ? String(field.value) : ''}
                     onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
@@ -605,8 +630,11 @@ export function StockOutView(): React.JSX.Element {
                 name="unitCost"
                 render={({ field }) => (
                   <CustomInput
-                    label="UNIT COST (PKR)"
+                    label={form.watch('deductUnit') === 'wholesale' && getConversion(form.watch('selectedProductId'))
+                      ? `COST / ${getConversion(form.watch('selectedProductId'))!.wholesale.toUpperCase()} (PKR)`
+                      : 'UNIT COST (PKR)'}
                     type="number"
+                    step="any"
                     placeholder="0"
                     value={field.value !== undefined ? String(field.value) : ''}
                     onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
@@ -669,6 +697,36 @@ export function StockOutView(): React.JSX.Element {
               </Button>
             </div>
           </div>
+
+          {/* Deduct in wholesale or base unit (only for products with a conversion) */}
+          {(() => {
+            const conv = getConversion(form.watch('selectedProductId'));
+            if (!conv) return null;
+            return (
+              <div style={{ maxWidth: 320, marginTop: 12 }}>
+                <Controller
+                  control={form.control}
+                  name="deductUnit"
+                  render={({ field }) => (
+                    <CustomSelect
+                      label="DEDUCT IN"
+                      value={field.value || 'base'}
+                      options={[
+                        { value: 'base', label: `${conv.base} (stock unit)` },
+                        { value: 'wholesale', label: `${conv.wholesale} (1 = ${conv.rate} ${conv.base})` },
+                      ]}
+                      onChange={(val) => field.onChange(val || 'base')}
+                    />
+                  )}
+                />
+                {form.watch('deductUnit') === 'wholesale' && (
+                  <span className={styles.fieldLabel} style={{ display: 'block', marginTop: 4 }}>
+                    = {round3((Number(form.watch('quantity')) || 0) * conv.rate)} {conv.base} out of stock
+                  </span>
+                )}
+              </div>
+            );
+          })()}
         </form>
       </div>
 
@@ -755,9 +813,10 @@ export function StockOutView(): React.JSX.Element {
                 size="small"
                 icon={<Delete20Regular />}
                 onClick={handleBatchDelete}
+                disabled={!canAdjust}
                 className={styles.deleteDangerBtn}
               >
-                Delete Selected ({selectedIds.length})
+                Reverse Selected ({selectedIds.length})
               </Button>
             )}
             <Caption1 className={styles.totalRecords}>
@@ -849,25 +908,29 @@ export function StockOutView(): React.JSX.Element {
                             aria-label="Print Deduction Slip"
                           />
 
-                          <Button
-                            appearance="subtle"
-                            size="small"
-                            icon={<Edit20Regular className={styles.iconRed} />}
-                            onClick={() => handleOpenEdit(mov)}
-                            className={styles.actionBtnEdit}
-                            title="Edit Deduction (Right Drawer)"
-                            aria-label="Edit Deduction (Right Drawer)"
-                          />
+                          {canAdjust && (
+                            <>
+                              <Button
+                                appearance="subtle"
+                                size="small"
+                                icon={<Edit20Regular className={styles.iconRed} />}
+                                onClick={() => handleOpenEdit(mov)}
+                                className={styles.actionBtnEdit}
+                                title="Edit Deduction (Right Drawer)"
+                                aria-label="Edit Deduction (Right Drawer)"
+                              />
 
-                          <Button
-                            appearance="subtle"
-                            size="small"
-                            icon={<Delete20Regular className={styles.iconRed} />}
-                            onClick={() => handleDelete(mov.id)}
-                            className={styles.actionBtnDelete}
-                            title="Delete Record"
-                            aria-label="Delete Record"
-                          />
+                              <Button
+                                appearance="subtle"
+                                size="small"
+                                icon={<Delete20Regular className={styles.iconRed} />}
+                                onClick={() => handleDelete(mov.id)}
+                                className={styles.actionBtnDelete}
+                                title="Reverse Entry"
+                                aria-label="Reverse Entry"
+                              />
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -954,6 +1017,7 @@ export function StockOutView(): React.JSX.Element {
                         label="Quantity Deducted"
                         required
                         type="number"
+                        step="any"
                         placeholder="1"
                         value={field.value !== undefined ? String(field.value) : ''}
                         onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}

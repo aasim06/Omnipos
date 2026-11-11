@@ -160,6 +160,10 @@ export interface StockMovement {
   note?: string;
   referenceInvoice?: string;
   vendorName?: string;
+  createdBy?: string | null; // user who recorded the entry
+  reversalOf?: string | null; // set on a reversal entry: the id it reverses
+  reversedAt?: string | null; // set on an entry that has been reversed
+  reversedBy?: string | null;
   date: string;
 }
 
@@ -193,6 +197,7 @@ export interface PurchaseBill {
   paymentMode: 'cash' | 'bank' | 'khata' | 'split';
   paymentStatus: 'paid' | 'partial' | 'unpaid';
   notes?: string;
+  createdBy?: string; // user who recorded the bill
   createdAt: string;
   updatedAt: string;
 }

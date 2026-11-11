@@ -157,10 +157,10 @@ export function RecipeDialog({ isOpen, onClose }: RecipeDialogProps): React.JSX.
       notifyWarning('Select the menu item first.');
       return;
     }
-    const bad = lines.find((l) => !(l.quantity > 0) || !Number.isInteger(l.quantity));
+    const bad = lines.find((l) => !(l.quantity > 0));
     if (bad) {
       notifyWarning(
-        `Quantity for "${bad.ingredientName || productById.get(bad.ingredientId)?.name || 'ingredient'}" must be a whole number above 0. Keep ingredient stock in its smallest unit (grams, ml, pieces).`
+        `Quantity for "${bad.ingredientName || productById.get(bad.ingredientId)?.name || 'ingredient'}" must be above 0.`
       );
       return;
     }
@@ -319,8 +319,8 @@ export function RecipeDialog({ isOpen, onClose }: RecipeDialogProps): React.JSX.
                   </div>
                 </div>
                 <Caption1 className={styles.hint}>
-                  Quantities are whole numbers in each ingredient&rsquo;s stock unit — keep ingredients like cheese or
-                  oil in grams / ml.
+                  Quantities are in each ingredient&rsquo;s stock unit and may be decimals — e.g. 0.02 for 20 g of
+                  cheese stocked in KG.
                 </Caption1>
               </>
             )}

@@ -31,6 +31,7 @@ import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
+import { useAuth } from '@/features/auth/AuthContext';
 
 const TIME_FILTER_OPTIONS = [
   { value: 'all', label: 'All Dates' },
@@ -45,6 +46,9 @@ export function StockLedgerView(): React.JSX.Element {
   const styles = useStockLedgerStyles();
   const { notifySuccess, notifyError } = useAppToast();
   const confirmModal = useConfirmDialog();
+  // Editing / reversing stock entries needs the "Stock Corrections" permission
+  const { hasPermission } = useAuth();
+  const canAdjust = hasPermission('stock_adjust');
   const [searchQuery, setSearchQuery] = useState('');
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
@@ -68,10 +72,10 @@ export function StockLedgerView(): React.JSX.Element {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const target = movements.find((m) => m.id === id);
-      if (target?.reason === 'POS Sale') {
-        throw new Error('POS sale entries cannot be deleted here. Use Customers & Returns to process a return.');
+      if (target?.reason === 'POS Sale' || target?.reason === 'Recipe Usage') {
+        throw new Error('POS sale entries cannot be reversed here. Use Customers & Returns to process a return.');
       }
-      await posApi.deleteStockMovement(id);
+      await posApi.reverseStockMovement(id);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
@@ -81,18 +85,18 @@ export function StockLedgerView(): React.JSX.Element {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
       }
-      notifySuccess('Stock ledger entry deleted successfully');
+      notifySuccess('Stock ledger entry reversed');
     },
     onError: (err: any) => {
-      notifyError(err.message || 'Failed to delete ledger entry');
+      notifyError(err.message || 'Failed to reverse ledger entry');
     },
   });
 
   const handleDelete = async (id: string) => {
     const ok = await confirmModal({
-      title: 'Delete Ledger Entry',
-      message: 'Are you sure you want to delete this stock ledger entry? Stock movements history will be altered.',
-      confirmLabel: 'Delete Entry',
+      title: 'Reverse Ledger Entry',
+      message: 'This posts an equal and opposite "Reversal" entry and restores stock. Nothing is deleted — both entries stay in the ledger.',
+      confirmLabel: 'Reverse Entry',
       intent: 'danger',
     });
     if (ok) {
@@ -660,6 +664,13 @@ export function StockLedgerView(): React.JSX.Element {
                             {mov.note}
                           </Caption1>
                         ) : null}
+                        {(mov.createdBy || mov.reversedAt || mov.reversalOf) && (
+                          <Caption1 className={styles.mutedCaption}>
+                            {mov.createdBy ? `By ${mov.createdBy}` : ''}
+                            {mov.reversedAt ? `${mov.createdBy ? ' • ' : ''}Reversed${mov.reversedBy ? ` by ${mov.reversedBy}` : ''}` : ''}
+                            {mov.reversalOf ? `${mov.createdBy ? ' • ' : ''}Reversal entry` : ''}
+                          </Caption1>
+                        )}
                       </td>
 
                       <td className={mergeClasses(styles.td, styles.tdRight)}>
@@ -677,15 +688,19 @@ export function StockLedgerView(): React.JSX.Element {
                       </td>
 
                       <td className={mergeClasses(styles.td, styles.tdCenter)}>
-                        <Button
-                          appearance="subtle"
-                          size="small"
-                          icon={<Delete20Regular className={styles.iconDelete} />}
-                          onClick={() => handleDelete(mov.id)}
-                          className={styles.actionBtnDelete}
-                          title="Delete Ledger Record"
-                          aria-label="Delete Ledger Record"
-                        />
+                        {canAdjust && !mov.reversedAt && !mov.reversalOf && mov.reason !== 'POS Sale' && mov.reason !== 'Recipe Usage' ? (
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={<Delete20Regular className={styles.iconDelete} />}
+                            onClick={() => handleDelete(mov.id)}
+                            className={styles.actionBtnDelete}
+                            title="Reverse Entry"
+                            aria-label="Reverse Entry"
+                          />
+                        ) : (
+                          '—'
+                        )}
                       </td>
                     </tr>
                   );

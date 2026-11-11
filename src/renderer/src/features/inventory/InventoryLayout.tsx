@@ -20,6 +20,7 @@ import { PurchaseBillModal } from './PurchaseBillModal';
 import { StockCountDialog } from './StockCountDialog';
 import { RecipeDialog } from './RecipeDialog';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
+import { useAuth } from '@/features/auth/AuthContext';
 import { PageHeader } from '@/components/win11';
 
 const useStyles = makeStyles({
@@ -155,6 +156,9 @@ export function InventoryLayout(): React.JSX.Element {
   const [isRecipeOpen, setIsRecipeOpen] = useState(false);
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
+  // Stock counts and recipes change stock levels directly: "Stock Corrections" permission only
+  const { hasPermission } = useAuth();
+  const canAdjust = hasPermission('stock_adjust');
   const queryClient = useQueryClient();
   // Bumped after vendors / ledger / bills are refreshed from the database so the
   // current screen re-reads the synchronous vendor cache.
@@ -184,10 +188,12 @@ export function InventoryLayout(): React.JSX.Element {
               <Button appearance="secondary" icon={<Receipt20Regular />} onClick={() => setIsPurchaseBillOpen(true)}>
                 Purchase bill
               </Button>
-              <Button appearance="secondary" icon={<ClipboardCheckmark20Regular />} onClick={() => setIsStockCountOpen(true)}>
-                Stock count
-              </Button>
-              {hasFastFood && (
+              {canAdjust && (
+                <Button appearance="secondary" icon={<ClipboardCheckmark20Regular />} onClick={() => setIsStockCountOpen(true)}>
+                  Stock count
+                </Button>
+              )}
+              {hasFastFood && canAdjust && (
                 <Button appearance="secondary" icon={<Food20Regular />} onClick={() => setIsRecipeOpen(true)}>
                   Recipes
                 </Button>

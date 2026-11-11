@@ -3,6 +3,14 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { getPrisma } from '../database/client';
 import { getImagesDir, resolveImagePath } from '../backup/images-paths';
+import {
+  round3,
+  openBatchForReceipt,
+  consumeFefo,
+  restoreAllocations,
+  resizeReceiptBatch,
+  syncProductNearestBatch,
+} from './stockBatches';
 
 export function saveBase64Image(dataUrlOrBase64: string, prefix: string): string | null {
   if (!dataUrlOrBase64 || typeof dataUrlOrBase64 !== 'string') return null;
@@ -32,7 +40,19 @@ export function saveBase64Image(dataUrlOrBase64: string, prefix: string): string
   }
 }
 
+/**
+ * Quantity of a sale / return line in the product's base (retail) unit. A line sold in the
+ * wholesale unit (selectedUnit 'primary', e.g. 1 Carton) is multiplied by the conversion rate.
+ */
+export function baseQuantity(line: { quantity?: unknown; selectedUnit?: unknown }, product: { conversionRate?: number | null } | null): number {
+  const qty = Number(line.quantity || 1);
+  const rate = Number(product?.conversionRate || 0);
+  return round3(line.selectedUnit === 'primary' && rate > 1 ? qty * rate : qty);
+}
+
 /** Deterministic id for the 'out' movement of a POS sale line (client writes the same id offline). */
+const toOptionalStr = (v: unknown): string | null => (v === undefined || v === null || v === '' ? null : String(v));
+
 export function saleMovementId(orderId: string, lineIndex: number): string {
   return `sale_${orderId}_${lineIndex}`;
 }
@@ -111,11 +131,11 @@ async function consumeRecipeIngredients(order: any, lineIndex: number, line: any
   const db = getPrisma();
   const lines = recipeLinesFor(parseRecipe(product.recipe), line.variantLabel);
   if (lines.length === 0) return;
-  const soldQty = Number(line.quantity || 1);
+  const soldQty = baseQuantity(line, product);
 
   for (let k = 0; k < lines.length; k++) {
     const r = lines[k];
-    const used = Math.round(r.quantity * soldQty);
+    const used = round3(r.quantity * soldQty);
     if (used <= 0) continue;
     try {
       await db.$transaction(async (tx: any) => {
@@ -133,14 +153,17 @@ async function consumeRecipeIngredients(order: any, lineIndex: number, line: any
             quantity: used,
             unitCost: ingredient.costPrice ?? null,
             reason: 'Recipe Usage',
+            createdBy: 'POS',
             note: `Sale Order #${order.id}: ${soldQty} × ${product.name}${line.variantLabel ? ` (${line.variantLabel})` : ''}`,
             date: order.createdAt || new Date(),
           },
         });
         await tx.product.update({
           where: { id: ingredient.id },
-          data: { openingStock: Math.max(0, (ingredient.openingStock || 0) - used), updatedAt: new Date() },
+          data: { openingStock: Math.max(0, round3((ingredient.openingStock || 0) - used)), updatedAt: new Date() },
         });
+        await consumeFefo(tx, ingredient.id, used, id);
+        await syncProductNearestBatch(tx, ingredient.id);
       });
     } catch (err) {
       console.warn(`[Recipe] Failed to consume ingredient ${r.ingredientId} for ${product.id}:`, err);
@@ -154,14 +177,18 @@ export function sanitizeProduct(raw: any) {
     'id', 'module', 'name', 'description', 'costPrice', 'price',
     'category', 'skuCode', 'rackLocation', 'unit', 'minThreshold',
     'openingStock', 'prepTime', 'displayOrder', 'tags', 'allergens',
-    'isAvailable', 'imageBase64', 'imageUrl', 'variants', 'batchNumber', 'expiryDate', 'recipe'
+    'isAvailable', 'imageBase64', 'imageUrl', 'variants', 'batchNumber', 'expiryDate', 'recipe',
+    'itemRole', 'barcode', 'primaryUnit', 'secondaryUnit', 'conversionRate', 'secondaryPrice'
   ];
   const out: any = {};
   for (const k of allowed) {
     if (raw[k] !== undefined) {
-      if (k === 'price' || k === 'costPrice') {
+      if (k === 'price' || k === 'costPrice' || k === 'conversionRate' || k === 'secondaryPrice') {
         out[k] = raw[k] === null || raw[k] === '' ? null : Number(raw[k]);
-      } else if (k === 'openingStock' || k === 'minThreshold' || k === 'prepTime' || k === 'displayOrder') {
+      } else if (k === 'openingStock') {
+        // Decimal stock is allowed (KG, L, meters)
+        out[k] = raw[k] === null || raw[k] === '' || raw[k] === undefined ? null : round3(Number(raw[k]));
+      } else if (k === 'minThreshold' || k === 'prepTime' || k === 'displayOrder') {
         out[k] = raw[k] === null || raw[k] === '' || raw[k] === undefined ? null : Math.round(Number(raw[k]));
       } else if (k === 'variants') {
         out[k] = Array.isArray(raw[k]) ? JSON.stringify(raw[k]) : typeof raw[k] === 'string' ? raw[k] : null;
@@ -810,8 +837,8 @@ export function registerRoutes(app: Express): void {
                 where: { id: String(line.productId) },
               });
               if (product && product.openingStock !== null && product.openingStock !== undefined) {
-                const soldQty = Number(line.quantity || 1);
-                const newStock = Math.max(0, product.openingStock - soldQty);
+                const soldQty = baseQuantity(line, product);
+                const newStock = Math.max(0, round3(product.openingStock - soldQty));
                 const updatedVariants = adjustVariantStockJson(product.variants, line.variantLabel, -soldQty);
                 await db.product.update({
                   where: { id: String(line.productId) },
@@ -835,9 +862,12 @@ export function registerRoutes(app: Express): void {
                       unitPrice: Number(line.unitPrice || 0) || null,
                       reason: 'POS Sale',
                       note: `Sale Order #${order.id}`,
+                      createdBy: toOptionalStr(orderData.cashierName || orderData.createdBy) || 'POS',
                       date: order.createdAt || new Date(),
                     },
                   });
+                  await consumeFefo(db, product.id, soldQty, saleMovementId(order.id, idx));
+                  await syncProductNearestBatch(db, product.id);
                 } catch (movErr) {
                   console.warn(`[Inventory] Sale movement not recorded for ${product.id}:`, movErr);
                 }
@@ -907,8 +937,7 @@ export function registerRoutes(app: Express): void {
       // 1. Restock products in inventory & create incoming StockMovements
       if (Array.isArray(returnedLines) && returnedLines.length > 0) {
         for (const line of returnedLines) {
-          const qty = Number(line.quantity || 1);
-          if (qty <= 0) continue;
+          if (Number(line.quantity || 1) <= 0) continue;
 
           let product: any = null;
           if (line.productId) {
@@ -916,10 +945,14 @@ export function registerRoutes(app: Express): void {
               where: { id: String(line.productId) },
             });
           }
+          // Made-to-order items (no stock tracking) are not restocked, and their consumed
+          // recipe ingredients are not returned either.
+          if (!product || product.openingStock === null || product.openingStock === undefined) continue;
+          const qty = baseQuantity(line, product);
 
-          if (product) {
+          {
             const currentStock = Number(product.openingStock ?? 0);
-            const newStock = currentStock + qty;
+            const newStock = round3(currentStock + qty);
 
             let updatedVariants = product.variants;
             if (line.variantLabel && product.variants) {
@@ -959,9 +992,25 @@ export function registerRoutes(app: Express): void {
               unitPrice: Number(line.unitPrice || 0),
               reason: 'Sales Return / Customer Refund',
               note: `Return for Order #${order.id}. Reason: ${reason || 'Customer Return'}`,
+              createdBy: toOptionalStr(req.body.createdBy) || null,
               date: new Date(),
             },
           });
+
+          // Put the returned units back into the batches this order's sale drew from
+          try {
+            const saleMovements = await db.stockMovement.findMany({
+              where: { productId: product.id, type: 'out', reason: 'POS Sale', id: { startsWith: `sale_${order.id}_` } },
+            });
+            let left = qty;
+            for (const m of saleMovements) {
+              if (left <= 0) break;
+              left = round3(left - (await restoreAllocations(db, m.id, left)));
+            }
+            await syncProductNearestBatch(db, product.id);
+          } catch (batchErr) {
+            console.warn('[Refund] Batch restore failed:', batchErr);
+          }
         }
       }
 
@@ -1138,7 +1187,7 @@ export function registerRoutes(app: Express): void {
 
   app.post('/api/stock-movements', async (req: Request, res: Response) => {
     try {
-      const { id, module, productId, productName, type, quantity, unitCost, unitPrice, reason, note, referenceInvoice, vendorName, batchNumber, expiryDate, date } = req.body;
+      const { id, module, productId, productName, type, quantity, unitCost, unitPrice, reason, note, referenceInvoice, vendorName, batchNumber, expiryDate, createdBy, date } = req.body;
 
       if (id) {
         const existing = await db.stockMovement.findUnique({ where: { id: String(id) } });
@@ -1153,7 +1202,7 @@ export function registerRoutes(app: Express): void {
             productId: productId || '',
             productName: productName || 'Unknown Product',
             type: type === 'out' ? 'out' : 'in',
-            quantity: Math.max(0, Math.round(Number(quantity || 0))),
+            quantity: Math.max(0, round3(Number(quantity || 0))),
             unitCost: unitCost ? Number(unitCost) : null,
             unitPrice: unitPrice ? Number(unitPrice) : null,
             reason: reason || null,
@@ -1162,6 +1211,7 @@ export function registerRoutes(app: Express): void {
             referenceInvoice: toOptionalString(referenceInvoice),
             batchNumber: toOptionalString(batchNumber),
             expiryDate: toOptionalString(expiryDate),
+            createdBy: toOptionalString(createdBy),
             ...(date ? { date: new Date(date) } : {}),
           },
         });
@@ -1172,7 +1222,7 @@ export function registerRoutes(app: Express): void {
           await tx.product.update({
             where: { id: product.id },
             data: {
-              openingStock: Math.max(0, (product.openingStock || 0) + movementDelta(created)),
+              openingStock: Math.max(0, round3((product.openingStock || 0) + movementDelta(created))),
               costPrice:
                 isIn && created.unitCost
                   ? weightedAverageCost(product.openingStock || 0, product.costPrice, created.quantity, created.unitCost)
@@ -1181,6 +1231,13 @@ export function registerRoutes(app: Express): void {
               ...(isIn && created.expiryDate ? { expiryDate: created.expiryDate } : {}),
             },
           });
+          // Batch-wise stock: receipts with a batch / expiry open a batch, outflows draw FEFO
+          if (isIn) {
+            await openBatchForReceipt(tx, { ...created, productId: product.id });
+          } else {
+            await consumeFefo(tx, product.id, created.quantity, created.id);
+          }
+          await syncProductNearestBatch(tx, product.id);
         }
         return created;
       });
@@ -1191,31 +1248,89 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  /**
+   * Reverse a stock entry: instead of deleting history, post an equal and opposite entry
+   * (reason "Reversal") and mark the original as reversed. Stock, average cost and batches
+   * are restored. Idempotent: reversing an already-reversed entry returns the existing reversal.
+   */
+  async function reverseMovement(tx: any, id: string, by?: string | null, why?: string | null) {
+    const original = await tx.stockMovement.findUnique({ where: { id } });
+    if (!original) return { notFound: true };
+    if (original.reversalOf) throw Object.assign(new Error('A reversal entry cannot itself be reversed.'), { status: 400 });
+    const reversalId = `rev_${original.id}`;
+    if (original.reversedAt) {
+      return { original, reversal: await tx.stockMovement.findUnique({ where: { id: reversalId } }), alreadyReversed: true };
+    }
+
+    const reversal = await tx.stockMovement.create({
+      data: {
+        id: reversalId,
+        module: original.module,
+        productId: original.productId,
+        productName: original.productName,
+        type: original.type === 'in' ? 'out' : 'in',
+        quantity: original.quantity,
+        unitCost: original.unitCost,
+        unitPrice: original.unitPrice,
+        reason: 'Reversal',
+        note: `Reversal of "${original.reason || original.type}" entry #${original.id.slice(-8)}${why ? ` — ${why}` : ''}`,
+        vendorName: original.vendorName,
+        referenceInvoice: original.referenceInvoice,
+        batchNumber: original.batchNumber,
+        expiryDate: original.expiryDate,
+        createdBy: toOptionalString(by),
+        reversalOf: original.id,
+        date: new Date(),
+      },
+    });
+    const updatedOriginal = await tx.stockMovement.update({
+      where: { id: original.id },
+      data: { reversedAt: new Date(), reversedBy: toOptionalString(by) },
+    });
+
+    const product = await resolveMovementProduct(tx, original.productId, original.productName);
+    if (product) {
+      await tx.product.update({
+        where: { id: product.id },
+        data: {
+          openingStock: Math.max(0, round3((product.openingStock || 0) - movementDelta(original))),
+          // Undo this receipt's contribution to the weighted average cost
+          ...(original.type === 'in' && original.unitCost
+            ? { costPrice: weightedAverageCost(product.openingStock || 0, product.costPrice, -original.quantity, original.unitCost) }
+            : {}),
+        },
+      });
+      if (original.type === 'in') {
+        await resizeReceiptBatch(tx, original.id, -original.quantity);
+      } else {
+        await restoreAllocations(tx, original.id);
+      }
+      await syncProductNearestBatch(tx, product.id);
+    }
+    return { original: updatedOriginal, reversal };
+  }
+
+  app.post('/api/stock-movements/:id/reverse', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      const result: any = await db.$transaction((tx: any) => reverseMovement(tx, id, req.body?.createdBy, req.body?.reason));
+      if (result.notFound) return res.status(404).json({ error: `Stock movement ${id} not found` });
+      res.json(result);
+    } catch (err: any) {
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  // Kept for older clients and queued offline deletes: a delete now posts a reversal
+  // (history is never erased). Unknown ids are a no-op so retries never get stuck.
   app.delete('/api/stock-movements/:id', async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id);
-      const result = await db.$transaction(async (tx: any) => {
-        const existing = await tx.stockMovement.findUnique({ where: { id } });
-        if (!existing) return { success: true, alreadyDeleted: true };
-        const product = await resolveMovementProduct(tx, existing.productId, existing.productName);
-        if (product) {
-          await tx.product.update({
-            where: { id: product.id },
-            data: {
-              openingStock: Math.max(0, (product.openingStock || 0) - movementDelta(existing)),
-              // Undo this receipt's contribution to the weighted average cost
-              ...(existing.type === 'in' && existing.unitCost
-                ? { costPrice: weightedAverageCost(product.openingStock || 0, product.costPrice, -existing.quantity, existing.unitCost) }
-                : {}),
-            },
-          });
-        }
-        await tx.stockMovement.delete({ where: { id } });
-        return { success: true };
-      });
-      res.json(result);
+      const result: any = await db.$transaction((tx: any) => reverseMovement(tx, id, req.query.by as string | undefined));
+      if (result.notFound) return res.json({ success: true, alreadyDeleted: true });
+      res.json({ success: true, reversed: true, ...result });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      res.status(err.status || 500).json({ error: err.message });
     }
   });
 
@@ -1227,6 +1342,9 @@ export function registerRoutes(app: Express): void {
       const updated = await db.$transaction(async (tx: any) => {
         const prev = await tx.stockMovement.findUnique({ where: { id } });
         if (!prev) return null;
+        if (prev.reversedAt || prev.reversalOf) {
+          throw Object.assign(new Error('Reversed entries and reversal entries cannot be edited.'), { status: 400 });
+        }
         const next = await tx.stockMovement.update({
           where: { id },
           data: {
@@ -1234,7 +1352,7 @@ export function registerRoutes(app: Express): void {
             ...(productId ? { productId } : {}),
             ...(productName ? { productName } : {}),
             ...(type ? { type: type === 'out' ? 'out' : 'in' } : {}),
-            ...(quantity !== undefined ? { quantity: Math.max(0, Math.round(Number(quantity))) } : {}),
+            ...(quantity !== undefined ? { quantity: Math.max(0, round3(Number(quantity))) } : {}),
             ...(unitCost !== undefined ? { unitCost: unitCost ? Number(unitCost) : null } : {}),
             ...(unitPrice !== undefined ? { unitPrice: unitPrice ? Number(unitPrice) : null } : {}),
             ...(reason !== undefined ? { reason } : {}),
@@ -1247,7 +1365,7 @@ export function registerRoutes(app: Express): void {
           },
         });
 
-        const diff = movementDelta(next) - movementDelta(prev);
+        const diff = round3(movementDelta(next) - movementDelta(prev));
         const costChanged = next.type === 'in' && !!next.unitCost && next.unitCost !== prev.unitCost;
         if (diff !== 0 || costChanged) {
           const product = await resolveMovementProduct(tx, next.productId, next.productName);
@@ -1267,10 +1385,22 @@ export function registerRoutes(app: Express): void {
             await tx.product.update({
               where: { id: product.id },
               data: {
-                openingStock: Math.max(0, (product.openingStock || 0) + diff),
+                openingStock: Math.max(0, round3((product.openingStock || 0) + diff)),
                 costPrice: cost,
               },
             });
+            // Keep batches in step with the edited quantity
+            if (prev.type === next.type) {
+              const qtyChange = round3(next.quantity - prev.quantity);
+              if (next.type === 'in') {
+                await resizeReceiptBatch(tx, next.id, qtyChange);
+              } else if (qtyChange > 0) {
+                await consumeFefo(tx, product.id, qtyChange, next.id);
+              } else if (qtyChange < 0) {
+                await restoreAllocations(tx, next.id, -qtyChange);
+              }
+              await syncProductNearestBatch(tx, product.id);
+            }
           }
         }
         return next;
@@ -1278,6 +1408,20 @@ export function registerRoutes(app: Express): void {
 
       if (!updated) return res.status(404).json({ error: `Stock movement ${id} not found` });
       res.json(updated);
+    } catch (err: any) {
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/stock-batches', async (req: Request, res: Response) => {
+    try {
+      const productId = req.query.productId as string | undefined;
+      const openOnly = req.query.open === '1';
+      const rows = await (db as any).stockBatch.findMany({
+        where: { ...(productId ? { productId } : {}), ...(openOnly ? { remaining: { gt: 0 } } : {}) },
+        orderBy: { receivedAt: 'asc' },
+      });
+      res.json(rows);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -1385,6 +1529,7 @@ export function registerRoutes(app: Express): void {
         description: toOptionalString(t.description),
         billId: toOptionalString(t.billId),
         paymentMethod: toOptionalString(t.paymentMethod),
+        createdBy: toOptionalString(t.createdBy),
         ...(t.date ? { date: new Date(t.date) } : {}),
       },
     });
@@ -1416,6 +1561,7 @@ export function registerRoutes(app: Express): void {
     paymentMode: String(b.paymentMode || 'cash'),
     paymentStatus: String(b.paymentStatus || 'unpaid'),
     notes: toOptionalString(b.notes),
+    createdBy: toOptionalString(b.createdBy),
     ...(b.createdAt ? { createdAt: new Date(b.createdAt) } : {}),
   });
 
@@ -1908,6 +2054,8 @@ export function registerRoutes(app: Express): void {
         (db as any).vendorTransaction.deleteMany(),
         (db as any).vendor.deleteMany(),
         (db as any).purchaseBill.deleteMany(),
+        (db as any).stockBatch.deleteMany(),
+        (db as any).batchAllocation.deleteMany(),
         db.expense.deleteMany(),
         db.cashDrawer.deleteMany(),
         db.syncOutbox.deleteMany(),

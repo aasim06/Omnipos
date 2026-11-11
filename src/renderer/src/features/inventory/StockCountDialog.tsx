@@ -13,7 +13,7 @@ import {
 } from '@fluentui/react-components';
 import { Delete20Regular, Dismiss20Regular } from '@fluentui/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { posApi } from '@/lib/api';
+import { posApi, round3 } from '@/lib/api';
 import { Product } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
 import { CustomInput } from '@/components/ui';
@@ -105,7 +105,7 @@ export function StockCountDialog({ isOpen, onClose }: StockCountDialogProps): Re
     setSearch('');
   };
 
-  const diffOf = (l: CountLine) => (l.countedQty === '' ? 0 : Number(l.countedQty) - l.systemQty);
+  const diffOf = (l: CountLine) => (l.countedQty === '' ? 0 : round3(Number(l.countedQty) - l.systemQty));
   const changed = lines.filter((l) => l.countedQty !== '' && diffOf(l) !== 0);
   const valueImpact = changed.reduce((sum, l) => sum + diffOf(l) * l.unitCost, 0);
 
@@ -120,8 +120,8 @@ export function StockCountDialog({ isOpen, onClose }: StockCountDialogProps): Re
   };
 
   const handleSave = async () => {
-    if (lines.some((l) => l.countedQty !== '' && (Number(l.countedQty) < 0 || !Number.isInteger(Number(l.countedQty))))) {
-      notifyWarning('Counted quantity must be a whole number of 0 or more.');
+    if (lines.some((l) => l.countedQty !== '' && !(Number(l.countedQty) >= 0))) {
+      notifyWarning('Counted quantity must be 0 or more (decimals allowed for KG / L).');
       return;
     }
     if (changed.length === 0) {
@@ -138,7 +138,7 @@ export function StockCountDialog({ isOpen, onClose }: StockCountDialogProps): Re
           type: diff > 0 ? 'in' : 'out',
           productId: l.productId,
           productName: l.name,
-          quantity: Math.abs(diff),
+          quantity: round3(Math.abs(diff)),
           unitCost: l.unitCost || undefined,
           reason: STOCK_COUNT_REASON,
           referenceInvoice: `Physical count: system ${l.systemQty}, counted ${l.countedQty}`,
