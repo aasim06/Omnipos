@@ -29,6 +29,32 @@ import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { offlineDb, LocalOrder } from '@/lib/offlineDb';
 import { Product } from '@/lib/types';
 import { useFastFoodDashboardStyles } from './fastFoodDashboard.styles';
+import { useQuery } from '@tanstack/react-query';
+import { resolveApiUrl, getTenantHeaders } from '@/lib/api';
+import { getStockStatus } from '@/lib/stockStatus';
+
+interface KitchenTicketRow {
+  id: string;
+  status: 'pending' | 'cooking' | 'ready' | 'served';
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Live kitchen tickets (pending / cooking / ready) from the backend; [] when unreachable. */
+async function fetchKitchenTickets(): Promise<KitchenTicketRow[]> {
+  try {
+    const base = await resolveApiUrl();
+    const headers = await getTenantHeaders();
+    const res = await fetch(`${base}/api/kitchen/tickets`, { headers });
+    return res.ok ? await res.json() : [];
+  } catch {
+    return [];
+  }
+}
+
+const minutesSince = (iso: string) => Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000);
+const avgMinutes = (rows: KitchenTicketRow[], field: 'createdAt' | 'updatedAt') =>
+  rows.length ? Math.round(rows.reduce((sum, t) => sum + minutesSince(t[field]), 0) / rows.length) : 0;
 
 type DashboardTab = 'fastfood' | 'minimart';
 type DateRange = 'today' | 'week' | 'month';
@@ -69,6 +95,29 @@ export function FastFoodDashboardView(): React.JSX.Element {
     isCurrentHour: boolean;
     hourOrders: LocalOrder[];
   } | null>(null);
+
+  // Kitchen (KOT) panels only for businesses whose licence includes the kitchen module
+  const showKitchen = hasKitchen && hasFastFood && activeTab === 'fastfood';
+
+  const { data: kitchenTickets = [] } = useQuery<KitchenTicketRow[]>({
+    queryKey: ['kitchen-tickets', 'dashboard'],
+    queryFn: fetchKitchenTickets,
+    enabled: showKitchen,
+    refetchInterval: 15000,
+  });
+  const kitchenStats = useMemo(() => {
+    const queued = kitchenTickets.filter((t) => t.status === 'pending');
+    const cooking = kitchenTickets.filter((t) => t.status === 'cooking');
+    const ready = kitchenTickets.filter((t) => t.status === 'ready');
+    return {
+      queued: queued.length,
+      cooking: cooking.length,
+      ready: ready.length,
+      inKitchen: queued.length + cooking.length,
+      avgWait: avgMinutes(queued, 'createdAt'),
+      avgPrep: avgMinutes(cooking, 'updatedAt'),
+    };
+  }, [kitchenTickets]);
 
   // Load orders and products from offlineDb
   const loadData = async () => {
@@ -139,6 +188,19 @@ export function FastFoodDashboardView(): React.JSX.Element {
       }
     });
   }, [orders, activeTab, dateRange]);
+
+  // Kitchen items (fast-food stock) that are low or out
+  const kitchenLowStock = useMemo(
+    () =>
+      products
+        .filter((p) => p.module === 'fastfood')
+        .filter((p) => {
+          const st = getStockStatus(p);
+          return st === 'low' || st === 'out';
+        })
+        .sort((a, b) => (Number(a.openingStock) || 0) - (Number(b.openingStock) || 0)),
+    [products]
+  );
 
   // Key KPI Calculations
   const metrics = React.useMemo(() => {
@@ -467,10 +529,10 @@ export function FastFoodDashboardView(): React.JSX.Element {
           footer={
             <>
               <span>{metrics.completedCount} paid</span>
-              {activeTab === 'fastfood' && (
+              {showKitchen && (
                 <>
                   <span aria-hidden>·</span>
-                  <span>{metrics.inKitchenCount} in kitchen</span>
+                  <span>{kitchenStats.inKitchen} in kitchen</span>
                 </>
               )}
             </>
@@ -867,8 +929,9 @@ export function FastFoodDashboardView(): React.JSX.Element {
       {/* ══════════════════════════════════════════════════════════════════════
           LOWER SECTION: LIVE KITCHEN PIPELINE & TOP SELLERS LEADERBOARD
       ══════════════════════════════════════════════════════════════════════ */}
-      <div className={styles.lowerGrid}>
-        {/* ── Live Kitchen Display Status / KOT Pipeline ── */}
+      <div className={styles.lowerGrid} style={showKitchen ? undefined : { gridTemplateColumns: '1fr' }}>
+        {/* ── Live Kitchen Display Status / KOT Pipeline (kitchen module only) ── */}
+        {showKitchen && (
         <div className={mergeClasses(styles.kitchenCard, isDark ? styles.cardDark : styles.cardLight)}>
           <div className={styles.kitchenHeader}>
             <div className={styles.kitchenTitleGroup}>
@@ -876,7 +939,7 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 Live Kitchen Orders (KOT)
               </h3>
               <span className={styles.kitchenInKitchenBadge}>
-                {metrics.inKitchenCount} In Kitchen
+                {kitchenStats.inKitchen} In Kitchen
               </span>
             </div>
 
@@ -899,9 +962,11 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 <span>Queued (KOT)</span>
               </div>
               <div className={styles.stageCount}>
-                {Math.max(1, Math.floor(metrics.inKitchenCount / 2))}
+                {kitchenStats.queued}
               </div>
-              <span className={mergeClasses(styles.stageSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>Avg wait: 2 mins</span>
+              <span className={mergeClasses(styles.stageSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>
+                {kitchenStats.queued ? `Avg wait: ${kitchenStats.avgWait} min` : 'No tickets waiting'}
+              </span>
             </div>
 
             {/* Stage 2: Cooking on Grill / Fryer */}
@@ -911,9 +976,11 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 <span>Cooking / Grill</span>
               </div>
               <div className={mergeClasses(styles.stageCount, styles.stageCountAmber)}>
-                {metrics.inKitchenCount}
+                {kitchenStats.cooking}
               </div>
-              <span className={mergeClasses(styles.stageSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>Avg prep: 8.5 mins</span>
+              <span className={mergeClasses(styles.stageSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>
+                {kitchenStats.cooking ? `Avg on grill: ${kitchenStats.avgPrep} min` : 'Nothing cooking'}
+              </span>
             </div>
 
             {/* Stage 3: Ready for Pickup */}
@@ -923,13 +990,14 @@ export function FastFoodDashboardView(): React.JSX.Element {
                 <span>Ready to Serve</span>
               </div>
               <div className={mergeClasses(styles.stageCount, styles.stageCountGreen)}>
-                {metrics.readyCount || 2}
+                {kitchenStats.ready}
               </div>
               <span className={mergeClasses(styles.stageSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>Tokens on counter</span>
             </div>
           </div>
 
-          {/* Quick Critical Ingredient Inventory Notice */}
+          {/* Kitchen stock notice: real low / out-of-stock kitchen items (hidden when all fine) */}
+          {kitchenLowStock.length > 0 && (
           <div className={mergeClasses(styles.noticeBanner, isDark ? styles.noticeBannerDark : styles.noticeBannerLight)}>
             <div className={styles.noticeLeft}>
               <AlertUrgent20Filled className={styles.noticeIcon} />
@@ -938,7 +1006,11 @@ export function FastFoodDashboardView(): React.JSX.Element {
                   Kitchen stock notice
                 </div>
                 <div className={mergeClasses(styles.noticeSub, isDark ? styles.textMutedDark : styles.textMutedLight)}>
-                  Burger Buns (35 left) • Cooking Oil (Sufficient) • Mozzarella Cheese (Good)
+                  {kitchenLowStock
+                    .slice(0, 3)
+                    .map((p) => (getStockStatus(p) === 'out' ? `${p.name} (out)` : `${p.name} (${p.openingStock} left)`))
+                    .join(' • ')}
+                  {kitchenLowStock.length > 3 ? ` • +${kitchenLowStock.length - 3} more` : ''}
                 </div>
               </div>
             </div>
@@ -950,7 +1022,9 @@ export function FastFoodDashboardView(): React.JSX.Element {
               Restock
             </button>
           </div>
+          )}
         </div>
+        )}
 
         {/* ── Top 5 Bestsellers Podium / Ranking ── */}
         <div className={mergeClasses(styles.leaderboardCard, isDark ? styles.cardDark : styles.cardLight)}>
