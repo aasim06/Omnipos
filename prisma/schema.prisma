@@ -82,6 +82,7 @@ model OrderItem {
   unitPrice    Float
   quantity     Float    // decimals for weight / volume sales
   variantLabel String?
+  selectedUnit String?  // 'primary' when sold in the wholesale unit (e.g. Carton)
   notes        String?
 }
 

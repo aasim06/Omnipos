@@ -1207,7 +1207,7 @@ export const posApi = {
       for (const line of payload.returnedLines) {
         const p = await offlineDb.products.get(line.productId);
         if (p && p.openingStock !== undefined && p.openingStock !== null) {
-          const returnedQty = Number(line.quantity || 1);
+          const returnedQty = baseQuantity(line, p); // a returned Carton restocks its pieces
           const newStock = (p.openingStock || 0) + returnedQty;
           const updatedVariants = applyVariantStockDelta(p, line.variantLabel, returnedQty);
           await offlineDb.products.update(p.id, {

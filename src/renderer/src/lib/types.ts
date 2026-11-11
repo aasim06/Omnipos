@@ -65,8 +65,9 @@ export interface CartLine {
   unitPrice: number;
   quantity: number;
   variantLabel?: string;
-  selectedUnit?: string; // 'primary' | 'secondary'
+  selectedUnit?: string; // 'primary' (wholesale, e.g. Carton) | 'secondary' (retail piece)
   unitLabel?: string; // 'Box' | 'Pcs'
+  unitFactor?: number; // stock (base) units per 1 quantity of this line, e.g. 24 for a Carton
   costPrice?: number; // captured at sale time for accurate COGS
   batchNumber?: string;
   expiryDate?: string;
@@ -108,6 +109,7 @@ export interface ReturnedLineItem {
   quantity: number;
   unitPrice: number;
   variantLabel?: string;
+  selectedUnit?: string; // 'primary' when the line was sold in the wholesale unit
 }
 
 export interface OrderRefund {

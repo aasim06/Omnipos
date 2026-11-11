@@ -649,13 +649,14 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     setEditingQtyItem(null);
     playBeep();
   };
-  // Fast O(1) in-cart lookup map to avoid scanning cart repeatedly
+  // Fast O(1) in-cart lookup map to avoid scanning cart repeatedly.
+  // Per-product totals are in stock (base) units, so a Carton line counts as e.g. 24 pieces.
   const inCartMap = React.useMemo(() => {
     const map: Record<string, number> = {};
     for (const item of cart) {
       const key = `${item.productId}__${item.variantLabel || ''}`;
       map[key] = (map[key] || 0) + item.quantity;
-      map[item.productId] = (map[item.productId] || 0) + item.quantity;
+      map[item.productId] = (map[item.productId] || 0) + cartLineBaseQty(item);
     }
     return map;
   }, [cart]);
@@ -687,15 +688,19 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
       }
     }
 
-    const unitPrice = customUnitPrice !== undefined ? customUnitPrice : product.price;
+    // Products with a wholesale unit (Carton) are added as retail pieces at the piece price;
+    // the cart line can then be switched to Carton.
+    const conv = !variantLabel && customUnitPrice === undefined ? getUnitConversion(product) : null;
+    const unitPrice = customUnitPrice !== undefined ? customUnitPrice : conv ? conv.retailPrice : product.price;
     setCart((prev) => {
       const existsIndex = prev.findIndex(
         (item) => item.productId === product.id && item.variantLabel === variantLabel
       );
       if (existsIndex > -1) {
-        const existingQty = prev[existsIndex].quantity;
-        if (!isFood && !variantLabel && product.openingStock !== undefined && product.openingStock !== null) {
-          if (existingQty + qty > product.openingStock) {
+        const lineFactor = prev[existsIndex].unitFactor || 1;
+        if (!isFood && (!variantLabel || prev[existsIndex].selectedUnit === 'primary') && product.openingStock !== undefined && product.openingStock !== null) {
+          const inCartBase = prev.filter((i) => i.productId === product.id).reduce((s, i) => s + cartLineBaseQty(i), 0);
+          if (inCartBase + qty * lineFactor > product.openingStock) {
             playErrorBeep();
             return prev;
           }
@@ -716,7 +721,8 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
           costPrice: product.costPrice,
           batchNumber: product.batchNumber,
           expiryDate: product.expiryDate,
-          unitLabel: product.unit,
+          unitLabel: conv ? conv.retail : product.unit,
+          ...(conv ? { selectedUnit: 'secondary' } : {}),
           notes,
           imageUrl: product.imageUrl,
         },
@@ -736,8 +742,10 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
       if (!item) return prev;
       if (delta > 0) {
         const prod = products.find((p) => p.id === productId);
-        if (prod && prod.openingStock !== null && prod.openingStock !== undefined && !variantLabel) {
-          if (item.quantity + delta > prod.openingStock) {
+        const tracksStock = prod && prod.openingStock !== null && prod.openingStock !== undefined;
+        if (tracksStock && (!variantLabel || item.selectedUnit === 'primary')) {
+          const inCartBase = prev.filter((i) => i.productId === productId).reduce((s, i) => s + cartLineBaseQty(i), 0);
+          if (inCartBase + delta * (item.unitFactor || 1) > (prod!.openingStock as number)) {
             playErrorBeep();
             return prev;
           }
@@ -751,6 +759,39 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     });
     playBeep();
   }, [products]);
+  /**
+   * Switch a cart line between the retail piece and the wholesale unit (e.g. Carton).
+   * Carton lines are priced at the product's Selling Price, piece lines at the Retail Piece
+   * Price; stock is always checked and deducted in pieces.
+   */
+  const switchCartLineUnit = React.useCallback((productId: string, variantLabel: string | undefined, to: 'primary' | 'secondary') => {
+    const prod = products.find((p) => p.id === productId);
+    const conv = getUnitConversion(prod);
+    if (!prod || !conv) return;
+    setCart((prev) => {
+      const line = prev.find((i) => i.productId === productId && i.variantLabel === variantLabel);
+      if (!line || (line.selectedUnit === 'primary') === (to === 'primary')) return prev;
+      const next: CartLine =
+        to === 'primary'
+          ? { ...line, variantLabel: conv.wholesale, selectedUnit: 'primary', unitFactor: conv.rate, unitPrice: conv.wholesalePrice, unitLabel: conv.wholesale }
+          : { ...line, variantLabel: undefined, selectedUnit: 'secondary', unitFactor: undefined, unitPrice: conv.retailPrice, unitLabel: conv.retail };
+      const others = prev.filter((i) => i !== line);
+      const merged = others.find((i) => i.productId === productId && i.variantLabel === next.variantLabel);
+      const result = merged
+        ? others.map((i) => (i === merged ? { ...i, quantity: i.quantity + next.quantity } : i))
+        : prev.map((i) => (i === line ? next : i));
+      if (prod.openingStock !== null && prod.openingStock !== undefined) {
+        const totalBase = result.filter((i) => i.productId === productId).reduce((s, i) => s + cartLineBaseQty(i), 0);
+        if (totalBase > prod.openingStock) {
+          playErrorBeep();
+          return prev;
+        }
+      }
+      return result;
+    });
+    playBeep();
+  }, [products]);
+
   /* Hold / Park Order (Queue Management) */
   const handleParkOrder = () => {
     if (cart.length === 0) return;
@@ -1196,6 +1237,8 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     addToCart,
     removeFromCart,
     updateCartQty,
+    switchCartLineUnit,
+    getUnitConversion,
     handleParkOrder,
     handleResumeParkedOrder,
     handleDiscardParkedOrder,
@@ -1213,3 +1256,28 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
 }
 
 export type PosCounterState = ReturnType<typeof usePosCounter>;
+
+/**
+ * Wholesale ↔ retail unit setup of a product (e.g. 1 Carton = 24 Pieces), or null.
+ * Selling Price is the wholesale (Carton) price; Retail Piece Price is the per-piece price
+ * (falls back to Selling Price ÷ rate). Products with sizes/variants are not converted.
+ */
+export function getUnitConversion(p?: Product | null) {
+  const rate = Number(p?.conversionRate || 0);
+  if (!p || !p.primaryUnit || rate <= 1 || (p.variants && p.variants.length > 0)) return null;
+  const wholesalePrice = Number(p.price) || 0;
+  const piece = Number(p.secondaryPrice);
+  return {
+    rate,
+    wholesale: p.primaryUnit,
+    retail: p.secondaryUnit || p.unit || 'PCS',
+    wholesalePrice,
+    retailPrice: piece > 0 ? piece : Math.round((wholesalePrice / rate) * 100) / 100,
+  };
+}
+
+/** Stock (base) units a cart line will deduct. */
+export function cartLineBaseQty(line: Pick<CartLine, 'quantity' | 'unitFactor' | 'selectedUnit'>): number {
+  const factor = line.selectedUnit === 'primary' ? Number(line.unitFactor || 1) : 1;
+  return Math.round(Number(line.quantity || 0) * factor * 1000) / 1000;
+}

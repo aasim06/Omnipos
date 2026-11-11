@@ -19,6 +19,9 @@ export function OrderLineList({ pos }: { pos: PosCounterState }) {
     setCustomQtyInput,
     removeFromCart,
     updateCartQty,
+    products,
+    switchCartLineUnit,
+    getUnitConversion,
   } = pos;
 
   const hoverFill = isDark ? 'rgba(255,255,255,0.061)' : 'rgba(0,0,0,0.037)';
@@ -142,6 +145,36 @@ export function OrderLineList({ pos }: { pos: PosCounterState }) {
             <div style={{ fontSize: '12px', color: F.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {item.variantLabel ? `${item.variantLabel} · ` : ''}PKR {item.unitPrice.toLocaleString()} each
             </div>
+            {(() => {
+              const conv = getUnitConversion(products.find((p) => p.id === item.productId));
+              if (!conv) return null;
+              const isCarton = item.selectedUnit === 'primary';
+              const pill = (label: string, active: boolean, to: 'primary' | 'secondary') => (
+                <button
+                  type="button"
+                  onClick={() => !active && switchCartLineUnit(item.productId, item.variantLabel, to)}
+                  aria-pressed={active}
+                  title={to === 'primary' ? `Sell by ${conv.wholesale} (1 = ${conv.rate} ${conv.retail}) at PKR ${conv.wholesalePrice.toLocaleString()}` : `Sell by ${conv.retail} at PKR ${conv.retailPrice.toLocaleString()}`}
+                  style={{
+                    fontSize: '11px',
+                    padding: '1px 8px',
+                    border: `1px solid ${active ? F.accentRed : F.border}`,
+                    backgroundColor: active ? F.accentRed : 'transparent',
+                    color: active ? '#FFFFFF' : F.textSecondary,
+                    cursor: active ? 'default' : 'pointer',
+                    borderRadius: to === 'primary' ? '0 4px 4px 0' : '4px 0 0 4px',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+              return (
+                <div style={{ display: 'inline-flex', marginTop: '3px' }} role="group" aria-label="Sell unit">
+                  {pill(conv.retail, !isCarton, 'secondary')}
+                  {pill(`${conv.wholesale} ×${conv.rate}`, isCarton, 'primary')}
+                </div>
+              );
+            })()}
             {item.notes && (
               <div style={{ fontSize: '12px', color: noteColor, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '1px' }}>
                 <Tag20Regular style={{ width: 12, height: 12, flexShrink: 0 }} />

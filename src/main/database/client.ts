@@ -388,6 +388,12 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     }
   }
 
+  try {
+    await database.$executeRawUnsafe(`ALTER TABLE "OrderItem" ADD COLUMN "selectedUnit" TEXT`);
+  } catch {
+    /* Ignore if column already exists */
+  }
+
   // Batch-wise stock (FEFO). Quantity columns elsewhere are declared INTEGER on older
   // databases; SQLite still stores decimals in them, so no table rebuild is needed.
   await database.$executeRawUnsafe(`

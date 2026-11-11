@@ -817,6 +817,7 @@ export function registerRoutes(app: Express): void {
             unitPrice: Number(line.unitPrice) || 0,
             quantity: Number(line.quantity) || 1,
             variantLabel: line.variantLabel || null,
+            selectedUnit: line.selectedUnit || null,
             notes: line.notes || null,
           };
         })

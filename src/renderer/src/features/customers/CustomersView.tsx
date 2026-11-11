@@ -322,6 +322,7 @@ export function CustomersView(): React.JSX.Element {
             quantity: qty,
             unitPrice: line.unitPrice,
             variantLabel: line.variantLabel,
+            selectedUnit: line.selectedUnit,
           });
         }
       });
