@@ -2255,6 +2255,44 @@ export const posApi = {
   },
 
   /**
+   * Compare an openable quotation with today's catalogue: prices that changed since it was quoted,
+   * items short in stock, and items no longer in the catalogue. The quoted price is honoured while
+   * the quotation is valid; these are shown to the cashier before the cart is loaded.
+   */
+  async checkQuotationForSale(id: string): Promise<{ quote: Quotation; issues: string[] }> {
+    const quote = await this.getOpenableQuotation(id);
+    const issues: string[] = [];
+    const need = new Map<string, { name: string; qty: number; stock: number }>();
+    for (const line of quote.lines || []) {
+      if (!line.productId || line.productId.startsWith('custom_')) continue;
+      const raw = await offlineDb.products.get(line.productId);
+      if (!raw) {
+        issues.push(`${line.name}: no longer in the product list`);
+        continue;
+      }
+      const p = decodeProductVariants(raw);
+      const variant = line.variantLabel ? (p.variants || []).find((v: any) => v.label === line.variantLabel) : undefined;
+      const current = variant
+        ? variant.price !== undefined && variant.price !== null
+          ? Number(variant.price)
+          : Number(p.price || 0) + Number((variant as any).priceDelta || 0)
+        : Number(p.price || 0);
+      if (Math.abs(current - Number(line.unitPrice || 0)) > 0.009) {
+        issues.push(`${line.name}: quoted PKR ${Number(line.unitPrice).toLocaleString()}, price today PKR ${current.toLocaleString()}`);
+      }
+      if (p.openingStock !== null && p.openingStock !== undefined) {
+        const entry = need.get(p.id) || { name: p.name, qty: 0, stock: Number(p.openingStock) || 0 };
+        entry.qty = round3(entry.qty + baseQuantity(line, p));
+        need.set(p.id, entry);
+      }
+    }
+    for (const n of need.values()) {
+      if (n.qty > n.stock) issues.push(`${n.name}: quotation needs ${n.qty}, only ${n.stock} in stock`);
+    }
+    return { quote, issues };
+  },
+
+  /**
    * Record that a POS sale sold this quotation. Called by the checkout after the order is saved.
    */
   async markQuotationConverted(id: string, orderId: string): Promise<void> {

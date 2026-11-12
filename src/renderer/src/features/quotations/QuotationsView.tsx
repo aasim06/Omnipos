@@ -39,6 +39,7 @@ import { CustomInput, CustomSelect } from '@/components/ui';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { decodeProductVariants } from '@/lib/variants';
 import { QuotationPrintTemplate } from '@/components/print/QuotationPrintTemplate';
+import { nextQuoteNumber, sameQuoteNumber } from '@shared/quotes';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { resolveStoreModules } from '@/lib/categoryProfiles';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
@@ -151,7 +152,7 @@ export function QuotationsView(): React.JSX.Element {
 
   // Open modal for new quotation
   const openNewQuotationModal = () => {
-    const nextNum = `EST-${1000 + quotations.length + 1}`;
+    const nextNum = nextQuoteNumber(quotations.map((q) => q.quoteNumber));
     setEditingQuotation(null);
     setQuoteNumber(nextNum);
     setCustomerName('');
@@ -283,10 +284,9 @@ export function QuotationsView(): React.JSX.Element {
       ...prev,
       {
         productId: uid('custom_'),
-        name: 'Installation / Custom Service',
-        unitPrice: 1000,
+        name: 'Custom item / service',
+        unitPrice: 0,
         quantity: 1,
-        variantLabel: 'JOB',
       },
     ]);
   };
@@ -337,13 +337,24 @@ export function QuotationsView(): React.JSX.Element {
       notifyWarning('Please add at least one line item to the quotation.');
       return;
     }
+    const unpriced = lines.find((l) => !(Number(l.unitPrice) > 0));
+    if (unpriced) {
+      notifyWarning(`Set a price for "${unpriced.name}".`);
+      return;
+    }
+    const finalNumber = quoteNumber.trim() || nextQuoteNumber(quotations.map((q) => q.quoteNumber));
+    const editingId = editingQuotation?.id;
+    if (quotations.some((q) => q.id !== editingId && sameQuoteNumber(q.quoteNumber, finalNumber))) {
+      notifyWarning(`Quote number ${finalNumber} is already used. Use ${nextQuoteNumber(quotations.map((q) => q.quoteNumber))} instead.`);
+      return;
+    }
 
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + validDays);
 
     const quote: Quotation = {
       id: editingQuotation ? editingQuotation.id : uid('quote_'),
-      quoteNumber: quoteNumber.trim() || `EST-${Date.now().toString().slice(-4)}`,
+      quoteNumber: finalNumber,
       module: targetModule,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim() || undefined,
@@ -367,11 +378,17 @@ export function QuotationsView(): React.JSX.Element {
   // KPI Calculations
   const kpiStats = useMemo(() => {
     const totalCount = quotations.length;
-    const totalValue = quotations.reduce((sum, q) => sum + q.totalAmount, 0);
-    const converted = quotations.filter((q) => q.status === 'converted').length;
-    const pending = quotations.filter((q) => q.status === 'draft' || q.status === 'sent').length;
-    const conversionRate = totalCount > 0 ? Math.round((converted / totalCount) * 100) : 0;
-    return { totalCount, totalValue, converted, pending, conversionRate };
+    const open = quotations.filter((q) => q.status === 'draft' || q.status === 'sent');
+    const pipelineValue = open.reduce((sum, q) => sum + Number(q.totalAmount || 0), 0);
+    const converted = quotations.filter((q) => q.status === 'converted');
+    const convertedValue = converted.reduce((sum, q) => sum + Number(q.totalAmount || 0), 0);
+    const expired = quotations.filter((q) => q.status === 'expired').length;
+    const pending = quotations.filter((q) => q.status === 'sent').length;
+    const drafts = quotations.filter((q) => q.status === 'draft').length;
+    // Won out of quotes that reached the customer and were decided (drafts never were)
+    const decided = converted.length + expired;
+    const conversionRate = decided > 0 ? Math.round((converted.length / decided) * 100) : 0;
+    return { totalCount, pipelineValue, converted: converted.length, convertedValue, pending, drafts, conversionRate };
   }, [quotations]);
 
   // Filtered list
@@ -403,16 +420,16 @@ export function QuotationsView(): React.JSX.Element {
 
       {/* ── Key numbers ── */}
       <div className={styles.kpiGrid}>
-        <KpiTile label="Estimates" value={kpiStats.totalCount} icon={<DocumentBulletList20Filled />} footer={<span>Pipeline {formatPKR(kpiStats.totalValue)}</span>} />
-        <KpiTile label="Pending" value={kpiStats.pending} icon={<Timer20Regular />} footer={<span>Awaiting customer confirmation</span>} />
+        <KpiTile label="Estimates" value={kpiStats.totalCount} icon={<DocumentBulletList20Filled />} footer={<span>{kpiStats.drafts} draft{kpiStats.drafts === 1 ? '' : 's'}</span>} />
+        <KpiTile label="Pending" value={kpiStats.pending} icon={<Timer20Regular />} footer={<span>Sent, awaiting customer</span>} />
         <KpiTile
           label="Converted"
           value={kpiStats.converted}
           tone={kpiStats.converted > 0 ? 'success' : 'neutral'}
           icon={<CheckmarkCircle20Regular />}
-          footer={<span>{kpiStats.conversionRate}% conversion rate</span>}
+          footer={<span>{kpiStats.conversionRate}% won · {formatPKR(kpiStats.convertedValue)}</span>}
         />
-        <KpiTile label="Pipeline value" value={formatPKR(kpiStats.totalValue)} icon={<Money20Regular />} footer={<span>Total of all estimates</span>} />
+        <KpiTile label="Pipeline value" value={formatPKR(kpiStats.pipelineValue)} icon={<Money20Regular />} footer={<span>Open quotes (draft + sent)</span>} />
       </div>
 
       {/* ── Filter & Search Bar ── */}
@@ -567,7 +584,15 @@ export function QuotationsView(): React.JSX.Element {
                             title="Sell at POS counter (load cart and take payment)"
                             onClick={async () => {
                               try {
-                                await posApi.getOpenableQuotation(quote.id);
+                                const { issues } = await posApi.checkQuotationForSale(quote.id);
+                                if (issues.length > 0) {
+                                  const ok = await confirmModal({
+                                    title: `Check ${quote.quoteNumber} before selling`,
+                                    message: `${issues.join('\n')}\n\nQuoted prices are kept while the quotation is valid. Continue to the POS?`,
+                                    confirmLabel: 'Continue to POS',
+                                  });
+                                  if (!ok) return;
+                                }
                               } catch (err: any) {
                                 notifyWarning(err?.message || 'This quotation can no longer be sold.');
                                 return;
@@ -686,7 +711,7 @@ export function QuotationsView(): React.JSX.Element {
             <CustomInput
               label="Quote Number"
               required
-              placeholder="e.g. EST-1001"
+              placeholder="e.g. QT-2026-0001"
               value={quoteNumber}
               onChange={(e) => setQuoteNumber(e.target.value)}
             />

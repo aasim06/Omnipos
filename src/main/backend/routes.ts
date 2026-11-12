@@ -12,6 +12,7 @@ import {
   syncProductNearestBatch,
 } from './stockBatches';
 import { parseRefundItems, returnedQtyByLine, billPriceFactor, lineRefundValue } from '@shared/refunds';
+import { nextQuoteNumber, sameQuoteNumber } from '@shared/quotes';
 import { evaluateStockAlerts, readLowStockDefault, alertLimitFor, LOW_STOCK_DEFAULT_SETTING } from './stockAlerts';
 
 export function saveBase64Image(dataUrlOrBase64: string, prefix: string): string | null {
@@ -2419,6 +2420,15 @@ export function registerRoutes(app: Express): void {
         status,
         updatedAt: b.updatedAt ? new Date(b.updatedAt) : new Date(),
       };
+      // Quote numbers are unique. A new quote made offline on another counter with a number that is
+      // already used gets the next free one; renaming an existing quote onto a used number is refused.
+      const numbers = await db.quotation.findMany({ select: { id: true, quoteNumber: true } });
+      if (numbers.some((o: any) => o.id !== id && sameQuoteNumber(o.quoteNumber, data.quoteNumber))) {
+        if (existing) {
+          return res.status(409).json({ error: `Quote number ${data.quoteNumber} is already used by another quotation.` });
+        }
+        data.quoteNumber = nextQuoteNumber(numbers.map((o: any) => o.quoteNumber));
+      }
       const saved = await db.quotation.upsert({
         where: { id },
         create: { id, ...data, createdAt: b.createdAt ? new Date(b.createdAt) : new Date() },

@@ -34,6 +34,7 @@ const useStyles = makeStyles({
     lineHeight: '20px',
     marginTop: '10px',
     marginBottom: '20px',
+    whiteSpace: 'pre-line', // messages may list several points, one per line
   },
   confirmActions: {
     display: 'flex',
