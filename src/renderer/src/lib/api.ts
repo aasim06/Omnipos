@@ -5,7 +5,7 @@ import { KEYS, storage } from './storage';
 import { uid } from './utils';
 import { normalizePhone } from './khataRules';
 import { computeKhataAging, KhataAging } from '@shared/khataAging';
-import { nextQuoteNumber, nextRevisionNumber } from '@shared/quotes';
+import { nextQuoteNumber, nextRevisionNumber, applyQuotationSale, quoteLineRemaining } from '@shared/quotes';
 import { parseRecipe, recipeLinesFor, recipeMovementId, RECIPE_USAGE_REASON } from './recipes';
 import { decodeProductVariants, encodeProductVariants, setLocalVariantRegistry } from './variants';
 import {
@@ -442,26 +442,39 @@ async function pushQuotation(q: Quotation & { synced?: 0 | 1 }): Promise<string 
   const postQuote = (status: Quotation['status']) =>
     quoteBackend('/api/quotations', { method: 'POST', body: JSON.stringify({ ...q, status }) });
 
-  if (q.status === 'converted') {
-    const convert = () =>
-      quoteBackend(`/api/quotations/${encodeURIComponent(q.id)}/convert`, {
-        method: 'POST',
-        body: JSON.stringify({ orderId: q.convertedOrderId }),
-      });
-    let res = await convert();
-    if (res?.status === 404) {
-      // Never reached the backend before it was sold: create it, then record the sale
-      const created = await postQuote('sent');
-      if (!created?.ok) return null;
-      res = await convert();
+  const sales = Array.isArray(q.sales) ? q.sales : [];
+  if (sales.length > 0 || q.status === 'converted') {
+    // One call per POS sale (the backend ignores an order it already recorded). Older tills sold
+    // the whole quote without line detail: that is a single sale of everything.
+    const toSend: (typeof sales[number] | null)[] = sales.length > 0 ? sales : [null];
+    let last: Response | null = null;
+    for (const sale of toSend) {
+      const convert = () =>
+        quoteBackend(`/api/quotations/${encodeURIComponent(q.id)}/convert`, {
+          method: 'POST',
+          body: JSON.stringify(sale ? { orderId: sale.orderId, lines: sale.lines, at: sale.at } : { orderId: q.convertedOrderId }),
+        });
+      let res = await convert();
+      if (res?.status === 404) {
+        // Never reached the backend before it was sold: create it, then record the sale
+        const created = await postQuote('accepted');
+        if (!created?.ok) return null;
+        res = await convert();
+      }
+      if (!res) return null;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return res.status >= 400 && res.status < 500 ? String(body?.error || 'Quotation was refused') : null;
+      }
+      last = res;
     }
-    if (!res) return null;
-    if (res.ok) {
-      await storeServerCopy(res);
-      return null;
+    // A partly sold quote may still take an advance: keep the backend's figure in step
+    if (q.status === 'partial' && Number(q.advanceAmount || 0) > 0) {
+      const adv = await postQuote('partial');
+      if (adv?.ok) last = adv;
     }
-    const body = await res.json().catch(() => ({}));
-    return res.status >= 400 && res.status < 500 ? String(body?.error || 'Quotation was refused') : null;
+    if (last) await storeServerCopy(last);
+    return null;
   }
 
   const res = await postQuote(q.status);
@@ -2292,10 +2305,10 @@ export const posApi = {
 
   async saveQuotation(quote: Quotation): Promise<Quotation> {
     const existing = await offlineDb.quotations.get(quote.id);
-    if (existing?.status === 'converted') {
-      throw new Error(`Quotation ${existing.quoteNumber} is already converted to a sale and cannot be changed.`);
+    if (existing?.status === 'converted' || existing?.status === 'partial') {
+      throw new Error(`Quotation ${existing.quoteNumber} is already (partly) sold and cannot be changed.`);
     }
-    if (quote.status === 'converted') {
+    if (quote.status === 'converted' || quote.status === 'partial') {
       throw new Error('A quotation is converted only by completing its sale at the POS counter.');
     }
     const record = { ...quote, updatedAt: new Date().toISOString(), synced: 0 as const };
@@ -2307,7 +2320,7 @@ export const posApi = {
 
   async deleteQuotation(id: string): Promise<boolean> {
     const existing = await offlineDb.quotations.get(id);
-    if (existing?.status === 'converted') {
+    if (existing?.status === 'converted' || existing?.status === 'partial') {
       throw new Error(`Quotation ${existing.quoteNumber} is linked to a sale and cannot be deleted.`);
     }
     const res = await quoteBackend(`/api/quotations/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -2343,7 +2356,9 @@ export const posApi = {
     const quote = await this.getOpenableQuotation(id);
     const issues: string[] = [];
     const need = new Map<string, { name: string; qty: number; stock: number }>();
-    for (const line of quote.lines || []) {
+    for (const quoted of quote.lines || []) {
+      const line = { ...quoted, quantity: quoteLineRemaining(quoted) };
+      if (line.quantity <= 0) continue;
       if (!line.productId || line.productId.startsWith('custom_')) continue;
       const raw = await offlineDb.products.get(line.productId);
       if (!raw) {
@@ -2372,12 +2387,50 @@ export const posApi = {
     return { quote, issues };
   },
 
+  /**
+   * Take an advance against a quotation. The money is credited to the customer's khata (a cash
+   * advance also goes into the drawer), so the POS can use it when the quote is sold.
+   */
+  async receiveQuotationAdvance(
+    id: string,
+    params: { khataId: string; amount: number; method: 'cash' | 'online' | 'card' }
+  ): Promise<Quotation> {
+    const q = await offlineDb.quotations.get(id);
+    if (!q) throw new Error('Quotation not found');
+    if (!['draft', 'sent', 'accepted', 'partial'].includes(q.status)) {
+      throw new Error(`Quotation ${q.quoteNumber} is ${q.status}; an advance can only be taken on an open quotation.`);
+    }
+    const amount = Math.round(Number(params.amount || 0) * 100) / 100;
+    if (!(amount > 0)) throw new Error('Enter the advance amount.');
+    if (q.advanceKhataId && q.advanceKhataId !== params.khataId) {
+      throw new Error('Advances on one quotation must go to the same customer account.');
+    }
+    await this.addKhataTransaction({
+      khataId: params.khataId,
+      type: 'CREDIT',
+      amount,
+      paymentMethod: params.method,
+      description: `Advance for quotation ${q.quoteNumber}`,
+    });
+    const record = {
+      ...q,
+      advanceAmount: Math.round((Number(q.advanceAmount || 0) + amount) * 100) / 100,
+      advanceKhataId: params.khataId,
+      updatedAt: new Date().toISOString(),
+      synced: 0 as const,
+    };
+    await offlineDb.quotations.put(record);
+    await pushQuotation(record);
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('pos_quotations_updated'));
+    return record;
+  },
+
   /** Move a quotation along: sent to the customer, accepted or rejected by them, or back to draft. */
   async setQuotationStatus(id: string, status: 'draft' | 'sent' | 'accepted' | 'rejected'): Promise<Quotation> {
     const q = await offlineDb.quotations.get(id);
     if (!q) throw new Error('Quotation not found');
-    if (q.status === 'converted' || q.status === 'revised') {
-      throw new Error(`Quotation ${q.quoteNumber} is ${q.status} and can no longer change.`);
+    if (q.status === 'converted' || q.status === 'revised' || q.status === 'partial') {
+      throw new Error(`Quotation ${q.quoteNumber} is ${q.status === 'partial' ? 'partly sold' : q.status} and can no longer change.`);
     }
     if ((status === 'sent' || status === 'accepted') && new Date(q.validUntil).getTime() < Date.now()) {
       throw new Error(`Quotation ${q.quoteNumber} has expired. Edit it to set a new validity first.`);
@@ -2393,6 +2446,7 @@ export const posApi = {
     const q = await offlineDb.quotations.get(id);
     if (!q) throw new Error('Quotation not found');
     if (q.status === 'converted') throw new Error(`Quotation ${q.quoteNumber} is already sold.`);
+    if (q.status === 'partial') throw new Error(`Quotation ${q.quoteNumber} is partly sold. Sell the rest or start a new quote.`);
     if (q.status === 'revised') throw new Error(`Quotation ${q.quoteNumber} already has a newer revision.`);
     const all = await offlineDb.quotations.toArray();
     const now = new Date();
@@ -2404,7 +2458,10 @@ export const posApi = {
       quoteNumber: nextRevisionNumber(q.quoteNumber, all.map((x) => x.quoteNumber)),
       status: 'draft',
       revisionOf: q.id,
-      lines: (q.lines || []).map((l) => ({ ...l })),
+      lines: (q.lines || []).map(({ soldQty: _s, ...l }) => ({ ...l })),
+      sales: [],
+      advanceAmount: 0,
+      advanceKhataId: undefined,
       validUntil: new Date(now.getTime() + lifeDays * 86_400_000).toISOString(),
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
@@ -2426,7 +2483,10 @@ export const posApi = {
       id: uid('quote_'),
       quoteNumber: nextQuoteNumber(all.map((x) => x.quoteNumber)),
       status: 'draft',
-      lines: (q.lines || []).map((l) => ({ ...l })),
+      lines: (q.lines || []).map(({ soldQty: _s, ...l }) => ({ ...l })),
+      sales: [],
+      advanceAmount: 0,
+      advanceKhataId: undefined,
       validUntil: new Date(now.getTime() + 7 * 86_400_000).toISOString(),
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
@@ -2436,20 +2496,17 @@ export const posApi = {
   /**
    * Record that a POS sale sold this quotation. Called by the checkout after the order is saved.
    */
-  async markQuotationConverted(id: string, orderId: string): Promise<void> {
+  async markQuotationConverted(
+    id: string,
+    orderId: string,
+    soldLines?: { lineIndex: number; qty: number }[]
+  ): Promise<void> {
     const q = await offlineDb.quotations.get(id);
     if (!q) return;
-    if (q.status === 'converted' && q.convertedOrderId && q.convertedOrderId !== orderId) {
-      throw new Error(`Quotation ${q.quoteNumber} was already sold (order #${q.convertedOrderId}).`);
-    }
-    const record = {
-      ...q,
-      status: 'converted' as const,
-      convertedOrderId: orderId,
-      convertedAt: q.convertedAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      synced: 0 as const,
-    };
+    const result = applyQuotationSale(q, orderId, soldLines);
+    if (result.duplicate) return;
+    if (result.error) throw new Error(result.error);
+    const record = { ...result.quote, updatedAt: new Date().toISOString(), synced: 0 as const };
     await offlineDb.quotations.put(record);
     await pushQuotation(record);
     if (typeof window !== 'undefined') {

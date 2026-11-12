@@ -12,7 +12,7 @@ import {
   syncProductNearestBatch,
 } from './stockBatches';
 import { parseRefundItems, returnedQtyByLine, billPriceFactor, lineRefundValue } from '@shared/refunds';
-import { nextQuoteNumber, sameQuoteNumber, nextCreditNoteNumber } from '@shared/quotes';
+import { nextQuoteNumber, sameQuoteNumber, nextCreditNoteNumber, applyQuotationSale } from '@shared/quotes';
 import { computeKhataAging } from '@shared/khataAging';
 import { evaluateStockAlerts, readLowStockDefault, alertLimitFor, LOW_STOCK_DEFAULT_SETTING } from './stockAlerts';
 
@@ -2435,15 +2435,23 @@ export function registerRoutes(app: Express): void {
     } catch {
       lines = [];
     }
+    let sales: unknown = [];
+    try {
+      sales = JSON.parse(q.sales || '[]');
+    } catch {
+      sales = [];
+    }
     return {
       ...q,
       lines,
+      sales,
+      convertedAt: q.convertedAt instanceof Date ? q.convertedAt.toISOString() : q.convertedAt,
       validUntil: q.validUntil instanceof Date ? q.validUntil.toISOString() : q.validUntil,
       createdAt: q.createdAt instanceof Date ? q.createdAt.toISOString() : q.createdAt,
       updatedAt: q.updatedAt instanceof Date ? q.updatedAt.toISOString() : q.updatedAt,
     };
   };
-  const QUOTE_STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'revised', 'converted', 'expired'];
+  const QUOTE_STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'revised', 'partial', 'converted', 'expired'];
 
   app.get('/api/quotations', async (_req: Request, res: Response) => {
     try {
@@ -2469,12 +2477,29 @@ export function registerRoutes(app: Express): void {
         // Already a sale: answer with what is stored instead of letting a stale copy overwrite it
         return res.status(409).json({ error: `Quotation ${existing.quoteNumber} is already converted to a sale.`, quotation: presentQuotation(existing) });
       }
+      // Partly sold: its items and sales are a record now; only the advance on it can still change
+      if (existing?.status === 'partial') {
+        const saved = await db.quotation.update({
+          where: { id },
+          data: {
+            advanceAmount: Math.max(Number(existing.advanceAmount || 0), Number(b.advanceAmount) || 0),
+            advanceKhataId: toOptionalStr(b.advanceKhataId) || existing.advanceKhataId,
+            updatedAt: new Date(),
+          },
+        });
+        return res.json(presentQuotation(saved));
+      }
       // A newer copy on the server wins over an older re-post from another till
       if (existing && b.updatedAt && new Date(b.updatedAt).getTime() < new Date(existing.updatedAt).getTime()) {
         return res.json(presentQuotation(existing));
       }
 
-      const status = QUOTE_STATUSES.includes(b.status) && b.status !== 'converted' ? b.status : 'draft';
+      const status =
+        QUOTE_STATUSES.includes(b.status) && b.status !== 'converted' && b.status !== 'partial'
+          ? b.status
+          : b.status === 'partial' || b.status === 'converted'
+            ? 'accepted' // sold offline before it reached the backend: the sales follow via /convert
+            : 'draft';
       const data = {
         quoteNumber: String(b.quoteNumber || id),
         module: b.module === 'fastfood' ? 'fastfood' : 'minimart',
@@ -2492,6 +2517,8 @@ export function registerRoutes(app: Express): void {
         terms: toOptionalStr(b.terms),
         status,
         revisionOf: toOptionalStr(b.revisionOf),
+        advanceAmount: Math.max(0, Number(b.advanceAmount) || 0),
+        advanceKhataId: toOptionalStr(b.advanceKhataId),
         updatedAt: b.updatedAt ? new Date(b.updatedAt) : new Date(),
       };
       // Quote numbers are unique. A new quote made offline on another counter with a number that is
@@ -2517,17 +2544,31 @@ export function registerRoutes(app: Express): void {
   app.post('/api/quotations/:id/convert', async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id);
-      const orderId = toOptionalStr((req.body || {}).orderId);
+      const body = (req.body || {}) as any;
+      const orderId = toOptionalStr(body.orderId);
       if (!orderId) return res.status(400).json({ error: 'orderId is required.' });
       const existing = await db.quotation.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: 'Quotation not found' });
-      if (existing.status === 'converted') {
-        if (existing.convertedOrderId === orderId) return res.json(presentQuotation(existing)); // retry
-        return res.status(409).json({ error: `Quotation ${existing.quoteNumber} was already converted (order #${existing.convertedOrderId}).` });
+      if (['rejected', 'revised'].includes(existing.status)) {
+        return res.status(409).json({ error: `Quotation ${existing.quoteNumber} is ${existing.status} and cannot be sold.` });
       }
+      const soldLines = Array.isArray(body.lines)
+        ? body.lines.map((l: any) => ({ lineIndex: Number(l.lineIndex), qty: Number(l.qty) })).filter((l: any) => Number.isInteger(l.lineIndex))
+        : null;
+      const result = applyQuotationSale(presentQuotation(existing), orderId, soldLines, body.at || new Date().toISOString());
+      if (result.duplicate) return res.json(presentQuotation(existing)); // retry of a sale already recorded
+      if (result.error) return res.status(409).json({ error: result.error });
+      const q: any = result.quote;
       const saved = await db.quotation.update({
         where: { id },
-        data: { status: 'converted', convertedOrderId: orderId, convertedAt: new Date(), updatedAt: new Date() },
+        data: {
+          lines: JSON.stringify(q.lines),
+          sales: JSON.stringify(q.sales),
+          status: q.status,
+          convertedOrderId: q.convertedOrderId,
+          convertedAt: q.convertedAt ? new Date(q.convertedAt) : null,
+          updatedAt: new Date(),
+        },
       });
       res.json(presentQuotation(saved));
     } catch (err: any) {
@@ -2540,7 +2581,7 @@ export function registerRoutes(app: Express): void {
       const id = String(req.params.id);
       const existing = await db.quotation.findUnique({ where: { id } });
       if (!existing) return res.json({ success: true });
-      if (existing.status === 'converted') {
+      if (existing.status === 'converted' || existing.status === 'partial') {
         return res.status(409).json({ error: `Quotation ${existing.quoteNumber} is linked to a sale and cannot be deleted.` });
       }
       await db.quotation.delete({ where: { id } });

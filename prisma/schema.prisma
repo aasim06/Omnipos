@@ -325,6 +325,9 @@ model Quotation {
   convertedOrderId String?
   convertedAt      DateTime?
   revisionOf       String?   // quotation this one revises
+  advanceAmount    Float     @default(0) // advance taken against this quote (held on the customer's khata)
+  advanceKhataId   String?
+  sales            String?   // JSON: POS sales of this quote [{ orderId, at, lines: [{ lineIndex, qty }] }]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }

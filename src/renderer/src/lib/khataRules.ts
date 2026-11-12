@@ -23,6 +23,8 @@ export interface CreditAccountLike {
  */
 export function creditLimitProblem(account: CreditAccountLike | undefined | null, amount: number): string | null {
   if (!account) return 'Select the khata customer for a credit sale.';
+  // Paid from the customer's own advance (negative balance): not credit at all
+  if (Math.round((Number(account.currentDebt || 0) + amount) * 100) / 100 <= 0) return null;
   const limit = account.creditLimit === null || account.creditLimit === undefined ? 50000 : Number(account.creditLimit);
   if (!(limit > 0)) {
     return `"${account.name}" ka credit (udhaar) account nahi hai. Khata page par credit limit set karein.`;

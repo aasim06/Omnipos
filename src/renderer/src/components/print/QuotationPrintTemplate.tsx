@@ -659,7 +659,8 @@ export const QuotationPrintTemplate: React.FC<QuotationPrintTemplateProps> = ({
           </thead>
           <tbody>
             {quotation.lines.map((line, idx) => {
-              const lineTotal = line.quantity * line.unitPrice;
+              const d = Math.min(100, Math.max(0, Number((line as any).discountPercent) || 0));
+              const lineTotal = Math.round(line.quantity * line.unitPrice * (1 - d / 100) * 100) / 100;
               return (
                 <tr
                   key={`${line.productId}_${idx}`}
@@ -688,6 +689,7 @@ export const QuotationPrintTemplate: React.FC<QuotationPrintTemplateProps> = ({
                   </td>
                   <td className={styles.tdRate}>
                     {line.unitPrice.toLocaleString('en-PK')}
+                    {d > 0 && <div style={{ fontSize: 10, opacity: 0.75 }}>-{d}%</div>}
                   </td>
                   <td className={styles.tdAmount}>
                     {lineTotal.toLocaleString('en-PK')}

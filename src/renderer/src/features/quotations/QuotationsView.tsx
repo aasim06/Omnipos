@@ -41,6 +41,7 @@ import {
   DocumentCopy20Regular,
   ArrowClockwise20Regular,
   Chat20Regular,
+  Wallet20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
@@ -52,7 +53,9 @@ import { CustomInput, CustomSelect } from '@/components/ui';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { decodeProductVariants } from '@/lib/variants';
 import { QuotationPrintTemplate } from '@/components/print/QuotationPrintTemplate';
-import { nextQuoteNumber, sameQuoteNumber } from '@shared/quotes';
+import { nextQuoteNumber, sameQuoteNumber, quoteLineNet, quoteLineUnitNet, quoteLineRemaining } from '@shared/quotes';
+import { normalizePhone } from '@/lib/khataRules';
+import { Pager, usePaged } from '@/components/common/Pager';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { resolveStoreModules } from '@/lib/categoryProfiles';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
@@ -169,6 +172,53 @@ export function QuotationsView(): React.JSX.Element {
     onError: (err: any) => notifyError(err?.message || 'Could not update the quotation'),
   });
 
+  // ── Advance against a quotation (held as credit on the customer's khata) ──
+  const { data: khataAccounts = [], refetch: refetchKhataAccounts } = useQuery<any[]>({
+    queryKey: ['khatas'],
+    queryFn: () => posApi.fetchKhatas(),
+  });
+  const [advanceFor, setAdvanceFor] = useState<Quotation | null>(null);
+  const [advanceKhataId, setAdvanceKhataId] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advanceMethod, setAdvanceMethod] = useState<'cash' | 'online' | 'card'>('cash');
+  const openAdvanceDialog = (q: Quotation) => {
+    const phone = normalizePhone(q.customerPhone);
+    const match =
+      (q.advanceKhataId && khataAccounts.find((k) => k.id === q.advanceKhataId)) ||
+      (phone.length >= 7 && khataAccounts.find((k) => normalizePhone(k.phone) === phone)) ||
+      khataAccounts.find((k) => (k.name || '').trim().toLowerCase() === q.customerName.trim().toLowerCase());
+    setAdvanceFor(q);
+    setAdvanceKhataId(match?.id || '');
+    setAdvanceAmount(String(Math.round(Number(q.totalAmount || 0) / 2)));
+    setAdvanceMethod('cash');
+  };
+  const advanceMutation = useMutation({
+    mutationFn: async () => {
+      if (!advanceFor) throw new Error('No quotation selected');
+      let khataId = advanceKhataId;
+      if (!khataId) {
+        // No account yet: open one for this customer to hold the advance (no udhaar limit)
+        const created = await posApi.saveKhata({
+          name: advanceFor.customerName,
+          phone: advanceFor.customerPhone,
+          address: advanceFor.customerAddress,
+          creditLimit: 0,
+          note: `Opened for advance on ${advanceFor.quoteNumber}`,
+        });
+        khataId = created.id;
+      }
+      return posApi.receiveQuotationAdvance(advanceFor.id, { khataId, amount: Number(advanceAmount), method: advanceMethod });
+    },
+    onSuccess: async (q) => {
+      await queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      await queryClient.refetchQueries({ queryKey: ['quotations'] });
+      await refetchKhataAccounts();
+      notifySuccess(`Advance received for ${q.quoteNumber}. It will be applied when the quotation is sold at the POS.`);
+      setAdvanceFor(null);
+    },
+    onError: (err: any) => notifyError(err?.message || 'Could not record the advance'),
+  });
+
   // WhatsApp: a short text summary of the quotation to the customer's number
   const shareOnWhatsApp = (q: Quotation) => {
     const digits = String(q.customerPhone || '').replace(/\D/g, '');
@@ -178,7 +228,7 @@ export function QuotationsView(): React.JSX.Element {
     }
     const phone = digits.startsWith('92') ? digits : digits.startsWith('0') ? `92${digits.slice(1)}` : `92${digits}`;
     const lines = q.lines
-      .map((l) => `• ${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ''} × ${l.quantity} = ${formatPKR(l.quantity * l.unitPrice)}`)
+      .map((l) => `• ${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ''} × ${l.quantity} = ${formatPKR(quoteLineNet(l))}${Number(l.discountPercent) > 0 ? ` (${l.discountPercent}% off)` : ''}`)
       .join('\n');
     const text = [
       `Assalam o Alaikum ${q.customerName},`,
@@ -200,7 +250,7 @@ export function QuotationsView(): React.JSX.Element {
 
   // Calculate live totals for the active form
   const subtotal = useMemo(() => {
-    return lines.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+    return Math.round(lines.reduce((sum, item) => sum + quoteLineNet(item), 0) * 100) / 100;
   }, [lines]);
 
   const discountAmount = useMemo(() => {
@@ -360,6 +410,14 @@ export function QuotationsView(): React.JSX.Element {
     });
   };
 
+  const updateLineDiscount = (index: number, pct: number) => {
+    setLines((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], discountPercent: Math.min(100, Math.max(0, pct)) || undefined };
+      return next;
+    });
+  };
+
   const updateLinePrice = (index: number, price: number) => {
     setLines((prev) => {
       const next = [...prev];
@@ -439,8 +497,12 @@ export function QuotationsView(): React.JSX.Element {
   // KPI Calculations
   const kpiStats = useMemo(() => {
     const totalCount = quotations.length;
-    const open = quotations.filter((q) => q.status === 'draft' || q.status === 'sent' || q.status === 'accepted');
-    const pipelineValue = open.reduce((sum, q) => sum + Number(q.totalAmount || 0), 0);
+    const open = quotations.filter((q) => ['draft', 'sent', 'accepted', 'partial'].includes(q.status));
+    const pipelineValue = open.reduce((sum, q) => {
+      const gross = q.lines.reduce((s2, l) => s2 + quoteLineNet(l), 0);
+      const left = q.lines.reduce((s2, l) => s2 + quoteLineUnitNet(l) * quoteLineRemaining(l), 0);
+      return sum + (gross > 0 ? Number(q.totalAmount || 0) * (left / gross) : 0);
+    }, 0);
     const converted = quotations.filter((q) => q.status === 'converted');
     const convertedValue = converted.reduce((sum, q) => sum + Number(q.totalAmount || 0), 0);
     const expired = quotations.filter((q) => q.status === 'expired' || q.status === 'rejected').length;
@@ -465,6 +527,7 @@ export function QuotationsView(): React.JSX.Element {
       return matchesSearch && matchesStatus;
     });
   }, [quotations, searchTerm, selectedStatus]);
+  const quotationsPage = usePaged(filteredQuotations, 25, `${searchTerm}|${selectedStatus}`);
 
   return (
     <div className={styles.container}>
@@ -507,7 +570,7 @@ export function QuotationsView(): React.JSX.Element {
         </div>
 
         <div className={styles.statusTabs}>
-          {(['all', 'draft', 'sent', 'accepted', 'rejected', 'revised', 'converted', 'expired'] as const).map((st) => (
+          {(['all', 'draft', 'sent', 'accepted', 'partial', 'rejected', 'revised', 'converted', 'expired'] as const).map((st) => (
             <button
               key={st}
               type="button"
@@ -560,7 +623,7 @@ export function QuotationsView(): React.JSX.Element {
                 </td>
               </tr>
             ) : (
-              filteredQuotations.map((quote) => {
+              quotationsPage.pageItems.map((quote) => {
                 const created = new Date(quote.createdAt).toLocaleDateString('en-PK', {
                   day: '2-digit',
                   month: 'short',
@@ -603,6 +666,17 @@ export function QuotationsView(): React.JSX.Element {
                       <div className={styles.lineOverviewText}>
                         {quote.lines.map((l) => `${l.quantity}x ${l.name}`).join(', ')}
                       </div>
+                      {quote.status === 'partial' && (
+                        <div style={{ fontSize: 11, marginTop: 2 }}>
+                          Sold {quote.lines.reduce((s2, l) => s2 + Number(l.soldQty || 0), 0)} of{' '}
+                          {quote.lines.reduce((s2, l) => s2 + Number(l.quantity || 0), 0)} units
+                        </div>
+                      )}
+                      {Number(quote.advanceAmount || 0) > 0 && (
+                        <div style={{ fontSize: 11, marginTop: 2, color: tokens.colorPaletteGreenForeground1 }}>
+                          Advance received {formatPKR(Number(quote.advanceAmount))}
+                        </div>
+                      )}
                     </td>
 
                     <td className={mergeClasses(styles.td, styles.totalPriceCell)}>
@@ -614,11 +688,11 @@ export function QuotationsView(): React.JSX.Element {
                         className={mergeClasses(
                           styles.statusPill,
                           quote.status === 'converted' && styles.statusConverted,
-                          (quote.status === 'sent' || quote.status === 'accepted') && styles.statusSent,
-                          !['converted', 'sent', 'accepted'].includes(quote.status) && styles.statusPending
+                          (quote.status === 'sent' || quote.status === 'accepted' || quote.status === 'partial') && styles.statusSent,
+                          !['converted', 'sent', 'accepted', 'partial'].includes(quote.status) && styles.statusPending
                         )}
                       >
-                        {quote.status}
+                        {quote.status === 'partial' ? 'partly sold' : quote.status}
                       </span>
                       {quote.revisionOf && (
                         <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>
@@ -643,7 +717,7 @@ export function QuotationsView(): React.JSX.Element {
                         </button>
 
                         {/* Open / Load in POS Counter Button */}
-                        {['draft', 'sent', 'accepted'].includes(quote.status) && (
+                        {['draft', 'sent', 'accepted', 'partial'].includes(quote.status) && (
                           <button
                             type="button"
                             className={styles.actionBtn}
@@ -671,7 +745,17 @@ export function QuotationsView(): React.JSX.Element {
                                     quoteNumber: quote.quoteNumber,
                                     customerName: quote.customerName,
                                     customerPhone: quote.customerPhone,
-                                    lines: quote.lines,
+                                    lines: quote.lines
+                                      .map((l, i) => ({
+                                        ...l,
+                                        unitPrice: quoteLineUnitNet(l),
+                                        quantity: quoteLineRemaining(l),
+                                        discountPercent: undefined,
+                                        soldQty: undefined,
+                                        quoteLineIndex: i,
+                                      }))
+                                      .filter((l) => l.quantity > 0),
+                                    advanceKhataId: quote.advanceKhataId,
                                     discountPercent: quote.discountPercent,
                                     module: quote.module,
                                   })
@@ -689,7 +773,7 @@ export function QuotationsView(): React.JSX.Element {
                         )}
 
                         {/* Edit Button (a sold quotation is a record of that sale) */}
-                        {quote.status !== 'converted' && quote.status !== 'revised' && (
+                        {!['converted', 'revised', 'partial'].includes(quote.status) && (
                         <button
                           type="button"
                           className={styles.actionBtn}
@@ -701,7 +785,7 @@ export function QuotationsView(): React.JSX.Element {
                         )}
 
                         {/* Delete Button */}
-                        {quote.status !== 'converted' && quote.status !== 'revised' && (
+                        {!['converted', 'revised', 'partial'].includes(quote.status) && (
                         <button
                           type="button"
                           className={styles.actionBtn}
@@ -752,7 +836,12 @@ export function QuotationsView(): React.JSX.Element {
                                 </MenuItem>
                               )}
                               <MenuDivider />
-                              {quote.status !== 'converted' && quote.status !== 'revised' && (
+                              {['draft', 'sent', 'accepted', 'partial'].includes(quote.status) && (
+                                <MenuItem icon={<Wallet20Regular />} onClick={() => openAdvanceDialog(quote)}>
+                                  Receive advance
+                                </MenuItem>
+                              )}
+                              {!['converted', 'revised', 'partial'].includes(quote.status) && (
                                 <MenuItem
                                   icon={<ArrowClockwise20Regular />}
                                   onClick={async () => {
@@ -781,6 +870,7 @@ export function QuotationsView(): React.JSX.Element {
             )}
           </tbody>
         </table>
+        <Pager {...quotationsPage} noun="quotations" />
       </div>
 
       {/* ── Dialog: Create / Edit Quotation Modal ── */}
@@ -917,7 +1007,7 @@ export function QuotationsView(): React.JSX.Element {
                     <th className={styles.thItemName}>Item Name</th>
                     <th className={styles.thSpecUnit}>Spec / Unit</th>
                     <th className={styles.thQty}>Qty</th>
-                    <th className={styles.thRate}>Unit Rate</th>
+                    <th className={styles.thRate}>Unit Rate / Disc.</th>
                     <th className={styles.thLineTotal}>Line Total</th>
                     <th className={styles.thDeleteCol} />
                   </tr>
@@ -1016,9 +1106,28 @@ export function QuotationsView(): React.JSX.Element {
                             onChange={(e) => updateLinePrice(idx, parseFloat(e.target.value) || 0)}
                             className={styles.inputRate}
                           />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11 }}>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              placeholder="0"
+                              title="Discount on this line (%)"
+                              value={line.discountPercent ?? ''}
+                              onChange={(e) => updateLineDiscount(idx, parseFloat(e.target.value) || 0)}
+                              className={styles.inputRate}
+                              style={{ width: 56 }}
+                            />
+                            <span>% off</span>
+                          </div>
                         </td>
                         <td className={styles.tdLineTotal}>
-                          {formatPKR(line.quantity * line.unitPrice)}
+                          {formatPKR(quoteLineNet(line))}
+                          {Number(line.discountPercent) > 0 && (
+                            <div style={{ fontSize: 11, opacity: 0.7, textDecoration: 'line-through' }}>
+                              {formatPKR(line.quantity * line.unitPrice)}
+                            </div>
+                          )}
                         </td>
                         <td className={styles.tdDeleteCol} style={{ whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
@@ -1148,6 +1257,54 @@ export function QuotationsView(): React.JSX.Element {
               className={styles.btnSaveFinalize}
             >
               Save & Finalize Quote
+            </Button>
+          </div>
+        </DialogSurface>
+      </Dialog>
+
+      {/* ── Receive advance ── */}
+      <Dialog open={!!advanceFor} onOpenChange={(_, d) => !d.open && setAdvanceFor(null)}>
+        <DialogSurface style={{ maxWidth: 460 }}>
+          <Subtitle1>Receive advance{advanceFor ? ` · ${advanceFor.quoteNumber}` : ''}</Subtitle1>
+          <Body1 style={{ display: 'block', margin: '8px 0 12px' }}>
+            The advance is credited to the customer's khata and used automatically when this quotation is sold at the POS.
+            {advanceFor && Number(advanceFor.advanceAmount || 0) > 0 ? ` Already received: ${formatPKR(Number(advanceFor.advanceAmount))}.` : ''}
+          </Body1>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <CustomSelect
+              label="Customer khata"
+              value={advanceKhataId}
+              onChange={(v) => setAdvanceKhataId(v)}
+              options={[
+                { value: '', label: advanceFor ? `+ Open a new account for ${advanceFor.customerName}` : '+ New account' },
+                ...khataAccounts.map((k: any) => ({
+                  value: k.id,
+                  label: `${k.name}${k.phone ? ` (${k.phone})` : ''} · Balance PKR ${Number(k.currentDebt || 0).toLocaleString()}`,
+                })),
+              ]}
+            />
+            <CustomInput label="Amount (PKR)" type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} />
+            <CustomSelect
+              label="Received as"
+              value={advanceMethod}
+              onChange={(v) => setAdvanceMethod(v as any)}
+              options={[
+                { value: 'cash', label: 'Cash (goes into the drawer)' },
+                { value: 'online', label: 'Online / bank transfer' },
+                { value: 'card', label: 'Card' },
+              ]}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <Button appearance="secondary" onClick={() => setAdvanceFor(null)}>
+              Cancel
+            </Button>
+            <Button
+              appearance="primary"
+              disabled={advanceMutation.isPending || !(Number(advanceAmount) > 0)}
+              onClick={() => advanceMutation.mutate()}
+            >
+              Receive {Number(advanceAmount) > 0 ? formatPKR(Number(advanceAmount)) : 'advance'}
             </Button>
           </div>
         </DialogSurface>

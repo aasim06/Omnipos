@@ -63,6 +63,12 @@ export interface CartLine {
   name: string;
   nameUrdu?: string;
   unitPrice: number;
+  /** Quotation line: discount on this line only, in percent */
+  discountPercent?: number;
+  /** Quotation line: units already sold through the POS */
+  soldQty?: number;
+  /** POS cart line loaded from a quotation: index of that quotation line */
+  quoteLineIndex?: number;
   quantity: number;
   variantLabel?: string;
   selectedUnit?: string; // 'primary' (wholesale, e.g. Carton) | 'secondary' (retail piece)
@@ -147,7 +153,12 @@ export interface Quotation {
   validUntil: string;
   notes?: string;
   terms?: string;
-  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'revised' | 'converted' | 'expired';
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'revised' | 'partial' | 'converted' | 'expired';
+  /** Advance taken against this quotation, held as credit on the customer's khata */
+  advanceAmount?: number;
+  advanceKhataId?: string;
+  /** POS sales of this quotation (partial or full) */
+  sales?: { orderId: string; at: string; lines: { lineIndex: number; qty: number }[] }[];
   /** Quotation this one revises (set on QT-…-R1, R2…) */
   revisionOf?: string;
   convertedOrderId?: string;

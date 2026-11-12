@@ -46,6 +46,7 @@ import { parseRefundItems, returnedQtyByLine, billPriceFactor, lineRefundValue }
 import { normalizePhone } from '@/lib/khataRules';
 import { useAuth } from '@/features/auth/AuthContext';
 import { printCreditNote } from '@/lib/creditNotePrint';
+import { Pager, usePaged } from '@/components/common/Pager';
 import { useAppToast } from '../../context/AppNotificationContext';
 
 import { useCustomersStyles, useStyles } from './customers.styles';
@@ -278,6 +279,9 @@ export function CustomersView(): React.JSX.Element {
         c.accountType.toLowerCase().includes(q)
     );
   }, [aggregatedCustomers, searchQuery]);
+
+  const customersPage = usePaged(filteredCustomers, 25, searchQuery);
+  const refundsPage = usePaged(refunds as any[], 25);
 
   // Overall Metrics
   const totalCustomerCount = aggregatedCustomers.length;
@@ -554,7 +558,7 @@ export function CustomersView(): React.JSX.Element {
                     </td>
                   </tr>
                 ) : (
-                  filteredCustomers.map((cust) => (
+                  customersPage.pageItems.map((cust) => (
                     <tr key={cust.id} className={styles.tr}>
                       <td className={styles.td}>
                         <div className={styles.customerNameCell}>
@@ -623,6 +627,7 @@ export function CustomersView(): React.JSX.Element {
                 )}
               </tbody>
             </table>
+            <Pager {...customersPage} noun="customers" />
           </div>
         </div>
       )}
@@ -660,7 +665,7 @@ export function CustomersView(): React.JSX.Element {
                     </td>
                   </tr>
                 ) : (
-                  refunds.map((ref: any) => {
+                  refundsPage.pageItems.map((ref: any) => {
                     let parsedItems: any[] = [];
                     try {
                       parsedItems = typeof ref.items === 'string' ? JSON.parse(ref.items) : (ref.items || []);
@@ -709,6 +714,7 @@ export function CustomersView(): React.JSX.Element {
                 )}
               </tbody>
             </table>
+            <Pager {...refundsPage} noun="returns" />
           </div>
         </div>
       )}

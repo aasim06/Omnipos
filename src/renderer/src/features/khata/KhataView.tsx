@@ -44,6 +44,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { posApi } from '@/lib/api';
 import type { KhataAging } from '@shared/khataAging';
+import { Pager, usePaged } from '@/components/common/Pager';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect, DynamicBar } from '@/components/ui';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
@@ -569,6 +570,8 @@ export function KhataView(): React.JSX.Element {
     return matchesSearch && matchesType;
   });
 
+  const khataPage = usePaged(filteredKhatas, 25, `${searchTerm}|${typeFilter}`);
+
   // KPI Calculations
   const totalMarketDebt = khatas.reduce((acc, k) => acc + (k.currentDebt || 0), 0);
   const highRiskCustomers = khatas.filter((k) => k.creditLimit > 0 && k.currentDebt >= k.creditLimit * 0.8).length;
@@ -713,7 +716,7 @@ export function KhataView(): React.JSX.Element {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredKhatas.map((khata) => {
+                khataPage.pageItems.map((khata) => {
                   const limit = khata.creditLimit || 50000;
                   const percent = Math.min(100, Math.round((khata.currentDebt / limit) * 100));
                   const isOverLimit = khata.currentDebt >= limit;
@@ -915,6 +918,7 @@ export function KhataView(): React.JSX.Element {
               )}
             </TableBody>
           </Table>
+          <Pager {...khataPage} noun="accounts" />
         </div>
       </div>
 

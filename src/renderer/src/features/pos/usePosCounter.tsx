@@ -65,6 +65,8 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
   const [cart, setCart] = useState<CartLine[]>([]);
   // Quotation whose items are in the cart; it is marked converted when this cart is sold
   const [linkedQuotation, setLinkedQuotation] = useState<{ id: string; quoteNumber: string } | null>(null);
+  // Set when a quotation with an advance is loaded: the advance is applied once the cart total is known
+  const [pendingAdvanceKhataId, setPendingAdvanceKhataId] = useState<string | null>(null);
   const prevCartLen = React.useRef(0);
   React.useEffect(() => {
     // Emptying the cart (sold, parked or cleared by hand) drops the link to the quotation
@@ -270,7 +272,13 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
           if (pending.quotationId) {
             setLinkedQuotation({ id: pending.quotationId, quoteNumber: pending.quoteNumber || '' });
           }
-          if (pending.customerName) {
+          const advanceAccount = pending.advanceKhataId ? await offlineDb.khatas.get(pending.advanceKhataId) : undefined;
+          if (advanceAccount) {
+            setSelectedCustomer(advanceAccount as any);
+            setSelectedKhataId(advanceAccount.id);
+            if (advanceAccount.phone) setCustomerPhone(advanceAccount.phone);
+            setPendingAdvanceKhataId(advanceAccount.id);
+          } else if (pending.customerName) {
             setSelectedCustomer({
               name: pending.customerName,
               phone: pending.customerPhone || '',
@@ -938,6 +946,29 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     setDiscountInput(val > 0 ? String(val) : '');
   };
   /* Checkout Mutation */
+  // Use the customer's advance for this quotation's bill (split: advance from khata, rest cash)
+  React.useEffect(() => {
+    if (!pendingAdvanceKhataId || cart.length === 0 || !(total > 0)) return;
+    const khataId = pendingAdvanceKhataId;
+    setPendingAdvanceKhataId(null);
+    void (async () => {
+      const acct = await offlineDb.khatas.get(khataId);
+      const available = Math.max(0, -Number(acct?.currentDebt || 0));
+      if (!(available > 0)) return;
+      const use = Math.round(Math.min(available, total) * 100) / 100;
+      setSelectedKhataId(khataId);
+      if (use >= total) {
+        setPaymentMode('khata');
+      } else {
+        setPaymentMode('split');
+        setSplitKhataAmount(use);
+        setSplitOnlineAmount('');
+        setSplitCashAmount(Math.round((total - use) * 100) / 100);
+      }
+      notifySuccess(`Advance PKR ${use.toLocaleString()} applied from the customer's khata`);
+    })();
+  }, [pendingAdvanceKhataId, cart.length, total]);
+
   const { mutate: checkout, isPending } = useMutation({
     mutationFn: async () => {
       // Udhaar must fit the customer's credit limit (latest balance from the local ledger)
@@ -1019,7 +1050,19 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
       // The quotation behind this cart is now a sale
       if (quoteForSale) {
         try {
-          await posApi.markQuotationConverted(quoteForSale.id, order.id);
+          // Only the quotation lines actually in this cart, at the quantity sold now
+          const sold = new Map<number, number>();
+          for (const l of cart) {
+            if (l.quoteLineIndex === undefined || l.quoteLineIndex === null) continue;
+            sold.set(l.quoteLineIndex, (sold.get(l.quoteLineIndex) || 0) + Number(l.quantity || 0));
+          }
+          if (sold.size > 0) {
+            await posApi.markQuotationConverted(
+              quoteForSale.id,
+              order.id,
+              Array.from(sold, ([lineIndex, qty]) => ({ lineIndex, qty }))
+            );
+          }
         } catch (e: any) {
           notifyWarning('Quotation not updated', e?.message || String(e));
         }
