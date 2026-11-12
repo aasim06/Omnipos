@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Badge, Button, makeStyles, mergeClasses, shorthands, tokens } from '@fluentui/react-components';
 import {
   Add20Regular,
-  ArrowCircleDown20Regular,
   BoxMultiple20Regular,
   CalendarClock20Regular,
   Money20Regular,
@@ -21,6 +20,7 @@ import { getStockStatus, lowStockLimit } from '@/lib/stockStatus';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { resolveStoreModules } from '@/lib/categoryProfiles';
 import { formatPKR } from '@/lib/utils';
+import { expiryRisk } from '@/lib/inventoryInsights';
 
 /**
  * Catalog overview: what needs attention in the product list (restock, expiry, dead stock,
@@ -164,7 +164,6 @@ function AttentionCard({
 }
 
 const fmtQty = (n: number) => Number(n.toFixed(3)).toLocaleString();
-const daysUntil = (iso: string, now: number) => Math.ceil((new Date(iso).getTime() - now) / DAY);
 
 export function CatalogDashboardView(): React.JSX.Element {
   const styles = useStyles();
@@ -269,25 +268,8 @@ export function CatalogDashboardView(): React.JSX.Element {
       ),
     }));
 
-    // Expiry: open batches when the backend has them, else the product's own expiry date
-    type Exp = { key: string; productId: string; name: string; batch: string | null; qty: number; days: number; value: number };
-    const exp: Exp[] = [];
-    const withBatches = new Set<string>();
-    for (const b of batches) {
-      const p = byId.get(b.productId);
-      if (!p || !b.expiryDate || !(b.remaining > 0)) continue;
-      withBatches.add(p.id);
-      const days = daysUntil(b.expiryDate, now);
-      if (days > 90) continue;
-      exp.push({ key: b.id, productId: p.id, name: p.name, batch: b.batchNumber, qty: b.remaining, days, value: b.remaining * Number(b.unitCost ?? p.costPrice ?? 0) });
-    }
-    for (const p of allowed) {
-      if (withBatches.has(p.id) || !p.expiryDate || !(Number(p.openingStock) > 0)) continue;
-      const days = daysUntil(p.expiryDate, now);
-      if (days > 90) continue;
-      exp.push({ key: `p_${p.id}`, productId: p.id, name: p.name, batch: p.batchNumber || null, qty: Number(p.openingStock), days, value: Number(p.openingStock) * Number(p.costPrice || 0) });
-    }
-    exp.sort((a, b) => a.days - b.days);
+    // Expiry: batch by batch (same rule as the Inventory Dashboard)
+    const exp = expiryRisk(allowed, batches, 90, now);
     const expired = exp.filter((e) => e.days < 0);
     const expiringValue = exp.filter((e) => e.days <= 30).reduce((s, e) => s + e.value, 0);
     const expiryRows: Row[] = exp.map((e) => ({
@@ -460,30 +442,46 @@ export function CatalogDashboardView(): React.JSX.Element {
       </div>
 
       <div className={styles.grid}>
-        <AttentionCard
-          title="Restock needed"
-          subtitle="Out of stock first, then items at or below their alert limit"
-          icon={<Warning20Regular />}
-          rows={view.restock}
-          emptyText="Everything is above its alert limit."
-          action={
-            <Button size="small" appearance="secondary" icon={<ArrowCircleDown20Regular />} onClick={() => navigate('/inventory/stock-in')}>
-              Stock in
+        <section className={styles.card}>
+          <div className={styles.cardHead}>
+            <div>
+              <div className={styles.cardTitle}>
+                <Warning20Regular />
+                Stock to act on
+              </div>
+              <div className={styles.cardSub}>Reordering and expiring batches are handled on the Inventory Dashboard</div>
+            </div>
+            <Button size="small" appearance="primary" onClick={() => navigate('/inventory/dashboard')}>
+              Open Inventory Dashboard
             </Button>
-          }
-        />
-        <AttentionCard
-          title="Expiring soon"
-          subtitle="Batches still in stock that expire within 90 days, or already have"
-          icon={<CalendarClock20Regular />}
-          rows={view.expiryRows}
-          emptyText="Nothing in stock expires in the next 90 days."
-          action={
-            <Button size="small" appearance="secondary" onClick={() => navigate('/inventory/stock-out')}>
-              Stock out
-            </Button>
-          }
-        />
+          </div>
+          <div className={styles.row} role="button" tabIndex={0} onClick={() => navigate('/inventory/dashboard')}>
+            <div className={styles.rowMain}>
+              <span className={styles.rowName}>Reorder</span>
+              <span className={styles.rowMeta}>{view.outCount} out of stock · {view.lowCount} at the alert limit</span>
+            </div>
+            <div className={styles.rowRight}>
+              <Badge appearance="tint" color={view.outCount > 0 ? 'danger' : view.lowCount > 0 ? 'warning' : 'success'}>
+                {view.outCount + view.lowCount}
+              </Badge>
+              <ChevronRight16Regular />
+            </div>
+          </div>
+          <div className={styles.row} role="button" tabIndex={0} onClick={() => navigate('/inventory/dashboard')}>
+            <div className={styles.rowMain}>
+              <span className={styles.rowName}>Expiring batches (90 days)</span>
+              <span className={styles.rowMeta}>
+                {view.expiredCount} expired · {formatPKR(Math.round(view.expiringValue))} at cost within 30 days
+              </span>
+            </div>
+            <div className={styles.rowRight}>
+              <Badge appearance="tint" color={view.expiredCount > 0 ? 'danger' : view.expiryRows.length > 0 ? 'warning' : 'success'}>
+                {view.expiryRows.length}
+              </Badge>
+              <ChevronRight16Regular />
+            </div>
+          </div>
+        </section>
         <AttentionCard
           title="Top sellers"
           subtitle="Last 30 days by sales value, returns taken off"

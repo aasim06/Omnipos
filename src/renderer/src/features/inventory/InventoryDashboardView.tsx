@@ -1,513 +1,524 @@
-import { KpiTile } from '@/components/win11';
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  makeStyles,
-  Link,
-  tokens,
-  Subtitle1,
-  Subtitle2,
-  Body1,
-  Caption1,
-  Badge,
-  Button,
-  ProgressBar,
-  mergeClasses,
-} from '@fluentui/react-components';
-import {
-  Box24Regular,
-  ArrowCircleDown24Regular,
-  ArrowCircleUp24Regular,
-  PeopleCommunity24Regular,
-  DocumentTableSearch24Regular,
-  Warning20Filled,
-  ArrowRight16Regular,
-  Add20Regular,
-  Money20Regular,
-  Food24Regular,
-  ShoppingBag24Regular,
-  Calendar20Regular,
-} from '@fluentui/react-icons';
+import React, { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Badge, Button, makeStyles, mergeClasses, shorthands, tokens } from '@fluentui/react-components';
+import {
+  ArrowCircleDown20Regular,
+  ArrowCircleUp20Regular,
+  ArrowRight16Regular,
+  CalendarClock20Regular,
+  DocumentTableSearch20Regular,
+  PeopleCommunity20Regular,
+  ShoppingBag20Regular,
+  Warning20Regular,
+  ArrowTrendingDown20Regular,
+  History20Regular,
+  ChevronRight16Regular,
+} from '@fluentui/react-icons';
+import { KpiTile } from '@/components/win11';
 import { posApi } from '@/lib/api';
-import { Product, StockMovement } from '@shared/types';
+import type { OrderRefund, Product, StockMovement } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
-import { vendorStorage } from './vendorStorage';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
-
-import { useInventoryDashboardStyles, useStyles } from './inventoryDashboard.styles';
 import { getAlertLimit, getStockStatus } from '@/lib/stockStatus';
+import {
+  expiryRisk,
+  isLiveMovement,
+  netSoldSince,
+  startOfMonth,
+  startOfToday,
+  stockFlowsSince,
+  suggestedReorderQty,
+} from '@/lib/inventoryInsights';
+import { vendorStorage } from './vendorStorage';
 
-/** Sales history window and stock cover used for reorder suggestions. */
-const REORDER_LOOKBACK_DAYS = 30;
-const REORDER_COVER_DAYS = 14;
+/**
+ * Inventory Dashboard: the day-to-day stock work. What to reorder (and how much), which batches are
+ * about to expire, what was lost this month, what was bought, what is owed to suppliers and what
+ * moved today. Product-level health (value, margins, dead stock, data gaps) is on Catalog Overview.
+ */
+
+const DAY = 86_400_000;
+const LOOKBACK_DAYS = 30;
+const COVER_DAYS = 14;
+const LIST_LIMIT = 8;
+
+const useStyles = makeStyles({
+  page: { display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 },
+  deptBar: { display: 'flex', gap: '6px', flexWrap: 'wrap' },
+  kpis: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' },
+  actions: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' },
+  action: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '12px 14px',
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    cursor: 'pointer',
+    color: tokens.colorNeutralForeground1,
+    ':hover': { backgroundColor: tokens.colorNeutralBackground1Hover },
+  },
+  actionText: { display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 },
+  actionTitle: { fontWeight: tokens.fontWeightSemibold },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '12px' },
+  card: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    padding: '16px',
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    minWidth: 0,
+  },
+  cardHead: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' },
+  cardTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase400,
+    color: tokens.colorNeutralForeground1,
+  },
+  sub: { fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 },
+  row: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) auto',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 6px',
+    borderRadius: tokens.borderRadiusMedium,
+    ':hover': { backgroundColor: tokens.colorSubtleBackgroundHover },
+  },
+  clickable: { cursor: 'pointer' },
+  rowMain: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  name: {
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  right: { display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', color: tokens.colorNeutralForeground2 },
+  empty: { padding: '18px 6px', color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
+  danger: { color: tokens.colorPaletteRedForeground1 },
+  warn: { color: tokens.colorPaletteMarigoldForeground1 },
+  success: { color: tokens.colorPaletteGreenForeground1 },
+  summaryLine: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '8px',
+    padding: '6px',
+    color: tokens.colorNeutralForeground2,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+});
+
+const fmtQ = (n: number) => Number((Number(n) || 0).toFixed(3)).toLocaleString();
+
+function Section({
+  title,
+  subtitle,
+  icon,
+  count,
+  action,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  count?: number;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const styles = useStyles();
+  return (
+    <section className={styles.card}>
+      <div className={styles.cardHead}>
+        <div>
+          <div className={styles.cardTitle}>
+            {icon}
+            {title}
+            {!!count && (
+              <Badge appearance="tint" size="small">
+                {count}
+              </Badge>
+            )}
+          </div>
+          <div className={styles.sub}>{subtitle}</div>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ShowMore({ total, expanded, onToggle }: { total: number; expanded: boolean; onToggle: () => void }) {
+  if (total <= LIST_LIMIT) return null;
+  return (
+    <Button size="small" appearance="subtle" style={{ alignSelf: 'flex-start' }} onClick={onToggle}>
+      {expanded ? 'Show less' : `Show all ${total}`}
+    </Button>
+  );
+}
 
 export function InventoryDashboardView(): React.JSX.Element {
-  const styles = useInventoryDashboardStyles();
+  const styles = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Fetch Products: Offline-First Cache (<5ms)
-  const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
-    queryKey: ['products'],
-    queryFn: () => posApi.fetchProducts(),
-  });
-
-  // Fetch Stock Movements: Offline-First Cache (<5ms)
-  const { data: movements = [] } = useQuery<StockMovement[]>({
-    queryKey: ['stock-movements'],
-    queryFn: () => posApi.fetchStockMovements(),
-  });
-
-  const vendors = vendorStorage.getVendors();
-  const totalVendorPayables = vendors.reduce((acc, v) => acc + vendorStorage.getBalance(v), 0);
-
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
+  const [dept, setDept] = useState<'all' | 'fastfood' | 'minimart'>('all');
+  const [showAllReorder, setShowAllReorder] = useState(false);
+  const [showAllExpiry, setShowAllExpiry] = useState(false);
 
-  // Filter tab: Store-Wide vs Fast Food Kitchen vs Retail Mini Mart
-  const [inventoryTab, setInventoryTab] = React.useState<'all' | 'fastfood' | 'minimart'>(() => {
-    if (hasFastFood && !hasOmnimart) return 'fastfood';
-    if (!hasFastFood && hasOmnimart) return 'minimart';
-    return 'all';
-  });
+  const { data: products = [], isLoading } = useQuery<Product[]>({ queryKey: ['products'], queryFn: () => posApi.fetchProducts() });
+  const { data: movements = [] } = useQuery<StockMovement[]>({ queryKey: ['stock-movements'], queryFn: () => posApi.fetchStockMovements() });
+  const { data: refunds = [] } = useQuery<OrderRefund[]>({ queryKey: ['refunds'], queryFn: () => posApi.fetchRefunds() });
+  const { data: batches = [] } = useQuery({ queryKey: ['open-batches'], queryFn: () => posApi.fetchOpenBatches() });
+  // The layout refreshes this cache from the backend and re-mounts the page afterwards
+  const vendors = vendorStorage.getVendors();
 
-  // Base products filtered by license
-  const licensedProducts = React.useMemo(() => {
-    return products.filter((p) => {
-      if (!hasFastFood && (p.module === 'fastfood' || p.itemRole === 'raw_ingredient')) return false;
-      if (!hasOmnimart && (p.module === 'minimart' || p.itemRole === 'retail_product')) return false;
-      return true;
-    });
-  }, [products, hasFastFood, hasOmnimart]);
-
-  // Filter products based on selected tab
-  const displayedProducts = React.useMemo(() => {
-    if (inventoryTab === 'fastfood') {
-      return licensedProducts.filter(
-        (p) =>
-          p.module === 'fastfood' ||
-          p.itemRole === 'raw_ingredient' ||
-          p.itemRole === 'food_menu' ||
-          ['Burger', 'Pizza', 'Sides', 'Beverages', 'Fast Food', 'Snacks', 'Food', 'Kitchen', 'Raw Materials'].includes(p.category)
-      );
-    }
-    if (inventoryTab === 'minimart') {
-      return licensedProducts.filter(
-        (p) =>
-          (p.module === 'minimart' || p.itemRole === 'retail_product') &&
-          p.itemRole !== 'raw_ingredient'
-      );
-    }
-    return licensedProducts;
-  }, [licensedProducts, inventoryTab]);
-
-  // Valuations based on displayed products
-  const totalStockItems = displayedProducts.length;
-  const totalUnitsInStock = displayedProducts.reduce((acc, p) => acc + (p.openingStock || 0), 0);
-  const totalPurchaseValue = displayedProducts.reduce((acc, p) => acc + (p.costPrice || 0) * Math.max(0, p.openingStock || 0), 0);
-  const totalRetailValue = displayedProducts.reduce((acc, p) => acc + (p.price || 0) * Math.max(0, p.openingStock || 0), 0);
-  const estimatedProfit = Math.max(0, totalRetailValue - totalPurchaseValue);
-  const profitMarginPercent = totalRetailValue > 0 ? Math.round((estimatedProfit / totalRetailValue) * 100) : 0;
-
-  // Units sold per product over the last 30 days (from POS Sale ledger entries)
-  const soldLast30Days = React.useMemo(() => {
-    const since = Date.now() - REORDER_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
-    const map = new Map<string, number>();
-    for (const m of movements) {
-      if (m.type !== 'out' || m.reason !== 'POS Sale') continue;
-      if (new Date(m.date).getTime() < since) continue;
-      map.set(m.productId, (map.get(m.productId) || 0) + (Number(m.quantity) || 0));
-    }
-    return map;
-  }, [movements]);
-
-  /**
-   * Suggested reorder quantity: enough to cover REORDER_COVER_DAYS of average sales
-   * on top of the safety (minimum) level, minus what is already on hand.
-   */
-  const suggestedReorderQty = (p: Product): number => {
-    const minLevel = getAlertLimit(p) ?? 0;
-    const dailyRate = (soldLast30Days.get(p.id) || 0) / REORDER_LOOKBACK_DAYS;
-    const target = Math.ceil(dailyRate * REORDER_COVER_DAYS) + minLevel;
-    return Math.max(1, target - Math.max(0, p.openingStock || 0));
-  };
-
-  // Low / out-of-stock items: at or below the item's alert limit (or the store default)
-  const lowStockProducts = displayedProducts
-    .filter((p) => {
-      const s = getStockStatus(p);
-      return s === 'low' || s === 'out';
-    })
-    .sort((a, b) => (a.openingStock || 0) - (b.openingStock || 0));
-
-  // Expiring Soon Products (expired or expiring within 60 days)
-  const expiringProducts = React.useMemo(() => {
+  const view = useMemo(() => {
     const now = Date.now();
-    return displayedProducts
-      .filter((p) => p.expiryDate)
-      .map((p) => {
-        const expTime = new Date(p.expiryDate!).getTime();
-        const diffDays = Math.ceil((expTime - now) / (1000 * 60 * 60 * 24));
-        return { ...p, diffDays };
+    const inScope = (module?: string) =>
+      (module === 'fastfood' ? hasFastFood : hasOmnimart) && (dept === 'all' || (dept === 'fastfood' ? module === 'fastfood' : module !== 'fastfood'));
+    const scoped = products.filter((p) => inScope(p.module));
+    const ids = new Set(scoped.map((p) => p.id));
+    const scopedMoves = movements.filter((m) => ids.has(m.productId) || inScope(m.module));
+
+    // Reorder: out / low items with how much to order for COVER_DAYS of sales
+    const sold = netSoldSince(scopedMoves, refunds, now - LOOKBACK_DAYS * DAY);
+    const reorder = scoped
+      .filter((p) => {
+        const s = getStockStatus(p);
+        return s === 'out' || s === 'low';
       })
-      .filter((p) => p.diffDays <= 60)
-      .sort((a, b) => a.diffDays - b.diffDays);
-  }, [displayedProducts]);
+      .map((p) => {
+        const soldQty = sold.get(p.id) || 0;
+        const stock = Math.max(0, Number(p.openingStock) || 0);
+        const daily = soldQty / LOOKBACK_DAYS;
+        return {
+          p,
+          stock,
+          limit: getAlertLimit(p) ?? 0,
+          daily,
+          daysLeft: daily > 0 ? Math.floor(stock / daily) : null,
+          order: suggestedReorderQty(p, soldQty, LOOKBACK_DAYS, COVER_DAYS),
+        };
+      })
+      .sort((a, b) => (a.stock === 0 ? -1 : 0) - (b.stock === 0 ? -1 : 0) || (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999));
+    const reorderCost = reorder.reduce((s, r) => s + r.order * Number(r.p.costPrice || 0), 0);
 
-  // Category Breakdown
-  const categoryMap = displayedProducts.reduce<Record<string, { count: number; units: number }>>((acc, p) => {
-    const cat = p.category || 'Uncategorized';
-    if (!acc[cat]) acc[cat] = { count: 0, units: 0 };
-    acc[cat].count += 1;
-    acc[cat].units += p.openingStock || 0;
-    return acc;
-  }, {});
+    const expiry = expiryRisk(scoped, batches, 90, now);
+    const expired = expiry.filter((e) => e.days < 0);
+    const soon30 = expiry.filter((e) => e.days >= 0 && e.days <= 30);
 
-  if (isLoadingProducts && products.length === 0) {
+    const month = stockFlowsSince(scopedMoves, startOfMonth());
+    const today = startOfToday();
+    const todayMoves = scopedMoves.filter((m) => isLiveMovement(m) && new Date(m.date).getTime() >= today);
+    const todayIn = todayMoves.filter((m) => m.type === 'in').reduce((s, m) => s + (Number(m.quantity) || 0) * Number(m.unitCost || 0), 0);
+    const todayOut = todayMoves.filter((m) => m.type === 'out').reduce((s, m) => s + (Number(m.quantity) || 0) * Number(m.unitCost || 0), 0);
+    const recent = [...scopedMoves].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8);
+
+    return {
+      reorder,
+      reorderCost,
+      outCount: reorder.filter((r) => r.stock === 0).length,
+      expiry,
+      expiredCount: expired.length,
+      expiredValue: expired.reduce((s, e) => s + e.value, 0),
+      soon30Value: soon30.reduce((s, e) => s + e.value, 0),
+      month,
+      todayMoves,
+      todayIn,
+      todayOut,
+      recent,
+      unitOf: (id: string) => products.find((p) => p.id === id)?.unit || 'units',
+    };
+  }, [products, movements, refunds, batches, dept, hasFastFood, hasOmnimart]);
+
+  const owed = vendors
+    .map((v) => ({ v, balance: vendorStorage.getBalance(v) }))
+    .filter((x) => x.balance > 0)
+    .sort((a, b) => b.balance - a.balance);
+  const totalOwed = owed.reduce((s, x) => s + x.balance, 0);
+
+  if (isLoading && products.length === 0) {
     return <TablePageSkeleton title="Inventory Dashboard" hasMetrics={true} />;
   }
 
+  const shrinkPct = view.month.purchasesValue > 0 ? Math.round((view.month.lossValue / view.month.purchasesValue) * 1000) / 10 : null;
+  const reorderRows = showAllReorder ? view.reorder : view.reorder.slice(0, LIST_LIMIT);
+  const expiryRows = showAllExpiry ? view.expiry : view.expiry.slice(0, LIST_LIMIT);
+  const openProduct = (id: string) => navigate(`/catalog/products/${id}`, { state: { from: location.pathname } });
+
   return (
-    <div className={styles.container}>
-      {/* ── Inventory Department Overview Tabs ─�    <div className={styles.scopeBar}>
-        <div className={styles.scopeLeft}>
-          <span className={styles.scopeLabel}>
-            Inventory Scope:
-          </span>
-          {hasFastFood && hasOmnimart ? (
-            <div className={styles.scopeTabList}>
-              <button
-                type="button"
-                onClick={() => setInventoryTab('all')}
-                className={mergeClasses(styles.scopeBtn, inventoryTab === 'all' && styles.scopeBtnActive)}
-              >
-                <span>Store-Wide Overview</span>
-                <span className={mergeClasses(styles.scopeBtnBadge, inventoryTab === 'all' && styles.scopeBtnBadgeActive)}>
-                  {licensedProducts.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setInventoryTab('fastfood')}
-                className={mergeClasses(styles.scopeBtn, inventoryTab === 'fastfood' && styles.scopeBtnActive)}
-              >
-                <Food24Regular className={styles.icon15Neutral} />
-                <span>Kitchen &amp; Fast Food Raw Stock</span>
-                <span className={mergeClasses(styles.scopeBtnBadge, inventoryTab === 'fastfood' && styles.scopeBtnBadgeActive)}>
-                  {licensedProducts.filter((p) => p.module === 'fastfood' || p.itemRole === 'raw_ingredient').length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setInventoryTab('minimart')}
-                className={mergeClasses(styles.scopeBtn, inventoryTab === 'minimart' && styles.scopeBtnActive)}
-              >
-                <ShoppingBag24Regular className={styles.icon15Neutral} />
-                <span>Retail Mini Mart Goods</span>
-                <span className={mergeClasses(styles.scopeBtnBadge, inventoryTab === 'minimart' && styles.scopeBtnBadgeActive)}>
-                  {licensedProducts.filter((p) => (p.module === 'minimart' || p.itemRole === 'retail_product') && p.itemRole !== 'raw_ingredient').length}
-                </span>
-              </button>
-            </div>
-          ) : (
-            <div className={styles.scopeSingleChip}>
-              {hasFastFood ? <Food24Regular className={styles.icon15Red} /> : <ShoppingBag24Regular className={styles.icon15Blue} />}
-              <span>{hasFastFood ? 'Kitchen & Fast Food Raw Stock' : 'Retail Mini Mart Goods'}</span>
-              <span className={styles.scopeCountChip}>
-                {licensedProducts.length} items
-              </span>
-            </div>
-          )}
+    <div className={styles.page}>
+      {hasFastFood && hasOmnimart && (
+        <div className={styles.deptBar}>
+          {(
+            [
+              ['all', 'All departments'],
+              ['minimart', 'Retail'],
+              ['fastfood', 'Kitchen & Fast Food'],
+            ] as const
+          ).map(([k, label]) => (
+            <Button key={k} size="small" appearance={dept === k ? 'primary' : 'secondary'} onClick={() => setDept(k)}>
+              {label}
+            </Button>
+          ))}
         </div>
+      )}
 
-        <div className={styles.scopeRight}>
-          <span>Showing <strong>{displayedProducts.length}</strong> items in scope</span>
-        </div>
-      </div>  </div>
-
-      {/* ── Key numbers (Windows 11 cards) ── */}
-      <div className={styles.metricsGrid}>
-        <KpiTile label="Products" value={totalStockItems} footer={<span>Items in the catalog</span>} />
-        <KpiTile label="Units in stock" value={totalUnitsInStock.toLocaleString()} footer={<span>Available on hand</span>} />
-        <KpiTile label="Purchase cost" value={formatPKR(totalPurchaseValue)} footer={<span>Value at cost price</span>} />
+      {/* ── Key numbers ── */}
+      <div className={styles.kpis}>
         <KpiTile
-          label="Retail value"
-          value={formatPKR(totalRetailValue)}
-          tone="success"
-          footer={<span>Estimated margin {profitMarginPercent}%</span>}
+          label="Reorder now"
+          value={view.reorder.length}
+          tone={view.outCount > 0 ? 'danger' : view.reorder.length > 0 ? 'warning' : 'success'}
+          icon={<Warning20Regular />}
+          footer={<span>{view.outCount} out of stock · about {formatPKR(Math.round(view.reorderCost))} to restock</span>}
         />
         <KpiTile
-          label="Vendor payables"
-          value={formatPKR(totalVendorPayables)}
-          tone={totalVendorPayables > 0 ? 'danger' : 'success'}
+          label="Expiry risk"
+          value={view.expiry.length}
+          tone={view.expiredCount > 0 ? 'danger' : view.expiry.length > 0 ? 'warning' : 'success'}
+          icon={<CalendarClock20Regular />}
           footer={
-            <Link onClick={() => navigate('/inventory/vendors')}>
-              {vendors.filter((v) => vendorStorage.getBalance(v) > 0).length} suppliers pending
-            </Link>
+            <span>
+              {view.expiredCount} expired ({formatPKR(Math.round(view.expiredValue))}) · {formatPKR(Math.round(view.soon30Value))} within 30 days
+            </span>
           }
         />
+        <KpiTile
+          label="Purchases this month"
+          value={formatPKR(Math.round(view.month.purchasesValue))}
+          icon={<ShoppingBag20Regular />}
+          footer={<span>{view.month.purchasesEntries} receipts at cost</span>}
+        />
+        <KpiTile
+          label="Stock lost this month"
+          value={formatPKR(Math.round(view.month.lossValue + view.month.countLossValue))}
+          tone={view.month.lossValue + view.month.countLossValue > 0 ? 'danger' : 'success'}
+          icon={<ArrowTrendingDown20Regular />}
+          footer={<span>{shrinkPct !== null ? `${shrinkPct}% of purchases · ` : ''}damage, expiry, missing</span>}
+        />
+        <KpiTile
+          label="Owed to suppliers"
+          value={formatPKR(Math.round(totalOwed))}
+          tone={totalOwed > 0 ? 'warning' : 'success'}
+          icon={<PeopleCommunity20Regular />}
+          footer={<span>{owed.length} supplier{owed.length === 1 ? '' : 's'} with a balance</span>}
+        />
       </div>
 
-      {/* ── Quick Hub Links ── */}
-      <div className={styles.quickLinksGrid}>
-        <div className={styles.quickLinkCard} onClick={() => navigate('/inventory/stock-in')}>
-          <div className={styles.quickLinkLeft}>
-            <span className={styles.quickLinkIconGreen}>
-              <ArrowCircleDown24Regular />
-            </span>
-            <div>
-              <Body1 className={styles.quickLinkTitle}>Stock In (Receiving)</Body1>
-              <Caption1 className={styles.quickLinkDesc}>Receive purchases &amp; vendor deliveries</Caption1>
+      {/* ── Quick actions ── */}
+      <div className={styles.actions}>
+        {(
+          [
+            ['/inventory/stock-in', <ArrowCircleDown20Regular key="i" className={styles.success} />, 'Stock in', 'Receive a delivery'],
+            ['/inventory/stock-out', <ArrowCircleUp20Regular key="o" className={styles.danger} />, 'Stock out', 'Damage, expiry, returns'],
+            ['/inventory/vendors', <PeopleCommunity20Regular key="v" />, 'Suppliers', `${vendors.length} registered`],
+            ['/inventory/ledger', <DocumentTableSearch20Regular key="l" />, 'Movement ledger', 'Every entry with balance'],
+          ] as const
+        ).map(([to, icon, title, sub]) => (
+          <div key={to} className={styles.action} role="button" tabIndex={0} onClick={() => navigate(to)} onKeyDown={(e) => e.key === 'Enter' && navigate(to)}>
+            {icon}
+            <div className={styles.actionText}>
+              <span className={styles.actionTitle}>{title}</span>
+              <span className={styles.sub}>{sub}</span>
             </div>
+            <ArrowRight16Regular />
           </div>
-          <ArrowRight16Regular className={styles.quickLinkChevron} />
-        </div>
-
-        <div className={styles.quickLinkCard} onClick={() => navigate('/inventory/stock-out')}>
-          <div className={styles.quickLinkLeft}>
-            <span className={styles.quickLinkIconRed}>
-              <ArrowCircleUp24Regular />
-            </span>
-            <div>
-              <Body1 className={styles.quickLinkTitle}>Stock Out (Waste/Usage)</Body1>
-              <Caption1 className={styles.quickLinkDesc}>Log kitchen usage, damage, or expiry</Caption1>
-            </div>
-          </div>
-          <ArrowRight16Regular className={styles.quickLinkChevron} />
-        </div>
-
-        <div className={styles.quickLinkCard} onClick={() => navigate('/inventory/vendors')}>
-          <div className={styles.quickLinkLeft}>
-            <span className={styles.quickLinkIconBlue}>
-              <PeopleCommunity24Regular />
-            </span>
-            <div>
-              <Body1 className={styles.quickLinkTitle}>Vendors &amp; Suppliers</Body1>
-              <Caption1 className={styles.quickLinkDesc}>{vendors.length} registered suppliers</Caption1>
-            </div>
-          </div>
-          <ArrowRight16Regular className={styles.quickLinkChevron} />
-        </div>
-
-        <div className={styles.quickLinkCard} onClick={() => navigate('/inventory/ledger')}>
-          <div className={styles.quickLinkLeft}>
-            <span className={styles.quickLinkIconBrand}>
-              <DocumentTableSearch24Regular />
-            </span>
-            <div>
-              <Body1 className={styles.quickLinkTitle}>Movement Ledger</Body1>
-              <Caption1 className={styles.quickLinkDesc}>{movements.length} audit logs recorded</Caption1>
-            </div>
-          </div>
-          <ArrowRight16Regular className={styles.quickLinkChevron} />
-        </div>
+        ))}
       </div>
 
-      {/* ── Two Column: Low Stock Alerts & Recent Movements ── */}
-      <div className={styles.twoColGrid}>
-        {/* Left: Low Stock Critical Alerts */}
-        <div className={styles.sectionCard}>
-          <div className={styles.sectionHeader}>
-            <div className={styles.sectionHeaderLeft}>
-              <Warning20Filled className={styles.warningIcon} />
-              <Subtitle2 className={styles.sectionTitle}>
-                Low stock
-              </Subtitle2>
-              <Badge appearance="filled" color="danger" size="small">
-                {lowStockProducts.length} items
-              </Badge>
-            </div>
-            <Button
-              appearance="subtle"
-              size="small"
-              icon={<Add20Regular />}
-              onClick={() => navigate('/inventory/stock-in')}
-              className={styles.reorderAllBtn}
-            >
-              Reorder all
-            </Button>
-          </div>
-
-          {lowStockProducts.length === 0 ? (
-            <div className={styles.emptyText}>
-              All inventory levels are healthy. No items below threshold.
-            </div>
+      <div className={styles.grid}>
+        {/* Reorder */}
+        <Section
+          title="Reorder now"
+          subtitle={`Out or at the alert limit. Order covers ${COVER_DAYS} days of the last ${LOOKBACK_DAYS} days' sales plus the alert level.`}
+          icon={<Warning20Regular />}
+          count={view.reorder.length}
+        >
+          {view.reorder.length === 0 ? (
+            <div className={styles.empty}>Nothing to reorder: every item is above its alert limit.</div>
           ) : (
-            lowStockProducts.slice(0, 5).map((prod) => (
-              <div key={prod.id} className={styles.alertItem}>
-                <div className={styles.alertItemLeft}>
-                  <Body1 className={styles.alertItemTitle}>{prod.name}</Body1>
-                  <Caption1 className={styles.alertItemSubtitle}>
-                    Category: {prod.category} • Cost: {formatPKR(prod.costPrice || 0)}
-                  </Caption1>
-                </div>
-                <div className={styles.alertItemRight}>
-                  <Badge appearance="tint" color="danger" className={styles.badgeBold}>
-                    {prod.openingStock || 0} units left
-                  </Badge>
-                  <Caption1 title={`Covers ${REORDER_COVER_DAYS} days of average sales plus the minimum level`}>
-                    Reorder ~{suggestedReorderQty(prod)}
-                  </Caption1>
-                  <Button
-                    appearance="primary"
-                    size="small"
-                    onClick={() => navigate('/inventory/stock-in', { state: { productName: prod.name, productId: prod.id, costPrice: prod.costPrice, quantity: suggestedReorderQty(prod) } })}
-                    className={styles.restockBtn}
-                  >
-                    Restock
-                  </Button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Right: Recent Stock Movements Snapshot */}
-        <div className={styles.sectionCard}>
-          <div className={styles.sectionHeader}>
-            <Subtitle2 className={styles.sectionTitle}>
-              Recent movements
-            </Subtitle2>
-            <Button
-              appearance="subtle"
-              size="small"
-              onClick={() => navigate('/inventory/ledger')}
-              className={styles.viewFullBtn}
-            >
-              View Full Ledger &rarr;
-            </Button>
-          </div>
-
-          {movements.length === 0 ? (
-            <div className={styles.emptyText}>
-              No recent movements recorded yet.
-            </div>
-          ) : (
-            movements.slice(0, 5).map((mov) => {
-              const isIn = mov.type === 'in';
-              return (
-                <div
-                  key={mov.id}
-                  className={mergeClasses(styles.movementRow, styles.cursorPointer)}
-                  onClick={() => navigate('/inventory/ledger')}
-                >
-                  <div className={styles.movementItemLeft}>
-                    <Badge
-                      appearance="filled"
-                      color={isIn ? 'success' : 'danger'}
-                      size="medium"
-                      className={styles.badgeBold}
-                    >
-                      {isIn ? `+${mov.quantity}` : `-${mov.quantity}`}
-                    </Badge>
-                    <div className={styles.movementInfo}>
-                      <Body1 className={styles.movementTitle}>
-                        {mov.productName}
-                      </Body1>
-                      <Caption1 className={styles.movementMeta}>
-                        {new Date(mov.date).toLocaleDateString()} • {mov.reason || (isIn ? 'Stock In' : 'Damage/Waste')}
-                      </Caption1>
-                    </div>
-                  </div>
-                  {mov.unitCost && (
-                    <span className={isIn ? styles.movementCostIn : styles.movementCostOut}>
-                      {formatPKR(mov.quantity * mov.unitCost)}
+            <>
+              {reorderRows.map((r) => (
+                <div key={r.p.id} className={styles.row}>
+                  <div className={mergeClasses(styles.rowMain, styles.clickable)} onClick={() => openProduct(r.p.id)}>
+                    <span className={styles.name}>{r.p.name}</span>
+                    <span className={styles.sub}>
+                      <span className={r.stock === 0 ? styles.danger : styles.warn}>
+                        {r.stock === 0 ? 'Out of stock' : `${fmtQ(r.stock)} ${r.p.unit || 'units'} left`}
+                      </span>
+                      {' · '}alert {fmtQ(r.limit)}
+                      {r.daily > 0 ? ` · sells ${fmtQ(Math.round(r.daily * 10) / 10)}/day` : ' · no recent sales'}
+                      {r.daysLeft !== null && r.stock > 0 ? ` · ~${r.daysLeft}d left` : ''}
                     </span>
-                  )}
+                  </div>
+                  <div className={styles.right}>
+                    <Button
+                      size="small"
+                      appearance="primary"
+                      onClick={() =>
+                        navigate('/inventory/stock-in', {
+                          state: { productName: r.p.name, productId: r.p.id, costPrice: r.p.costPrice, quantity: r.order },
+                        })
+                      }
+                    >
+                      Order {fmtQ(r.order)}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <ShowMore total={view.reorder.length} expanded={showAllReorder} onToggle={() => setShowAllReorder((v) => !v)} />
+            </>
+          )}
+        </Section>
+
+        {/* Expiry */}
+        <Section
+          title="Expiring stock"
+          subtitle="Batches in stock that expire within 90 days, or already have. Sell first, return to supplier, or write off."
+          icon={<CalendarClock20Regular />}
+          count={view.expiry.length}
+          action={
+            <Button size="small" appearance="secondary" onClick={() => navigate('/inventory/stock-out')}>
+              Stock out
+            </Button>
+          }
+        >
+          {view.expiry.length === 0 ? (
+            <div className={styles.empty}>Nothing in stock expires in the next 90 days.</div>
+          ) : (
+            <>
+              {expiryRows.map((e) => (
+                <div key={e.key} className={mergeClasses(styles.row, styles.clickable)} onClick={() => openProduct(e.productId)}>
+                  <div className={styles.rowMain}>
+                    <span className={styles.name}>{e.name}</span>
+                    <span className={styles.sub}>
+                      {e.batch ? `Batch ${e.batch} · ` : ''}
+                      {fmtQ(e.qty)} {view.unitOf(e.productId)} · {formatPKR(Math.round(e.value))} at cost
+                    </span>
+                  </div>
+                  <div className={styles.right}>
+                    <Badge appearance="tint" color={e.days < 0 ? 'danger' : e.days <= 30 ? 'warning' : 'informative'}>
+                      {e.days < 0 ? `Expired ${Math.abs(e.days)}d ago` : e.days === 0 ? 'Expires today' : `${e.days} days left`}
+                    </Badge>
+                    <ChevronRight16Regular />
+                  </div>
+                </div>
+              ))}
+              <ShowMore total={view.expiry.length} expanded={showAllExpiry} onToggle={() => setShowAllExpiry((v) => !v)} />
+            </>
+          )}
+        </Section>
+
+        {/* This month */}
+        <Section title="This month at cost" subtitle="What came in and what left the shelf other than sales" icon={<ShoppingBag20Regular />}>
+          <div className={styles.row}>
+            <span>Purchases received</span>
+            <span className={styles.success}>+{formatPKR(Math.round(view.month.purchasesValue))}</span>
+          </div>
+          <div className={styles.row}>
+            <span>Customer returns back on the shelf</span>
+            <span className={styles.success}>+{formatPKR(Math.round(view.month.customerReturnsValue))}</span>
+          </div>
+          <div className={styles.row}>
+            <span>Cost of goods sold</span>
+            <span>-{formatPKR(Math.round(view.month.salesCostValue))}</span>
+          </div>
+          <div className={styles.row}>
+            <span>Returned to suppliers</span>
+            <span>-{formatPKR(Math.round(view.month.vendorReturnsValue))}</span>
+          </div>
+          <div className={styles.row}>
+            <span>Internal use (store use, samples…)</span>
+            <span>-{formatPKR(Math.round(view.month.usageValue))}</span>
+          </div>
+          <div className={styles.row}>
+            <span>Stock count corrections</span>
+            <span>
+              {view.month.countGainValue > 0 ? <span className={styles.success}>+{formatPKR(Math.round(view.month.countGainValue))} </span> : null}
+              <span className={view.month.countLossValue > 0 ? styles.danger : undefined}>-{formatPKR(Math.round(view.month.countLossValue))}</span>
+            </span>
+          </div>
+          <div className={styles.summaryLine}>
+            <strong>Loss / write-off</strong>
+            <strong className={view.month.lossValue > 0 ? styles.danger : undefined}>-{formatPKR(Math.round(view.month.lossValue))}</strong>
+          </div>
+          {view.month.losses.map((l) => (
+            <div key={l.reason} className={styles.row}>
+              <span className={styles.sub}>
+                {l.label} · {l.entries} entr{l.entries === 1 ? 'y' : 'ies'} · {fmtQ(l.units)} units
+              </span>
+              <span className={styles.danger}>-{formatPKR(Math.round(l.value))}</span>
+            </div>
+          ))}
+        </Section>
+
+        {/* Today + suppliers */}
+        <Section
+          title="Today"
+          subtitle={`${view.todayMoves.length} stock entr${view.todayMoves.length === 1 ? 'y' : 'ies'} · in ${formatPKR(Math.round(view.todayIn))} · out ${formatPKR(Math.round(view.todayOut))} at cost`}
+          icon={<History20Regular />}
+          action={
+            <Button size="small" appearance="secondary" onClick={() => navigate('/inventory/ledger')}>
+              Ledger
+            </Button>
+          }
+        >
+          {view.recent.length === 0 ? (
+            <div className={styles.empty}>No stock movements yet.</div>
+          ) : (
+            view.recent.map((m) => {
+              const isIn = m.type === 'in';
+              const d = new Date(m.date);
+              const isToday = d.getTime() >= startOfToday();
+              return (
+                <div key={m.id} className={mergeClasses(styles.row, styles.clickable)} onClick={() => navigate('/inventory/ledger')}>
+                  <div className={styles.rowMain}>
+                    <span className={styles.name}>{m.productName}</span>
+                    <span className={styles.sub}>
+                      {m.reason || (isIn ? 'Stock in' : 'Stock out')}
+                      {' · '}
+                      {isToday ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString()}
+                      {m.reversedAt ? ' · reversed' : ''}
+                    </span>
+                  </div>
+                  <div className={styles.right}>
+                    <span className={isIn ? styles.success : styles.danger}>
+                      {isIn ? '+' : '-'}
+                      {fmtQ(Number(m.quantity) || 0)} {view.unitOf(m.productId)}
+                    </span>
+                  </div>
                 </div>
               );
             })
           )}
-        </div>
-      </div>
-
-      {/* ── Expiring Soon & Batch Alerts ── */}
-      {expiringProducts.length > 0 && (
-        <div className={styles.sectionCard} style={{ borderLeft: '4px solid #D97706' }}>
-          <div className={styles.sectionHeader}>
-            <div className={styles.sectionHeaderLeft}>
-              <Calendar20Regular style={{ color: tokens.colorStatusWarningForeground1, fontSize: '20px' }} />
-              <Subtitle2 className={styles.sectionTitle}>
-                Expiring Soon &amp; Batch Expiry Alerts
-              </Subtitle2>
-              <Badge appearance="filled" color={expiringProducts.some((p) => p.diffDays < 0) ? 'danger' : 'warning'} size="small">
-                {expiringProducts.length} items
-              </Badge>
-            </div>
-            <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
-              Products requiring immediate markdown, clearance sale, or vendor return
-            </Caption1>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', marginTop: '8px' }}>
-            {expiringProducts.slice(0, 6).map((prod) => {
-              const isExp = prod.diffDays < 0;
-              return (
-                <div
-                  key={prod.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    backgroundColor: isExp ? '#FDF3F4' : '#FFFDF5',
-                    border: `1px solid ${isExp ? '#F9D9DC' : '#FCE3A1'}`,
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => navigate(`/catalog/products/${prod.id}`, { state: { from: location.pathname + location.search } })}
-                >
-                  <div>
-                    <strong style={{ fontSize: '13.5px', color: tokens.colorNeutralForeground1, display: 'block' }}>
-                      {prod.name}
-                    </strong>
-                    <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
-                      {prod.batchNumber ? `Batch: #${prod.batchNumber} • ` : ''}Stock: {prod.openingStock || 0} {prod.unit || 'PCS'}
-                    </Caption1>
-                  </div>
-                  <Badge
-                    appearance="filled"
-                    color={isExp ? 'danger' : 'warning'}
-                  >
-                    {isExp ? `Expired (${Math.abs(prod.diffDays)}d)` : `${prod.diffDays} days left`}
-                  </Badge>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Category Stock Distribution ── */}
-      <div className={styles.sectionCard}>
-        <Subtitle2 className={styles.distributionTitle}>
-          Stock by category
-        </Subtitle2>
-        <div className={styles.distributionGrid}>
-          {Object.entries(categoryMap).map(([catName, data]) => {
-            const percent = totalUnitsInStock > 0 ? Math.round((data.units / totalUnitsInStock) * 100) : 0;
-            return (
-              <div
-                key={catName}
-                className={styles.catCard}
-              >
-                <div className={styles.catCardHeader}>
-                  <Body1 className={styles.catCardTitle}>{catName}</Body1>
-                  <Caption1 className={styles.catCardUnits}>{data.units} units</Caption1>
-                </div>
-                <ProgressBar value={percent / 100} color={percent > 20 ? 'brand' : 'warning'} className={styles.catProgressBar} />
-                <Caption1 className={styles.catCardFooter}>
-                  {data.count} items ({percent}%)
-                </Caption1>
+          {owed.length > 0 && (
+            <>
+              <div className={styles.summaryLine}>
+                <strong>Owed to suppliers</strong>
+                <strong>{formatPKR(Math.round(totalOwed))}</strong>
               </div>
-            );
-          })}
-        </div>
+              {owed.slice(0, 4).map(({ v, balance }) => (
+                <div key={v.id} className={mergeClasses(styles.row, styles.clickable)} onClick={() => navigate('/inventory/vendors')}>
+                  <span className={styles.name}>{v.companyName || v.name}</span>
+                  <span className={styles.warn}>{formatPKR(Math.round(balance))}</span>
+                </div>
+              ))}
+            </>
+          )}
+        </Section>
       </div>
     </div>
   );

@@ -126,11 +126,11 @@ const useStyles = makeStyles({
 const pageMeta: Record<string, { title: string; subtitle: string }> = {
   '/inventory': {
     title: 'Inventory',
-    subtitle: 'Stock value, reorder alerts and categories',
+    subtitle: 'Reorder, expiring stock, losses, purchases and what is owed to suppliers',
   },
   '/inventory/dashboard': {
     title: 'Inventory',
-    subtitle: 'Stock value, reorder alerts and categories',
+    subtitle: 'Reorder, expiring stock, losses, purchases and what is owed to suppliers',
   },
   '/inventory/stock-in': {
     title: 'Stock in',
