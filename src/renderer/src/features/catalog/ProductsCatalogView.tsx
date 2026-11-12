@@ -140,6 +140,9 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     () => resolveStoreModules(hasFastFood, hasOmnimart, businessProfiles),
     [hasFastFood, hasOmnimart, businessProfiles],
   );
+  // Retail department name for this store (e.g. "Pharmacy"), same as the sidebar
+  const retailName = storeMod.shortRetailLabel;
+  const retailPosLabel = retailName === 'Mart' ? 'Mart Counter' : `${retailName} POS`;
   const { notifySuccess, notifyError } = useAppToast();
   const confirmModal = useConfirmDialog();
 
@@ -464,12 +467,14 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     <div className={styles.container}>
       {/* ── Page Header (Windows 11) ───────────────────────────── */}
       <PageHeader
-        title={activeTab === 'fastfood' ? 'Fast food menu' : activeTab === 'minimart' ? 'Omnimart catalog' : 'Catalog'}
+        title={activeTab === 'fastfood' ? 'Fast food menu' : activeTab === 'minimart' ? `${retailName} items` : 'Catalog'}
         subtitle={
           activeTab === 'fastfood'
             ? 'Burgers, pizzas, snacks and kitchen prep items'
             : activeTab === 'minimart'
-            ? 'Retail groceries, SKU barcodes, rack locations and loose scale items'
+            ? retailName === 'Mart'
+              ? 'Retail groceries, SKU barcodes, rack locations and loose scale items'
+              : `Products sold at the ${retailPosLabel}: barcodes, prices, stock and expiry`
             : 'Products, departments and stock value at a glance'
         }
         actions={
@@ -643,7 +648,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
                   <div className={styles.divisionBtnRow}>
                     <Button appearance="secondary" onClick={() => navigate('/catalog/omnimart')}>
-                      Open Omnimart catalog
+                      Open {retailName} items
                     </Button>
                     <Button appearance="subtle" icon={<Add20Regular />} onClick={() => navigate('/catalog/new?module=minimart')}>
                       Add retail item
@@ -1090,7 +1095,10 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: tokens.colorStatusSuccessBackground3, display: 'inline-block' }} />
-              <span style={{ fontWeight: 600, color: tokens.colorNeutralForeground1, fontSize: '11.5px' }}>Fast Food POS Active</span>
+              <span style={{ fontWeight: 600, color: tokens.colorNeutralForeground1, fontSize: '11.5px' }}>
+                {/* Which counter sells the items listed here */}
+                Sold at {activeTab === 'fastfood' ? 'Fast Food POS' : activeTab === 'minimart' ? retailPosLabel : [storeMod.allowFastFood && 'Fast Food POS', storeMod.allowMinimart && retailPosLabel].filter(Boolean).join(' & ')}
+              </span>
             </div>
           </div>
         </div>
