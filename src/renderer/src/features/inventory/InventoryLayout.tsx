@@ -16,11 +16,15 @@ import {
   ClipboardCheckmark20Regular,
   Food20Regular,
   AlertUrgent20Regular,
+  Cart20Regular,
+  BoxMultipleArrowRight20Regular,
 } from '@fluentui/react-icons';
 import { PurchaseBillModal } from './PurchaseBillModal';
 import { StockCountDialog } from './StockCountDialog';
 import { RecipeDialog } from './RecipeDialog';
 import { StockAlertLimitsDialog } from './StockAlertLimitsDialog';
+import { SaleEntryDialog } from './SaleEntryDialog';
+import { BulkStockOutDialog } from './BulkStockOutDialog';
 import { loadLowStockDefault } from '@/lib/stockStatus';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -158,6 +162,8 @@ export function InventoryLayout(): React.JSX.Element {
   const [isStockCountOpen, setIsStockCountOpen] = useState(false);
   const [isRecipeOpen, setIsRecipeOpen] = useState(false);
   const [isAlertLimitsOpen, setIsAlertLimitsOpen] = useState(false);
+  const [isSaleEntryOpen, setIsSaleEntryOpen] = useState(false);
+  const [isBulkOutOpen, setIsBulkOutOpen] = useState(false);
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
   // Stock counts and recipes change stock levels directly: "Stock Corrections" permission only
@@ -196,6 +202,16 @@ export function InventoryLayout(): React.JSX.Element {
               <Button appearance="secondary" icon={<Receipt20Regular />} onClick={() => setIsPurchaseBillOpen(true)}>
                 Purchase bill
               </Button>
+              {isStockOutPage && (
+                <>
+                  <Button appearance="secondary" icon={<Cart20Regular />} onClick={() => setIsSaleEntryOpen(true)}>
+                    Sale entry
+                  </Button>
+                  <Button appearance="secondary" icon={<BoxMultipleArrowRight20Regular />} onClick={() => setIsBulkOutOpen(true)}>
+                    Bulk stock out
+                  </Button>
+                </>
+              )}
               <Button appearance="secondary" icon={<AlertUrgent20Regular />} onClick={() => setIsAlertLimitsOpen(true)}>
                 Alert limits
               </Button>
@@ -228,6 +244,10 @@ export function InventoryLayout(): React.JSX.Element {
       <div className={styles.contentArea}>
         <Outlet key={vendorDataVersion} />
       </div>
+
+      {/* ── Sale entry (no POS terminal) & bulk stock out ── */}
+      <SaleEntryDialog isOpen={isSaleEntryOpen} onClose={() => setIsSaleEntryOpen(false)} />
+      <BulkStockOutDialog isOpen={isBulkOutOpen} onClose={() => setIsBulkOutOpen(false)} />
 
       {/* ── Low stock alert limits ── */}
       <StockAlertLimitsDialog isOpen={isAlertLimitsOpen} onClose={() => setIsAlertLimitsOpen(false)} />
