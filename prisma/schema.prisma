@@ -238,6 +238,7 @@ model PurchaseBill {
   subtotal      Float    @default(0)
   discountAmount Float   @default(0)
   taxAmount     Float    @default(0)
+  freightAmount Float    @default(0) // freight / other charges on the delivery (part of landed cost)
   grandTotal    Float    @default(0)
   paidAmount    Float    @default(0)
   paymentMode   String   @default("cash")

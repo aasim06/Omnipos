@@ -1943,6 +1943,7 @@ export function registerRoutes(app: Express): void {
     subtotal: Number(b.subtotal || 0),
     discountAmount: Number(b.discountAmount || 0),
     taxAmount: Number(b.taxAmount || 0),
+    freightAmount: Number(b.freightAmount || 0),
     grandTotal: Number(b.grandTotal || 0),
     paidAmount: Number(b.paidAmount || 0),
     paymentMode: String(b.paymentMode || 'cash'),

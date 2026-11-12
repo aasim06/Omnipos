@@ -54,6 +54,7 @@ import { vendorStorage } from './vendorStorage';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { detectCategoryProfile, getFilteredProfileOptions } from '@/lib/categoryProfiles';
+import { printGrn } from '@/lib/grnPrint';
 import { lowStockLimit } from '@/lib/stockStatus';
 
 export const FOOD_GROUPS: Record<string, { label: string; match: RegExp }> = {
@@ -949,6 +950,11 @@ export function StockInView(): React.JSX.Element {
 
   // Open Print Modal
   const handleOpenPrint = (mov: StockMovement) => {
+    const linkedBill = mov.referenceInvoice ? purchaseBillsMap.get(mov.referenceInvoice.trim().toLowerCase()) : undefined;
+    if (linkedBill) {
+      if (!printGrn(linkedBill)) notifyWarning('Allow pop-ups to print the GRN.');
+      return;
+    }
     setPrintingMovement(mov);
     setIsPrintModalOpen(true);
   };

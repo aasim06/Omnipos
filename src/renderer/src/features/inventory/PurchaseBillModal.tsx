@@ -35,6 +35,7 @@ import { vendorStorage, Vendor } from './vendorStorage';
 import { useAppToast } from '@/context/AppNotificationContext';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { detectCategoryProfile } from '@/lib/categoryProfiles';
+import { printGrn } from '@/lib/grnPrint';
 
 const useStyles = makeStyles({
   dialogSurface: {
@@ -255,6 +256,13 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
 
   // Payment states
   const [discountAmount, setDiscountAmount] = useState<number>(0);
+  // GST / tax on the supplier bill. A tax-registered business claims it back, so it stays out of
+  // stock cost; otherwise it is part of what the goods cost.
+  const [taxAmount, setTaxAmount] = useState<number>(0);
+  const [taxClaimable, setTaxClaimable] = useState(false);
+  // Freight / loading / other charges for this delivery: spread over the items as landed cost
+  const [freightAmount, setFreightAmount] = useState<number>(0);
+  const [printAfterSave, setPrintAfterSave] = useState(true);
   const [paymentMode, setPaymentMode] = useState<'cash' | 'bank' | 'khata' | 'split'>('cash');
   const [paidAmount, setPaidAmount] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -271,8 +279,16 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
   }, [lines]);
 
   const grandTotal = useMemo(() => {
-    return Math.max(0, subtotal - (Number(discountAmount) || 0));
-  }, [subtotal, discountAmount]);
+    return Math.max(0, subtotal - (Number(discountAmount) || 0) + (Number(taxAmount) || 0) + (Number(freightAmount) || 0));
+  }, [subtotal, discountAmount, taxAmount, freightAmount]);
+
+  // Landed cost factor: what each rupee of item price really cost after discount, freight and
+  // (non-claimable) tax, spread over the lines in proportion to their value
+  const landedFactor = useMemo(() => {
+    if (!(subtotal > 0)) return 1;
+    const costed = grandTotal - (taxClaimable ? Number(taxAmount) || 0 : 0);
+    return Math.max(0, costed / subtotal);
+  }, [subtotal, grandTotal, taxAmount, taxClaimable]);
 
   const balancePayable = useMemo(() => {
     const paid = typeof paidAmount === 'number' ? paidAmount : 0;
@@ -491,11 +507,15 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
         lines: validLines,
         subtotal,
         discountAmount: Number(discountAmount) || 0,
+        taxAmount: Number(taxAmount) || 0,
+        freightAmount: Number(freightAmount) || 0,
         grandTotal,
         paidAmount: finalPaid,
         paymentMode,
         paymentStatus: status,
-        notes,
+        notes: [notes?.trim(), Number(taxAmount) > 0 && taxClaimable ? 'Input tax claimable (kept out of stock cost)' : null]
+          .filter(Boolean)
+          .join(' • ') || undefined,
         createdAt: movementDate,
         updatedAt: movementDate,
       };
@@ -517,8 +537,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
       // 3. Stock-in entries, in base units at landed (post-discount) cost
       const productMap = new Map<string, Product>();
       products.forEach((p) => productMap.set(p.id, { ...p }));
-      // Spread the bill-level discount across lines in proportion to their value (landed cost)
-      const landedFactor = subtotal > 0 ? Math.min(1, Math.max(0, grandTotal / subtotal)) : 1;
+      // Discount, freight and non-claimable tax are spread across lines by value (landedFactor)
 
       const planned = validLines.map((line) => {
         const prod = line.productId ? productMap.get(line.productId) : undefined;
@@ -650,6 +669,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
         } catch {}
       }
       notifySuccess(`Delivery #${billNumber} received. Stock and supplier balance updated.`);
+      if (printAfterSave && !printGrn(purchaseBill)) notifyWarning('Allow pop-ups to print the GRN.');
       onSuccess?.();
       onClose();
     } catch (err: any) {
@@ -899,7 +919,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                             const prod = line.productId ? products.find((x) => x.id === line.productId) : undefined;
                             const rate = lineConversionRate(line, prod);
                             const units = (Number(line.quantity) + (Number(line.bonusQty) || 0)) * rate;
-                            const factor = subtotal > 0 ? Math.min(1, Math.max(0, grandTotal / subtotal)) : 1;
+                            const factor = landedFactor;
                             const cost = units > 0 ? (Number(line.unitCost) * Number(line.quantity) * factor) / units : 0;
                             const sale = Number(line.retailPrice) || 0;
                             if (!(cost > 0) || !(sale > 0)) return null;
@@ -1073,6 +1093,30 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                     onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
                     placeholder="0"
                   />
+                  <CustomInput
+                    label="GST / Tax (PKR)"
+                    type="number"
+                    min="0"
+                    value={taxAmount || ''}
+                    onChange={(e) => setTaxAmount(Number(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                  <CustomInput
+                    label="Freight / Other Charges (PKR)"
+                    type="number"
+                    min="0"
+                    value={freightAmount || ''}
+                    onChange={(e) => setFreightAmount(Number(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: tokens.colorNeutralForeground2 }}>
+                    <input type="checkbox" checked={taxClaimable} onChange={(e) => setTaxClaimable(e.target.checked)} />
+                    Tax is claimable (GST-registered: keep it out of stock cost)
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: tokens.colorNeutralForeground2 }}>
+                    <input type="checkbox" checked={printAfterSave} onChange={(e) => setPrintAfterSave(e.target.checked)} />
+                    Print GRN after saving
+                  </label>
                 </div>
               </div>
 
@@ -1088,6 +1132,18 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                     <span style={{ fontWeight: 600 }}>- PKR {discountAmount.toLocaleString()}</span>
                   </div>
                 )}
+                {taxAmount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                    <span style={{ color: tokens.colorNeutralForeground2 }}>GST / Tax{taxClaimable ? ' (claimable)' : ''}:</span>
+                    <span style={{ fontWeight: 600 }}>+ PKR {taxAmount.toLocaleString()}</span>
+                  </div>
+                )}
+                {freightAmount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                    <span style={{ color: tokens.colorNeutralForeground2 }}>Freight / Other:</span>
+                    <span style={{ fontWeight: 600 }}>+ PKR {freightAmount.toLocaleString()}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 600, borderTop: `1px dashed ${tokens.colorNeutralStroke1}`, paddingTop: '6px' }}>
                   <span>NET BILL TOTAL:</span>
                   <span style={{ color: tokens.colorBrandForeground1 }}>PKR {grandTotal.toLocaleString()}</span>
@@ -1097,8 +1153,8 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                   <span style={{ fontWeight: 600, color: tokens.colorStatusSuccessForeground1 }}>PKR {(Number(paidAmount) || 0).toLocaleString()}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 600 }}>
-                  <span style={{ color: balancePayable > 0 ? '#EF4444' : '#64748B' }}>Balance Payable (Udhaar):</span>
-                  <span style={{ color: balancePayable > 0 ? '#EF4444' : '#10B981' }}>PKR {balancePayable.toLocaleString()}</span>
+                  <span style={{ color: balancePayable > 0 ? tokens.colorPaletteRedForeground1 : tokens.colorNeutralForeground3 }}>Balance Payable (Udhaar):</span>
+                  <span style={{ color: balancePayable > 0 ? tokens.colorPaletteRedForeground1 : tokens.colorPaletteGreenForeground1 }}>PKR {balancePayable.toLocaleString()}</span>
                 </div>
               </div>
             </div>

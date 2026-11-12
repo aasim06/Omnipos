@@ -223,6 +223,8 @@ export interface PurchaseBill {
   subtotal: number;
   discountAmount?: number;
   taxAmount?: number;
+  /** Freight / other charges on the delivery */
+  freightAmount?: number;
   grandTotal: number;
   paidAmount: number;
   paymentMode: 'cash' | 'bank' | 'khata' | 'split';
