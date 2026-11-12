@@ -28,6 +28,7 @@ import { LicensePage } from '@/features/auth/LicensePage';
 import { LicenseDisabledOverlay } from '@/features/auth/LicenseDisabledOverlay';
 import { RouteAccessGate, getDefaultAccessibleRoute } from '@/components/RouteAccessGate';
 import { FastFoodDashboardView } from '@/features/dashboard/FastFoodDashboardView';
+import { PendingSalesResync } from '@/components/shell/PendingSalesResync';
 import { makeStyles, Spinner, tokens } from '@fluentui/react-components';
 
 import { getOrCreateBrowserHwid, getWebLicenseApiBase } from '@/lib/webLicense';
@@ -119,6 +120,7 @@ function ProtectedShellLayout(): React.JSX.Element {
 
   return (
     <div className={styles.shellLayout}>
+      <PendingSalesResync />
       <FluentSidebar />
       <main className={styles.mainContent}>
         <Outlet />

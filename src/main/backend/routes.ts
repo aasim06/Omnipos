@@ -1087,9 +1087,11 @@ export function registerRoutes(app: Express): void {
 
       const totalRefund = Number(refundAmount || 0);
 
-      // 2. Adjust Cash Drawer if refunded in Cash
+      // 2. Adjust Cash Drawer if refunded in Cash. A catch-up replay of an old refund (its order
+      //    only just reached the backend) must not change today's drawer.
+      const isReplay = (req.body as any).replay === true;
       const pMode = String(paymentMode || 'cash').toLowerCase();
-      if (pMode === 'cash' && totalRefund > 0) {
+      if (pMode === 'cash' && totalRefund > 0 && !isReplay) {
         try {
           const todayDrawer = await db.cashDrawer.findFirst({
             where: { status: 'open' },
@@ -1170,6 +1172,7 @@ export function registerRoutes(app: Express): void {
           paymentMode: pMode,
           reason: reason || 'Customer Return',
           items: JSON.stringify(returnedLines || []),
+          ...(isReplay && (req.body as any).createdAt ? { createdAt: new Date((req.body as any).createdAt) } : {}),
         },
       });
 

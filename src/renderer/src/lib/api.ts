@@ -1813,6 +1813,74 @@ export const posApi = {
     }
   },
 
+  /**
+   * Catch-up: send POS sales that were saved only on this computer (the backend used to reject
+   * every order carrying a payment mode) and then replay their refunds, so backend stock,
+   * the sale ledger, alerts and reports become complete. Safe to run repeatedly: the backend
+   * ignores an order id it already has, and refunds are replayed only once.
+   */
+  async resyncPendingOrders(): Promise<{ sent: number; failed: number; refunds: number }> {
+    const result = { sent: 0, failed: 0, refunds: 0 };
+    let pending: LocalOrder[] = [];
+    try {
+      pending = (await offlineDb.orders.toArray()).filter((o) => !o.synced);
+    } catch {
+      return result;
+    }
+    if (pending.length === 0) return result;
+    pending.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    let base: string;
+    let headers: Record<string, string>;
+    try {
+      base = await resolveApiUrl();
+      headers = { 'Content-Type': 'application/json', ...(await getTenantHeaders()) };
+    } catch {
+      return result;
+    }
+
+    for (const order of pending) {
+      const localRefunds = (await offlineDb.refunds.where('orderId').equals(order.id).toArray()).filter((r) => r.id.startsWith('ref_'));
+      try {
+        const { synced: _s, ...payload } = order as any;
+        // Post it as the sale it was; refunds below bring the backend to the same state
+        const body = { ...payload, stage: payload.stage === 'refunded' ? 'paid' : payload.stage, refundedAmount: 0 };
+        const res = await fetch(`${base}/api/orders`, { method: 'POST', headers, body: JSON.stringify(body) });
+        if (!res.ok) {
+          result.failed++;
+          continue;
+        }
+        await offlineDb.orders.update(order.id, { synced: 1 });
+        result.sent++;
+
+        for (const r of localRefunds) {
+          const rr = await fetch(`${base}/api/orders/${encodeURIComponent(order.id)}/refund`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              returnedLines: Array.isArray(r.items) ? r.items : (() => { try { return JSON.parse(r.items as any); } catch { return []; } })(),
+              refundAmount: r.refundAmount,
+              reason: r.reason,
+              paymentMode: r.paymentMode,
+              customerName: r.customerName,
+              replay: true,
+              createdAt: r.createdAt,
+            }),
+          });
+          if (rr.ok) {
+            const data = await rr.json().catch(() => null);
+            await offlineDb.refunds.delete(r.id);
+            if (data?.refund) await offlineDb.refunds.put(data.refund);
+            result.refunds++;
+          }
+        }
+      } catch {
+        result.failed++;
+      }
+    }
+    return result;
+  },
+
   /** @deprecated History is no longer deleted — this now reverses the entry. */
   async deleteStockMovement(id: string): Promise<void> {
     return this.reverseStockMovement(id);
