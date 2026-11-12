@@ -1787,6 +1787,7 @@ export const posApi = {
       note: data.note || data.referenceInvoice || '',
       referenceInvoice: data.referenceInvoice || '',
       vendorName: data.vendorName || '',
+      vendorId: data.vendorId || undefined,
       unitCost: data.unitCost,
       unitPrice: data.unitPrice,
       batchNumber: data.batchNumber || undefined,

@@ -134,6 +134,7 @@ model KhataTransaction {
 
 model StockMovement {
   id          String   @id @default(cuid())
+  vendorId    String?  // supplier whose payable this receipt was posted to
   module      String   // "fastfood" | "minimart"
   productId   String
   productName String

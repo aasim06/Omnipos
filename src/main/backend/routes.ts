@@ -1366,6 +1366,7 @@ export function registerRoutes(app: Express): void {
         reason: b.reason || null,
         note: b.note || b.referenceInvoice || null,
         vendorName: toOptionalString(b.vendorName),
+        vendorId: toOptionalString(b.vendorId),
         referenceInvoice: toOptionalString(b.referenceInvoice),
         batchNumber: toOptionalString(b.batchNumber),
         expiryDate: toOptionalString(b.expiryDate),
@@ -1402,7 +1403,35 @@ export function registerRoutes(app: Express): void {
       await syncProductNearestBatch(tx, product.id);
       await evaluateStockAlerts(tx, [product.id]);
     }
+    await postReceiptPayable(tx, created);
     return created;
+  }
+
+  /** What a receipt adds to the supplier's payable: quantity × net unit cost. */
+  const receiptValue = (m: any) => round2((Number(m.quantity) || 0) * (Number(m.unitCost) || 0));
+
+  /**
+   * A stock receipt from a supplier is a bill on that supplier's ledger. Posted in the same
+   * transaction as the stock, once per receipt (the ledger entry id follows the movement id).
+   */
+  async function postReceiptPayable(tx: any, m: any) {
+    if (m.type !== 'in' || !m.vendorId || m.reversalOf || m.reason === 'Reversal') return;
+    const amount = receiptValue(m);
+    if (!(amount > 0)) return;
+    if (!(await tx.vendor.findUnique({ where: { id: m.vendorId } }))) {
+      throw Object.assign(new Error('The supplier for this stock in was not found. Sync suppliers and try again.'), { status: 409 });
+    }
+    await postVendorTransaction(tx, {
+      id: `vtx_${m.id}`,
+      vendorId: m.vendorId,
+      type: 'BILL',
+      amount,
+      description: `Stock in: ${m.productName} × ${m.quantity}${m.referenceInvoice ? ` (Inv ${m.referenceInvoice})` : ''}`,
+      billId: m.referenceInvoice || null,
+      paymentMethod: 'credit',
+      createdBy: m.createdBy,
+      date: m.date,
+    });
   }
 
   app.post('/api/stock-movements', async (req: Request, res: Response) => {
@@ -1414,7 +1443,7 @@ export function registerRoutes(app: Express): void {
       );
       res.json(movement);
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      res.status(err?.status || 500).json({ error: err.message });
     }
   });
 
@@ -1458,6 +1487,20 @@ export function registerRoutes(app: Express): void {
       where: { id: original.id },
       data: { reversedAt: new Date(), reversedBy: toOptionalString(by) },
     });
+    // A reversed supplier receipt is no longer owed
+    if (original.type === 'in' && original.vendorId && receiptValue(original) > 0) {
+      const posted = await tx.vendorTransaction.findUnique({ where: { id: `vtx_${original.id}` } });
+      if (posted && (await tx.vendor.findUnique({ where: { id: original.vendorId } }))) {
+        await postVendorTransaction(tx, {
+          id: `vtx_${reversalId}`,
+          vendorId: original.vendorId,
+          type: 'ADJUSTMENT',
+          amount: -Number(posted.amount),
+          description: `Stock in ${why === 'corrected' ? 'corrected' : 'reversed'}: ${original.productName} × ${original.quantity}`,
+          createdBy: by,
+        });
+      }
+    }
 
     const product = await resolveMovementProduct(tx, original.productId, original.productName);
     if (product) {
@@ -1532,7 +1575,7 @@ export function registerRoutes(app: Express): void {
       b.createdBy = b.createdBy || requestUser(req)?.name;
       // Descriptive-only edits (e.g. the legacy label clean-up) are allowed for any inventory user;
       // anything that changes stock or value needs Stock Corrections.
-      const touchesStock = ['quantity', 'type', 'unitCost', 'productId', 'variantAllocations'].some((f) => b[f] !== undefined);
+      const touchesStock = ['quantity', 'type', 'unitCost', 'productId', 'variantAllocations', 'vendorId'].some((f) => b[f] !== undefined);
       if (touchesStock && refuseWithoutStockAdjust(req, res)) return;
 
       const result = await db.$transaction(async (tx: any) => {
@@ -1551,7 +1594,7 @@ export function registerRoutes(app: Express): void {
           if (f === 'type') return (b.type === 'out' ? 'out' : 'in') !== prev.type;
           if (f === 'variantAllocations') return nextAlloc !== prevAlloc;
           return String(b[f]) !== String(prev[f]);
-        });
+        }) || (b.vendorId !== undefined && (toOptionalString(b.vendorId) || null) !== (prev.vendorId || null));
 
         const meta = {
           ...(b.module ? { module: b.module } : {}),
@@ -1580,12 +1623,14 @@ export function registerRoutes(app: Express): void {
           reason: prev.reason,
           note: prev.note,
           vendorName: prev.vendorName,
+          vendorId: prev.vendorId,
           referenceInvoice: prev.referenceInvoice,
           batchNumber: prev.batchNumber,
           expiryDate: prev.expiryDate,
           variantAllocations: prev.variantAllocations,
           date: prev.date,
           ...meta,
+          ...(b.vendorId !== undefined ? { vendorId: toOptionalString(b.vendorId) } : {}),
           ...(b.productId !== undefined ? { productId: b.productId } : {}),
           ...(b.type !== undefined ? { type: b.type } : {}),
           ...(b.quantity !== undefined ? { quantity: b.quantity } : {}),

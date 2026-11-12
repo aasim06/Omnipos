@@ -89,6 +89,9 @@ const stockInSchema = z.object({
   receiveUnit: z.enum(['base', 'wholesale']).optional(),
   batchNumber: z.string().optional(),
   expiryDate: z.string().optional(),
+  /** The supplier's own bill / invoice number, for matching their statement */
+  supplierInvoiceNo: z.string().optional(),
+  invoiceDate: z.string().optional(),
 });
 
 type StockInFormData = z.infer<typeof stockInSchema>;
@@ -150,7 +153,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 export function StockInView(): React.JSX.Element {
   const styles = useStockInStyles();
   const queryClient = useQueryClient();
-  const { notifySuccess, notifyError } = useAppToast();
+  const { notifySuccess, notifyError, notifyWarning } = useAppToast();
   const confirmModal = useConfirmDialog();
   // Editing / reversing stock entries needs the "Stock Corrections" permission
   const { hasPermission } = useAuth();
@@ -344,6 +347,8 @@ export function StockInView(): React.JSX.Element {
       quantity: 1,
       unitPrice: 0,
       discountPercent: 0,
+      supplierInvoiceNo: '',
+      invoiceDate: '',
     },
   });
 
@@ -671,9 +676,11 @@ export function StockInView(): React.JSX.Element {
         unitFactor > 1 && conversion ? `Received: ${data.quantity} ${conversion.wholesale} × ${conversion.rate} = ${baseQty} ${conversion.base}` : null,
         variantSummary ? `Sizes: ${variantSummary}` : null,
         `Line Total: PKR ${calcTotal.toLocaleString()}`,
+        data.invoiceDate ? `Invoice date: ${data.invoiceDate}` : null,
       ]
         .filter(Boolean)
         .join(' • ');
+      const supplier = data.vendorName ? vendorStorage.findVendor({ id: data.vendorId, name: data.vendorName }) : undefined;
 
       await posApi.saveStockMovement({
         module: data.module || activeModule,
@@ -686,8 +693,11 @@ export function StockInView(): React.JSX.Element {
         batchNumber: data.batchNumber?.trim() || undefined,
         expiryDate: data.expiryDate || undefined,
         vendorName: data.vendorName || 'Supplier Purchase',
+        // The backend posts the payable to this supplier in the same transaction as the stock
+        vendorId: supplier?.id,
         reason: data.vendorName || 'Supplier Purchase',
-        referenceInvoice: noteDetails,
+        referenceInvoice: data.supplierInvoiceNo?.trim() || undefined,
+        note: noteDetails,
         variants: updatedVariants,
         // Size split ({ S: 2, M: 3 }) so the backend updates size stock and can reverse it
         variantAllocations:
@@ -701,19 +711,8 @@ export function StockInView(): React.JSX.Element {
         date: new Date().toISOString(),
       });
 
-      // Post the purchase to the vendor ledger (updates the running payable balance)
-      if (data.vendorName && calcTotal > 0) {
-        const matched = vendorStorage.findVendor({ id: data.vendorId, name: data.vendorName });
-        if (matched) {
-          vendorStorage.recordTransaction(
-            matched.id,
-            'BILL',
-            calcTotal,
-            `Stock In: ${data.productName} × ${baseQty}`,
-            'credit'
-          );
-        }
-      }
+      // Refresh suppliers so the new payable shows (it was posted by the backend)
+      if (supplier) void vendorStorage.syncWithServer();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
@@ -732,6 +731,8 @@ export function StockInView(): React.JSX.Element {
         receiveUnit: 'base',
         batchNumber: '',
         expiryDate: '',
+        supplierInvoiceNo: '',
+        invoiceDate: '',
       });
     },
     onError: (err: any) => notifyError(err?.message || 'Failed to save stock in entry'),
@@ -756,6 +757,10 @@ export function StockInView(): React.JSX.Element {
 
       const updatedDate = data.date ? new Date(data.date).toISOString() : (editingMovement?.date || new Date().toISOString());
 
+      const prev = editingMovement;
+      const postedByBackend = !!prev?.vendorId;
+      const nextSupplier = data.vendorName ? vendorStorage.findVendor({ name: data.vendorName }) : undefined;
+
       await posApi.updateStockMovement(data.id, {
         productName: data.productName,
         quantity: data.quantity,
@@ -764,10 +769,14 @@ export function StockInView(): React.JSX.Element {
         reason: data.vendorName || 'Supplier Purchase',
         date: updatedDate,
         note: noteDetails,
+        ...(postedByBackend ? { vendorId: nextSupplier?.id ?? null } : {}),
       });
+      if (postedByBackend) {
+        void vendorStorage.syncWithServer();
+        return;
+      }
 
-      // Adjust vendor ledger: reverse the old amount on the old vendor, post the new amount on the new vendor
-      const prev = editingMovement;
+      // Older receipt (payable posted by this screen): adjust the vendor ledger here as before
       const prevVendor = prev ? vendorStorage.findVendor({ name: prev.vendorName || prev.reason }) : undefined;
       const nextVendor = data.vendorName ? vendorStorage.findVendor({ name: data.vendorName }) : undefined;
       const prevTotal = prev ? getMovementLineTotal(prev) : 0;
@@ -818,8 +827,10 @@ export function StockInView(): React.JSX.Element {
       const target = movements.find((m) => m.id === id);
       await posApi.reverseStockMovement(id);
 
-      // Reverse the purchase on the vendor ledger if it was posted to a vendor
-      if (target) {
+      // Reverse the purchase on the vendor ledger. The backend does it for receipts it posted.
+      if (target?.vendorId) {
+        void vendorStorage.syncWithServer();
+      } else if (target) {
         const matched = vendorStorage.findVendor({ name: target.vendorName || target.reason });
         const lineCost = getMovementLineTotal(target);
         if (matched && lineCost > 0) {
@@ -841,7 +852,30 @@ export function StockInView(): React.JSX.Element {
     onError: (err: any) => notifyError(err?.message || 'Failed to reverse stock in entry'),
   });
 
+  // Medicines are tracked batch by batch: FEFO picking, expiry alerts and recalls need both
+  const needsBatch = (data: StockInFormData) =>
+    (data.module || activeModule) === 'minimart' &&
+    (businessProfiles.includes('pharmacy') || detectCategoryProfile(selectedProduct?.category || '') === 'pharmacy');
+
   const onSave = (data: StockInFormData) => {
+    if (!(Number(data.unitPrice) > 0)) {
+      notifyWarning('Enter the purchase cost per unit from the supplier bill.');
+      return;
+    }
+    if (needsBatch(data)) {
+      if (!data.batchNumber?.trim() || !data.expiryDate) {
+        notifyWarning('Batch number and expiry date are required for medicines.');
+        return;
+      }
+    }
+    if (data.expiryDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (new Date(`${data.expiryDate}T00:00:00`).getTime() < today.getTime()) {
+        notifyWarning('This batch has already expired. Expired stock should not be received.');
+        return;
+      }
+    }
     saveMutation.mutate(data);
   };
 
@@ -1559,11 +1593,8 @@ export function StockInView(): React.JSX.Element {
                             }
                           }
                         }
-                        if (prod.costPrice !== undefined && prod.costPrice !== null) {
-                          form.setValue('unitPrice', prod.costPrice);
-                        } else if (prod.price) {
-                          form.setValue('unitPrice', prod.price);
-                        }
+                        // Last purchase cost; a new item starts empty (the retail price is not a cost)
+                        form.setValue('unitPrice', Number(prod.costPrice) > 0 ? Number(prod.costPrice) : 0);
                       } else {
                         form.setValue('selectedProductId', '');
                       }
@@ -1906,8 +1937,24 @@ export function StockInView(): React.JSX.Element {
             </div>
           </div>
 
-          {/* Row 3: Receive unit (when the product has a wholesale unit), Batch No, Expiry */}
+          {/* Row 3: Supplier invoice, receive unit (when the product has a wholesale unit), Batch No, Expiry */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginTop: '12px' }}>
+            <div>
+              <Controller
+                control={form.control}
+                name="supplierInvoiceNo"
+                render={({ field }) => (
+                  <CustomInput label="SUPPLIER INVOICE NO" placeholder="From the supplier's bill" value={field.value || ''} onChange={field.onChange} />
+                )}
+              />
+            </div>
+            <div>
+              <Controller
+                control={form.control}
+                name="invoiceDate"
+                render={({ field }) => <CustomInput label="INVOICE DATE" type="date" value={field.value || ''} onChange={field.onChange} />}
+              />
+            </div>
             {conversion && (
               <div>
                 <Controller
@@ -1938,7 +1985,7 @@ export function StockInView(): React.JSX.Element {
                 name="batchNumber"
                 render={({ field }) => (
                   <CustomInput
-                    label="BATCH NO (OPTIONAL)"
+                    label={needsBatch(form.getValues()) ? 'BATCH NO *' : 'BATCH NO (OPTIONAL)'}
                     placeholder="e.g. B-2026-11"
                     value={field.value || ''}
                     onChange={field.onChange}
@@ -1952,7 +1999,7 @@ export function StockInView(): React.JSX.Element {
                 name="expiryDate"
                 render={({ field }) => (
                   <CustomInput
-                    label="EXPIRY DATE (OPTIONAL)"
+                    label={needsBatch(form.getValues()) ? 'EXPIRY DATE *' : 'EXPIRY DATE (OPTIONAL)'}
                     type="date"
                     value={field.value || ''}
                     onChange={field.onChange}
@@ -2139,7 +2186,7 @@ export function StockInView(): React.JSX.Element {
                           <span className={styles.reasonText} style={{ fontWeight: 600, color: tokens.colorNeutralForeground1 }}>
                             {resolvedVendor}
                           </span>
-                          {mov.referenceInvoice && (
+                          {mov.referenceInvoice && !/Line Total|Vendor:|Discount:|Received:/i.test(mov.referenceInvoice) && (
                             <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                               <Receipt20Regular style={{ width: 12, height: 12, color: tokens.colorNeutralForeground4 }} />
                               <span>

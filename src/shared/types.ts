@@ -184,6 +184,8 @@ export interface StockMovement {
   note?: string;
   referenceInvoice?: string;
   vendorName?: string;
+  /** Supplier whose payable a receipt was posted to (posted by the backend with the stock) */
+  vendorId?: string | null;
   createdBy?: string | null; // user who recorded the entry
   reversalOf?: string | null; // set on a reversal entry: the id it reverses
   reversedAt?: string | null; // set on an entry that has been reversed
