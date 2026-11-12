@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -21,11 +21,12 @@ import {
   ArrowDownload20Regular,
   Food24Regular,
   ShoppingBag24Regular,
-  Delete20Regular,
+  ArrowUndo20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
-import { StockMovement } from '@shared/types';
+import { Product, StockMovement } from '@shared/types';
+import { Pager, usePaged } from '@/components/common/Pager';
 import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
@@ -38,7 +39,17 @@ const TIME_FILTER_OPTIONS = [
   { value: 'today', label: 'Today' },
   { value: 'week', label: 'This Week' },
   { value: 'month', label: 'This Month' },
+  { value: 'custom', label: 'Date range…' },
 ];
+
+/** + for stock in, - for stock out (quantities are in the product's base unit). */
+const signed = (m: { type: string; quantity?: number | null }) => (m.type === 'in' ? 1 : -1) * (Number(m.quantity) || 0);
+const r3 = (n: number) => Math.round(n * 1000) / 1000;
+const fmtQ = (n: number) => r3(n).toLocaleString();
+const csvCell = (v: unknown) => {
+  const t = String(v ?? '');
+  return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+};
 
 import { useStockLedgerStyles, useStyles } from './stockLedger.styles';
 
@@ -60,13 +71,53 @@ export function StockLedgerView(): React.JSX.Element {
     return 'all';
   });
   const [typeTab, setTypeTab] = useState<'all' | 'in' | 'out'>('all');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
+  const [productFilter, setProductFilter] = useState<string>('all');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   // Fetch Stock Movements: Offline-First Cache (<5ms)
   const { data: movements = [], isLoading } = useQuery<StockMovement[]>({
     queryKey: ['stock-movements'],
     queryFn: () => posApi.fetchStockMovements(),
   });
+
+  const { data: products = [] } = useQuery<Product[]>({ queryKey: ['products'], queryFn: () => posApi.fetchProducts() });
+  const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  const unitOf = (productId: string) => productById.get(productId)?.unit || 'units';
+
+  // Stock balance after each entry, per product. Worked backwards from the product's current stock,
+  // so the newest balance always equals what is on the shelf (even if early history is missing).
+  const balanceAfter = useMemo(() => {
+    const out = new Map<string, number>();
+    const byProduct = new Map<string, StockMovement[]>();
+    for (const m of movements) {
+      const list = byProduct.get(m.productId) || [];
+      list.push(m);
+      byProduct.set(m.productId, list);
+    }
+    for (const [pid, list] of byProduct) {
+      const prod = productById.get(pid);
+      if (!prod || prod.openingStock === null || prod.openingStock === undefined) continue; // untracked / deleted
+      list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime() || (b.id < a.id ? -1 : 1));
+      let running = Number(prod.openingStock) || 0;
+      for (const m of list) {
+        out.set(m.id, r3(running));
+        running = r3(running - signed(m));
+      }
+    }
+    return out;
+  }, [movements, productById]);
+
+  const productOptions = useMemo(() => {
+    const ids = Array.from(new Set(movements.map((m) => m.productId)));
+    return [
+      { value: 'all', label: 'All products' },
+      ...ids
+        .map((id) => ({ value: id, label: productById.get(id)?.name || movements.find((m) => m.productId === id)?.productName || id }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ];
+  }, [movements, productById]);
 
   const queryClient = useQueryClient();
   const deleteMutation = useMutation({
@@ -108,6 +159,14 @@ export function StockLedgerView(): React.JSX.Element {
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startOfWeek = startOfToday - 7 * 24 * 60 * 60 * 1000;
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  // Period being looked at (start / end, ms); used by the filters and the stock card
+  const periodStart =
+    timeFilter === 'today' ? startOfToday
+    : timeFilter === 'week' ? startOfWeek
+    : timeFilter === 'month' ? startOfMonth
+    : timeFilter === 'custom' && fromDate ? new Date(`${fromDate}T00:00:00`).getTime()
+    : Number.NEGATIVE_INFINITY;
+  const periodEnd = timeFilter === 'custom' && toDate ? new Date(`${toDate}T23:59:59.999`).getTime() : Number.POSITIVE_INFINITY;
 
   const filteredMovements = movements.filter((m) => {
     // License Filter
@@ -122,11 +181,10 @@ export function StockLedgerView(): React.JSX.Element {
     if (departmentTab === 'fastfood' && m.module !== 'fastfood') return false;
     if (departmentTab === 'minimart' && m.module === 'fastfood') return false;
 
-    // Time Filter
+    // Product (stock card) and period
+    if (productFilter !== 'all' && m.productId !== productFilter) return false;
     const mTime = new Date(m.date).getTime();
-    if (timeFilter === 'today' && mTime < startOfToday) return false;
-    if (timeFilter === 'week' && mTime < startOfWeek) return false;
-    if (timeFilter === 'month' && mTime < startOfMonth) return false;
+    if (mTime < periodStart || mTime > periodEnd) return false;
 
     // Search Query
     if (searchQuery) {
@@ -134,7 +192,11 @@ export function StockLedgerView(): React.JSX.Element {
       const matches =
         m.productName.toLowerCase().includes(q) ||
         (m.reason && m.reason.toLowerCase().includes(q)) ||
-        (m.note && m.note.toLowerCase().includes(q));
+        (m.note && m.note.toLowerCase().includes(q)) ||
+        (m.referenceInvoice && m.referenceInvoice.toLowerCase().includes(q)) ||
+        (m.vendorName && m.vendorName.toLowerCase().includes(q)) ||
+        (m.batchNumber && m.batchNumber.toLowerCase().includes(q)) ||
+        (m.createdBy && m.createdBy.toLowerCase().includes(q));
       if (!matches) return false;
     }
 
@@ -153,6 +215,82 @@ export function StockLedgerView(): React.JSX.Element {
   const currentTotalInCost = filteredMovements.filter((m) => m.type === 'in').reduce((acc, m) => acc + (m.unitCost || 0) * (m.quantity || 1), 0);
   const currentTotalOutCost = filteredMovements.filter((m) => m.type === 'out').reduce((acc, m) => acc + (m.unitCost || 0) * (m.quantity || 1), 0);
 
+  filteredMovements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const ledgerPage = usePaged(filteredMovements, 50, `${searchQuery}|${typeTab}|${timeFilter}|${fromDate}|${toDate}|${productFilter}|${departmentTab}`);
+
+  // Stock card for one product: opening and closing balance of the period, in and out within it
+  const stockCard = useMemo(() => {
+    if (productFilter === 'all') return null;
+    const list = movements
+      .filter((m) => m.productId === productFilter)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const prod = productById.get(productFilter);
+    const current = prod?.openingStock ?? null;
+    if (current === null || current === undefined) return { tracked: false as const, name: prod?.name || list[0]?.productName || '' };
+    const t = (m: StockMovement) => new Date(m.date).getTime();
+    const inPeriod = list.filter((m) => t(m) >= periodStart && t(m) <= periodEnd);
+    const before = list.filter((m) => t(m) < periodStart);
+    const opening = before.length
+      ? balanceAfter.get(before[before.length - 1].id) ?? 0
+      : list.length
+        ? r3((balanceAfter.get(list[0].id) ?? 0) - signed(list[0]))
+        : Number(current);
+    const totalIn = inPeriod.filter((m) => m.type === 'in').reduce((s2, m) => s2 + (Number(m.quantity) || 0), 0);
+    const totalOut = inPeriod.filter((m) => m.type === 'out').reduce((s2, m) => s2 + (Number(m.quantity) || 0), 0);
+    return {
+      tracked: true as const,
+      name: prod?.name || '',
+      unit: prod?.unit || 'units',
+      opening,
+      totalIn: r3(totalIn),
+      totalOut: r3(totalOut),
+      closing: r3(opening + totalIn - totalOut),
+      current: Number(current),
+    };
+  }, [productFilter, movements, productById, balanceAfter, periodStart, periodEnd]);
+
+  const periodLabelText =
+    timeFilter === 'all' ? 'All recorded dates'
+    : timeFilter === 'today' ? 'Today'
+    : timeFilter === 'week' ? 'Past 7 days'
+    : timeFilter === 'month' ? 'This month'
+    : `${fromDate || 'start'} to ${toDate || 'today'}`;
+
+  const handleExportCsv = () => {
+    const header = ['Date', 'Time', 'Type', 'Product', 'Reason', 'Reference', 'Batch', 'Expiry', 'Note', 'By', 'Qty', 'Unit', 'Balance after', 'Unit cost (PKR)', 'Value (PKR)'];
+    const lines = filteredMovements.map((m) => {
+      const d = new Date(m.date);
+      const bal = balanceAfter.get(m.id);
+      return [
+        d.toLocaleDateString('en-CA'),
+        d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        m.type === 'in' ? 'IN' : 'OUT',
+        m.productName,
+        m.reason || '',
+        m.referenceInvoice || '',
+        m.batchNumber || '',
+        m.expiryDate || '',
+        m.note || '',
+        m.createdBy || '',
+        signed(m),
+        unitOf(m.productId),
+        bal === undefined ? '' : bal,
+        m.unitCost ?? '',
+        m.unitCost ? r3(signed(m) * Number(m.unitCost)) : '',
+      ].map(csvCell).join(',');
+    });
+    const blob = new Blob(['\ufeff' + [header.join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stock-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    notifySuccess(`Exported ${filteredMovements.length} ledger entries`);
+  };
+
   const handlePrint = () => {
     const docNo = `SML-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(Math.floor(1000 + Math.random() * 9000))}`;
     const generatedTime = new Date().toLocaleString('en-PK', {
@@ -161,7 +299,7 @@ export function StockLedgerView(): React.JSX.Element {
     });
 
     const typeLabel = typeTab === 'all' ? 'All Movements (In & Out)' : typeTab === 'in' ? 'Stock Inflow (Procurement Only)' : 'Stock Outflow (Deductions Only)';
-    const periodLabel = timeFilter === 'all' ? 'All Recorded Dates' : timeFilter === 'today' ? "Today's Movements" : timeFilter === 'week' ? 'Past 7 Days' : 'This Month';
+    const periodLabel = periodLabelText;
 
     const rowsHtml = filteredMovements.map((mov, idx) => {
       const dt = new Date(mov.date);
@@ -195,7 +333,10 @@ export function StockLedgerView(): React.JSX.Element {
             ${mov.unitCost ? formatPKR(mov.unitCost) : '—'}
           </td>
           <td style="padding: 7px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px; text-align: center; font-weight: 700; color: ${isIn ? '#15803d' : '#b91c1c'};">
-            ${isIn ? '+' : '-'}${mov.quantity}
+            ${isIn ? '+' : '-'}${mov.quantity} <span style="font-weight: 400; color: #6b7280; font-size: 9.5px;">${unitOf(mov.productId)}</span>
+          </td>
+          <td style="padding: 7px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px; text-align: center; font-weight: 700; color: #111827;">
+            ${balanceAfter.has(mov.id) ? fmtQ(balanceAfter.get(mov.id)!) : '—'}
           </td>
           <td style="padding: 7px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11.5px; text-align: right; font-weight: 700; color: ${isIn ? '#15803d' : '#b91c1c'};">
             ${lineCost > 0 ? `${isIn ? '+' : '-'}${formatPKR(lineCost)}` : '—'}
@@ -361,13 +502,14 @@ export function StockLedgerView(): React.JSX.Element {
               <th style="text-align: left;">Reason / Supplier</th>
               <th style="width: 80px; text-align: right;">Unit Cost</th>
               <th style="width: 65px; text-align: center;">Qty</th>
+              <th style="width: 60px; text-align: center;">Balance</th>
               <th style="width: 95px; text-align: right;">Impact (PKR)</th>
             </tr>
           </thead>
           <tbody>
             ${rowsHtml || `
               <tr>
-                <td colspan="8" style="text-align: center; padding: 28px; color: #9ca3af; font-size: 12px;">
+                <td colspan="9" style="text-align: center; padding: 28px; color: #9ca3af; font-size: 12px;">
                   No stock movement records found for the selected criteria.
                 </td>
               </tr>
@@ -381,8 +523,8 @@ export function StockLedgerView(): React.JSX.Element {
               <td style="text-align: right; font-size: 10px; color: #64748b;">
                 ${filteredMovements.length} Items
               </td>
-              <td style="text-align: center; color: ${currentNetUnits >= 0 ? '#15803d' : '#b91c1c'};">
-                ${currentNetUnits >= 0 ? `+${currentNetUnits}` : currentNetUnits}
+              <td colspan="2" style="text-align: center; color: ${currentNetUnits >= 0 ? '#15803d' : '#b91c1c'};">
+                ${productFilter === 'all' ? '' : currentNetUnits >= 0 ? `+${fmtQ(currentNetUnits)}` : fmtQ(currentNetUnits)}
               </td>
               <td style="text-align: right; color: #0f172a;">
                 ${formatPKR(currentTotalInCost - currentTotalOutCost)}
@@ -459,40 +601,67 @@ export function StockLedgerView(): React.JSX.Element {
 
   return (
     <div className={styles.container}>
-      {/* ── Summary KPI Cards ── */}
-      <div className={styles.metricsGrid}>
-        <div className={styles.metricCard}>
-          <Caption1 className={styles.kpiLabel}>Total Ledger Records</Caption1>
-          <Subtitle1 className={styles.kpiValueDefault}>
-            {movements.length} logs
-          </Subtitle1>
-          <Caption1 className={styles.kpiSubtext}>All time movements recorded</Caption1>
+      {/* ── Summary: value for the selected period, or the stock card of one product ── */}
+      {stockCard && stockCard.tracked ? (
+        <div className={styles.metricsGrid}>
+          <div className={styles.metricCard}>
+            <Caption1 className={styles.kpiLabel}>Opening balance</Caption1>
+            <Subtitle1 className={styles.kpiValueDefault}>
+              {fmtQ(stockCard.opening)} {stockCard.unit}
+            </Subtitle1>
+            <Caption1 className={styles.kpiSubtext}>{stockCard.name} · start of {periodLabelText.toLowerCase()}</Caption1>
+          </div>
+          <div className={styles.metricCard}>
+            <Caption1 className={styles.kpiLabel}>Received</Caption1>
+            <Subtitle1 className={styles.kpiValueSuccess}>
+              +{fmtQ(stockCard.totalIn)} {stockCard.unit}
+            </Subtitle1>
+            <Caption1 className={styles.kpiSubtext}>Stock in during the period</Caption1>
+          </div>
+          <div className={styles.metricCard}>
+            <Caption1 className={styles.kpiLabel}>Issued</Caption1>
+            <Subtitle1 className={styles.kpiValueDanger}>
+              -{fmtQ(stockCard.totalOut)} {stockCard.unit}
+            </Subtitle1>
+            <Caption1 className={styles.kpiSubtext}>Sales, damage, adjustments</Caption1>
+          </div>
+          <div className={styles.metricCard}>
+            <Caption1 className={styles.kpiLabel}>Closing balance</Caption1>
+            <Subtitle1 className={styles.kpiValueBrand}>
+              {fmtQ(stockCard.closing)} {stockCard.unit}
+            </Subtitle1>
+            <Caption1 className={styles.kpiSubtext}>
+              {periodEnd === Number.POSITIVE_INFINITY ? `On hand now: ${fmtQ(stockCard.current)} ${stockCard.unit}` : 'At the end of the period'}
+            </Caption1>
+          </div>
         </div>
-
-        <div className={styles.metricCard}>
-          <Caption1 className={styles.kpiLabel}>Total Inflow Units</Caption1>
-          <Subtitle1 className={styles.kpiValueSuccess}>
-            +{totalInUnits.toLocaleString()} units
-          </Subtitle1>
-          <Caption1 className={styles.kpiSubtext}>Procured &amp; received</Caption1>
+      ) : (
+        <div className={styles.metricsGrid}>
+          <div className={styles.metricCard}>
+            <Caption1 className={styles.kpiLabel}>Ledger entries</Caption1>
+            <Subtitle1 className={styles.kpiValueDefault}>{filteredMovements.length}</Subtitle1>
+            <Caption1 className={styles.kpiSubtext}>{periodLabelText} · {movements.length} in total</Caption1>
+          </div>
+          <div className={styles.metricCard}>
+            <Caption1 className={styles.kpiLabel}>Stock in (value)</Caption1>
+            <Subtitle1 className={styles.kpiValueSuccess}>+{formatPKR(Math.round(currentTotalInCost))}</Subtitle1>
+            <Caption1 className={styles.kpiSubtext}>At purchase cost</Caption1>
+          </div>
+          <div className={styles.metricCard}>
+            <Caption1 className={styles.kpiLabel}>Stock out (value)</Caption1>
+            <Subtitle1 className={styles.kpiValueDanger}>-{formatPKR(Math.round(currentTotalOutCost))}</Subtitle1>
+            <Caption1 className={styles.kpiSubtext}>Sold, damaged and adjusted, at cost</Caption1>
+          </div>
+          <div className={styles.metricCard}>
+            <Caption1 className={styles.kpiLabel}>Net stock value change</Caption1>
+            <Subtitle1 className={styles.kpiValueBrand}>
+              {currentTotalInCost - currentTotalOutCost >= 0 ? '+' : '-'}
+              {formatPKR(Math.round(Math.abs(currentTotalInCost - currentTotalOutCost)))}
+            </Subtitle1>
+            <Caption1 className={styles.kpiSubtext}>Pick a product to see its stock card</Caption1>
+          </div>
         </div>
-
-        <div className={styles.metricCard}>
-          <Caption1 className={styles.kpiLabel}>Total Outflow Units</Caption1>
-          <Subtitle1 className={styles.kpiValueDanger}>
-            -{totalOutUnits.toLocaleString()} units
-          </Subtitle1>
-          <Caption1 className={styles.kpiSubtext}>Consumed, waste &amp; damaged</Caption1>
-        </div>
-
-        <div className={styles.metricCard}>
-          <Caption1 className={styles.kpiLabel}>Net Movement Balance</Caption1>
-          <Subtitle1 className={styles.kpiValueBrand}>
-            {netUnits >= 0 ? `+${netUnits.toLocaleString()}` : netUnits.toLocaleString()} units
-          </Subtitle1>
-          <Caption1 className={styles.kpiSubtext}>Inflow vs Outflow variance</Caption1>
-        </div>
-      </div>
+      )}
 
       {/* ── Table Card ── */}
       <div className={styles.card}>
@@ -581,6 +750,15 @@ export function StockLedgerView(): React.JSX.Element {
               <Tab value="out">Stock Out</Tab>
             </TabList>
 
+            <div className={styles.timeSelectBox} style={{ minWidth: 200 }}>
+              <CustomSelect
+                value={productFilter}
+                onChange={(val) => setProductFilter(val || 'all')}
+                options={productOptions}
+                placeholder="All products"
+              />
+            </div>
+
             <div className={styles.timeSelectBox}>
               <CustomSelect
                 value={timeFilter}
@@ -588,6 +766,18 @@ export function StockLedgerView(): React.JSX.Element {
                 options={TIME_FILTER_OPTIONS}
               />
             </div>
+
+            {timeFilter === 'custom' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <CustomInput type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} aria-label="From date" />
+                <span>to</span>
+                <CustomInput type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} aria-label="To date" />
+              </div>
+            )}
+
+            <Button appearance="secondary" icon={<ArrowDownload20Regular />} onClick={handleExportCsv} disabled={filteredMovements.length === 0}>
+              Export CSV
+            </Button>
 
             <Button
               appearance="primary"
@@ -611,6 +801,7 @@ export function StockLedgerView(): React.JSX.Element {
                 <th className={styles.th}>Reason / Source</th>
                 <th className={mergeClasses(styles.th, styles.thRight)}>Unit Cost</th>
                 <th className={mergeClasses(styles.th, styles.thCenter)}>Quantity</th>
+                <th className={mergeClasses(styles.th, styles.thCenter)}>Balance</th>
                 <th className={mergeClasses(styles.th, styles.thRight)}>Impact Value</th>
                 <th className={mergeClasses(styles.th, styles.thCenter)}>Action</th>
               </tr>
@@ -618,12 +809,12 @@ export function StockLedgerView(): React.JSX.Element {
             <tbody>
               {filteredMovements.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className={styles.emptyTd}>
+                  <td colSpan={9} className={styles.emptyTd}>
                     No stock movements found matching current search criteria.
                   </td>
                 </tr>
               ) : (
-                filteredMovements.map((mov) => {
+                ledgerPage.pageItems.map((mov) => {
                   const dt = new Date(mov.date);
                   const lineCost = (mov.unitCost || 0) * (mov.quantity || 0);
                   const isIn = mov.type === 'in';
@@ -664,6 +855,18 @@ export function StockLedgerView(): React.JSX.Element {
                             {mov.note}
                           </Caption1>
                         ) : null}
+                        {(mov.referenceInvoice || mov.vendorName || mov.batchNumber || mov.expiryDate) && (
+                          <Caption1 className={styles.mutedCaption}>
+                            {[
+                              mov.referenceInvoice && `Ref ${mov.referenceInvoice}`,
+                              mov.vendorName && mov.vendorName,
+                              mov.batchNumber && `Batch ${mov.batchNumber}`,
+                              mov.expiryDate && `Exp ${new Date(mov.expiryDate).toLocaleDateString()}`,
+                            ]
+                              .filter(Boolean)
+                              .join(' • ')}
+                          </Caption1>
+                        )}
                         {(mov.createdBy || mov.reversedAt || mov.reversalOf) && (
                           <Caption1 className={styles.mutedCaption}>
                             {mov.createdBy ? `By ${mov.createdBy}` : ''}
@@ -679,8 +882,16 @@ export function StockLedgerView(): React.JSX.Element {
 
                       <td className={mergeClasses(styles.td, styles.tdCenter)}>
                         <span className={isIn ? styles.qtyIn : styles.qtyOut}>
-                          {isIn ? '+' : '-'}{mov.quantity} units
+                          {isIn ? '+' : '-'}{fmtQ(Number(mov.quantity) || 0)} {unitOf(mov.productId)}
                         </span>
+                      </td>
+
+                      <td className={mergeClasses(styles.td, styles.tdCenter)} title="Stock on hand after this entry">
+                        {balanceAfter.has(mov.id) ? (
+                          <strong>{fmtQ(balanceAfter.get(mov.id)!)}</strong>
+                        ) : (
+                          '—'
+                        )}
                       </td>
 
                       <td className={mergeClasses(styles.td, isIn ? styles.impactValIn : styles.impactValOut)}>
@@ -692,7 +903,7 @@ export function StockLedgerView(): React.JSX.Element {
                           <Button
                             appearance="subtle"
                             size="small"
-                            icon={<Delete20Regular className={styles.iconDelete} />}
+                            icon={<ArrowUndo20Regular className={styles.iconDelete} />}
                             onClick={() => handleDelete(mov.id)}
                             className={styles.actionBtnDelete}
                             title="Reverse Entry"
@@ -708,6 +919,7 @@ export function StockLedgerView(): React.JSX.Element {
               )}
             </tbody>
           </table>
+          <Pager {...ledgerPage} noun="entries" />
         </div>
       </div>
     </div>

@@ -517,7 +517,7 @@ export const QuotationPrintTemplate: React.FC<QuotationPrintTemplateProps> = ({
     : '7 Days from Issue';
 
   return (
-    <div className={styles.backdrop}>
+    <div className={styles.backdrop} data-print-doc>
       {/* Top action toolbar (hidden on print) */}
       <div className={mergeClasses('no-print', styles.toolbar)}>
         <div className={styles.toolbarLeft}>

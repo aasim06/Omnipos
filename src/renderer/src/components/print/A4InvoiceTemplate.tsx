@@ -503,7 +503,7 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
   };
 
   return (
-    <div className={styles.backdrop}>
+    <div className={styles.backdrop} data-print-doc>
       {/* Top Toolbar */}
       <div className={mergeClasses('no-print', styles.toolbar)}>
         <div className={styles.toolbarLeft}>

@@ -50,6 +50,15 @@ html, body, #root, main, table, tr, td, th, p, span, h1, h2, h3, h4, h5, h6, inp
   -webkit-user-select: text;
 }
 
+/* Table column headers: one readable size across every screen. Printed documents (A4 invoice,
+   quotation) keep their own sizes so the paper layout does not change. */
+th:not([data-print-doc] th),
+[role="columnheader"]:not([data-print-doc] [role="columnheader"]),
+.fui-TableHeaderCell__button {
+  font-size: 13px !important;
+  line-height: 18px;
+}
+
 /* Text selection: accent tint, text keeps its own colour (readable in light and dark) */
 ::selection {
   background-color: rgba(229, 25, 55, 0.28);
