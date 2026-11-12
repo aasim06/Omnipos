@@ -238,7 +238,7 @@ export function TileBoard({ pos }: { pos: PosCounterState }) {
                 tint={tintFor(cat)}
                 iconSize={spec.categoryIcon}
                 onClick={() => setActiveCategory(cat)}
-                icon={<CategoryTileIcon name={cat} iconKey={categoryMeta.get(cat)?.icon} size={spec.categoryIcon} />}
+                icon={<CategoryTileIcon name={cat} iconKey={categoryMeta.get(cat)?.icon} size={spec.categoryIcon} module={module} />}
                 name={cat}
                 count={categoryCounts[cat] ?? 0}
               />

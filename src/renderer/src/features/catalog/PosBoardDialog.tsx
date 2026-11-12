@@ -156,7 +156,7 @@ export function PosBoardDialog({
                         flexShrink: 0,
                       }}
                     >
-                      <CategoryTileIcon name={row.cat.name} iconKey={row.icon || null} size={20} />
+                      <CategoryTileIcon name={row.cat.name} iconKey={row.icon || null} size={20} module={module} />
                     </span>
                     <span style={{ flex: 1, minWidth: 0, fontSize: '13px', fontWeight: 600, color: F.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {row.cat.name}
@@ -192,7 +192,7 @@ export function PosBoardDialog({
                       }}
                     >
                       <span style={{ width: 66, height: 66, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.5)' }}>
-                        <CategoryTileIcon name={current.cat.name} iconKey={current.icon || null} size={38} />
+                        <CategoryTileIcon name={current.cat.name} iconKey={current.icon || null} size={38} module={module} />
                       </span>
                       <span style={{ fontWeight: 700, fontSize: '15px', textAlign: 'center', padding: '0 8px' }}>{current.cat.name}</span>
                     </div>

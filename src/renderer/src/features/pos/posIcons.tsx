@@ -1,9 +1,16 @@
-import { BowlSalad24Regular, Box20Regular, DrinkBeer24Regular, DrinkCoffee24Regular, DrinkToGo24Regular, Fire20Regular, Food24Regular, FoodApple24Regular, FoodCake24Regular, FoodCarrot24Regular, FoodChickenLeg24Regular, FoodEgg24Regular, FoodFish24Regular, FoodGrains24Regular, FoodPizza24Regular, LeafOne20Regular, PaintBrush20Regular, Star20Regular, Tag20Regular } from '@fluentui/react-icons';
+import { CategoryGlyph, resolveCategoryIconKey } from '@/features/pos/categoryIcons';
+import { BowlSalad24Regular, DrinkBeer24Regular, DrinkCoffee24Regular, DrinkToGo24Regular, Food24Regular, FoodApple24Regular, FoodCake24Regular, FoodCarrot24Regular, FoodChickenLeg24Regular, FoodEgg24Regular, FoodFish24Regular, FoodGrains24Regular, FoodPizza24Regular } from '@fluentui/react-icons';
 
 /* ─── Icon Resolver ────────────────────────────────────────────────── */
-export function ProductIcon({ name, category, size = 24, color }: { name: string; category?: string; size?: number; color?: string }) {
+export function ProductIcon({ name, category, size = 24, color, module }: { name: string; category?: string; size?: number; color?: string; module?: string | null }) {
   const n = (name + ' ' + (category ?? '')).toLowerCase();
   const style = { width: size, height: size, color: color || 'currentColor', flexShrink: 0 };
+
+  // Non-food businesses (pharmacy, electronics, hardware…): pick from the shared keyword rules,
+  // falling back to a shopping bag instead of a food icon.
+  if (module && module !== 'fastfood') {
+    return <CategoryGlyph iconKey={resolveCategoryIconKey(n, null, module)} size={size} color={color || 'currentColor'} />;
+  }
 
   if (n.includes('chicken') || n.includes('wing') || n.includes('leg')) return <FoodChickenLeg24Regular style={style} />;
   if (n.includes('pizza')) return <FoodPizza24Regular style={style} />;
@@ -22,22 +29,9 @@ export function ProductIcon({ name, category, size = 24, color }: { name: string
   return <Food24Regular style={style} />;
 }
 
-export function CategoryIcon({ cat, size = 16 }: { cat: string; size?: number }) {
-  const c = cat.toLowerCase();
-  const s = { width: size, height: size };
-  if (c.includes('paint') || c.includes('primer') || c.includes('wall') || c.includes('color')) return <PaintBrush20Regular style={s} />;
-  if (c.includes('sanitary') || c.includes('tap') || c.includes('tooti') || c.includes('mixer')) return <DrinkToGo24Regular style={{ width: size, height: size }} />;
-  if (c.includes('hardware') || c.includes('iron') || c.includes('kill') || c.includes('nail') || c.includes('bolt')) return <Box20Regular style={s} />;
-  if (c.includes('cosmetic') || c.includes('skin') || c.includes('cream') || c.includes('beauty')) return <Star20Regular style={s} />;
-  if (c.includes('garment') || c.includes('cloth') || c.includes('shirt') || c.includes('men')) return <Tag20Regular style={s} />;
-  if (c.includes('shoe') || c.includes('footwear')) return <Box20Regular style={s} />;
-  if (c.includes('toy') || c.includes('kid')) return <Star20Regular style={s} />;
-  if (c.includes('general')) return <Box20Regular style={s} />;
-  if (c.includes('vegan') || c.includes('vegetarian')) return <LeafOne20Regular style={s} />;
-  if (c.includes('street') || c.includes('snack') || c.includes('fast')) return <Fire20Regular style={s} />;
-  if (c.includes('dessert') || c.includes('cake') || c.includes('sweet')) return <Star20Regular style={s} />;
-  if (c.includes('drink') || c.includes('beverage')) return <DrinkToGo24Regular style={{ width: size, height: size }} />;
-  return <Food24Regular style={{ width: size, height: size }} />;
+/** Category icon from its name (all business types); fallback by module. */
+export function CategoryIcon({ cat, size = 16, module }: { cat: string; size?: number; module?: string | null }) {
+  return <CategoryGlyph iconKey={resolveCategoryIconKey(cat, null, module)} size={size} />;
 }
 
 export function formatSizeBadge(label: string): string {

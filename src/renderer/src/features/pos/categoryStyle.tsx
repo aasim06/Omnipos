@@ -1,33 +1,6 @@
 import React from 'react';
-import {
-  Box24Regular,
-  BowlChopsticks24Regular,
-  Cookies24Regular,
-  DrinkBeer24Regular,
-  DrinkCoffee24Regular,
-  DrinkToGo24Regular,
-  Fire24Regular,
-  Food24Regular,
-  FoodApple24Regular,
-  FoodCake24Regular,
-  FoodCarrot24Regular,
-  FoodChickenLeg24Regular,
-  FoodEgg24Regular,
-  FoodFish24Regular,
-  FoodGrains24Regular,
-  FoodPizza24Regular,
-  FoodToast24Regular,
-  Gift24Regular,
-  Heart24Regular,
-  LeafOne24Regular,
-  Phone24Regular,
-  Pill24Regular,
-  ShoppingBag24Regular,
-  Star24Regular,
-  Tag24Regular,
-} from '@fluentui/react-icons';
 import type { Category } from '@shared/types';
-import { CategoryIcon } from '@/features/pos/posIcons';
+import { CategoryGlyph, resolveCategoryIconKey } from '@/features/pos/categoryIcons';
 
 /* ─── Category tile colours ─────────────────────────────────────────
  * Shared by the POS tile board and the admin colour picker.
@@ -77,41 +50,15 @@ export function autoTintIndex(name: string): number {
 }
 
 /* ─── Category icons ──────────────────────────────────────────────── */
-type IconComp = React.ComponentType<{ style?: React.CSSProperties }>;
+export { CATEGORY_ICONS } from '@/features/pos/categoryIcons';
 
-export const CATEGORY_ICONS: { key: string; label: string; Icon: IconComp }[] = [
-  { key: 'food', label: 'Food', Icon: Food24Regular },
-  { key: 'pizza', label: 'Pizza', Icon: FoodPizza24Regular },
-  { key: 'chicken', label: 'Chicken', Icon: FoodChickenLeg24Regular },
-  { key: 'sandwich', label: 'Bread / sandwich', Icon: FoodToast24Regular },
-  { key: 'bowl', label: 'Rice / noodles', Icon: BowlChopsticks24Regular },
-  { key: 'fish', label: 'Fish', Icon: FoodFish24Regular },
-  { key: 'egg', label: 'Breakfast', Icon: FoodEgg24Regular },
-  { key: 'fire', label: 'Spicy / BBQ', Icon: Fire24Regular },
-  { key: 'cake', label: 'Cake / dessert', Icon: FoodCake24Regular },
-  { key: 'cookies', label: 'Snacks', Icon: Cookies24Regular },
-  { key: 'drink', label: 'Cold drink', Icon: DrinkToGo24Regular },
-  { key: 'coffee', label: 'Tea / coffee', Icon: DrinkCoffee24Regular },
-  { key: 'shake', label: 'Shake / juice', Icon: DrinkBeer24Regular },
-  { key: 'fruit', label: 'Fruit', Icon: FoodApple24Regular },
-  { key: 'veg', label: 'Vegetables', Icon: FoodCarrot24Regular },
-  { key: 'grains', label: 'Grocery', Icon: FoodGrains24Regular },
-  { key: 'leaf', label: 'Healthy', Icon: LeafOne24Regular },
-  { key: 'star', label: 'Special', Icon: Star24Regular },
-  { key: 'deal', label: 'Deals', Icon: Tag24Regular },
-  { key: 'gift', label: 'Gift', Icon: Gift24Regular },
-  { key: 'heart', label: 'Favourite', Icon: Heart24Regular },
-  { key: 'bag', label: 'Shopping', Icon: ShoppingBag24Regular },
-  { key: 'box', label: 'General', Icon: Box24Regular },
-  { key: 'pill', label: 'Pharmacy', Icon: Pill24Regular },
-  { key: 'phone', label: 'Electronics', Icon: Phone24Regular },
-];
-
-/** Icon for a category: its saved icon, otherwise one picked from the name. */
-export function CategoryTileIcon({ name, iconKey, size }: { name: string; iconKey?: string | null; size: number }) {
-  const saved = iconKey ? CATEGORY_ICONS.find((x) => x.key === iconKey) : undefined;
-  if (saved) return <saved.Icon style={{ width: size, height: size }} />;
-  return <CategoryIcon cat={name} size={size} />;
+/**
+ * Icon for a category: its saved icon, otherwise one picked from the name for any business type
+ * (pharmacy, electronics, hardware, apparel, food…). `module` sets the fallback when the name
+ * gives no hint: food icon for fast food, shopping bag for everything else.
+ */
+export function CategoryTileIcon({ name, iconKey, size, module }: { name: string; iconKey?: string | null; size: number; module?: string | null }) {
+  return <CategoryGlyph iconKey={resolveCategoryIconKey(name, iconKey, module)} size={size} />;
 }
 
 /** Board order: saved displayOrder first (lower first), then the incoming order. */

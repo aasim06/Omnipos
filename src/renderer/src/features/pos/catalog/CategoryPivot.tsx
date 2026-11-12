@@ -119,7 +119,7 @@ export function CategoryPivot({ pos }: { pos: PosCounterState }) {
                 if (!isActive) e.currentTarget.style.color = F.textSecondary;
               }}
             >
-              <CategoryIcon cat={cat} size={16} />
+              <CategoryIcon cat={cat} size={16} module={pos.module} />
               <span>{cat}</span>
               <span
                 style={{

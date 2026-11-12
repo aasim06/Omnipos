@@ -271,7 +271,7 @@ export function ExpandedCartDrawer({ pos }: { pos: PosCounterState }) {
                         />
                       ) : null}
                       <div style={{ display: item.imageUrl ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                        <ProductIcon name={item.name} size={22} color={F.accentRed} />
+                        <ProductIcon name={item.name} size={22} color={F.accentRed} module={module} />
                       </div>
                     </div>
 

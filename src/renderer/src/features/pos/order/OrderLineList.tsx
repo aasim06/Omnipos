@@ -133,7 +133,7 @@ export function OrderLineList({ pos }: { pos: PosCounterState }) {
               />
             ) : null}
             <div style={{ display: item.imageUrl ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-              <ProductIcon name={item.name} size={16} color={F.textSecondary} />
+              <ProductIcon name={item.name} size={16} color={F.textSecondary} module={module} />
             </div>
           </div>
 
