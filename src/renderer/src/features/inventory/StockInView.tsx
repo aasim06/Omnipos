@@ -92,6 +92,12 @@ const stockInSchema = z.object({
   /** The supplier's own bill / invoice number, for matching their statement */
   supplierInvoiceNo: z.string().optional(),
   invoiceDate: z.string().optional(),
+  /** Free units from the supplier (e.g. 10 + 1): stocked at no extra cost */
+  bonusQty: z.coerce.number().min(0, 'Bonus cannot be negative').optional(),
+  /** Selling price from now on (new MRP on this delivery) */
+  newRetailPrice: z.coerce.number().min(0).optional(),
+  /** credit = added to the supplier's balance; cash = paid from the drawer now */
+  payment: z.enum(['credit', 'cash']).optional(),
 });
 
 type StockInFormData = z.infer<typeof stockInSchema>;
@@ -349,6 +355,9 @@ export function StockInView(): React.JSX.Element {
       discountPercent: 0,
       supplierInvoiceNo: '',
       invoiceDate: '',
+      bonusQty: 0,
+      newRetailPrice: 0,
+      payment: 'credit',
     },
   });
 
@@ -624,6 +633,8 @@ export function StockInView(): React.JSX.Element {
   };
 
   const subTotal = watchedQty * watchedPrice;
+  const watchedBonus = Number(form.watch('bonusQty')) || 0;
+  const watchedNewPrice = Number(form.watch('newRetailPrice')) || 0;
   const discountAmount = Math.round((subTotal * watchedDiscountPercent) / 100);
   const lineTotal = Math.max(0, subTotal - discountAmount);
 
@@ -665,15 +676,18 @@ export function StockInView(): React.JSX.Element {
             .join(', ')
         : null;
 
-      // Wholesale receiving (e.g. Cartons) is stored in the base unit (e.g. Pieces)
+      // Wholesale receiving (e.g. Cartons) is stored in the base unit (e.g. Pieces).
+      // Bonus units come in with the paid ones and lower the cost of every unit.
       const unitFactor = data.receiveUnit === 'wholesale' && conversion ? conversion.rate : 1;
-      const baseQty = round3(data.quantity * unitFactor);
+      const bonus = Math.max(0, Number(data.bonusQty) || 0);
+      const baseQty = round3((data.quantity + bonus) * unitFactor);
 
       const noteDetails = [
         data.vendorName ? `Vendor: ${data.vendorName}` : null,
         data.discountPercent && data.discountPercent > 0 ? `Discount: ${data.discountPercent}% (-PKR ${discAmt.toLocaleString()})` : null,
         data.discountPercent && data.discountPercent > 0 ? `Gross: PKR ${unitCost.toLocaleString()}/unit` : null,
-        unitFactor > 1 && conversion ? `Received: ${data.quantity} ${conversion.wholesale} × ${conversion.rate} = ${baseQty} ${conversion.base}` : null,
+        bonus > 0 ? `Bonus: +${bonus} free (paid ${data.quantity})` : null,
+        unitFactor > 1 && conversion ? `Received: ${data.quantity + bonus} ${conversion.wholesale} × ${conversion.rate} = ${baseQty} ${conversion.base}` : null,
         variantSummary ? `Sizes: ${variantSummary}` : null,
         `Line Total: PKR ${calcTotal.toLocaleString()}`,
         data.invoiceDate ? `Invoice date: ${data.invoiceDate}` : null,
@@ -698,6 +712,14 @@ export function StockInView(): React.JSX.Element {
         reason: data.vendorName || 'Supplier Purchase',
         referenceInvoice: data.supplierInvoiceNo?.trim() || undefined,
         note: noteDetails,
+        // New selling price, only when it changed
+        newRetailPrice:
+          Number(data.newRetailPrice) > 0 && Number(data.newRetailPrice) !== Number(selectedProduct?.price || 0)
+            ? Number(data.newRetailPrice)
+            : undefined,
+        paidCash: data.payment === 'cash' ? calcTotal : undefined,
+        // Exact bill amount for the supplier ledger (unit cost is rounded)
+        lineTotal: calcTotal,
         variants: updatedVariants,
         // Size split ({ S: 2, M: 3 }) so the backend updates size stock and can reverse it
         variantAllocations:
@@ -711,8 +733,18 @@ export function StockInView(): React.JSX.Element {
         date: new Date().toISOString(),
       });
 
-      // Refresh suppliers so the new payable shows (it was posted by the backend)
+      // Refresh suppliers so the new payable / payment shows (posted by the backend)
       if (supplier) void vendorStorage.syncWithServer();
+      if (data.payment === 'cash' && calcTotal > 0) {
+        // This till's drawer copy (the backend drawer was updated with the receipt)
+        try {
+          const drawer = posApi.fetchCashDrawer();
+          if (drawer?.status !== 'closed') {
+            drawer.cashOut = Number(drawer.cashOut || 0) + calcTotal;
+            localStorage.setItem('omnipos_cash_drawer', JSON.stringify(drawer));
+          }
+        } catch {}
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
@@ -733,7 +765,11 @@ export function StockInView(): React.JSX.Element {
         expiryDate: '',
         supplierInvoiceNo: '',
         invoiceDate: '',
+        bonusQty: 0,
+        newRetailPrice: 0,
+        payment: 'credit',
       });
+      notifySuccess('Stock received');
     },
     onError: (err: any) => notifyError(err?.message || 'Failed to save stock in entry'),
   });
@@ -1595,6 +1631,7 @@ export function StockInView(): React.JSX.Element {
                         }
                         // Last purchase cost; a new item starts empty (the retail price is not a cost)
                         form.setValue('unitPrice', Number(prod.costPrice) > 0 ? Number(prod.costPrice) : 0);
+                        form.setValue('newRetailPrice', Number(prod.price) > 0 ? Number(prod.price) : 0);
                       } else {
                         form.setValue('selectedProductId', '');
                       }
@@ -1922,6 +1959,27 @@ export function StockInView(): React.JSX.Element {
                   </span>
                 )}
               </div>
+              {(() => {
+                const factor = conversion && watchedReceiveUnit === 'wholesale' ? conversion.rate : 1;
+                const units = (watchedQty + watchedBonus) * factor;
+                if (!(units > 0) || !(lineTotal > 0)) return null;
+                const costPerUnit = Math.round((lineTotal / units) * 100) / 100;
+                const sale = watchedNewPrice > 0 ? watchedNewPrice : Number(selectedProduct?.price || 0);
+                const margin = sale > 0 ? Math.round(((sale - costPerUnit) / sale) * 1000) / 10 : null;
+                return (
+                  <span
+                    className={styles.fieldLabel}
+                    style={{
+                      display: 'block',
+                      marginTop: 4,
+                      color: margin !== null && margin <= 0 ? tokens.colorPaletteRedForeground1 : tokens.colorNeutralForeground3,
+                    }}
+                  >
+                    Cost Rs. {costPerUnit.toLocaleString()} / {conversion?.base || selectedProduct?.unit || 'unit'}
+                    {margin !== null ? (margin <= 0 ? ' · no margin at this sale price' : ` · margin ${margin}%`) : ''}
+                  </span>
+                );
+              })()}
             </div>
 
             <div>
@@ -1953,6 +2011,53 @@ export function StockInView(): React.JSX.Element {
                 control={form.control}
                 name="invoiceDate"
                 render={({ field }) => <CustomInput label="INVOICE DATE" type="date" value={field.value || ''} onChange={field.onChange} />}
+              />
+            </div>
+            <div>
+              <Controller
+                control={form.control}
+                name="bonusQty"
+                render={({ field }) => (
+                  <CustomInput
+                    label="BONUS / FREE QTY"
+                    type="number"
+                    placeholder="e.g. 1 (for 10 + 1)"
+                    value={field.value ? String(field.value) : ''}
+                    onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                  />
+                )}
+              />
+            </div>
+            <div>
+              <Controller
+                control={form.control}
+                name="newRetailPrice"
+                render={({ field }) => (
+                  <CustomInput
+                    label="SALE PRICE (PKR)"
+                    type="number"
+                    placeholder="Selling price per unit"
+                    value={field.value ? String(field.value) : ''}
+                    onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                  />
+                )}
+              />
+            </div>
+            <div>
+              <Controller
+                control={form.control}
+                name="payment"
+                render={({ field }) => (
+                  <CustomSelect
+                    label="PAYMENT"
+                    value={field.value || 'credit'}
+                    options={[
+                      { value: 'credit', label: 'On credit (supplier balance)' },
+                      { value: 'cash', label: 'Paid in cash now (from drawer)' },
+                    ]}
+                    onChange={(val) => field.onChange(val || 'credit')}
+                  />
+                )}
               />
             </div>
             {conversion && (

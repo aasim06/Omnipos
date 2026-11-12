@@ -200,7 +200,7 @@ export function InventoryLayout(): React.JSX.Element {
           actions={
             <>
               <Button appearance="secondary" icon={<Receipt20Regular />} onClick={() => setIsPurchaseBillOpen(true)}>
-                Purchase bill
+                Receive delivery (GRN)
               </Button>
               {isStockOutPage && (
                 <>

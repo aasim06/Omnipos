@@ -1403,8 +1403,44 @@ export function registerRoutes(app: Express): void {
       await syncProductNearestBatch(tx, product.id);
       await evaluateStockAlerts(tx, [product.id]);
     }
-    await postReceiptPayable(tx, created);
+    await postReceiptPayable(tx, created, b.lineTotal);
     return created;
+  }
+
+  /** Take cash out of today's open drawer (supplier paid in cash). */
+  async function drawerCashOut(tx: any, amount: number) {
+    if (!(amount > 0)) return;
+    const drawer = await tx.cashDrawer.findFirst({ where: { status: 'open' }, orderBy: { date: 'desc' } });
+    if (drawer) await tx.cashDrawer.update({ where: { id: drawer.id }, data: { cashOut: round2(Number(drawer.cashOut || 0) + amount) } });
+  }
+
+  /**
+   * Optional parts of a receipt, in the same transaction as the stock:
+   * - newRetailPrice: the product's selling price from now on (new MRP on the delivery)
+   * - paidCash: paid to the supplier in cash now: out of the drawer, and a payment on their ledger
+   */
+  async function applyReceiptExtras(tx: any, m: any, body: any) {
+    const newPrice = Number(body.newRetailPrice);
+    if (newPrice > 0 && m.productId) {
+      await tx.product.updateMany({ where: { id: m.productId }, data: { price: round2(newPrice) } });
+    }
+    const billed = Number(body.lineTotal) > 0 ? round2(Number(body.lineTotal)) : receiptValue(m);
+    const paid = round2(Math.min(Number(body.paidCash) || 0, billed || Number(body.paidCash) || 0));
+    if (paid > 0) {
+      await drawerCashOut(tx, paid);
+      if (m.vendorId) {
+        await postVendorTransaction(tx, {
+          id: `vtx_pay_${m.id}`,
+          vendorId: m.vendorId,
+          type: 'PAYMENT',
+          amount: paid,
+          description: `Cash paid on receipt: ${m.productName}${m.referenceInvoice ? ` (Inv ${m.referenceInvoice})` : ''}`,
+          paymentMethod: 'cash',
+          createdBy: m.createdBy,
+          date: m.date,
+        });
+      }
+    }
   }
 
   /** What a receipt adds to the supplier's payable: quantity × net unit cost. */
@@ -1414,9 +1450,10 @@ export function registerRoutes(app: Express): void {
    * A stock receipt from a supplier is a bill on that supplier's ledger. Posted in the same
    * transaction as the stock, once per receipt (the ledger entry id follows the movement id).
    */
-  async function postReceiptPayable(tx: any, m: any) {
+  async function postReceiptPayable(tx: any, m: any, lineTotal?: unknown) {
     if (m.type !== 'in' || !m.vendorId || m.reversalOf || m.reason === 'Reversal') return;
-    const amount = receiptValue(m);
+    // The bill's own line total when given (unit cost is rounded to paisa, so qty × cost can drift)
+    const amount = Number(lineTotal) > 0 ? round2(Number(lineTotal)) : receiptValue(m);
     if (!(amount > 0)) return;
     if (!(await tx.vendor.findUnique({ where: { id: m.vendorId } }))) {
       throw Object.assign(new Error('The supplier for this stock in was not found. Sync suppliers and try again.'), { status: 409 });
@@ -1438,9 +1475,15 @@ export function registerRoutes(app: Express): void {
     try {
       const body = req.body || {};
       if (body.reason === 'Stock Count Adjustment' && refuseWithoutStockAdjust(req, res)) return;
-      const movement = await db.$transaction((tx: any) =>
-        createMovementTx(tx, { ...body, createdBy: body.createdBy || requestUser(req)?.name })
-      );
+      const movement = await db.$transaction(async (tx: any) => {
+        const isNew = !body.id || !(await tx.stockMovement.findUnique({ where: { id: String(body.id) } }));
+        const created = await createMovementTx(tx, { ...body, createdBy: body.createdBy || requestUser(req)?.name });
+        // Receiving extras, applied once with the receipt (a retry of the same id skips them)
+        if (isNew && created.type === 'in') {
+          await applyReceiptExtras(tx, created, body);
+        }
+        return created;
+      });
       res.json(movement);
     } catch (err: any) {
       res.status(err?.status || 500).json({ error: err.message });
@@ -1991,6 +2034,9 @@ export function registerRoutes(app: Express): void {
         for (const u of Array.isArray(productUpdates) ? productUpdates : []) {
           if (!u?.id || !(Number(u.price) > 0)) continue;
           await tx.product.updateMany({ where: { id: String(u.id) }, data: { price: Number(u.price) } });
+        }
+        if (data.paymentMode === 'cash' && data.paidAmount > 0) {
+          await drawerCashOut(tx, Math.min(data.paidAmount, data.grandTotal || data.paidAmount));
         }
         return { bill: parseBill(saved), movements: createdMovements, ledger };
       });

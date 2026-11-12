@@ -1773,8 +1773,10 @@ export const posApi = {
     }
   },
 
-  async saveStockMovement(data: Partial<StockMovement> & { variants?: ProductVariant[] }): Promise<StockMovement> {
-    const record: StockMovement = {
+  async saveStockMovement(
+    data: Partial<StockMovement> & { variants?: ProductVariant[]; newRetailPrice?: number; paidCash?: number; lineTotal?: number }
+  ): Promise<StockMovement> {
+    const record: StockMovement & { newRetailPrice?: number; paidCash?: number; lineTotal?: number } = {
       id: data.id || `mov_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       module: data.module || 'minimart',
       productId: data.productId || '',
@@ -1793,7 +1795,22 @@ export const posApi = {
       batchNumber: data.batchNumber || undefined,
       expiryDate: data.expiryDate || undefined,
       date: data.date || new Date().toISOString(),
+      ...(Number(data.newRetailPrice) > 0 ? { newRetailPrice: Number(data.newRetailPrice) } : {}),
+      ...(Number(data.paidCash) > 0 ? { paidCash: Number(data.paidCash) } : {}),
+      ...(Number(data.lineTotal) > 0 ? { lineTotal: Number(data.lineTotal) } : {}),
     };
+
+    // 0. Receipts go to the backend first: a refusal (unknown supplier…) is shown to the user and
+    //    nothing changes here. Unreachable backend: saved locally and sent later (same id, once).
+    let pushedOk = false;
+    if (record.type === 'in') {
+      const res = await quoteBackend('/api/stock-movements', { method: 'POST', body: JSON.stringify(record) });
+      if (res && res.status >= 400 && res.status < 500) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || `Stock in refused (${res.status})`);
+      }
+      pushedOk = !!res?.ok;
+    }
 
     // 1. Instant local write to Dexie
     await offlineDb.stockMovements.put(record);
@@ -1811,6 +1828,7 @@ export const posApi = {
           const updates: Partial<Product> = {
             openingStock: updatedStock,
             updatedAt: new Date().toISOString(),
+            ...(record.type === 'in' && record.newRetailPrice ? { price: record.newRetailPrice } : {}),
           };
           // Weighted average cost on receipts (mirrors the backend)
           if (record.type === 'in' && record.unitCost && record.unitCost > 0) {
@@ -1841,8 +1859,8 @@ export const posApi = {
     // 3. Queue in outbox
     await syncEngine.enqueue('stockMovement', record.id, 'CREATE', record);
 
-    // 4. Background push if online
-    if (typeof navigator === 'undefined' || navigator.onLine) {
+    // 4. Background push if online (already done for a receipt the backend accepted)
+    if (!pushedOk && (typeof navigator === 'undefined' || navigator.onLine)) {
       try {
         const base = await resolveApiUrl();
         const tenantHeaders = await getTenantHeaders();

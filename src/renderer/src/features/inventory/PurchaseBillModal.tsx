@@ -34,6 +34,7 @@ import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { vendorStorage, Vendor } from './vendorStorage';
 import { useAppToast } from '@/context/AppNotificationContext';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
+import { detectCategoryProfile } from '@/lib/categoryProfiles';
 
 const useStyles = makeStyles({
   dialogSurface: {
@@ -212,7 +213,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
   const styles = useStyles();
   const queryClient = useQueryClient();
   const { notifySuccess, notifyError, notifyWarning } = useAppToast();
-  const { can } = useLicense();
+  const { can, businessProfiles = [] } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
 
@@ -221,7 +222,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
   // Form states
   const [selectedVendorId, setSelectedVendorId] = useState('');
   const [vendorName, setVendorName] = useState('');
-  const [billNumber, setBillNumber] = useState(() => `PB-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [billNumber, setBillNumber] = useState('');
   const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
 
@@ -409,6 +410,26 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
       notifyWarning('Please enter at least one item with a valid name and quantity');
       return;
     }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (const l of validLines) {
+      if (!(Number(l.unitCost) > 0)) {
+        notifyWarning(`Enter the purchase cost for "${l.productName}".`);
+        return;
+      }
+      const prod = l.productId ? products.find((x) => x.id === l.productId) : undefined;
+      const isMedicine =
+        (prod?.module || 'minimart') !== 'fastfood' &&
+        (businessProfiles.includes('pharmacy') || detectCategoryProfile(prod?.category || '') === 'pharmacy');
+      if (isMedicine && (!l.batchNumber?.trim() || !l.expiryDate)) {
+        notifyWarning(`Batch number and expiry date are required for "${l.productName}".`);
+        return;
+      }
+      if (l.expiryDate && new Date(`${l.expiryDate}T00:00:00`).getTime() < today.getTime()) {
+        notifyWarning(`"${l.productName}" batch has already expired. Expired stock should not be received.`);
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     try {
@@ -502,9 +523,11 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
       const planned = validLines.map((line) => {
         const prod = line.productId ? productMap.get(line.productId) : undefined;
         const rate = lineConversionRate(line, prod);
-        const baseQty = round3(Number(line.quantity) * rate);
-        // cost is entered per the line's unit; store it per base unit
-        const landedUnitCost = Math.round(((Number(line.unitCost || 0) * landedFactor) / rate) * 100) / 100;
+        const bonus = Math.max(0, Number(line.bonusQty) || 0);
+        const baseQty = round3((Number(line.quantity) + bonus) * rate);
+        // Cost is entered per the line's unit for the paid quantity; spread over paid + bonus units
+        const landedUnitCost =
+          baseQty > 0 ? Math.round(((Number(line.unitCost || 0) * Number(line.quantity) * landedFactor) / baseQty) * 100) / 100 : 0;
         const movement: Omit<StockMovement, 'id'> & { id: string } = {
           id: uid('mov_'),
           module: prod?.module || (hasFastFood && !hasOmnimart ? 'fastfood' : 'minimart'),
@@ -520,9 +543,14 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
           referenceInvoice: billNumber.trim(),
           vendorName: activeVendorName,
           note:
-            rate > 1 && prod?.primaryUnit
-              ? `Bill #${billNumber.trim()} • Received: ${line.quantity} ${prod.primaryUnit} × ${rate} = ${baseQty} ${prod.secondaryUnit || prod.unit || 'PCS'}`
-              : undefined,
+            [
+              rate > 1 && prod?.primaryUnit
+                ? `Received: ${Number(line.quantity) + bonus} ${prod.primaryUnit} × ${rate} = ${baseQty} ${prod.secondaryUnit || prod.unit || 'PCS'}`
+                : null,
+              bonus > 0 ? `Bonus: +${bonus} free (paid ${line.quantity})` : null,
+            ]
+              .filter(Boolean)
+              .join(' • ') || undefined,
           variantAllocations: line.variantLabel ? { [line.variantLabel]: baseQty } : undefined,
           date: movementDate,
         };
@@ -612,7 +640,16 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
         queryClient.invalidateQueries({ queryKey: ['analytics-report'] }),
       ]);
 
-      notifySuccess(`Purchase Bill #${billNumber} recorded successfully! Stock and Vendor ledger updated.`);
+      if (paymentMode === 'cash' && finalPaid > 0) {
+        try {
+          const drawer = posApi.fetchCashDrawer();
+          if (drawer?.status !== 'closed') {
+            drawer.cashOut = Number(drawer.cashOut || 0) + Math.min(finalPaid, grandTotal || finalPaid);
+            localStorage.setItem('omnipos_cash_drawer', JSON.stringify(drawer));
+          }
+        } catch {}
+      }
+      notifySuccess(`Delivery #${billNumber} received. Stock and supplier balance updated.`);
       onSuccess?.();
       onClose();
     } catch (err: any) {
@@ -649,9 +686,9 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
               <Receipt20Regular />
             </div>
             <div>
-              <div style={{ fontSize: '17px', fontWeight: 600 }}>New Purchase Bill (Kharidari Invoice)</div>
+              <div style={{ fontSize: '17px', fontWeight: 600 }}>Receive delivery (GRN)</div>
               <Caption1 style={{ color: tokens.colorNeutralForeground2 }}>
-                Multi-item supplier receiving invoice, batch tracking &amp; vendor ledger
+                All items on one supplier invoice: stock, batches, bonus, new sale prices and the supplier balance in one save
               </Caption1>
             </div>
           </div>
@@ -730,6 +767,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                     <tr>
                       <th className={styles.th} style={{ textAlign: 'left', minWidth: '210px', paddingLeft: '10px' }}>Item Name</th>
                       <th className={styles.th} style={{ textAlign: 'center', width: '65px' }}>Qty</th>
+                      <th className={styles.th} style={{ textAlign: 'center', width: '60px' }} title="Free units from the supplier (e.g. 10 + 1)">Bonus</th>
                       <th className={styles.th} style={{ textAlign: 'right', width: '100px' }}>Purchase Cost</th>
                       <th className={styles.th} style={{ textAlign: 'right', width: '100px' }}>Retail Price</th>
                       <th className={styles.th} style={{ textAlign: 'center', width: '95px' }}>Batch No</th>
@@ -771,9 +809,9 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                                       fontSize: '10px',
                                       fontWeight: isSelected ? 600 : 400,
                                       borderRadius: '3px',
-                                      border: isSelected ? '1px solid #E51937' : '1px solid #CBD5E1',
-                                      backgroundColor: isSelected ? '#FEE2E2' : '#F8FAFC',
-                                      color: isSelected ? '#E51937' : '#334155',
+                                      border: `1px solid ${isSelected ? tokens.colorBrandStroke1 : tokens.colorNeutralStroke1}`,
+                                      backgroundColor: isSelected ? tokens.colorBrandBackground2 : tokens.colorNeutralBackground2,
+                                      color: isSelected ? tokens.colorBrandForeground1 : tokens.colorNeutralForeground1,
                                       cursor: 'pointer',
                                       lineHeight: '1.2',
                                     }}
@@ -819,6 +857,21 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                           })()}
                         </td>
 
+                        {/* Bonus / free qty */}
+                        <td style={{ padding: '6px 6px', verticalAlign: 'middle' }}>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={line.bonusQty || ''}
+                            placeholder="0"
+                            onChange={(e) => updateLine(idx, { bonusQty: Number(e.target.value) || 0 })}
+                            className={styles.tableInput}
+                            style={{ textAlign: 'center' }}
+                            aria-label="Bonus quantity"
+                          />
+                        </td>
+
                         {/* Purchase Cost */}
                         <td style={{ padding: '6px 6px', verticalAlign: 'middle' }}>
                           <input
@@ -842,6 +895,29 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                             className={styles.tableInput}
                             style={{ textAlign: 'right' }}
                           />
+                          {(() => {
+                            const prod = line.productId ? products.find((x) => x.id === line.productId) : undefined;
+                            const rate = lineConversionRate(line, prod);
+                            const units = (Number(line.quantity) + (Number(line.bonusQty) || 0)) * rate;
+                            const factor = subtotal > 0 ? Math.min(1, Math.max(0, grandTotal / subtotal)) : 1;
+                            const cost = units > 0 ? (Number(line.unitCost) * Number(line.quantity) * factor) / units : 0;
+                            const sale = Number(line.retailPrice) || 0;
+                            if (!(cost > 0) || !(sale > 0)) return null;
+                            const margin = Math.round(((sale - cost) / sale) * 1000) / 10;
+                            return (
+                              <div
+                                style={{
+                                  fontSize: 10.5,
+                                  marginTop: 3,
+                                  textAlign: 'right',
+                                  color: margin <= 0 ? tokens.colorPaletteRedForeground1 : tokens.colorNeutralForeground3,
+                                }}
+                                title={`Cost per unit after discount and bonus: Rs. ${Math.round(cost * 100) / 100}`}
+                              >
+                                {margin <= 0 ? 'No margin' : `Margin ${margin}%`}
+                              </div>
+                            );
+                          })()}
                         </td>
 
                         {/* Batch No */}
@@ -962,9 +1038,9 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                       style={{
                         height: '34px',
                         borderRadius: '6px',
-                        border: `1.5px solid ${paymentMode === mode ? '#E51937' : '#CBD5E1'}`,
-                        backgroundColor: paymentMode === mode ? 'rgba(229,25,55,0.1)' : '#FFFFFF',
-                        color: paymentMode === mode ? '#E51937' : '#334155',
+                        border: `1.5px solid ${paymentMode === mode ? tokens.colorBrandStroke1 : tokens.colorNeutralStroke1}`,
+                        backgroundColor: paymentMode === mode ? tokens.colorBrandBackground2 : tokens.colorNeutralBackground1,
+                        color: paymentMode === mode ? tokens.colorBrandForeground1 : tokens.colorNeutralForeground1,
                         fontWeight: 600,
                         fontSize: '11.5px',
                         textTransform: 'capitalize',
@@ -1040,7 +1116,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
             disabled={isSubmitting}
             style={{ backgroundColor: tokens.colorBrandBackground, color: '#FFFFFF', fontWeight: 600 }}
           >
-            {isSubmitting ? 'Saving Bill & Stock...' : 'Confirm & Save Purchase Bill'}
+            {isSubmitting ? 'Saving delivery…' : 'Confirm & receive delivery'}
           </Button>
         </DialogActions>
       </DialogSurface>

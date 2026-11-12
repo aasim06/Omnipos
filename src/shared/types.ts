@@ -204,6 +204,8 @@ export interface PurchaseBillLine {
   quantity: number; // in the line's unit (see unitMode)
   unitMode?: 'base' | 'wholesale'; // 'wholesale' = quantity / cost are per carton / box
   unitCost: number; // per the line's unit
+  /** Free units from the supplier (e.g. 10 + 1), in the line's unit; stocked at no extra cost */
+  bonusQty?: number;
   retailPrice?: number;
   batchNumber?: string;
   expiryDate?: string;
