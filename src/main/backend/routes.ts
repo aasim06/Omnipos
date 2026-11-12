@@ -2308,6 +2308,122 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  // ── Quotations / Estimates ──
+  // Upserts are keyed on the client's id (offline-first tills re-post freely). A converted
+  // quotation is a record of a sale: it can no longer be edited, re-opened or deleted.
+  const presentQuotation = (q: any) => {
+    if (!q) return q;
+    let lines: unknown = [];
+    try {
+      lines = JSON.parse(q.lines || '[]');
+    } catch {
+      lines = [];
+    }
+    return {
+      ...q,
+      lines,
+      validUntil: q.validUntil instanceof Date ? q.validUntil.toISOString() : q.validUntil,
+      createdAt: q.createdAt instanceof Date ? q.createdAt.toISOString() : q.createdAt,
+      updatedAt: q.updatedAt instanceof Date ? q.updatedAt.toISOString() : q.updatedAt,
+    };
+  };
+  const QUOTE_STATUSES = ['draft', 'sent', 'converted', 'expired'];
+
+  app.get('/api/quotations', async (_req: Request, res: Response) => {
+    try {
+      const rows = await db.quotation.findMany({ orderBy: { createdAt: 'desc' } });
+      res.json(rows.map(presentQuotation));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/quotations', async (req: Request, res: Response) => {
+    try {
+      const b = (req.body || {}) as any;
+      const id = toOptionalStr(b.id);
+      if (!id) return res.status(400).json({ error: 'Quotation id is required.' });
+      if (!String(b.customerName || '').trim()) return res.status(400).json({ error: 'Customer name is required.' });
+      if (!Array.isArray(b.lines) || b.lines.length === 0) return res.status(400).json({ error: 'Add at least one item.' });
+      const validUntil = new Date(b.validUntil);
+      if (Number.isNaN(validUntil.getTime())) return res.status(400).json({ error: 'Invalid validity date.' });
+
+      const existing = await db.quotation.findUnique({ where: { id } });
+      if (existing?.status === 'converted') {
+        // Already a sale: answer with what is stored instead of letting a stale copy overwrite it
+        return res.status(409).json({ error: `Quotation ${existing.quoteNumber} is already converted to a sale.`, quotation: presentQuotation(existing) });
+      }
+      // A newer copy on the server wins over an older re-post from another till
+      if (existing && b.updatedAt && new Date(b.updatedAt).getTime() < new Date(existing.updatedAt).getTime()) {
+        return res.json(presentQuotation(existing));
+      }
+
+      const status = QUOTE_STATUSES.includes(b.status) && b.status !== 'converted' ? b.status : 'draft';
+      const data = {
+        quoteNumber: String(b.quoteNumber || id),
+        module: b.module === 'fastfood' ? 'fastfood' : 'minimart',
+        customerName: String(b.customerName).trim(),
+        customerPhone: toOptionalStr(b.customerPhone),
+        customerAddress: toOptionalStr(b.customerAddress),
+        lines: JSON.stringify(b.lines),
+        subtotal: Number(b.subtotal) || 0,
+        discountPercent: Number(b.discountPercent) || 0,
+        discountAmount: Number(b.discountAmount) || 0,
+        taxAmount: b.taxAmount === undefined || b.taxAmount === null ? null : Number(b.taxAmount) || 0,
+        totalAmount: Number(b.totalAmount) || 0,
+        validUntil,
+        notes: toOptionalStr(b.notes),
+        terms: toOptionalStr(b.terms),
+        status,
+        updatedAt: b.updatedAt ? new Date(b.updatedAt) : new Date(),
+      };
+      const saved = await db.quotation.upsert({
+        where: { id },
+        create: { id, ...data, createdAt: b.createdAt ? new Date(b.createdAt) : new Date() },
+        update: data,
+      });
+      res.json(presentQuotation(saved));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/quotations/:id/convert', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      const orderId = toOptionalStr((req.body || {}).orderId);
+      if (!orderId) return res.status(400).json({ error: 'orderId is required.' });
+      const existing = await db.quotation.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: 'Quotation not found' });
+      if (existing.status === 'converted') {
+        if (existing.convertedOrderId === orderId) return res.json(presentQuotation(existing)); // retry
+        return res.status(409).json({ error: `Quotation ${existing.quoteNumber} was already converted (order #${existing.convertedOrderId}).` });
+      }
+      const saved = await db.quotation.update({
+        where: { id },
+        data: { status: 'converted', convertedOrderId: orderId, convertedAt: new Date(), updatedAt: new Date() },
+      });
+      res.json(presentQuotation(saved));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/quotations/:id', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      const existing = await db.quotation.findUnique({ where: { id } });
+      if (!existing) return res.json({ success: true });
+      if (existing.status === 'converted') {
+        return res.status(409).json({ error: `Quotation ${existing.quoteNumber} is linked to a sale and cannot be deleted.` });
+      }
+      await db.quotation.delete({ where: { id } });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Expenses & Cash Drawer ──
   app.get('/api/expenses', async (_req: Request, res: Response) => {
     try {

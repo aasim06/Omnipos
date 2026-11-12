@@ -136,24 +136,6 @@ export function QuotationsView(): React.JSX.Element {
     },
   });
 
-  const convertToOrderMutation = useMutation({
-    mutationFn: (id: string) => posApi.convertQuotationToOrder(id),
-    onSuccess: async (res) => {
-      await queryClient.invalidateQueries({ queryKey: ['quotations'] });
-      await queryClient.refetchQueries({ queryKey: ['quotations'] });
-      await queryClient.invalidateQueries({ queryKey: ['orders'] });
-      await queryClient.refetchQueries({ queryKey: ['orders'] });
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('pos_quotations_updated'));
-        window.dispatchEvent(new CustomEvent('pos_orders_updated'));
-      }
-      notifySuccess(`Success! Quotation converted to Order #${res.order.id}. Stock updated.`);
-    },
-    onError: (err: any) => {
-      notifyError(err.message || 'Failed to convert quotation to order');
-    },
-  });
-
   // Calculate live totals for the active form
   const subtotal = useMemo(() => {
     return lines.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -196,6 +178,9 @@ export function QuotationsView(): React.JSX.Element {
     setDiscountPercent(q.discountPercent);
     setNotes(q.notes || '');
     setTerms(q.terms || '');
+    // Days still left on the quote (an expired quote gets a fresh 7 days when re-issued)
+    const daysLeft = Math.ceil((new Date(q.validUntil).getTime() - Date.now()) / 86_400_000);
+    setValidDays(daysLeft >= 1 ? daysLeft : 7);
     setIsDialogOpen(true);
   };
 
@@ -371,7 +356,7 @@ export function QuotationsView(): React.JSX.Element {
       validUntil: expiryDate.toISOString(),
       notes: notes.trim() || undefined,
       terms: terms.trim() || undefined,
-      status: editingQuotation ? editingQuotation.status : status,
+      status,
       createdAt: editingQuotation ? editingQuotation.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -557,6 +542,9 @@ export function QuotationsView(): React.JSX.Element {
                       >
                         {quote.status}
                       </span>
+                      {quote.status === 'converted' && quote.convertedOrderId && (
+                        <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>Order #{quote.convertedOrderId.slice(-6)}</div>
+                      )}
                     </td>
 
                     <td className={mergeClasses(styles.td, styles.thRight)}>
@@ -576,8 +564,14 @@ export function QuotationsView(): React.JSX.Element {
                           <button
                             type="button"
                             className={styles.actionBtn}
-                            title="Open & Checkout in POS Counter (Load Cart)"
-                            onClick={() => {
+                            title="Sell at POS counter (load cart and take payment)"
+                            onClick={async () => {
+                              try {
+                                await posApi.getOpenableQuotation(quote.id);
+                              } catch (err: any) {
+                                notifyWarning(err?.message || 'This quotation can no longer be sold.');
+                                return;
+                              }
                               try {
                                 localStorage.setItem(
                                   'pos_pending_quotation_load',
@@ -603,38 +597,20 @@ export function QuotationsView(): React.JSX.Element {
                           </button>
                         )}
 
-                        {/* Convert to Direct Sale Button */}
+                        {/* Edit Button (a sold quotation is a record of that sale) */}
                         {quote.status !== 'converted' && (
-                          <button
-                            type="button"
-                            className={styles.actionBtn}
-                            title="Convert to Sale Bill (Direct Paid Order)"
-                            onClick={async () => {
-                              const ok = await confirmModal({
-                                title: 'Convert to POS Sale',
-                                message: `Convert quotation ${quote.quoteNumber} directly into a confirmed POS Sale? Stock will be deducted immediately.`,
-                                confirmLabel: 'Convert to Sale',
-                              });
-                              if (ok) {
-                                convertToOrderMutation.mutate(quote.id);
-                              }
-                            }}
-                          >
-                            <CheckmarkCircle20Regular className={styles.convertIcon} />
-                          </button>
-                        )}
-
-                        {/* Edit Button */}
                         <button
                           type="button"
                           className={styles.actionBtn}
-                          title="Edit Quotation"
+                          title={quote.status === 'expired' ? 'Edit & re-issue with a new validity' : 'Edit Quotation'}
                           onClick={() => openEditModal(quote)}
                         >
                           <Edit20Regular className={styles.editIcon} />
                         </button>
+                        )}
 
                         {/* Delete Button */}
+                        {quote.status !== 'converted' && (
                         <button
                           type="button"
                           className={styles.actionBtn}
@@ -653,6 +629,7 @@ export function QuotationsView(): React.JSX.Element {
                         >
                           <Delete20Regular className={styles.deleteIcon} />
                         </button>
+                        )}
                       </div>
                     </td>
                   </tr>

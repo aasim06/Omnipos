@@ -400,6 +400,76 @@ export interface StockAlertRow {
   createdAt: string;
 }
 
+/** Call a quotation endpoint on the backend; null when it cannot be reached. */
+async function quoteBackend(path: string, init?: RequestInit): Promise<Response | null> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return null;
+  try {
+    const base = await resolveApiUrl();
+    const tenantHeaders = await getTenantHeaders();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    try {
+      return await fetch(`${base}${path}`, {
+        ...init,
+        headers: { 'Content-Type': 'application/json', ...tenantHeaders, ...(init?.headers || {}) },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Send one local quotation to the backend and store the server's copy. Returns the server's
+ * refusal message (e.g. it was already sold on another counter), or null when sent / offline.
+ */
+async function pushQuotation(q: Quotation & { synced?: 0 | 1 }): Promise<string | null> {
+  const storeServerCopy = async (res: Response) => {
+    const saved = await res.json().catch(() => null);
+    if (saved?.id) await offlineDb.quotations.put({ ...saved, synced: 1 });
+  };
+  const errorOf = async (res: Response) => {
+    const body = await res.json().catch(() => ({}));
+    if (body?.quotation?.id) await offlineDb.quotations.put({ ...body.quotation, synced: 1 });
+    return String(body?.error || `Quotation was refused (${res.status})`);
+  };
+  const postQuote = (status: Quotation['status']) =>
+    quoteBackend('/api/quotations', { method: 'POST', body: JSON.stringify({ ...q, status }) });
+
+  if (q.status === 'converted') {
+    const convert = () =>
+      quoteBackend(`/api/quotations/${encodeURIComponent(q.id)}/convert`, {
+        method: 'POST',
+        body: JSON.stringify({ orderId: q.convertedOrderId }),
+      });
+    let res = await convert();
+    if (res?.status === 404) {
+      // Never reached the backend before it was sold: create it, then record the sale
+      const created = await postQuote('sent');
+      if (!created?.ok) return null;
+      res = await convert();
+    }
+    if (!res) return null;
+    if (res.ok) {
+      await storeServerCopy(res);
+      return null;
+    }
+    const body = await res.json().catch(() => ({}));
+    return res.status >= 400 && res.status < 500 ? String(body?.error || 'Quotation was refused') : null;
+  }
+
+  const res = await postQuote(q.status);
+  if (!res) return null;
+  if (res.ok) {
+    await storeServerCopy(res);
+    return null;
+  }
+  return res.status >= 400 && res.status < 500 ? errorOf(res) : null;
+}
+
 export const posApi = {
   /**
    * Fetch products: Cache-First for instant UI load (<5ms).
@@ -2069,70 +2139,133 @@ export const posApi = {
 
   /**
    * Quotation / Estimate operations
+   *
+   * Quotations live in the local database for instant use and are kept on the backend so every
+   * counter sees the same list. A quotation open past its validity date becomes "expired".
+   * A quotation only becomes "converted" when the POS checkout that sold it succeeds, and from
+   * then on it is a record of that sale: it cannot be edited, re-opened or deleted.
    */
   async fetchQuotations(): Promise<Quotation[]> {
+    type LocalQuote = Quotation & { synced?: 0 | 1 };
+    const ts = (v?: string) => new Date(v || 0).getTime() || 0;
+
+    // One-time move of quotations kept in localStorage by older versions
     try {
-      const items = await offlineDb.quotations.toArray();
-      if (items && items.length > 0) {
-        return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const legacy = storage.getList<Quotation>(KEYS.quotations);
+      if (legacy.length > 0) {
+        for (const q of legacy) {
+          if (!(await offlineDb.quotations.get(q.id))) await offlineDb.quotations.put({ ...q, synced: 0 } as LocalQuote);
+        }
+        storage.setList(KEYS.quotations, []);
       }
-    } catch {
-      /* fallback */
+    } catch {}
+
+    // Merge with the backend: server copy wins unless this till holds a newer unsent edit
+    const remote = await quoteBackend('/api/quotations');
+    if (remote?.ok) {
+      try {
+        const remoteList: Quotation[] = await remote.json();
+        const remoteIds = new Set(remoteList.map((q) => q.id));
+        for (const r of remoteList) {
+          const l = (await offlineDb.quotations.get(r.id)) as LocalQuote | undefined;
+          const localNewer = l && l.synced === 0 && l.status !== 'converted' && ts(l.updatedAt) > ts(r.updatedAt);
+          if (!l || r.status === 'converted' || !localNewer) {
+            await offlineDb.quotations.put({ ...r, synced: 1 } as LocalQuote);
+          }
+        }
+        for (const l of (await offlineDb.quotations.toArray()) as LocalQuote[]) {
+          if (remoteIds.has(l.id)) {
+            if (l.synced === 0) await pushQuotation(l);
+          } else if (l.synced === 1) {
+            await offlineDb.quotations.delete(l.id); // deleted on another counter
+          } else {
+            await pushQuotation(l);
+          }
+        }
+      } catch (err) {
+        console.warn('[Quotations] merge with backend failed:', err);
+      }
     }
-    const local = storage.getList<Quotation>(KEYS.quotations);
-    return local.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // Validity: an open quotation past its date is expired
+    const now = Date.now();
+    const all = (await offlineDb.quotations.toArray()) as LocalQuote[];
+    for (const q of all) {
+      if ((q.status === 'draft' || q.status === 'sent') && q.validUntil && ts(q.validUntil) < now) {
+        q.status = 'expired';
+        q.updatedAt = new Date().toISOString();
+        q.synced = 0;
+        await offlineDb.quotations.put(q);
+        void pushQuotation(q);
+      }
+    }
+    return all.sort((a, b) => ts(b.createdAt) - ts(a.createdAt));
   },
 
   async saveQuotation(quote: Quotation): Promise<Quotation> {
-    try {
-      await offlineDb.quotations.put(quote);
-    } catch {}
-    const list = storage.getList<Quotation>(KEYS.quotations);
-    const idx = list.findIndex((q) => q.id === quote.id);
-    if (idx >= 0) {
-      list[idx] = quote;
-    } else {
-      list.unshift(quote);
+    const existing = await offlineDb.quotations.get(quote.id);
+    if (existing?.status === 'converted') {
+      throw new Error(`Quotation ${existing.quoteNumber} is already converted to a sale and cannot be changed.`);
     }
-    storage.setList(KEYS.quotations, list);
-    return quote;
+    if (quote.status === 'converted') {
+      throw new Error('A quotation is converted only by completing its sale at the POS counter.');
+    }
+    const record = { ...quote, updatedAt: new Date().toISOString(), synced: 0 as const };
+    await offlineDb.quotations.put(record);
+    const refused = await pushQuotation(record);
+    if (refused) throw new Error(refused);
+    return record;
   },
 
   async deleteQuotation(id: string): Promise<boolean> {
-    try {
-      await offlineDb.quotations.delete(id);
-    } catch {}
-    const list = storage.getList<Quotation>(KEYS.quotations).filter((q) => q.id !== id);
-    storage.setList(KEYS.quotations, list);
+    const existing = await offlineDb.quotations.get(id);
+    if (existing?.status === 'converted') {
+      throw new Error(`Quotation ${existing.quoteNumber} is linked to a sale and cannot be deleted.`);
+    }
+    const res = await quoteBackend(`/api/quotations/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (res && res.status === 409) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || 'This quotation cannot be deleted.');
+    }
+    await offlineDb.quotations.delete(id);
     return true;
   },
 
-  async convertQuotationToOrder(quoteId: string): Promise<{ order: Order; quotation: Quotation }> {
-    const quotes = await this.fetchQuotations();
-    const quote = quotes.find((q) => q.id === quoteId);
-    if (!quote) throw new Error('Quotation not found');
+  /**
+   * Quotation that may still be taken to the POS counter, or an error saying why not.
+   */
+  async getOpenableQuotation(id: string): Promise<Quotation> {
+    const q = await offlineDb.quotations.get(id);
+    if (!q) throw new Error('Quotation not found');
+    if (q.status === 'converted') throw new Error(`Quotation ${q.quoteNumber} has already been sold (order #${q.convertedOrderId}).`);
+    if (q.status === 'expired' || new Date(q.validUntil).getTime() < Date.now()) {
+      throw new Error(`Quotation ${q.quoteNumber} has expired. Edit it to set a new validity before selling.`);
+    }
+    return q;
+  },
 
-    const newOrder: Order = {
-      id: uid('ord_'),
-      module: quote.module,
-      lines: quote.lines,
-      discountPercent: quote.discountPercent,
-      customerName: quote.customerName,
-      orderType: 'takeaway',
-      stage: 'paid',
-      totalAmount: quote.totalAmount,
-      createdAt: new Date().toISOString(),
+  /**
+   * Record that a POS sale sold this quotation. Called by the checkout after the order is saved.
+   */
+  async markQuotationConverted(id: string, orderId: string): Promise<void> {
+    const q = await offlineDb.quotations.get(id);
+    if (!q) return;
+    if (q.status === 'converted' && q.convertedOrderId && q.convertedOrderId !== orderId) {
+      throw new Error(`Quotation ${q.quoteNumber} was already sold (order #${q.convertedOrderId}).`);
+    }
+    const record = {
+      ...q,
+      status: 'converted' as const,
+      convertedOrderId: orderId,
+      convertedAt: q.convertedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      synced: 0 as const,
     };
-
-    const savedOrder = await this.saveOrder(newOrder);
-
-    quote.status = 'converted';
-    quote.convertedOrderId = savedOrder.id;
-    quote.updatedAt = new Date().toISOString();
-    await this.saveQuotation(quote);
-
-    return { order: savedOrder, quotation: quote };
+    await offlineDb.quotations.put(record);
+    await pushQuotation(record);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('pos_quotations_updated'));
+    }
   },
 
   /**

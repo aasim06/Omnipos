@@ -301,3 +301,26 @@ model OrderRefund {
   createdAt    DateTime @default(now())
 }
 
+
+model Quotation {
+  id               String    @id
+  quoteNumber      String
+  module           String    @default("minimart")
+  customerName     String
+  customerPhone    String?
+  customerAddress  String?
+  lines            String    // JSON array of cart lines
+  subtotal         Float     @default(0)
+  discountPercent  Float     @default(0)
+  discountAmount   Float     @default(0)
+  taxAmount        Float?
+  totalAmount      Float     @default(0)
+  validUntil       DateTime
+  notes            String?
+  terms            String?
+  status           String    @default("draft") // "draft" | "sent" | "converted" | "expired"
+  convertedOrderId String?
+  convertedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}

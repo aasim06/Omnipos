@@ -145,6 +145,7 @@ export interface Quotation {
   terms?: string;
   status: 'draft' | 'sent' | 'converted' | 'expired';
   convertedOrderId?: string;
+  convertedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -61,6 +61,14 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedQty, setSelectedQty] = useState(1);
   const [cart, setCart] = useState<CartLine[]>([]);
+  // Quotation whose items are in the cart; it is marked converted when this cart is sold
+  const [linkedQuotation, setLinkedQuotation] = useState<{ id: string; quoteNumber: string } | null>(null);
+  const prevCartLen = React.useRef(0);
+  React.useEffect(() => {
+    // Emptying the cart (sold, parked or cleared by hand) drops the link to the quotation
+    if (prevCartLen.current > 0 && cart.length === 0) setLinkedQuotation(null);
+    prevCartLen.current = cart.length;
+  }, [cart.length]);
   const [isCartExpanded, setIsCartExpanded] = useState(false);
   const [discountMode, setDiscountMode] = useState<'percent' | 'fixed'>('percent');
   const [discountValue, setDiscountValue] = useState<number>(0);
@@ -240,12 +248,26 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
   }, [customerKhatas]);
   /* Auto-load Quotation if transferred from Quotations view */
   React.useEffect(() => {
+    void (async () => {
     try {
       const pendingRaw = localStorage.getItem('pos_pending_quotation_load');
       if (pendingRaw) {
+        localStorage.removeItem('pos_pending_quotation_load');
         const pending = JSON.parse(pendingRaw);
+        if (pending?.quotationId) {
+          // A sold or expired quotation must not be rung up again
+          try {
+            await posApi.getOpenableQuotation(pending.quotationId);
+          } catch (err: any) {
+            notifyWarning('Quotation not loaded', err?.message || 'This quotation can no longer be sold.');
+            return;
+          }
+        }
         if (pending && Array.isArray(pending.lines) && pending.lines.length > 0) {
           setCart(pending.lines);
+          if (pending.quotationId) {
+            setLinkedQuotation({ id: pending.quotationId, quoteNumber: pending.quoteNumber || '' });
+          }
           if (pending.customerName) {
             setSelectedCustomer({
               name: pending.customerName,
@@ -262,11 +284,11 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
           notifySuccess(`Loaded ${pending.lines.length} item(s) from Quotation #${pending.quoteNumber || ''}`);
           playSuccessChime();
         }
-        localStorage.removeItem('pos_pending_quotation_load');
       }
     } catch (e) {
       console.warn('Error loading pending quotation into POS cart:', e);
     }
+    })();
   }, []);
   const handleSelectCustomer = (cust: CustomerOption) => {
     setSelectedCustomer(cust);
@@ -916,6 +938,14 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
   /* Checkout Mutation */
   const { mutate: checkout, isPending } = useMutation({
     mutationFn: async () => {
+      const quoteForSale = linkedQuotation;
+      if (quoteForSale) {
+        const q = (await posApi.fetchQuotations()).find((x) => x.id === quoteForSale.id);
+        if (q?.status === 'converted') {
+          setLinkedQuotation(null);
+          throw new Error(`Quotation ${q.quoteNumber} was already sold (order #${q.convertedOrderId}).`);
+        }
+      }
       const hasCustomCust = selectedCustomer.name && selectedCustomer.name !== 'Guest';
       let assignedCustomerName: string | undefined;
       let assignedOrderType: 'dine-in' | 'takeaway' | 'delivery' | 'khata' = orderType;
@@ -970,6 +1000,15 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
       };
       await posApi.saveOrder(order);
 
+      // The quotation behind this cart is now a sale
+      if (quoteForSale) {
+        try {
+          await posApi.markQuotationConverted(quoteForSale.id, order.id);
+        } catch (e: any) {
+          notifyWarning('Quotation not updated', e?.message || String(e));
+        }
+      }
+
       // Tell the cashier when this sale left an item low or out of stock
       try {
         const soldByProduct = new Map<string, number>();
@@ -1016,6 +1055,9 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
       }
 
       return order;
+    },
+    onError: (err: any) => {
+      notifyWarning('Sale not completed', err?.message || String(err));
     },
     onSuccess: (savedOrder) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });

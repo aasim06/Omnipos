@@ -260,6 +260,32 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     )
   `);
 
+  // Quotations / estimates (previously kept only on the till that created them)
+  await database.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "Quotation" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "quoteNumber" TEXT NOT NULL,
+      "module" TEXT NOT NULL DEFAULT 'minimart',
+      "customerName" TEXT NOT NULL,
+      "customerPhone" TEXT,
+      "customerAddress" TEXT,
+      "lines" TEXT NOT NULL,
+      "subtotal" REAL NOT NULL DEFAULT 0,
+      "discountPercent" REAL NOT NULL DEFAULT 0,
+      "discountAmount" REAL NOT NULL DEFAULT 0,
+      "taxAmount" REAL,
+      "totalAmount" REAL NOT NULL DEFAULT 0,
+      "validUntil" DATETIME NOT NULL,
+      "notes" TEXT,
+      "terms" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'draft',
+      "convertedOrderId" TEXT,
+      "convertedAt" DATETIME,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL
+    )
+  `);
+
   await database.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "OrderRefund" (
       "id" TEXT NOT NULL PRIMARY KEY,
