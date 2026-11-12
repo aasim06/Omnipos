@@ -120,6 +120,8 @@ export interface OrderRefund {
   id: string;
   orderId: string;
   customerName?: string;
+  /** CN-<year>-<seq>, given by the backend */
+  creditNoteNo?: string;
   refundAmount: number;
   paymentMode: 'cash' | 'khata' | 'card' | string;
   reason?: string;
@@ -145,7 +147,9 @@ export interface Quotation {
   validUntil: string;
   notes?: string;
   terms?: string;
-  status: 'draft' | 'sent' | 'converted' | 'expired';
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'revised' | 'converted' | 'expired';
+  /** Quotation this one revises (set on QT-…-R1, R2…) */
+  revisionOf?: string;
   convertedOrderId?: string;
   convertedAt?: string;
   createdAt: string;

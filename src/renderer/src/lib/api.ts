@@ -4,6 +4,8 @@ import { syncEngine } from './syncEngine';
 import { KEYS, storage } from './storage';
 import { uid } from './utils';
 import { normalizePhone } from './khataRules';
+import { computeKhataAging, KhataAging } from '@shared/khataAging';
+import { nextQuoteNumber, nextRevisionNumber } from '@shared/quotes';
 import { parseRecipe, recipeLinesFor, recipeMovementId, RECIPE_USAGE_REASON } from './recipes';
 import { decodeProductVariants, encodeProductVariants, setLocalVariantRegistry } from './variants';
 import {
@@ -1166,6 +1168,82 @@ export const posApi = {
   },
 
   /**
+   * Cancel a wrong manual ledger entry with the opposite entry (an audit-safe correction; nothing
+   * is deleted). Done on the backend first so the two can never disagree; entries made by a sale
+   * or a return are corrected with a sales return instead.
+   */
+  async reverseKhataTransaction(khataId: string, entry: LocalKhataTx): Promise<LocalKhataTx> {
+    if (entry.reversalOf) throw new Error('A reversal entry cannot itself be reversed.');
+    if (entry.orderId) throw new Error('This entry belongs to a sale or a return. Use Sales Return to correct it.');
+    const body = {
+      id: `rev_${entry.id}`,
+      type: entry.type === 'DEBIT' ? 'CREDIT' : 'DEBIT',
+      amount: Number(entry.amount),
+      paymentMethod: entry.paymentMethod || 'correction',
+      description: `Reversal of: ${entry.description || entry.type}`,
+      reversalOf: entry.id,
+    };
+    const res = await quoteBackend(`/api/khata/${encodeURIComponent(khataId)}/transaction`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!res) throw new Error('Reversing an entry needs the backend. Check the connection and try again.');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || `Reversal refused (${res.status})`);
+
+    const saved: LocalKhataTx = {
+      ...data,
+      createdAt: data.createdAt || data.date || new Date().toISOString(),
+      reversalOf: entry.id,
+      synced: 1,
+    };
+    await offlineDb.khataTransactions.put(saved);
+    await offlineDb.khatas.update(khataId, { currentDebt: Number(data.balanceAfter || 0), updatedAt: new Date().toISOString() });
+    // Undo today's cash wasooli in this till's drawer too
+    if (
+      entry.type === 'CREDIT' &&
+      (entry.paymentMethod || '').toLowerCase() === 'cash' &&
+      new Date(entry.createdAt).toDateString() === new Date().toDateString()
+    ) {
+      try {
+        const drawer = this.fetchCashDrawer();
+        drawer.cashIn = Math.max(0, Number(drawer.cashIn || 0) - Number(entry.amount));
+        localStorage.setItem('omnipos_cash_drawer', JSON.stringify(drawer));
+      } catch {}
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('pos_khata_updated', { detail: { khataId } }));
+    }
+    return saved;
+  },
+
+  /**
+   * Receivables aging per account (unpaid udhaar by age, overdue against the credit term).
+   * From the backend's full ledger; offline, from the entries this till holds.
+   */
+  async fetchKhataAging(): Promise<Record<string, KhataAging>> {
+    const out: Record<string, KhataAging> = {};
+    const res = await quoteBackend('/api/khata/aging');
+    if (res?.ok) {
+      const rows = await res.json().catch(() => []);
+      if (Array.isArray(rows)) {
+        for (const r of rows) out[r.khataId] = r;
+        return out;
+      }
+    }
+    const khatas = await offlineDb.khatas.toArray();
+    for (const k of khatas) {
+      const entries = await offlineDb.khataTransactions.where('khataId').equals(k.id).toArray();
+      out[k.id] = computeKhataAging(
+        entries.map((e) => ({ id: e.id, reversalOf: e.reversalOf, type: e.type, amount: e.amount, date: e.createdAt })),
+        k.dueDays,
+        { balance: Number(k.currentDebt || 0), openedAt: k.createdAt }
+      );
+    }
+    return out;
+  },
+
+  /**
    * Delete Khata account offline-first
    */
   async deleteKhata(id: string): Promise<void> {
@@ -2248,6 +2326,8 @@ export const posApi = {
     const q = await offlineDb.quotations.get(id);
     if (!q) throw new Error('Quotation not found');
     if (q.status === 'converted') throw new Error(`Quotation ${q.quoteNumber} has already been sold (order #${q.convertedOrderId}).`);
+    if (q.status === 'rejected') throw new Error(`Quotation ${q.quoteNumber} was rejected by the customer. Revise it to quote again.`);
+    if (q.status === 'revised') throw new Error(`Quotation ${q.quoteNumber} was replaced by a newer revision. Sell the latest one.`);
     if (q.status === 'expired' || new Date(q.validUntil).getTime() < Date.now()) {
       throw new Error(`Quotation ${q.quoteNumber} has expired. Edit it to set a new validity before selling.`);
     }
@@ -2290,6 +2370,67 @@ export const posApi = {
       if (n.qty > n.stock) issues.push(`${n.name}: quotation needs ${n.qty}, only ${n.stock} in stock`);
     }
     return { quote, issues };
+  },
+
+  /** Move a quotation along: sent to the customer, accepted or rejected by them, or back to draft. */
+  async setQuotationStatus(id: string, status: 'draft' | 'sent' | 'accepted' | 'rejected'): Promise<Quotation> {
+    const q = await offlineDb.quotations.get(id);
+    if (!q) throw new Error('Quotation not found');
+    if (q.status === 'converted' || q.status === 'revised') {
+      throw new Error(`Quotation ${q.quoteNumber} is ${q.status} and can no longer change.`);
+    }
+    if ((status === 'sent' || status === 'accepted') && new Date(q.validUntil).getTime() < Date.now()) {
+      throw new Error(`Quotation ${q.quoteNumber} has expired. Edit it to set a new validity first.`);
+    }
+    return this.saveQuotation({ ...q, status });
+  },
+
+  /**
+   * New version of a quotation (QT-…-R1, R2…) for changed prices or items. The old one is kept
+   * as "revised" so it can no longer be sold, and the new draft links back to it.
+   */
+  async reviseQuotation(id: string): Promise<Quotation> {
+    const q = await offlineDb.quotations.get(id);
+    if (!q) throw new Error('Quotation not found');
+    if (q.status === 'converted') throw new Error(`Quotation ${q.quoteNumber} is already sold.`);
+    if (q.status === 'revised') throw new Error(`Quotation ${q.quoteNumber} already has a newer revision.`);
+    const all = await offlineDb.quotations.toArray();
+    const now = new Date();
+    const lifeDays = Math.max(7, Math.round((new Date(q.validUntil).getTime() - new Date(q.createdAt).getTime()) / 86_400_000));
+    const { convertedOrderId: _c, convertedAt: _a, ...rest } = q as any;
+    const revision: Quotation = {
+      ...rest,
+      id: uid('quote_'),
+      quoteNumber: nextRevisionNumber(q.quoteNumber, all.map((x) => x.quoteNumber)),
+      status: 'draft',
+      revisionOf: q.id,
+      lines: (q.lines || []).map((l) => ({ ...l })),
+      validUntil: new Date(now.getTime() + lifeDays * 86_400_000).toISOString(),
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+    const saved = await this.saveQuotation(revision);
+    await this.saveQuotation({ ...q, status: 'revised' } as Quotation);
+    return saved;
+  },
+
+  /** Copy of a quotation as a new draft with its own number (e.g. for another customer). */
+  async duplicateQuotation(id: string): Promise<Quotation> {
+    const q = await offlineDb.quotations.get(id);
+    if (!q) throw new Error('Quotation not found');
+    const all = await offlineDb.quotations.toArray();
+    const now = new Date();
+    const { convertedOrderId: _c, convertedAt: _a, revisionOf: _r, ...rest } = q as any;
+    return this.saveQuotation({
+      ...rest,
+      id: uid('quote_'),
+      quoteNumber: nextQuoteNumber(all.map((x) => x.quoteNumber)),
+      status: 'draft',
+      lines: (q.lines || []).map((l) => ({ ...l })),
+      validUntil: new Date(now.getTime() + 7 * 86_400_000).toISOString(),
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    } as Quotation);
   },
 
   /**

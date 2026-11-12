@@ -127,6 +127,7 @@ model KhataTransaction {
   balanceAfter Float
   description  String?
   paymentMethod String?
+  reversalOf   String?       // id of the entry this one cancels (ledger correction)
   orderId      String?
   date         DateTime      @default(now())
 }
@@ -295,6 +296,7 @@ model OrderRefund {
   orderId      String
   order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   customerName String?
+  creditNoteNo String?  // CN-<year>-<seq>, printed on the credit note
   refundAmount Float
   paymentMode  String   @default("cash") // "cash" | "khata" | "card"
   reason       String?
@@ -322,6 +324,7 @@ model Quotation {
   status           String    @default("draft") // "draft" | "sent" | "converted" | "expired"
   convertedOrderId String?
   convertedAt      DateTime?
+  revisionOf       String?   // quotation this one revises
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }

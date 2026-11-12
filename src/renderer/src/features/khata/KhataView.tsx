@@ -43,6 +43,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { posApi } from '@/lib/api';
+import type { KhataAging } from '@shared/khataAging';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect, DynamicBar } from '@/components/ui';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
@@ -108,6 +109,8 @@ interface CustomerKhata {
 
 interface KhataTx {
   id: string;
+  orderId?: string | null;
+  reversalOf?: string | null;
   khataId: string;
   type: 'DEBIT' | 'CREDIT';
   amount: number;
@@ -176,6 +179,34 @@ export function KhataView(): React.JSX.Element {
     window.addEventListener('pos_khata_updated', handleUpdate);
     return () => window.removeEventListener('pos_khata_updated', handleUpdate);
   }, [queryClient, refetchKhatas]);
+
+  // Receivables aging (unpaid udhaar by age, overdue against the credit term)
+  const { data: aging = {}, refetch: refetchAging } = useQuery<Record<string, KhataAging>>({
+    queryKey: ['khata-aging'],
+    queryFn: () => posApi.fetchKhataAging(),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  React.useEffect(() => {
+    const onUpdate = () => void refetchAging();
+    window.addEventListener('pos_khata_updated', onUpdate);
+    return () => window.removeEventListener('pos_khata_updated', onUpdate);
+  }, [refetchAging]);
+
+  const reverseMutation = useMutation({
+    mutationFn: async (tx: KhataTx) => {
+      if (!selectedKhata) throw new Error('No account selected');
+      return posApi.reverseKhataTransaction(selectedKhata.id, tx as any);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['khatas'] });
+      await refetchKhatas();
+      await refetchPassbook();
+      await refetchAging();
+      notifySuccess('Entry reversed. The balance has been corrected.');
+    },
+    onError: (err: any) => notifyError(err?.message || 'Could not reverse the entry'),
+  });
 
   // Fetch Passbook Transactions for selected customer: Offline-First
   const { data: passbookTransactions = [], isLoading: isLoadingPassbook, refetch: refetchPassbook } = useQuery<KhataTx[]>({
@@ -532,7 +563,9 @@ export function KhataView(): React.JSX.Element {
       k.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (k.phone && k.phone.includes(searchTerm)) ||
       (k.cnic && k.cnic.includes(searchTerm));
-    const matchesType = typeFilter === 'all' || k.customerType === typeFilter;
+    const matchesType =
+      typeFilter === 'all' ||
+      (typeFilter === 'overdue' ? !!aging[k.id]?.overdue : k.customerType === typeFilter);
     return matchesSearch && matchesType;
   });
 
@@ -540,6 +573,17 @@ export function KhataView(): React.JSX.Element {
   const totalMarketDebt = khatas.reduce((acc, k) => acc + (k.currentDebt || 0), 0);
   const highRiskCustomers = khatas.filter((k) => k.creditLimit > 0 && k.currentDebt >= k.creditLimit * 0.8).length;
   const totalCreditExtended = khatas.reduce((acc, k) => acc + (k.creditLimit || 50000), 0);
+  const agingTotals = Object.values(aging).reduce(
+    (t, a) => ({
+      d0_30: t.d0_30 + a.buckets.d0_30,
+      d31_60: t.d31_60 + a.buckets.d31_60,
+      d61_90: t.d61_90 + a.buckets.d61_90,
+      d90p: t.d90p + a.buckets.d90p,
+      overdue: t.overdue + a.overdueAmount,
+      overdueCount: t.overdueCount + (a.overdue ? 1 : 0),
+    }),
+    { d0_30: 0, d31_60: 0, d61_90: 0, d90p: 0, overdue: 0, overdueCount: 0 }
+  );
 
   if (isLoading && khatas.length === 0) {
     return <TablePageSkeleton title="Khata / Udhaar Ledger Book" />;
@@ -583,6 +627,33 @@ export function KhataView(): React.JSX.Element {
         />
       </div>
 
+      {/* ── Receivables aging ── */}
+      <div className={styles.summaryGrid}>
+        <KpiTile label="0–30 days" value={`PKR ${agingTotals.d0_30.toLocaleString()}`} footer={<span>Recent udhaar</span>} />
+        <KpiTile
+          label="31–60 days"
+          value={`PKR ${agingTotals.d31_60.toLocaleString()}`}
+          tone={agingTotals.d31_60 > 0 ? 'warning' : 'neutral'}
+          footer={<span>Follow up</span>}
+        />
+        <KpiTile
+          label="61–90 days"
+          value={`PKR ${agingTotals.d61_90.toLocaleString()}`}
+          tone={agingTotals.d61_90 > 0 ? 'warning' : 'neutral'}
+          footer={<span>Slow paying</span>}
+        />
+        <KpiTile
+          label="90+ days"
+          value={`PKR ${agingTotals.d90p.toLocaleString()}`}
+          tone={agingTotals.d90p > 0 ? 'danger' : 'neutral'}
+          footer={
+            <span>
+              {agingTotals.overdueCount} overdue · PKR {agingTotals.overdue.toLocaleString()} past term
+            </span>
+          }
+        />
+      </div>
+
       {/* ── Main Khata Table Card ── */}
       <div className={styles.tableCard}>
         <div className={styles.filterBar}>
@@ -606,6 +677,7 @@ export function KhataView(): React.JSX.Element {
                 { value: 'retail', label: 'Retail Customers' },
                 { value: 'wholesale', label: 'Wholesale / Dukandar' },
                 { value: 'employee', label: 'Staff / Employee' },
+                { value: 'overdue', label: `Overdue only (${agingTotals.overdueCount})` },
               ]}
               onChange={(val) => setTypeFilter(val as any)}
             />
@@ -741,6 +813,16 @@ export function KhataView(): React.JSX.Element {
                             <span className={styles.termText}>
                               Term: {khata.dueDays} days
                             </span>
+                          )}
+                          {aging[khata.id]?.overdue && (
+                            <Badge appearance="filled" color="danger" size="small">
+                              Overdue PKR {aging[khata.id].overdueAmount.toLocaleString()} · {aging[khata.id].daysOutstanding}d
+                            </Badge>
+                          )}
+                          {!aging[khata.id]?.overdue && (aging[khata.id]?.advance || 0) > 0 && (
+                            <Badge appearance="tint" color="success" size="small">
+                              Advance PKR {aging[khata.id].advance.toLocaleString()}
+                            </Badge>
                           )}
                         </div>
                       </TableCell>
@@ -1226,11 +1308,20 @@ export function KhataView(): React.JSX.Element {
                         <TableHeaderCell className={styles.passbookThBal}>
                           Balance
                         </TableHeaderCell>
+                        <TableHeaderCell className={styles.passbookThBal}>
+                          Correction
+                        </TableHeaderCell>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {passbookTransactions.map((tx) => (
-                        <TableRow key={tx.id} className={styles.passbookTbodyTr}>
+                      {passbookTransactions.map((tx) => {
+                        const reversedBy = passbookTransactions.find((t) => t.reversalOf === tx.id);
+                        return (
+                        <TableRow
+                          key={tx.id}
+                          className={styles.passbookTbodyTr}
+                          style={reversedBy ? { opacity: 0.55, textDecoration: 'line-through' } : undefined}
+                        >
                           <TableCell className={styles.passbookTdDate}>
                             <div className={styles.passbookDatePrimary}>
                               {new Date(tx.createdAt).toLocaleDateString()}
@@ -1268,8 +1359,35 @@ export function KhataView(): React.JSX.Element {
                           <TableCell className={styles.passbookTdBal}>
                             PKR {tx.balanceAfter.toLocaleString()}
                           </TableCell>
+                          <TableCell className={styles.passbookTdBal} style={{ textDecoration: 'none' }}>
+                            {tx.reversalOf ? (
+                              <Badge appearance="tint" color="informative" size="small">Correction</Badge>
+                            ) : reversedBy ? (
+                              <Badge appearance="tint" color="subtle" size="small">Reversed</Badge>
+                            ) : tx.orderId ? (
+                              <span className={styles.dashText} title="Sale / return entries are corrected with a sales return">—</span>
+                            ) : (
+                              <Button
+                                size="small"
+                                appearance="subtle"
+                                disabled={reverseMutation.isPending}
+                                onClick={async () => {
+                                  const ok = await confirmModal({
+                                    title: 'Reverse this entry?',
+                                    message: `${tx.description || tx.type} — PKR ${tx.amount.toLocaleString()}\n\nAn opposite entry for the same amount will be added and the balance corrected. The original stays in the passbook.`,
+                                    confirmLabel: 'Reverse entry',
+                                    intent: 'danger',
+                                  });
+                                  if (ok) reverseMutation.mutate(tx);
+                                }}
+                              >
+                                Reverse
+                              </Button>
+                            )}
+                          </TableCell>
                         </TableRow>
-                      ))}
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

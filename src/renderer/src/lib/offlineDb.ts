@@ -43,6 +43,8 @@ export interface LocalKhataTx {
   description?: string;
   paymentMethod?: string;
   orderId?: string;
+  /** Set on a correction entry: the entry it cancels */
+  reversalOf?: string;
   createdAt: string;
   synced?: 0 | 1;
 }

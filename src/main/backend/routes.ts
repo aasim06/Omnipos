@@ -12,7 +12,8 @@ import {
   syncProductNearestBatch,
 } from './stockBatches';
 import { parseRefundItems, returnedQtyByLine, billPriceFactor, lineRefundValue } from '@shared/refunds';
-import { nextQuoteNumber, sameQuoteNumber } from '@shared/quotes';
+import { nextQuoteNumber, sameQuoteNumber, nextCreditNoteNumber } from '@shared/quotes';
+import { computeKhataAging } from '@shared/khataAging';
 import { evaluateStockAlerts, readLowStockDefault, alertLimitFor, LOW_STOCK_DEFAULT_SETTING } from './stockAlerts';
 
 export function saveBase64Image(dataUrlOrBase64: string, prefix: string): string | null {
@@ -998,6 +999,18 @@ export function registerRoutes(app: Express): void {
   // ── Order Refunds & Sales Returns ──
   app.get('/api/refunds', async (_req: Request, res: Response) => {
     try {
+      // Returns from before credit notes were numbered get a number, oldest first
+      const unnumbered = await (db as any).orderRefund.findMany({ where: { creditNoteNo: null }, orderBy: { createdAt: 'asc' } });
+      if (unnumbered.length > 0) {
+        const numbers: string[] = (await (db as any).orderRefund.findMany({ select: { creditNoteNo: true } }))
+          .map((r: any) => r.creditNoteNo)
+          .filter(Boolean);
+        for (const r of unnumbered) {
+          const no = nextCreditNoteNumber(numbers, new Date(r.createdAt));
+          numbers.push(no);
+          await (db as any).orderRefund.update({ where: { id: r.id }, data: { creditNoteNo: no } });
+        }
+      }
       const refunds = await (db as any).orderRefund.findMany({
         orderBy: { createdAt: 'desc' },
       });
@@ -1196,9 +1209,13 @@ export function registerRoutes(app: Express): void {
           });
         }
 
+        const usedNumbers = (await tx.orderRefund.findMany({ select: { creditNoteNo: true } }))
+          .map((r: any) => r.creditNoteNo)
+          .filter(Boolean);
         const refund = await tx.orderRefund.create({
           data: {
             ...(refundId ? { id: refundId } : {}),
+            creditNoteNo: nextCreditNoteNumber(usedNumbers, createdAt),
             orderId: order.id,
             customerName: custName || 'Walk-In Customer',
             refundAmount: totalRefund,
@@ -2168,7 +2185,9 @@ export function registerRoutes(app: Express): void {
     const out: Record<string, unknown> = {};
     if (b.name !== undefined) out.name = String(b.name || '').trim() || 'Unnamed Customer';
     for (const k of ['phone', 'address', 'cnic', 'note']) if (b[k] !== undefined) out[k] = toOptionalStr(b[k]);
-    if (b.customerType !== undefined) out.customerType = b.customerType === 'wholesale' ? 'wholesale' : 'retail';
+    if (b.customerType !== undefined) {
+      out.customerType = ['wholesale', 'employee'].includes(b.customerType) ? b.customerType : 'retail';
+    }
     if (b.creditLimit !== undefined) out.creditLimit = Math.max(0, Number(b.creditLimit) || 0);
     if (b.dueDays !== undefined) out.dueDays = Math.max(0, Math.round(Number(b.dueDays) || 0));
     return out;
@@ -2276,13 +2295,35 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  // Receivables aging: unpaid udhaar by age (FIFO), overdue against each customer's credit term
+  app.get('/api/khata/aging', async (_req: Request, res: Response) => {
+    try {
+      const khatas = await db.customerKhata.findMany({ include: { entries: true } });
+      const now = new Date();
+      res.json(
+        khatas.map((k: any) => ({
+          khataId: k.id,
+          ...computeKhataAging(
+            k.entries.map((e: any) => ({ id: e.id, reversalOf: e.reversalOf, type: e.type, amount: e.amount, date: e.date })),
+            k.dueDays,
+            { now, balance: Number(k.currentDebt || 0), openedAt: k.createdAt }
+          ),
+        }))
+      );
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get('/api/khata/:id/transactions', async (req: Request, res: Response) => {
     try {
       const entries = await db.khataTransaction.findMany({
         where: { khataId: String(req.params.id) },
         orderBy: { date: 'desc' },
       });
-      res.json(entries.map(presentKhataTx));
+      const reversedBy = new Map<string, string>();
+      for (const e of entries as any[]) if (e.reversalOf) reversedBy.set(e.reversalOf, e.id);
+      res.json(entries.map((e: any) => ({ ...presentKhataTx(e), reversedBy: reversedBy.get(e.id) || null })));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -2302,16 +2343,35 @@ export function registerRoutes(app: Express): void {
         return res.status(400).json({ error: 'Amount must be greater than zero.' });
       }
 
+      const reversalOf = toOptionalStr(body.reversalOf);
+      const refuse = (status: number, message: string) => {
+        const e: any = new Error(message);
+        e.status = status;
+        return e;
+      };
+
       const entry = await db.$transaction(async (tx: any) => {
         if (entryId) {
           const dup = await tx.khataTransaction.findUnique({ where: { id: entryId } });
           if (dup) return dup; // already applied: a retry must not move the balance again
         }
         const current = await tx.customerKhata.findUnique({ where: { id: khataId } });
-        if (!current) {
-          const e: any = new Error('Khata account not found');
-          e.status = 404;
-          throw e;
+        if (!current) throw refuse(404, 'Khata account not found');
+
+        // A correction cancels one earlier manual entry with the opposite entry of the same amount.
+        // Entries made by a sale or a sales return are corrected through a sales return instead.
+        let original: any = null;
+        if (reversalOf) {
+          original = await tx.khataTransaction.findUnique({ where: { id: reversalOf } });
+          if (!original || original.khataId !== khataId) throw refuse(404, 'The entry to reverse was not found on this account.');
+          if (original.reversalOf) throw refuse(409, 'A reversal entry cannot itself be reversed.');
+          if (original.orderId) throw refuse(409, 'This entry belongs to a sale or a return. Use Sales Return to correct it.');
+          const already = await tx.khataTransaction.findFirst({ where: { reversalOf } });
+          if (already) throw refuse(409, 'This entry has already been reversed.');
+          const expectType = original.type === 'DEBIT' ? 'CREDIT' : 'DEBIT';
+          if (type !== expectType || Math.abs(amount - Number(original.amount)) > 0.009) {
+            throw refuse(400, 'A reversal must be the opposite entry for the same amount.');
+          }
         }
         const newDebt = round2(Number(current.currentDebt || 0) + (type === 'DEBIT' ? amount : -amount));
         const created = await tx.khataTransaction.create({
@@ -2323,7 +2383,8 @@ export function registerRoutes(app: Express): void {
             balanceAfter: newDebt,
             description: toOptionalStr(body.description),
             paymentMethod: toOptionalStr(body.paymentMethod),
-            orderId: toOptionalStr(body.orderId),
+            orderId: reversalOf ? null : toOptionalStr(body.orderId),
+            reversalOf,
             ...(body.createdAt ? { date: new Date(body.createdAt) } : {}),
           },
         });
@@ -2336,10 +2397,22 @@ export function registerRoutes(app: Express): void {
         const when = new Date(created.date);
         const today = new Date();
         const sameDay = when.toDateString() === today.toDateString();
-        if (type === 'CREDIT' && String(body.paymentMethod || '').toLowerCase() === 'cash' && sameDay) {
+        if (type === 'CREDIT' && !reversalOf && String(body.paymentMethod || '').toLowerCase() === 'cash' && sameDay) {
           const drawer = await tx.cashDrawer.findFirst({ where: { status: 'open' }, orderBy: { date: 'desc' } });
           if (drawer) {
             await tx.cashDrawer.update({ where: { id: drawer.id }, data: { cashIn: Number(drawer.cashIn || 0) + amount } });
+          }
+        }
+        // Reversing a cash payment taken today takes it back out of today's drawer
+        if (
+          original &&
+          original.type === 'CREDIT' &&
+          String(original.paymentMethod || '').toLowerCase() === 'cash' &&
+          new Date(original.date).toDateString() === today.toDateString()
+        ) {
+          const drawer = await tx.cashDrawer.findFirst({ where: { status: 'open' }, orderBy: { date: 'desc' } });
+          if (drawer) {
+            await tx.cashDrawer.update({ where: { id: drawer.id }, data: { cashIn: Math.max(0, Number(drawer.cashIn || 0) - amount) } });
           }
         }
         return created;
@@ -2370,7 +2443,7 @@ export function registerRoutes(app: Express): void {
       updatedAt: q.updatedAt instanceof Date ? q.updatedAt.toISOString() : q.updatedAt,
     };
   };
-  const QUOTE_STATUSES = ['draft', 'sent', 'converted', 'expired'];
+  const QUOTE_STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'revised', 'converted', 'expired'];
 
   app.get('/api/quotations', async (_req: Request, res: Response) => {
     try {
@@ -2418,6 +2491,7 @@ export function registerRoutes(app: Express): void {
         notes: toOptionalStr(b.notes),
         terms: toOptionalStr(b.terms),
         status,
+        revisionOf: toOptionalStr(b.revisionOf),
         updatedAt: b.updatedAt ? new Date(b.updatedAt) : new Date(),
       };
       // Quote numbers are unique. A new quote made offline on another counter with a number that is

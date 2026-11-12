@@ -12,6 +12,12 @@ import {
   Dialog,
   DialogSurface,
   Badge,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
+  MenuDivider,
 } from '@fluentui/react-components';
 import {
   Add20Regular,
@@ -28,6 +34,13 @@ import {
   Money20Regular,
   BarcodeScanner20Regular,
   ShoppingBag20Regular,
+  MoreHorizontal20Regular,
+  Send20Regular,
+  ThumbLike20Regular,
+  ThumbDislike20Regular,
+  DocumentCopy20Regular,
+  ArrowClockwise20Regular,
+  Chat20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { posApi } from '@/lib/api';
@@ -59,7 +72,7 @@ export function QuotationsView(): React.JSX.Element {
   );
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'draft' | 'sent' | 'converted' | 'expired'>('all');
+  const [selectedStatus, setSelectedStatus] = useState<'all' | Quotation['status']>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
   const [printingQuotation, setPrintingQuotation] = useState<Quotation | null>(null);
@@ -136,6 +149,54 @@ export function QuotationsView(): React.JSX.Element {
       notifyError(err.message || 'Failed to delete quotation');
     },
   });
+
+  const quoteActionMutation = useMutation({
+    mutationFn: async (action: { kind: 'status'; id: string; status: 'draft' | 'sent' | 'accepted' | 'rejected' } | { kind: 'revise' | 'duplicate'; id: string }) => {
+      if (action.kind === 'status') return { kind: action.kind, quote: await posApi.setQuotationStatus(action.id, action.status) };
+      if (action.kind === 'revise') return { kind: action.kind, quote: await posApi.reviseQuotation(action.id) };
+      return { kind: action.kind, quote: await posApi.duplicateQuotation(action.id) };
+    },
+    onSuccess: async (res) => {
+      await queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      await queryClient.refetchQueries({ queryKey: ['quotations'] });
+      if (res.kind === 'status') {
+        notifySuccess(`${res.quote.quoteNumber} marked ${res.quote.status}`);
+      } else {
+        notifySuccess(`${res.kind === 'revise' ? 'Revision' : 'Copy'} ${res.quote.quoteNumber} created as a draft`);
+        openEditModal(res.quote);
+      }
+    },
+    onError: (err: any) => notifyError(err?.message || 'Could not update the quotation'),
+  });
+
+  // WhatsApp: a short text summary of the quotation to the customer's number
+  const shareOnWhatsApp = (q: Quotation) => {
+    const digits = String(q.customerPhone || '').replace(/\D/g, '');
+    if (digits.length < 10) {
+      notifyWarning('Add the customer mobile number to the quotation first.');
+      return;
+    }
+    const phone = digits.startsWith('92') ? digits : digits.startsWith('0') ? `92${digits.slice(1)}` : `92${digits}`;
+    const lines = q.lines
+      .map((l) => `• ${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ''} × ${l.quantity} = ${formatPKR(l.quantity * l.unitPrice)}`)
+      .join('\n');
+    const text = [
+      `Assalam o Alaikum ${q.customerName},`,
+      '',
+      `Quotation ${q.quoteNumber} from ${storeSettings.storeName || 'our store'}:`,
+      lines,
+      q.discountAmount > 0 ? `Discount: -${formatPKR(q.discountAmount)}` : '',
+      `*Total: ${formatPKR(q.totalAmount)}*`,
+      `Valid until: ${new Date(q.validUntil).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+      q.terms ? `\n${q.terms}` : '',
+      '',
+      'Reply to confirm. Shukriya!',
+    ]
+      .filter((x, i, arr) => x !== '' || arr[i - 1] !== '')
+      .join('\n');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+    if (q.status === 'draft') quoteActionMutation.mutate({ kind: 'status', id: q.id, status: 'sent' });
+  };
 
   // Calculate live totals for the active form
   const subtotal = useMemo(() => {
@@ -378,12 +439,12 @@ export function QuotationsView(): React.JSX.Element {
   // KPI Calculations
   const kpiStats = useMemo(() => {
     const totalCount = quotations.length;
-    const open = quotations.filter((q) => q.status === 'draft' || q.status === 'sent');
+    const open = quotations.filter((q) => q.status === 'draft' || q.status === 'sent' || q.status === 'accepted');
     const pipelineValue = open.reduce((sum, q) => sum + Number(q.totalAmount || 0), 0);
     const converted = quotations.filter((q) => q.status === 'converted');
     const convertedValue = converted.reduce((sum, q) => sum + Number(q.totalAmount || 0), 0);
-    const expired = quotations.filter((q) => q.status === 'expired').length;
-    const pending = quotations.filter((q) => q.status === 'sent').length;
+    const expired = quotations.filter((q) => q.status === 'expired' || q.status === 'rejected').length;
+    const pending = quotations.filter((q) => q.status === 'sent' || q.status === 'accepted').length;
     const drafts = quotations.filter((q) => q.status === 'draft').length;
     // Won out of quotes that reached the customer and were decided (drafts never were)
     const decided = converted.length + expired;
@@ -421,7 +482,7 @@ export function QuotationsView(): React.JSX.Element {
       {/* ── Key numbers ── */}
       <div className={styles.kpiGrid}>
         <KpiTile label="Estimates" value={kpiStats.totalCount} icon={<DocumentBulletList20Filled />} footer={<span>{kpiStats.drafts} draft{kpiStats.drafts === 1 ? '' : 's'}</span>} />
-        <KpiTile label="Pending" value={kpiStats.pending} icon={<Timer20Regular />} footer={<span>Sent, awaiting customer</span>} />
+        <KpiTile label="Pending" value={kpiStats.pending} icon={<Timer20Regular />} footer={<span>Sent or accepted, not yet sold</span>} />
         <KpiTile
           label="Converted"
           value={kpiStats.converted}
@@ -429,7 +490,7 @@ export function QuotationsView(): React.JSX.Element {
           icon={<CheckmarkCircle20Regular />}
           footer={<span>{kpiStats.conversionRate}% won · {formatPKR(kpiStats.convertedValue)}</span>}
         />
-        <KpiTile label="Pipeline value" value={formatPKR(kpiStats.pipelineValue)} icon={<Money20Regular />} footer={<span>Open quotes (draft + sent)</span>} />
+        <KpiTile label="Pipeline value" value={formatPKR(kpiStats.pipelineValue)} icon={<Money20Regular />} footer={<span>Open quotes (draft, sent, accepted)</span>} />
       </div>
 
       {/* ── Filter & Search Bar ── */}
@@ -446,7 +507,7 @@ export function QuotationsView(): React.JSX.Element {
         </div>
 
         <div className={styles.statusTabs}>
-          {(['all', 'draft', 'sent', 'converted', 'expired'] as const).map((st) => (
+          {(['all', 'draft', 'sent', 'accepted', 'rejected', 'revised', 'converted', 'expired'] as const).map((st) => (
             <button
               key={st}
               type="button"
@@ -553,12 +614,17 @@ export function QuotationsView(): React.JSX.Element {
                         className={mergeClasses(
                           styles.statusPill,
                           quote.status === 'converted' && styles.statusConverted,
-                          quote.status === 'sent' && styles.statusSent,
-                          quote.status !== 'converted' && quote.status !== 'sent' && styles.statusPending
+                          (quote.status === 'sent' || quote.status === 'accepted') && styles.statusSent,
+                          !['converted', 'sent', 'accepted'].includes(quote.status) && styles.statusPending
                         )}
                       >
                         {quote.status}
                       </span>
+                      {quote.revisionOf && (
+                        <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>
+                          Revises {quotations.find((x) => x.id === quote.revisionOf)?.quoteNumber || 'earlier quote'}
+                        </div>
+                      )}
                       {quote.status === 'converted' && quote.convertedOrderId && (
                         <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>Order #{quote.convertedOrderId.slice(-6)}</div>
                       )}
@@ -577,7 +643,7 @@ export function QuotationsView(): React.JSX.Element {
                         </button>
 
                         {/* Open / Load in POS Counter Button */}
-                        {quote.status !== 'converted' && (
+                        {['draft', 'sent', 'accepted'].includes(quote.status) && (
                           <button
                             type="button"
                             className={styles.actionBtn}
@@ -623,7 +689,7 @@ export function QuotationsView(): React.JSX.Element {
                         )}
 
                         {/* Edit Button (a sold quotation is a record of that sale) */}
-                        {quote.status !== 'converted' && (
+                        {quote.status !== 'converted' && quote.status !== 'revised' && (
                         <button
                           type="button"
                           className={styles.actionBtn}
@@ -635,7 +701,7 @@ export function QuotationsView(): React.JSX.Element {
                         )}
 
                         {/* Delete Button */}
-                        {quote.status !== 'converted' && (
+                        {quote.status !== 'converted' && quote.status !== 'revised' && (
                         <button
                           type="button"
                           className={styles.actionBtn}
@@ -655,6 +721,58 @@ export function QuotationsView(): React.JSX.Element {
                           <Delete20Regular className={styles.deleteIcon} />
                         </button>
                         )}
+
+                        {/* More: customer response, revise, duplicate, WhatsApp */}
+                        <Menu>
+                          <MenuTrigger disableButtonEnhancement>
+                            <button type="button" className={styles.actionBtn} title="More actions">
+                              <MoreHorizontal20Regular />
+                            </button>
+                          </MenuTrigger>
+                          <MenuPopover>
+                            <MenuList>
+                              {quote.status === 'draft' && (
+                                <MenuItem icon={<Send20Regular />} onClick={() => quoteActionMutation.mutate({ kind: 'status', id: quote.id, status: 'sent' })}>
+                                  Mark as sent
+                                </MenuItem>
+                              )}
+                              {(quote.status === 'draft' || quote.status === 'sent') && (
+                                <MenuItem icon={<ThumbLike20Regular />} onClick={() => quoteActionMutation.mutate({ kind: 'status', id: quote.id, status: 'accepted' })}>
+                                  Customer accepted
+                                </MenuItem>
+                              )}
+                              {['draft', 'sent', 'accepted'].includes(quote.status) && (
+                                <MenuItem icon={<ThumbDislike20Regular />} onClick={() => quoteActionMutation.mutate({ kind: 'status', id: quote.id, status: 'rejected' })}>
+                                  Customer rejected
+                                </MenuItem>
+                              )}
+                              {quote.customerPhone && (
+                                <MenuItem icon={<Chat20Regular />} onClick={() => shareOnWhatsApp(quote)}>
+                                  Send on WhatsApp
+                                </MenuItem>
+                              )}
+                              <MenuDivider />
+                              {quote.status !== 'converted' && quote.status !== 'revised' && (
+                                <MenuItem
+                                  icon={<ArrowClockwise20Regular />}
+                                  onClick={async () => {
+                                    const ok = await confirmModal({
+                                      title: `Revise ${quote.quoteNumber}?`,
+                                      message: 'A new version (R1, R2…) is created as a draft for you to edit. This one is kept as "revised" and can no longer be sold.',
+                                      confirmLabel: 'Create revision',
+                                    });
+                                    if (ok) quoteActionMutation.mutate({ kind: 'revise', id: quote.id });
+                                  }}
+                                >
+                                  Revise (new version)
+                                </MenuItem>
+                              )}
+                              <MenuItem icon={<DocumentCopy20Regular />} onClick={() => quoteActionMutation.mutate({ kind: 'duplicate', id: quote.id })}>
+                                Duplicate as new quote
+                              </MenuItem>
+                            </MenuList>
+                          </MenuPopover>
+                        </Menu>
                       </div>
                     </td>
                   </tr>

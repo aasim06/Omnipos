@@ -27,6 +27,7 @@ import {
   Checkmark20Regular,
   Receipt20Regular,
   ArrowCounterclockwise20Regular,
+  Print20Regular,
   ShoppingBag20Regular,
   Money20Regular,
   DocumentBulletList20Regular,
@@ -44,6 +45,7 @@ import { offlineDb, LocalCustomerKhata } from '@/lib/offlineDb';
 import { parseRefundItems, returnedQtyByLine, billPriceFactor, lineRefundValue } from '@shared/refunds';
 import { normalizePhone } from '@/lib/khataRules';
 import { useAuth } from '@/features/auth/AuthContext';
+import { printCreditNote } from '@/lib/creditNotePrint';
 import { useAppToast } from '../../context/AppNotificationContext';
 
 import { useCustomersStyles, useStyles } from './customers.styles';
@@ -92,6 +94,11 @@ export function CustomersView(): React.JSX.Element {
   const [refundKhataId, setRefundKhataId] = useState<string>('');
   const [isProcessingRefund, setIsProcessingRefund] = useState(false);
   const [refundSuccessMsg, setRefundSuccessMsg] = useState<string | null>(null);
+  const [lastRefund, setLastRefund] = useState<{ refund: OrderRefund; order: Order | null } | null>(null);
+  const printNote = (refund: OrderRefund) => {
+    const order = (orders || []).find((o: any) => o.id === refund.orderId) || null;
+    if (!printCreditNote(refund, order)) notifyWarning('Allow pop-ups to print the credit note.');
+  };
 
   // Queries
   const { data: customerKhatas = [], refetch: refetchKhatas } = useQuery({
@@ -393,7 +400,7 @@ export function CustomersView(): React.JSX.Element {
         }
       });
 
-      await posApi.processOrderRefund(selectedOrderForRefund.id, {
+      const result = await posApi.processOrderRefund(selectedOrderForRefund.id, {
         returnedLines,
         refundAmount: calculatedRefundTotal,
         reason: refundReason,
@@ -415,12 +422,11 @@ export function CustomersView(): React.JSX.Element {
       ]);
 
       notifySuccess(`Refund of ${formatPKR(calculatedRefundTotal)} processed successfully! Stock replenished.`);
-      setRefundSuccessMsg(`Refund of ${formatPKR(calculatedRefundTotal)} processed successfully! Stock has been replenished and sales adjusted.`);
-      setTimeout(() => {
-        setRefundSuccessMsg(null);
-        setIsRefundModalOpen(false);
-        setSelectedOrderForRefund(null);
-      }, 2200);
+      setLastRefund({ refund: result.refund, order: selectedOrderForRefund });
+      setRefundSuccessMsg(
+        `Refund of ${formatPKR(calculatedRefundTotal)} processed${result.refund?.creditNoteNo ? ` · Credit note ${result.refund.creditNoteNo}` : ''}. Stock has been replenished.`
+      );
+      setSelectedOrderForRefund(null);
     } catch (err: any) {
       notifyError(err.message || 'Failed to process refund');
     } finally {
@@ -455,6 +461,8 @@ export function CustomersView(): React.JSX.Element {
               onClick={() => {
                 setSelectedOrderForRefund(null);
                 setRefundSearchQuery('');
+                setRefundSuccessMsg(null);
+                setLastRefund(null);
                 setIsRefundModalOpen(true);
               }}
             >
@@ -666,6 +674,7 @@ export function CustomersView(): React.JSX.Element {
                           </span>
                         </td>
                         <td className={styles.td}>
+                          {ref.creditNoteNo && <div className={styles.weight600}>{ref.creditNoteNo}</div>}
                           <span className={styles.orderIdBlue}>#{ref.orderId}</span>
                         </td>
                         <td className={styles.td}>
@@ -692,6 +701,7 @@ export function CustomersView(): React.JSX.Element {
                           <span className={styles.refundAmountDanger}>
                             -{formatPKR(ref.refundAmount)}
                           </span>
+                          <Button size="small" appearance="subtle" icon={<Print20Regular />} title="Print credit note" onClick={() => printNote(ref)} />
                         </td>
                       </tr>
                     );
@@ -831,6 +841,18 @@ export function CustomersView(): React.JSX.Element {
               {refundSuccessMsg && (
                 <div className={styles.refundSuccessMsgBox}>
                   {refundSuccessMsg}
+                  {lastRefund && (
+                    <Button
+                      size="small"
+                      appearance="primary"
+                      style={{ marginLeft: 12 }}
+                      onClick={() => {
+                        if (!printCreditNote(lastRefund.refund, lastRefund.order)) notifyWarning('Allow pop-ups to print the credit note.');
+                      }}
+                    >
+                      Print credit note
+                    </Button>
+                  )}
                 </div>
               )}
 
