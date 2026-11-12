@@ -41,6 +41,7 @@ import { Order, OrderRefund, ReturnedLineItem } from '@shared/types';
 import { formatPKR, uid } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { offlineDb, LocalCustomerKhata } from '@/lib/offlineDb';
+import { parseRefundItems, returnedQtyByLine, billPriceFactor, lineRefundValue } from '@shared/refunds';
 import { useAppToast } from '../../context/AppNotificationContext';
 
 import { useCustomersStyles, useStyles } from './customers.styles';
@@ -84,6 +85,7 @@ export function CustomersView(): React.JSX.Element {
   const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
   const [refundReason, setRefundReason] = useState('Customer Changed Mind');
   const [refundPaymentMode, setRefundPaymentMode] = useState<'cash' | 'khata' | 'card'>('cash');
+  const [refundKhataId, setRefundKhataId] = useState<string>('');
   const [isProcessingRefund, setIsProcessingRefund] = useState(false);
   const [refundSuccessMsg, setRefundSuccessMsg] = useState<string | null>(null);
 
@@ -143,6 +145,28 @@ export function CustomersView(): React.JSX.Element {
       window.removeEventListener('pos_orders_updated', handleOrdersUpdate);
     };
   }, [refetchKhatas, refetchOrders, refetchRefunds]);
+
+  const findKhataByExactName = (name?: string | null): LocalCustomerKhata | undefined => {
+    const raw = (name || '').toLowerCase().trim();
+    const clean = raw.replace(/\s*\(.*?\)\s*/g, '').trim();
+    if (!raw) return undefined;
+    return (customerKhatas || []).find((k: any) => {
+      const kn = (k.name || '').toLowerCase().trim();
+      return k.id !== 'khata_guest' && kn && (kn === raw || kn === clean);
+    }) as LocalCustomerKhata | undefined;
+  };
+  const orderWasOnKhata = (ord: any): boolean => {
+    if (ord?.paymentMode === 'khata' || ord?.orderType === 'khata') return true;
+    let split = ord?.splitPayments;
+    if (typeof split === 'string') {
+      try {
+        split = JSON.parse(split);
+      } catch {
+        split = null;
+      }
+    }
+    return ord?.paymentMode === 'split' && Number(split?.khata || 0) > 0;
+  };
 
   // Aggregated Customer Directory
   const aggregatedCustomers = useMemo(() => {
@@ -274,20 +298,27 @@ export function CustomersView(): React.JSX.Element {
     });
     setReturnQuantities(initialQtys);
 
-    // Auto-detect Khata account or active debt for customer
-    const custRaw = (ord.customerName || '').toLowerCase().trim();
-    const cleanCust = custRaw.replace(/\s*\(.*?\)\s*/g, '').trim();
-    const matchedKhata = (customerKhatas || []).find((k: any) => {
-      const kn = (k.name || '').toLowerCase().trim();
-      return kn && (custRaw === kn || cleanCust === kn || custRaw.includes(kn) || kn.includes(cleanCust));
-    });
-
-    if (ord.orderType === 'khata' || (matchedKhata && Number(matchedKhata.currentDebt || 0) > 0)) {
-      setRefundPaymentMode('khata');
-    } else {
-      setRefundPaymentMode('cash');
-    }
+    // Refund the way the bill was paid: a khata bill goes back to the khata, everything else as cash.
+    // The khata account is pre-selected only on an exact name match; the cashier confirms it.
+    const matchedKhata = findKhataByExactName(ord.customerName);
+    setRefundKhataId(matchedKhata?.id || '');
+    setRefundPaymentMode(orderWasOnKhata(ord) ? 'khata' : 'cash');
   };
+
+  // What is still returnable on the selected invoice, and at what price the customer paid
+  const refundLineInfo = useMemo(() => {
+    if (!selectedOrderForRefund) return { remaining: [] as number[], returned: [] as number[], factor: 1 };
+    const lines = (selectedOrderForRefund.lines || []) as any[];
+    const previous = (refunds || [])
+      .filter((r: any) => r.orderId === selectedOrderForRefund.id)
+      .flatMap((r: any) => parseRefundItems(r.items));
+    const returned = returnedQtyByLine(lines, previous);
+    return {
+      returned,
+      remaining: lines.map((l, i) => Math.max(0, Math.round((Number(l.quantity || 0) - returned[i]) * 1000) / 1000)),
+      factor: billPriceFactor(lines, Number(selectedOrderForRefund.totalAmount || 0)),
+    };
+  }, [selectedOrderForRefund, refunds]);
 
   // Calculate current refund total
   const calculatedRefundTotal = useMemo(() => {
@@ -296,16 +327,24 @@ export function CustomersView(): React.JSX.Element {
     (selectedOrderForRefund.lines || []).forEach((line, idx) => {
       const key = `${line.productId || line.name}_${idx}`;
       const qty = returnQuantities[key] || 0;
-      sum += qty * Number(line.unitPrice || 0);
+      sum += lineRefundValue(line as any, qty, refundLineInfo.factor);
     });
-    return sum;
-  }, [selectedOrderForRefund, returnQuantities]);
+    const unrefunded = Math.max(
+      0,
+      Number(selectedOrderForRefund.totalAmount || 0) - Number((selectedOrderForRefund as any).refundedAmount || 0)
+    );
+    return Math.min(Math.round(sum * 100) / 100, unrefunded);
+  }, [selectedOrderForRefund, returnQuantities, refundLineInfo]);
 
   // Execute Refund
   const handleProcessRefund = async () => {
     if (!selectedOrderForRefund) return;
     if (calculatedRefundTotal <= 0) {
       notifyWarning('Please select at least 1 item quantity to return/refund.');
+      return;
+    }
+    if (refundPaymentMode === 'khata' && !refundKhataId) {
+      notifyWarning('Choose the customer khata account to credit this refund to.');
       return;
     }
 
@@ -317,6 +356,7 @@ export function CustomersView(): React.JSX.Element {
         const qty = returnQuantities[key] || 0;
         if (qty > 0) {
           returnedLines.push({
+            lineIndex: idx,
             productId: line.productId,
             name: line.name,
             quantity: qty,
@@ -327,20 +367,13 @@ export function CustomersView(): React.JSX.Element {
         }
       });
 
-      const custRaw = (selectedOrderForRefund.customerName || '').toLowerCase().trim();
-      const cleanCust = custRaw.replace(/\s*\(.*?\)\s*/g, '').trim();
-      const matchedKhata = (customerKhatas || []).find((k: any) => {
-        const kn = (k.name || '').toLowerCase().trim();
-        return kn && (custRaw === kn || cleanCust === kn || custRaw.includes(kn) || kn.includes(cleanCust));
-      });
-
       await posApi.processOrderRefund(selectedOrderForRefund.id, {
         returnedLines,
         refundAmount: calculatedRefundTotal,
         reason: refundReason,
         paymentMode: refundPaymentMode,
         customerName: selectedOrderForRefund.customerName,
-        khataId: matchedKhata?.id,
+        khataId: refundPaymentMode === 'khata' ? refundKhataId : undefined,
       });
 
       // Invalidate all related caches and refetch
@@ -793,8 +826,15 @@ export function CustomersView(): React.JSX.Element {
                       eligibleOrdersForRefund.map((ord: any) => (
                         <div
                           key={ord.id}
-                          onClick={() => handleSelectOrderForRefund(ord)}
+                          onClick={() => {
+                            if (ord.stage === 'refunded') {
+                              notifyWarning('This invoice has already been fully refunded.');
+                              return;
+                            }
+                            handleSelectOrderForRefund(ord);
+                          }}
                           className={styles.orderSelectCard}
+                          style={ord.stage === 'refunded' ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
                         >
                           <div>
                             <div className={styles.orderCardHeader}>
@@ -850,7 +890,10 @@ export function CustomersView(): React.JSX.Element {
                     {(selectedOrderForRefund.lines || []).map((line, idx) => {
                       const key = `${line.productId || line.name}_${idx}`;
                       const currentReturnQty = returnQuantities[key] || 0;
-                      const maxQty = Number(line.quantity || 1);
+                      const soldQty = Number(line.quantity || 0);
+                      const alreadyReturned = refundLineInfo.returned[idx] || 0;
+                      const maxQty = refundLineInfo.remaining[idx] ?? soldQty;
+                      const paidRate = lineRefundValue(line as any, 1, refundLineInfo.factor);
 
                       return (
                         <div key={key} className={styles.orderItemRow}>
@@ -859,7 +902,9 @@ export function CustomersView(): React.JSX.Element {
                               {line.name} {line.variantLabel ? `(${line.variantLabel})` : ''}
                             </span>
                             <span className={styles.itemMeta11}>
-                              Sold Rate: {formatPKR(line.unitPrice)} | Bought Qty: {maxQty}
+                              Paid Rate: {formatPKR(paidRate)}
+                              {paidRate !== Number(line.unitPrice || 0) ? ` (list ${formatPKR(line.unitPrice)})` : ''} | Bought Qty: {soldQty}
+                              {alreadyReturned > 0 ? ` | Already returned: ${alreadyReturned}` : ''}
                             </span>
                           </div>
 
@@ -904,7 +949,7 @@ export function CustomersView(): React.JSX.Element {
 
                           <div className={styles.returnItemCostCol}>
                             <span className={currentReturnQty > 0 ? styles.returnCostActive : styles.returnCostInactive}>
-                              {formatPKR(currentReturnQty * Number(line.unitPrice || 0))}
+                              {formatPKR(lineRefundValue(line as any, currentReturnQty, refundLineInfo.factor))}
                             </span>
                           </div>
                         </div>
@@ -939,6 +984,25 @@ export function CustomersView(): React.JSX.Element {
                     />
                   </div>
 
+                  {refundPaymentMode === 'khata' && (
+                    <div className={styles.reasonGrid}>
+                      <CustomSelect
+                        label="Credit to Khata Account"
+                        value={refundKhataId}
+                        onChange={(val) => setRefundKhataId(val)}
+                        options={[
+                          { value: '', label: 'Select customer khata…' },
+                          ...(customerKhatas || [])
+                            .filter((k: any) => k.id !== 'khata_guest')
+                            .map((k: any) => ({
+                              value: k.id,
+                              label: `${k.name}${k.phone ? ` (${k.phone})` : ''} · Balance PKR ${Number(k.currentDebt || 0).toLocaleString()}`,
+                            })),
+                        ]}
+                      />
+                    </div>
+                  )}
+
                   {/* Summary Banner */}
                   <div className={styles.summaryBanner}>
                     <div className={styles.summaryLeft}>
@@ -967,7 +1031,7 @@ export function CustomersView(): React.JSX.Element {
                 <Button
                   appearance="primary"
                   className={styles.refundHeaderBtn}
-                  disabled={calculatedRefundTotal <= 0 || isProcessingRefund}
+                  disabled={calculatedRefundTotal <= 0 || isProcessingRefund || (refundPaymentMode === 'khata' && !refundKhataId)}
                   onClick={handleProcessRefund}
                 >
                   {isProcessingRefund ? 'Processing...' : `Confirm Refund (${formatPKR(calculatedRefundTotal)})`}

@@ -11,6 +11,7 @@ import {
   resizeReceiptBatch,
   syncProductNearestBatch,
 } from './stockBatches';
+import { parseRefundItems, returnedQtyByLine, billPriceFactor, lineRefundValue } from '@shared/refunds';
 import { evaluateStockAlerts, readLowStockDefault, alertLimitFor, LOW_STOCK_DEFAULT_SETTING } from './stockAlerts';
 
 export function saveBase64Image(dataUrlOrBase64: string, prefix: string): string | null {
@@ -78,6 +79,7 @@ export function refuseWithoutStockAdjust(req: Request, res: Response): boolean {
   return true;
 }
 
+const round2 = (n: number): number => Math.round(n * 100) / 100;
 const toOptionalStr = (v: unknown): string | null => (v === undefined || v === null || v === '' ? null : String(v));
 
 export function saleMovementId(orderId: string, lineIndex: number): string {
@@ -993,209 +995,226 @@ export function registerRoutes(app: Express): void {
   app.post('/api/orders/:id/refund', async (req: Request, res: Response) => {
     try {
       const orderId = String(req.params.id);
-      const { returnedLines, refundAmount, reason, paymentMode, customerName } = req.body;
+      const body = (req.body || {}) as any;
+      const { returnedLines, reason } = body;
+      const isReplay = body.replay === true;
+      const refundId = toOptionalStr(body.id);
+
+      // Idempotent: a retried / replayed return that already landed is answered, not re-applied
+      if (refundId) {
+        const existing = await (db as any).orderRefund.findUnique({ where: { id: refundId } });
+        if (existing) {
+          const order = await db.order.findUnique({ where: { id: existing.orderId }, include: { lines: true } });
+          return res.json({ ok: true, duplicate: true, refund: existing, order: presentOrder(order), updatedKhata: null });
+        }
+      }
 
       const order = await db.order.findUnique({
         where: { id: orderId },
-        include: { lines: true },
+        include: { lines: true, refunds: true },
       });
-
       if (!order) {
         return res.status(404).json({ error: `Order #${orderId} not found` });
       }
+      if (!Array.isArray(returnedLines) || returnedLines.length === 0) {
+        return res.status(400).json({ error: 'Select at least one item to return.' });
+      }
 
-      // 1. Restock products in inventory & create incoming StockMovements
-      if (Array.isArray(returnedLines) && returnedLines.length > 0) {
-        for (const line of returnedLines) {
-          if (Number(line.quantity || 1) <= 0) continue;
+      const pMode = String(body.paymentMode || 'cash').toLowerCase();
+      if (!['cash', 'card', 'khata', 'online'].includes(pMode)) {
+        return res.status(400).json({ error: `Unknown refund method "${pMode}".` });
+      }
 
-          let product: any = null;
-          if (line.productId) {
-            product = await db.product.findUnique({
-              where: { id: String(line.productId) },
+      // ── Validate quantities against what is still returnable on each line ──
+      const lines = order.lines as any[];
+      const previous = (order as any).refunds.flatMap((r: any) => parseRefundItems(r.items));
+      const alreadyReturned = returnedQtyByLine(lines, previous);
+      const factor = billPriceFactor(lines, Number(order.totalAmount || 0));
+
+      const accepted: any[] = [];
+      const pendingQty = lines.map(() => 0);
+      for (const raw of returnedLines) {
+        let qty = round3(Number(raw?.quantity || 0));
+        if (!(qty > 0)) continue;
+        let idx = Number.isInteger(raw?.lineIndex) ? Number(raw.lineIndex) : -1;
+        if (idx < 0 || idx >= lines.length) {
+          // Older clients / replays without a line index: first line of the same item with room left
+          idx = lines.findIndex(
+            (l, i) =>
+              String(l.productId || '') === String(raw?.productId || '') &&
+              (l.variantLabel || '') === (raw?.variantLabel || '') &&
+              (l.selectedUnit || '') === (raw?.selectedUnit || '') &&
+              Number(l.quantity || 0) - alreadyReturned[i] - pendingQty[i] > 0,
+          );
+        }
+        if (idx < 0) {
+          if (isReplay) continue;
+          return res.status(400).json({ error: `"${raw?.name || 'Item'}" is not on invoice #${order.id}.` });
+        }
+        const line = lines[idx];
+        const remaining = round3(Number(line.quantity || 0) - alreadyReturned[idx] - pendingQty[idx]);
+        if (qty > remaining) {
+          if (!isReplay) {
+            return res.status(400).json({
+              error: `Only ${Math.max(0, remaining)} of "${line.name}" can still be returned on invoice #${order.id}.`,
             });
           }
-          // Made-to-order items (no stock tracking) are not restocked, and their consumed
-          // recipe ingredients are not returned either.
+          qty = Math.max(0, remaining); // a replay of an old till return is capped, never rejected
+          if (qty <= 0) continue;
+        }
+        pendingQty[idx] = round3(pendingQty[idx] + qty);
+        accepted.push({
+          lineIndex: idx,
+          productId: line.productId,
+          name: line.name,
+          quantity: qty,
+          unitPrice: Number(line.unitPrice || 0),
+          variantLabel: line.variantLabel || undefined,
+          selectedUnit: line.selectedUnit || undefined,
+        });
+      }
+      if (accepted.length === 0) {
+        return res.status(400).json({ error: 'Nothing left to return on this invoice.' });
+      }
+
+      // The refund is what the customer paid for those units (bill discount included), and never
+      // more than is still unrefunded on the invoice.
+      const unrefunded = round2(Math.max(0, Number(order.totalAmount || 0) - Number((order as any).refundedAmount || 0)));
+      const computed = round2(accepted.reduce((s, l) => s + lineRefundValue(l, l.quantity, factor), 0));
+      const requested = Number(body.refundAmount);
+      const totalRefund = Math.min(unrefunded, isReplay && requested > 0 ? requested : computed);
+
+      // A khata refund needs the exact ledger account; never guess one from the customer's name
+      let khataTarget: any = null;
+      if (pMode === 'khata' && totalRefund > 0) {
+        const khataId = toOptionalStr(body.khataId);
+        if (khataId) khataTarget = await db.customerKhata.findUnique({ where: { id: khataId } });
+        if (!khataTarget) {
+          return res.status(400).json({ error: 'Choose the customer khata account to credit this refund to.' });
+        }
+      }
+
+      const custName = toOptionalStr(body.customerName) || order.customerName;
+      const createdAt = isReplay && body.createdAt ? new Date(body.createdAt) : new Date();
+
+      // ── Apply everything in one transaction: stock, drawer, ledger, refund record, order ──
+      const result = await db.$transaction(async (tx: any) => {
+        const touchedProducts: string[] = [];
+        for (const line of accepted) {
+          const product = line.productId ? await tx.product.findUnique({ where: { id: String(line.productId) } }) : null;
+          // Made-to-order items (no stock tracking) are not restocked, nor their recipe ingredients
           if (!product || product.openingStock === null || product.openingStock === undefined) continue;
           const qty = baseQuantity(line, product);
 
-          {
-            const currentStock = Number(product.openingStock ?? 0);
-            const newStock = round3(currentStock + qty);
+          const updatedVariants = line.variantLabel ? adjustVariantStockJson(product.variants, line.variantLabel, qty) : null;
+          await tx.product.update({
+            where: { id: product.id },
+            data: {
+              openingStock: round3(Number(product.openingStock ?? 0) + qty),
+              ...(updatedVariants !== null ? { variants: updatedVariants } : {}),
+              updatedAt: new Date(),
+            },
+          });
 
-            let updatedVariants = product.variants;
-            if (line.variantLabel && product.variants) {
-              try {
-                let vars = typeof product.variants === 'string' ? JSON.parse(product.variants) : product.variants;
-                if (Array.isArray(vars)) {
-                  vars = vars.map((v: any) => {
-                    if (v.label === line.variantLabel && v.stock !== undefined) {
-                      return { ...v, stock: Number(v.stock || 0) + qty };
-                    }
-                    return v;
-                  });
-                  updatedVariants = JSON.stringify(vars);
-                }
-              } catch {}
-            }
-
-            await db.product.update({
-              where: { id: product.id },
-              data: {
-                openingStock: newStock,
-                variants: updatedVariants,
-                updatedAt: new Date(),
-              },
-            });
-          }
-
-          // Create incoming Stock Movement
-          await db.stockMovement.create({
+          await tx.stockMovement.create({
             data: {
               module: order.module || 'minimart',
-              productId: String(line.productId || 'manual'),
-              productName: line.name || product?.name || 'Returned Product',
+              productId: product.id,
+              productName: line.name || product.name || 'Returned Product',
               type: 'in',
               quantity: qty,
-              unitCost: product?.costPrice || null,
+              unitCost: product.costPrice || null,
               unitPrice: Number(line.unitPrice || 0),
               reason: 'Sales Return / Customer Refund',
               note: `Return for Order #${order.id}. Reason: ${reason || 'Customer Return'}`,
-              createdBy: toOptionalStr(req.body.createdBy) || null,
-              date: new Date(),
+              createdBy: toOptionalStr(body.createdBy) || null,
+              date: createdAt,
             },
           });
 
           // Put the returned units back into the batches this order's sale drew from
-          try {
-            const saleMovements = await db.stockMovement.findMany({
-              where: { productId: product.id, type: 'out', reason: 'POS Sale', id: { startsWith: `sale_${order.id}_` } },
-            });
-            let left = qty;
-            for (const m of saleMovements) {
-              if (left <= 0) break;
-              left = round3(left - (await restoreAllocations(db, m.id, left)));
-            }
-            await syncProductNearestBatch(db, product.id);
-          } catch (batchErr) {
-            console.warn('[Refund] Batch restore failed:', batchErr);
-          }
-          await evaluateStockAlerts(db, [product.id]).catch(() => undefined);
-        }
-      }
-
-      const totalRefund = Number(refundAmount || 0);
-
-      // 2. Adjust Cash Drawer if refunded in Cash. A catch-up replay of an old refund (its order
-      //    only just reached the backend) must not change today's drawer.
-      const isReplay = (req.body as any).replay === true;
-      const pMode = String(paymentMode || 'cash').toLowerCase();
-      if (pMode === 'cash' && totalRefund > 0 && !isReplay) {
-        try {
-          const todayDrawer = await db.cashDrawer.findFirst({
-            where: { status: 'open' },
-            orderBy: { date: 'desc' },
+          const saleMovements = await tx.stockMovement.findMany({
+            where: { productId: product.id, type: 'out', reason: 'POS Sale', id: { startsWith: `sale_${order.id}_` } },
           });
-          if (todayDrawer) {
-            await db.cashDrawer.update({
-              where: { id: todayDrawer.id },
-              data: {
-                cashOut: (todayDrawer.cashOut || 0) + totalRefund,
-              },
-            });
+          let left = qty;
+          for (const m of saleMovements) {
+            if (left <= 0) break;
+            left = round3(left - (await restoreAllocations(tx, m.id, left)));
           }
-        } catch (drawerErr) {
-          console.warn('[Refund] Cash Drawer update error:', drawerErr);
+          await syncProductNearestBatch(tx, product.id);
+          touchedProducts.push(product.id);
         }
-      }
 
-      // 3. Adjust Customer Khata if refunded to Khata account or if order was on Khata
-      const custName = customerName || order.customerName;
-      let updatedKhata: any = null;
-      if ((pMode === 'khata' || order.orderType === 'khata' || (req.body as any).khataId) && totalRefund > 0) {
-        try {
-          let khata: any = null;
-          const targetKhataId = (req.body as any).khataId;
-          if (targetKhataId) {
-            khata = await db.customerKhata.findUnique({ where: { id: String(targetKhataId) } });
-          }
-          if (!khata && custName) {
-            khata = await db.customerKhata.findFirst({
-              where: { name: custName },
-            });
-            if (!khata) {
-              const cleanName = custName.replace(/\s*\(.*?\)\s*/g, '').trim();
-              khata = await db.customerKhata.findFirst({
-                where: { name: cleanName },
-              });
-            }
-            if (!khata) {
-              const allKhatas = await db.customerKhata.findMany();
-              const cn = custName.toLowerCase().trim();
-              khata = allKhatas.find((k: any) => {
-                const kn = (k.name || '').toLowerCase().trim();
-                return kn && (cn === kn || cn.includes(kn) || kn.includes(cn));
-              }) || null;
-            }
-          }
-
-          if (khata) {
-            const newDebt = Math.max(0, (khata.currentDebt || 0) - totalRefund);
-            updatedKhata = await db.customerKhata.update({
-              where: { id: khata.id },
-              data: { currentDebt: newDebt, updatedAt: new Date() },
-            });
-            await db.khataTransaction.create({
-              data: {
-                khataId: khata.id,
-                type: 'CREDIT',
-                amount: totalRefund,
-                balanceAfter: newDebt,
-                description: `Refund Reversal - Invoice #${order.id}`,
-                orderId: order.id,
-                date: new Date(),
-              },
+        // Cash refunds leave today's drawer. A catch-up replay of an old return must not.
+        if (pMode === 'cash' && totalRefund > 0 && !isReplay) {
+          const drawer = await tx.cashDrawer.findFirst({ where: { status: 'open' }, orderBy: { date: 'desc' } });
+          if (drawer) {
+            await tx.cashDrawer.update({
+              where: { id: drawer.id },
+              data: { cashOut: Number(drawer.cashOut || 0) + totalRefund },
             });
           }
-        } catch (khataErr) {
-          console.warn('[Refund] Khata update error:', khataErr);
         }
-      }
 
-      // 4. Create OrderRefund record
-      const refund = await (db as any).orderRefund.create({
-        data: {
-          orderId: order.id,
-          customerName: custName || 'Walk-In Customer',
-          refundAmount: totalRefund,
-          paymentMode: pMode,
-          reason: reason || 'Customer Return',
-          items: JSON.stringify(returnedLines || []),
-          ...(isReplay && (req.body as any).createdAt ? { createdAt: new Date((req.body as any).createdAt) } : {}),
-        },
+        // Khata refunds credit the customer's ledger (a credit beyond the debt becomes an advance)
+        let updatedKhata: any = null;
+        if (khataTarget) {
+          const fresh = await tx.customerKhata.findUnique({ where: { id: khataTarget.id } });
+          const newDebt = round2(Number(fresh.currentDebt || 0) - totalRefund);
+          updatedKhata = await tx.customerKhata.update({
+            where: { id: fresh.id },
+            data: { currentDebt: newDebt, updatedAt: new Date() },
+          });
+          await tx.khataTransaction.create({
+            data: {
+              ...(refundId ? { id: `ktx_${refundId}` } : {}),
+              khataId: fresh.id,
+              type: 'CREDIT',
+              amount: totalRefund,
+              balanceAfter: newDebt,
+              description: `Sales return - Invoice #${order.id}${reason ? ` (${reason})` : ''}`,
+              orderId: order.id,
+              date: createdAt,
+            },
+          });
+        }
+
+        const refund = await tx.orderRefund.create({
+          data: {
+            ...(refundId ? { id: refundId } : {}),
+            orderId: order.id,
+            customerName: custName || 'Walk-In Customer',
+            refundAmount: totalRefund,
+            paymentMode: pMode,
+            reason: reason || 'Customer Return',
+            items: JSON.stringify(accepted),
+            createdAt,
+          },
+        });
+
+        // Fully refunded once every unit is back (or the whole bill amount is repaid)
+        const newRefundedTotal = round2(Number((order as any).refundedAmount || 0) + totalRefund);
+        const allUnitsBack = lines.every((l, i) => alreadyReturned[i] + pendingQty[i] >= Number(l.quantity || 0));
+        const updatedOrder = await tx.order.update({
+          where: { id: order.id },
+          data: {
+            refundedAmount: newRefundedTotal,
+            stage: allUnitsBack || newRefundedTotal >= Number(order.totalAmount || 0) ? 'refunded' : order.stage,
+            updatedAt: new Date(),
+          } as any,
+          include: { lines: true },
+        });
+
+        return { refund, updatedOrder, updatedKhata, touchedProducts };
       });
 
-      // 5. Update Order status & refundedAmount
-      const prevRefunded = Number((order as any).refundedAmount || 0);
-      const newRefundedTotal = prevRefunded + totalRefund;
-      const isFullyRefunded = newRefundedTotal >= (order.totalAmount || 0);
-
-      const updatedOrder = await db.order.update({
-        where: { id: order.id },
-        data: {
-          refundedAmount: newRefundedTotal,
-          stage: isFullyRefunded ? 'refunded' : order.stage,
-          updatedAt: new Date(),
-        } as any,
-        include: { lines: true },
-      });
+      await evaluateStockAlerts(db, result.touchedProducts).catch(() => undefined);
 
       res.json({
         ok: true,
-        refund,
-        order: updatedOrder,
-        updatedKhata,
+        refund: result.refund,
+        order: presentOrder(result.updatedOrder),
+        updatedKhata: result.updatedKhata,
       });
     } catch (err: any) {
       console.error('[Refund] Error processing refund:', err);
@@ -2125,6 +2144,20 @@ export function registerRoutes(app: Express): void {
   });
 
   // ── Customer Khata (Ledger) ──
+  // Writes are idempotent on the client's ids (accounts and ledger entries) because the till posts
+  // them directly and may also replay them from its sync queue. The balance only ever moves through
+  // ledger entries, so a profile edit can never rewrite what a customer owes.
+  const khataProfile = (b: any) => {
+    const out: Record<string, unknown> = {};
+    if (b.name !== undefined) out.name = String(b.name || '').trim() || 'Unnamed Customer';
+    for (const k of ['phone', 'address', 'cnic', 'note']) if (b[k] !== undefined) out[k] = toOptionalStr(b[k]);
+    if (b.customerType !== undefined) out.customerType = b.customerType === 'wholesale' ? 'wholesale' : 'retail';
+    if (b.creditLimit !== undefined) out.creditLimit = Math.max(0, Number(b.creditLimit) || 0);
+    if (b.dueDays !== undefined) out.dueDays = Math.max(0, Math.round(Number(b.dueDays) || 0));
+    return out;
+  };
+  const presentKhataTx = (t: any) => (t ? { ...t, createdAt: t.date } : t);
+
   app.get('/api/khata', async (_req: Request, res: Response) => {
     try {
       const khatas = await db.customerKhata.findMany({
@@ -2139,15 +2172,85 @@ export function registerRoutes(app: Express): void {
 
   app.post('/api/khata', async (req: Request, res: Response) => {
     try {
-      const khata = await db.customerKhata.create({
-        data: {
-          ...req.body,
-          currentDebt: Number(req.body.currentDebt || 0),
-          creditLimit: Number(req.body.creditLimit || 50000),
-          updatedAt: new Date(),
-        },
+      const body = (req.body || {}) as any;
+      const id = toOptionalStr(body.id);
+      if (id) {
+        const existing = await db.customerKhata.findUnique({ where: { id } });
+        if (existing) return res.json(existing);
+      }
+      const openingDebt = round2(Number(body.currentDebt) || 0);
+      const khata = await db.$transaction(async (tx: any) => {
+        const created = await tx.customerKhata.create({
+          data: {
+            ...(id ? { id } : {}),
+            name: 'Unnamed Customer',
+            creditLimit: 50000,
+            ...khataProfile(body),
+            currentDebt: openingDebt,
+            updatedAt: new Date(),
+          },
+        });
+        // The opening balance is a ledger line of its own, so the passbook adds up to the balance
+        if (openingDebt !== 0) {
+          await tx.khataTransaction.create({
+            data: {
+              id: `ktx_open_${created.id}`,
+              khataId: created.id,
+              type: openingDebt > 0 ? 'DEBIT' : 'CREDIT',
+              amount: Math.abs(openingDebt),
+              balanceAfter: openingDebt,
+              description: 'Opening balance',
+              paymentMethod: 'opening',
+            },
+          });
+        }
+        return created;
       });
       res.json(khata);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/khata/:id', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      const existing = await db.customerKhata.findUnique({ where: { id } });
+      if (!existing) return res.status(404).json({ error: 'Khata account not found' });
+      const khata = await db.customerKhata.update({
+        where: { id },
+        data: { ...khataProfile(req.body || {}), updatedAt: new Date() },
+      });
+      res.json(khata);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/khata/:id', async (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      const existing = await db.customerKhata.findUnique({ where: { id } });
+      if (!existing) return res.json({ success: true });
+      if (Math.abs(Number(existing.currentDebt || 0)) >= 0.01) {
+        return res.status(409).json({
+          error: `This account still has a balance of PKR ${Number(existing.currentDebt).toLocaleString()}. Settle it before deleting.`,
+        });
+      }
+      await db.customerKhata.delete({ where: { id } });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/khata/:id/transactions', async (req: Request, res: Response) => {
+    try {
+      const entries = await db.khataTransaction.findMany({
+        where: { khataId: String(req.params.id) },
+        orderBy: { date: 'desc' },
+      });
+      res.json(entries.map(presentKhataTx));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -2156,31 +2259,52 @@ export function registerRoutes(app: Express): void {
   app.post('/api/khata/:id/transaction', async (req: Request, res: Response) => {
     try {
       const khataId = String(req.params.id);
-      const { type, amount, description, orderId } = req.body; // type: "DEBIT" | "CREDIT"
-      const current = await db.customerKhata.findUniqueOrThrow({ where: { id: khataId } });
-      const numAmount = Number(amount);
-      const newDebt = type === 'DEBIT' ? current.currentDebt + numAmount : current.currentDebt - numAmount;
+      const body = (req.body || {}) as any;
+      const entryId = toOptionalStr(body.id);
+      const type = String(body.type || '').toUpperCase();
+      const amount = round2(Number(body.amount));
+      if (type !== 'DEBIT' && type !== 'CREDIT') {
+        return res.status(400).json({ error: 'Entry type must be DEBIT or CREDIT.' });
+      }
+      if (!(amount > 0)) {
+        return res.status(400).json({ error: 'Amount must be greater than zero.' });
+      }
 
-      const [entry] = await db.$transaction([
-        db.khataTransaction.create({
+      const entry = await db.$transaction(async (tx: any) => {
+        if (entryId) {
+          const dup = await tx.khataTransaction.findUnique({ where: { id: entryId } });
+          if (dup) return dup; // already applied: a retry must not move the balance again
+        }
+        const current = await tx.customerKhata.findUnique({ where: { id: khataId } });
+        if (!current) {
+          const e: any = new Error('Khata account not found');
+          e.status = 404;
+          throw e;
+        }
+        const newDebt = round2(Number(current.currentDebt || 0) + (type === 'DEBIT' ? amount : -amount));
+        const created = await tx.khataTransaction.create({
           data: {
+            ...(entryId ? { id: entryId } : {}),
             khataId,
             type,
-            amount: numAmount,
+            amount,
             balanceAfter: newDebt,
-            description,
-            orderId,
+            description: toOptionalStr(body.description),
+            paymentMethod: toOptionalStr(body.paymentMethod),
+            orderId: toOptionalStr(body.orderId),
+            ...(body.createdAt ? { date: new Date(body.createdAt) } : {}),
           },
-        }),
-        db.customerKhata.update({
+        });
+        await tx.customerKhata.update({
           where: { id: khataId },
           data: { currentDebt: newDebt, updatedAt: new Date() },
-        }),
-      ]);
+        });
+        return created;
+      });
 
-      res.json(entry);
+      res.json(presentKhataTx(entry));
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      res.status(err?.status || 500).json({ error: err.message });
     }
   });
 

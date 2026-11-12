@@ -1007,6 +1007,7 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
               amount: debitAmt,
               paymentMethod: 'credit',
               description: `POS Bill #${order.id.slice(-6)} (${cart.length} items)`,
+              orderId: order.id,
             });
           } catch (e) {
             console.error('[Khata] Failed to record credit transaction:', e);

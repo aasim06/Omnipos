@@ -105,7 +105,10 @@ model CustomerKhata {
   name         String
   phone        String?
   address      String?
-  currentDebt  Float              @default(0) // Kitna udhaar baki hai
+  cnic         String?
+  customerType String?            @default("retail") // "retail" | "wholesale"
+  dueDays      Int?               @default(30)
+  currentDebt  Float              @default(0) // Kitna udhaar baki hai (negative = advance)
   creditLimit  Float?             @default(50000)
   note         String?
   createdAt    DateTime           @default(now())
@@ -122,6 +125,7 @@ model KhataTransaction {
   amount       Float
   balanceAfter Float
   description  String?
+  paymentMethod String?
   orderId      String?
   date         DateTime      @default(now())
 }

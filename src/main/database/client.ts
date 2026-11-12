@@ -397,6 +397,20 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     }
   }
 
+  // Customer profile fields the khata screens send (account creation was rejected without them)
+  for (const [table, col] of [
+    ["CustomerKhata", `"cnic" TEXT`],
+    ["CustomerKhata", `"customerType" TEXT DEFAULT 'retail'`],
+    ["CustomerKhata", `"dueDays" INTEGER DEFAULT 30`],
+    ["KhataTransaction", `"paymentMethod" TEXT`],
+  ]) {
+    try {
+      await database.$executeRawUnsafe(`ALTER TABLE "${table}" ADD COLUMN ${col}`);
+    } catch {
+      /* Ignore if column already exists */
+    }
+  }
+
   try {
     await database.$executeRawUnsafe(`ALTER TABLE "OrderItem" ADD COLUMN "selectedUnit" TEXT`);
   } catch {

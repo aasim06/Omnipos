@@ -104,6 +104,8 @@ export interface Order {
 }
 
 export interface ReturnedLineItem {
+  /** Index of the line on the invoice; lets the backend check what is still returnable */
+  lineIndex?: number;
   productId: string;
   name: string;
   quantity: number;
@@ -119,6 +121,8 @@ export interface OrderRefund {
   refundAmount: number;
   paymentMode: 'cash' | 'khata' | 'card' | string;
   reason?: string;
+  /** Ledger account credited when paymentMode is khata */
+  khataId?: string;
   items: ReturnedLineItem[] | string;
   createdAt: string;
 }

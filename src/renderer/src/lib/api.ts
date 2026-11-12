@@ -937,6 +937,8 @@ export const posApi = {
    */
   async saveKhata(khata: Partial<LocalCustomerKhata>): Promise<LocalCustomerKhata> {
     const isNew = !khata.id;
+    // The balance moves only through ledger entries; editing a profile keeps what is owed
+    const prior = isNew ? undefined : await offlineDb.khatas.get(khata.id!);
     const record: LocalCustomerKhata = {
       id: khata.id || `khata_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       name: khata.name || 'Unnamed Customer',
@@ -944,8 +946,8 @@ export const posApi = {
       address: khata.address || '',
       cnic: khata.cnic || '',
       customerType: khata.customerType || 'retail',
-      currentDebt: Number(khata.currentDebt || 0),
-      creditLimit: Number(khata.creditLimit || 50000),
+      currentDebt: prior ? Number(prior.currentDebt || 0) : Number(khata.currentDebt || 0),
+      creditLimit: khata.creditLimit === undefined ? 50000 : Number(khata.creditLimit || 0),
       dueDays: Number(khata.dueDays || 30),
       note: khata.note || '',
       synced: 0,
@@ -955,6 +957,20 @@ export const posApi = {
 
     // 1. Instant Dexie Write
     await offlineDb.khatas.put(record);
+    // An opening balance is a passbook line of its own (same id the backend gives it)
+    if (isNew && record.currentDebt !== 0) {
+      await offlineDb.khataTransactions.put({
+        id: `ktx_open_${record.id}`,
+        khataId: record.id,
+        type: record.currentDebt > 0 ? 'DEBIT' : 'CREDIT',
+        amount: Math.abs(record.currentDebt),
+        balanceAfter: record.currentDebt,
+        description: 'Opening balance',
+        paymentMethod: 'opening',
+        createdAt: record.createdAt || new Date().toISOString(),
+        synced: 0,
+      });
+    }
 
     // 2. Queue for background cloud sync
     await syncEngine.enqueue('khata', record.id, isNew ? 'CREATE' : 'UPDATE', record);
@@ -998,11 +1014,14 @@ export const posApi = {
     amount: number;
     paymentMethod?: string;
     description?: string;
+    orderId?: string;
   }): Promise<LocalKhataTx> {
-    const amt = Number(params.amount || 0);
+    const amt = Math.round(Number(params.amount || 0) * 100) / 100;
+    if (!(amt > 0)) throw new Error('Amount must be greater than zero.');
     const existing = await offlineDb.khatas.get(params.khataId);
     const prevDebt = Number(existing?.currentDebt || 0);
-    const newDebt = params.type === 'DEBIT' ? prevDebt + amt : Math.max(0, prevDebt - amt);
+    // Same arithmetic as the backend: paying more than is owed leaves an advance (negative balance)
+    const newDebt = Math.round((params.type === 'DEBIT' ? prevDebt + amt : prevDebt - amt) * 100) / 100;
 
     // 1. Update customer debt immediately in Dexie
     if (existing) {
@@ -1022,6 +1041,7 @@ export const posApi = {
       balanceAfter: newDebt,
       description: params.description || (params.type === 'DEBIT' ? 'POS Sale (Credit)' : 'Khata Payment'),
       paymentMethod: params.paymentMethod || 'cash',
+      orderId: params.orderId,
       createdAt: new Date().toISOString(),
       synced: 0,
     };
@@ -1049,12 +1069,8 @@ export const posApi = {
           const res = await fetch(`${base}/api/khata/${params.khataId}/transaction`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...tenantHeaders },
-            body: JSON.stringify({
-              type: params.type,
-              amount: amt,
-              paymentMethod: params.paymentMethod || 'cash',
-              description: params.description,
-            }),
+            // The entry id makes this idempotent with the queued copy of the same entry
+            body: JSON.stringify(txRecord),
             signal: controller.signal,
           });
           clearTimeout(timeoutId);
@@ -1073,6 +1089,12 @@ export const posApi = {
    * Delete Khata account offline-first
    */
   async deleteKhata(id: string): Promise<void> {
+    const existing = await offlineDb.khatas.get(id);
+    if (existing && Math.abs(Number(existing.currentDebt || 0)) >= 0.01) {
+      throw new Error(
+        `Is account par abhi PKR ${Number(existing.currentDebt).toLocaleString()} ka balance hai. Delete karne se pehle settle karein.`
+      );
+    }
     try {
       await offlineDb.khatas.delete(id);
       await offlineDb.khataTransactions.where('khataId').equals(id).delete();
@@ -1210,7 +1232,11 @@ export const posApi = {
   },
 
   /**
-   * Process Order Refund: Restocks inventory, updates sales, and logs movement
+   * Process a sales return. The backend is asked first: it checks the quantities still returnable,
+   * prices the return at what the customer paid, and applies stock, drawer, ledger and order in one
+   * transaction. A refusal (e.g. over-return) is thrown to the caller and nothing changes locally.
+   * Only when the backend cannot be reached is the return applied on this till alone; the order is
+   * then flagged unsynced so the catch-up resync replays it (by the same refund id, so only once).
    */
   async processOrderRefund(orderId: string, payload: {
     returnedLines: ReturnedLineItem[];
@@ -1220,156 +1246,142 @@ export const posApi = {
     customerName?: string;
     khataId?: string;
   }): Promise<{ ok: boolean; refund: OrderRefund; order: Order; updatedKhata?: LocalCustomerKhata }> {
-    // 1. Instant local Dexie stock restoration
-    try {
-      for (const line of payload.returnedLines) {
-        const p = await offlineDb.products.get(line.productId);
-        if (p && p.openingStock !== undefined && p.openingStock !== null) {
-          const returnedQty = baseQuantity(line, p); // a returned Carton restocks its pieces
-          const newStock = (p.openingStock || 0) + returnedQty;
-          const updatedVariants = applyVariantStockDelta(p, line.variantLabel, returnedQty);
-          await offlineDb.products.update(p.id, {
-            openingStock: newStock,
-            ...(updatedVariants ? { variants: updatedVariants } : {}),
-          });
-        }
-      }
-    } catch (dexErr) {
-      console.warn('[OfflineDB] local restock error:', dexErr);
+    const refundId = `ref_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+    const mode = (payload.paymentMode || 'cash').toLowerCase();
+    const khataId = mode === 'khata' ? payload.khataId : undefined;
+    if (mode === 'khata' && !khataId) {
+      throw new Error('Choose the customer khata account to credit this refund to.');
     }
 
-    // 2. Instant local Dexie Khata reversal if applicable
-    const isKhataRefund = (payload.paymentMode || '').toLowerCase() === 'khata';
-    let matchedKhata: LocalCustomerKhata | undefined;
+    // 1. Backend first
+    let data: any = null;
+    let refusal: string | null = null;
     try {
-      if (payload.khataId) {
-        matchedKhata = await offlineDb.khatas.get(payload.khataId);
-      }
-      if (!matchedKhata && payload.customerName) {
-        const rawName = payload.customerName.trim().toLowerCase();
-        const cleanName = rawName.replace(/\s*\(.*?\)\s*/g, '').trim();
-        const allKhatas = await offlineDb.khatas.toArray();
-        matchedKhata = allKhatas.find((k) => {
-          const kn = (k.name || '').trim().toLowerCase();
-          return kn && (kn === rawName || kn === cleanName || rawName.includes(kn) || kn.includes(rawName));
-        });
-      }
-
-      // Check if order was originally on Khata
-      let orderWasKhata = false;
-      try {
-        const localOrd = await offlineDb.orders.get(orderId);
-        if (localOrd && (localOrd.orderType === 'khata' || (localOrd as any).paymentMode === 'khata')) {
-          orderWasKhata = true;
-        }
-      } catch {}
-
-      const shouldAdjustKhata = isKhataRefund || orderWasKhata || (matchedKhata && Number(matchedKhata.currentDebt || 0) > 0);
-      if (matchedKhata && shouldAdjustKhata && payload.refundAmount > 0) {
-        const prevDebt = Number(matchedKhata.currentDebt || 0);
-        const newDebt = Math.max(0, prevDebt - payload.refundAmount);
-        await offlineDb.khatas.update(matchedKhata.id, {
-          currentDebt: newDebt,
-          updatedAt: new Date().toISOString(),
-          synced: 0,
-        });
-
-        const txRecord: LocalKhataTx = {
-          id: `tx_ref_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-          khataId: matchedKhata.id,
-          type: 'CREDIT',
-          amount: payload.refundAmount,
-          balanceAfter: newDebt,
-          description: `Refund Reversal - Invoice #${orderId} (${payload.reason || 'Customer Return'})`,
-          paymentMethod: payload.paymentMode || 'khata',
-          createdAt: new Date().toISOString(),
-          synced: 0,
-        };
-        await offlineDb.khataTransactions.put(txRecord);
-
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('pos_khata_updated', { detail: { khataId: matchedKhata.id, newDebt } }));
-        }
-      }
-    } catch (khataLocalErr) {
-      console.warn('[OfflineDB] local khata refund adjustment error:', khataLocalErr);
-    }
-
-    // 3. Call backend API
-    const base = await resolveApiUrl();
-    const tenantHeaders = await getTenantHeaders();
-    let data: any = { ok: true };
-    try {
-      const res = await fetch(`${base}/api/orders/${orderId}/refund`, {
+      const base = await resolveApiUrl();
+      const tenantHeaders = await getTenantHeaders();
+      const res = await fetch(`${base}/api/orders/${encodeURIComponent(orderId)}/refund`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...tenantHeaders,
-        },
-        body: JSON.stringify({
-          ...payload,
-          khataId: matchedKhata?.id || payload.khataId,
-        }),
+        headers: { 'Content-Type': 'application/json', ...tenantHeaders },
+        body: JSON.stringify({ ...payload, id: refundId, paymentMode: mode, khataId }),
       });
-
       if (res.ok) {
         data = await res.json();
+      } else if (res.status >= 400 && res.status < 500) {
+        const err = await res.json().catch(() => ({}));
+        refusal = err?.error || `Return refused (${res.status})`;
       }
+      // 5xx: treat like offline below
     } catch (netErr) {
-      console.warn('[Refund] Remote push failed or offline:', netErr);
+      console.warn('[Refund] Backend unreachable, applying locally:', netErr);
     }
+    if (refusal) throw new Error(refusal);
 
-    // 4. Save refund to local Dexie
-    if (data.refund) {
-      try {
-        await offlineDb.refunds.put(data.refund);
-      } catch {}
-    } else {
-      try {
-        await offlineDb.refunds.put({
-          id: `ref_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    const online = !!data?.refund;
+    const refund: OrderRefund = online
+      ? { ...data.refund, khataId }
+      : {
+          id: refundId,
           orderId,
           customerName: payload.customerName || 'Walk-In Customer',
           refundAmount: payload.refundAmount,
-          paymentMode: payload.paymentMode || 'cash',
+          paymentMode: mode,
           reason: payload.reason || 'Customer Return',
+          khataId,
           items: payload.returnedLines,
           createdAt: new Date().toISOString(),
-        });
-      } catch {}
+        };
+    const amount = Number(refund.refundAmount || 0);
+    const returned: ReturnedLineItem[] = online
+      ? (() => { try { return typeof data.refund.items === 'string' ? JSON.parse(data.refund.items) : data.refund.items; } catch { return payload.returnedLines; } })()
+      : payload.returnedLines;
+
+    // 2. Restock this till (a returned Carton restocks its pieces). A duplicate was applied before.
+    if (!data?.duplicate) {
+      try {
+        for (const line of returned) {
+          const p = await offlineDb.products.get(line.productId);
+          if (p && p.openingStock !== undefined && p.openingStock !== null) {
+            const returnedQty = baseQuantity(line, p);
+            const updatedVariants = applyVariantStockDelta(p, line.variantLabel, returnedQty);
+            await offlineDb.products.update(p.id, {
+              openingStock: (p.openingStock || 0) + returnedQty,
+              ...(updatedVariants ? { variants: updatedVariants } : {}),
+            });
+          }
+        }
+      } catch (dexErr) {
+        console.warn('[OfflineDB] local restock error:', dexErr);
+      }
     }
 
-    // 5. Update order in local Dexie
+    // 3. Khata: only a refund paid out *to the khata* touches the ledger (cash/card refunds never do)
+    if (khataId && amount > 0 && !data?.duplicate) {
+      try {
+        const local = await offlineDb.khatas.get(khataId);
+        const newDebt = data?.updatedKhata
+          ? Number(data.updatedKhata.currentDebt || 0)
+          : Math.round((Number(local?.currentDebt || 0) - amount) * 100) / 100;
+        if (local) {
+          await offlineDb.khatas.update(khataId, {
+            currentDebt: newDebt,
+            updatedAt: new Date().toISOString(),
+            synced: online ? 1 : 0,
+          });
+        }
+        await offlineDb.khataTransactions.put({
+          id: `ktx_${refund.id}`,
+          khataId,
+          type: 'CREDIT',
+          amount,
+          balanceAfter: newDebt,
+          description: `Sales return - Invoice #${orderId}${payload.reason ? ` (${payload.reason})` : ''}`,
+          paymentMethod: 'khata',
+          orderId,
+          createdAt: refund.createdAt,
+          synced: online ? 1 : 0,
+        });
+      } catch (khataLocalErr) {
+        console.warn('[OfflineDB] local khata refund adjustment error:', khataLocalErr);
+      }
+    }
+
+    // 4. Refund log
     try {
-      const existingOrd = await offlineDb.orders.get(orderId);
-      const prevRefunded = Number(existingOrd?.refundedAmount || 0);
-      const newRefundedTotal = prevRefunded + payload.refundAmount;
-      const isFullyRefunded = existingOrd && existingOrd.totalAmount ? newRefundedTotal >= existingOrd.totalAmount : true;
-      await offlineDb.orders.update(orderId, {
-        refundedAmount: newRefundedTotal,
-        stage: isFullyRefunded ? 'refunded' : existingOrd?.stage || 'billed',
-        updatedAt: new Date().toISOString(),
-      });
+      await offlineDb.refunds.put(refund);
     } catch {}
 
-    // 6. Update Khata if backend returned updatedKhata
-    if (data.updatedKhata) {
-      try {
-        await offlineDb.khatas.put({
-          ...data.updatedKhata,
-          synced: 1,
+    // 5. Order: take the backend's figures; offline, compute them and queue the catch-up
+    let order: any = online ? data.order : null;
+    try {
+      const existingOrd = await offlineDb.orders.get(orderId);
+      if (online && data.order) {
+        if (existingOrd) {
+          await offlineDb.orders.update(orderId, {
+            refundedAmount: Number(data.order.refundedAmount || 0),
+            stage: data.order.stage,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      } else if (existingOrd) {
+        const newRefundedTotal = Number(existingOrd.refundedAmount || 0) + amount;
+        const isFullyRefunded = existingOrd.totalAmount ? newRefundedTotal >= existingOrd.totalAmount - 0.01 : true;
+        await offlineDb.orders.update(orderId, {
+          refundedAmount: newRefundedTotal,
+          stage: isFullyRefunded ? 'refunded' : existingOrd.stage || 'billed',
+          updatedAt: new Date().toISOString(),
+          synced: 0, // resyncPendingOrders re-sends the (known) order and replays this return once
         });
-      } catch {}
-    }
+        order = await offlineDb.orders.get(orderId);
+      }
+    } catch {}
 
-    // Notify all listeners
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('pos_orders_updated'));
       window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
       window.dispatchEvent(new CustomEvent('pos_khata_updated'));
     }
 
-    return data;
+    return { ok: true, refund, order, updatedKhata: data?.updatedKhata };
   },
 
   /**
@@ -1863,6 +1875,8 @@ export const posApi = {
               reason: r.reason,
               paymentMode: r.paymentMode,
               customerName: r.customerName,
+              khataId: (r as any).khataId,
+              id: r.id,
               replay: true,
               createdAt: r.createdAt,
             }),

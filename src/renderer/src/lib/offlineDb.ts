@@ -42,6 +42,7 @@ export interface LocalKhataTx {
   balanceAfter?: number;
   description?: string;
   paymentMethod?: string;
+  orderId?: string;
   createdAt: string;
   synced?: 0 | 1;
 }

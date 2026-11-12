@@ -217,10 +217,17 @@ class SyncEngine {
             }
           } catch (err: any) {
             console.warn(`[SyncEngine] Failed to sync ${item.entity} ${item.entityId}:`, err);
+            // The server refused this item outright (bad data, unknown route). Retrying it can never
+            // succeed, so park it as failed and carry on: one bad item must not hold up every sale
+            // queued after it.
+            const status = Number(err?.status || 0);
+            const permanent = status >= 400 && status < 500 && status !== 408 && status !== 429;
             await offlineDb.syncQueue.update(item.id!, {
               retryCount: item.retryCount + 1,
               lastError: err?.message || 'Network error',
+              ...(permanent ? { status: 'failed' as const } : {}),
             });
+            if (permanent) continue;
             // Stop pushing rest if network dropped mid-way
             break;
           }
@@ -288,7 +295,9 @@ class SyncEngine {
       if (item.action === 'DELETE' && (res.status === 404 || res.status === 405)) {
         return;
       }
-      throw new Error(`Server responded with ${res.status}: ${res.statusText}`);
+      const err: any = new Error(`Server responded with ${res.status}: ${res.statusText}`);
+      err.status = res.status;
+      throw err;
     }
   }
 

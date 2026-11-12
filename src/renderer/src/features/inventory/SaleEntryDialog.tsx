@@ -191,6 +191,7 @@ export function SaleEntryDialog({ isOpen, onClose }: Props): React.JSX.Element {
           amount: total,
           paymentMethod: 'credit',
           description: `Sale entry #${order.id.slice(-6)} (${cartLines.length} items)`,
+          orderId: order.id,
         } as any);
       }
 
