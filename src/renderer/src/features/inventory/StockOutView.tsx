@@ -47,23 +47,24 @@ import { useAppToast, useConfirmDialog } from '../../context/AppNotificationCont
 import { useAuth } from '@/features/auth/AuthContext';
 import { vendorStorage } from './vendorStorage';
 
-/** Stock sent back to the supplier: reduces stock AND what we owe that vendor. */
-const RETURN_TO_VENDOR = 'Return to Vendor';
+import {
+  RETURN_TO_VENDOR,
+  PRODUCT_RECALL,
+  RETURN_SUB_REASONS,
+  reasonBusinessFor,
+  reasonOptions,
+  reasonInfo,
+  defaultReasonFor,
+  valueLabelFor,
+  reasonColor,
+} from './stockOutReasons';
+
+/** True when this entry sent goods back to a vendor who was credited for them. */
+const creditsVendor = (reason?: string | null, vendorName?: string | null) => !!reasonInfo(reason).vendor && !!vendorName;
 
 /** Value credited back to the vendor for a purchase-return movement. */
 const returnValue = (m: { quantity?: number; unitCost?: number | null }) =>
   Math.round((Number(m.quantity) || 0) * (Number(m.unitCost) || 0) * 100) / 100;
-
-const STOCK_OUT_REASONS = [
-  { value: 'Kitchen Usage', label: 'Kitchen Usage / Consumption' },
-  { value: 'Damage / Broken', label: 'Damage / Broken' },
-  { value: 'Expired Goods', label: 'Expired Goods' },
-  { value: 'Audit Adjustment', label: 'Audit Adjustment / Physical Discrepancy' },
-  { value: 'Theft / Lost', label: 'Theft / Unaccounted Lost' },
-  { value: 'Staff Meal', label: 'Staff Meal / Sampling' },
-  { value: RETURN_TO_VENDOR, label: 'Return to Vendor (Purchase Return)' },
-  { value: 'Other Reason', label: 'Other Reason' },
-];
 
 const stockOutSchema = z.object({
   module: z.enum(['fastfood', 'minimart']).default('fastfood'),
@@ -75,6 +76,8 @@ const stockOutSchema = z.object({
   note: z.string().optional(),
   vendorName: z.string().optional(),
   deductUnit: z.enum(['base', 'wholesale']).optional(),
+  returnReason: z.string().optional(),
+  batchNumber: z.string().optional(),
 });
 
 type StockOutFormData = z.infer<typeof stockOutSchema>;
@@ -133,9 +136,12 @@ export function StockOutView(): React.JSX.Element {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [tableCategoryFilter, setTableCategoryFilter] = useState<string>('all');
 
-  const { can } = useLicense();
+  const { can, businessProfiles = [] } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
+  // Which reasons apply: kitchen (food), pharmacy licence, or general retail
+  const businessFor = (module?: string) => reasonBusinessFor(module, businessProfiles);
+  const isPharmacy = businessProfiles.includes('pharmacy');
 
   // Filter tab for stock deductions (All, Kitchen Consumption, Retail Damage/Expiry)
   const [outflowTab, setOutflowTab] = useState<'all' | 'fastfood' | 'minimart'>(() => {
@@ -150,12 +156,26 @@ export function StockOutView(): React.JSX.Element {
       module: hasFastFood ? 'fastfood' : 'minimart',
       selectedProductId: '',
       productName: '',
-      reason: hasFastFood ? 'Kitchen Usage' : 'Damage / Broken',
+      reason: defaultReasonFor(reasonBusinessFor(hasFastFood ? 'fastfood' : 'minimart', businessProfiles)),
       quantity: 1,
       unitCost: 0,
       note: '',
     },
   });
+
+  // Open batches of the selected product (for expiry / recall deductions)
+  const watchedProductId = form.watch('selectedProductId');
+  const { data: productBatches = [] } = useQuery<{ id: string; batchNumber: string | null; expiryDate: string | null; remaining: number }[]>({
+    queryKey: ['stock-batches', watchedProductId],
+    queryFn: () => posApi.fetchStockBatches(watchedProductId || ''),
+    enabled: !!watchedProductId,
+  });
+  const batchOptions = productBatches
+    .filter((b) => b.remaining > 0 && (b.batchNumber || b.expiryDate))
+    .map((b) => ({
+      value: b.batchNumber || b.expiryDate || b.id,
+      label: `${b.batchNumber || 'No batch no.'}${b.expiryDate ? ` · exp ${b.expiryDate}` : ''} · ${b.remaining} left`,
+    }));
 
   const editForm = useForm<EditOutFormData>({
     resolver: zodResolver(editOutSchema) as any,
@@ -205,12 +225,18 @@ export function StockOutView(): React.JSX.Element {
       if (tracked && baseQty > tracked.stock) {
         throw new Error(`Only ${tracked.stock} unit(s) of "${tracked.name}" in stock — cannot deduct ${baseQty}.`);
       }
-      const isReturn = data.reason === RETURN_TO_VENDOR;
-      const returnVendor = isReturn ? vendorStorage.findVendor({ name: data.vendorName }) : undefined;
-      if (isReturn && !returnVendor) {
+      const info = reasonInfo(data.reason);
+      if (info.requiresNote && !(data.note || '').trim()) {
+        throw new Error(`Add a note explaining the "${info.label}" deduction.`);
+      }
+      if (info.requiresBatch && batchOptions.length > 0 && !data.batchNumber) {
+        throw new Error('Select the batch being removed.');
+      }
+      const returnVendor = info.vendor && data.vendorName ? vendorStorage.findVendor({ name: data.vendorName }) : undefined;
+      if (info.vendor === 'required' && !returnVendor) {
         throw new Error('Select the vendor this stock is being returned to.');
       }
-      if (isReturn && !(Number(data.unitCost) > 0)) {
+      if (returnVendor && !(Number(data.unitCost) > 0)) {
         throw new Error('Enter the unit cost so the vendor can be credited for the return.');
       }
       const saved = await posApi.saveStockMovement({
@@ -221,9 +247,16 @@ export function StockOutView(): React.JSX.Element {
         quantity: baseQty,
         unitCost: baseUnitCost ?? null,
         reason: data.reason,
-        referenceInvoice: [conv ? `Deducted: ${data.quantity} ${conv.wholesale} × ${conv.rate} = ${baseQty} ${conv.base}` : '', data.note || '']
+        referenceInvoice: [
+          conv ? `Deducted: ${data.quantity} ${conv.wholesale} × ${conv.rate} = ${baseQty} ${conv.base}` : '',
+          info.vendor && data.returnReason ? `Return reason: ${data.returnReason}` : '',
+          data.batchNumber ? `Batch: ${data.batchNumber}` : '',
+          data.note || '',
+        ]
           .filter(Boolean)
           .join(' • '),
+        // The backend removes this batch first (then earliest expiry)
+        ...(data.batchNumber ? { batchNumber: data.batchNumber } : {}),
         ...(returnVendor ? { vendorName: returnVendor.name } : {}),
       });
 
@@ -235,7 +268,7 @@ export function StockOutView(): React.JSX.Element {
             returnVendor.id,
             'ADJUSTMENT',
             -value,
-            `Purchase return: ${data.productName} × ${baseQty}`,
+            `${data.reason === PRODUCT_RECALL ? 'Recall return' : 'Purchase return'}: ${data.productName} × ${baseQty}`,
             'return'
           );
         }
@@ -254,12 +287,14 @@ export function StockOutView(): React.JSX.Element {
         module: form.getValues('module') || 'fastfood',
         selectedProductId: '',
         productName: '',
-        reason: form.getValues('module') === 'fastfood' ? 'Kitchen Usage' : 'Damage / Broken',
+        reason: defaultReasonFor(businessFor(form.getValues('module'))),
         quantity: 1,
         unitCost: 0,
         note: '',
         vendorName: '',
         deductUnit: 'base',
+        returnReason: '',
+        batchNumber: '',
       });
     },
     onError: (err: any) => {
@@ -278,10 +313,13 @@ export function StockOutView(): React.JSX.Element {
         throw new Error(`Only ${tracked.stock} more unit(s) of "${tracked.name}" available — cannot increase deduction by ${extra}.`);
       }
       const prev = editingMovement?.id === data.id ? editingMovement : null;
-      const wasReturn = prev?.reason === RETURN_TO_VENDOR;
-      const isReturn = data.reason === RETURN_TO_VENDOR;
+      if (reasonInfo(data.reason).requiresNote && !(data.note || '').trim()) {
+        throw new Error(`Add a note explaining the "${reasonInfo(data.reason).label}" deduction.`);
+      }
+      const wasReturn = creditsVendor(prev?.reason, prev?.vendorName);
       const returnVendor = vendorStorage.findVendor({ name: prev?.vendorName || undefined });
-      if (isReturn && !returnVendor) {
+      const isReturn = !!reasonInfo(data.reason).vendor && !!returnVendor;
+      if (reasonInfo(data.reason).vendor === 'required' && !returnVendor) {
         throw new Error('Purchase returns can only be edited when the original entry has a vendor. Reverse it and record the return again.');
       }
 
@@ -333,7 +371,7 @@ export function StockOutView(): React.JSX.Element {
       await posApi.reverseStockMovement(id);
 
       // Deleting a purchase return takes the vendor credit back
-      if (target?.reason === RETURN_TO_VENDOR) {
+      if (target && creditsVendor(target.reason, target.vendorName)) {
         const vendor = vendorStorage.findVendor({ name: target.vendorName || undefined });
         const value = returnValue(target);
         if (vendor && value > 0) {
@@ -470,13 +508,7 @@ export function StockOutView(): React.JSX.Element {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
 
-  const getReasonColor = (reason?: string): 'danger' | 'warning' | 'important' | 'informative' => {
-    const r = (reason || '').toLowerCase();
-    if (r.includes('damage') || r.includes('theft')) return 'danger';
-    if (r.includes('expired')) return 'important';
-    if (r.includes('kitchen')) return 'warning';
-    return 'informative';
-  };
+  const getReasonColor = (reason?: string) => reasonColor(reason);
 
   if (isLoading && movements.length === 0) {
     return <TablePageSkeleton title="Stock Out" hasMetrics={false} />;
@@ -500,7 +532,7 @@ export function StockOutView(): React.JSX.Element {
                   type="button"
                   onClick={() => {
                     form.setValue('module', 'fastfood');
-                    form.setValue('reason', 'Kitchen Usage');
+                    form.setValue('reason', defaultReasonFor(businessFor('fastfood')));
                   }}
                   className={mergeClasses(styles.scopeBtn, form.watch('module') === 'fastfood' && styles.scopeBtnActive)}
                 >
@@ -511,12 +543,12 @@ export function StockOutView(): React.JSX.Element {
                   type="button"
                   onClick={() => {
                     form.setValue('module', 'minimart');
-                    form.setValue('reason', 'Damage / Broken');
+                    form.setValue('reason', defaultReasonFor(businessFor('minimart')));
                   }}
                   className={mergeClasses(styles.scopeBtn, form.watch('module') !== 'fastfood' && styles.scopeBtnActive)}
                 >
                   <ShoppingBag24Regular className={styles.icon14Neutral} />
-                  <span>Retail Mini Mart Goods</span>
+                  <span>{isPharmacy ? 'Pharmacy Goods' : 'Retail Mini Mart Goods'}</span>
                 </button>
               </div>
             </div>
@@ -527,7 +559,7 @@ export function StockOutView(): React.JSX.Element {
               </span>
               <span className={styles.scopeSingleChip}>
                 {hasFastFood ? <Food24Regular className={styles.icon14Red} /> : <ShoppingBag24Regular className={styles.icon14Blue} />}
-                <span>{hasFastFood ? 'Kitchen Consumption & Waste' : 'Retail Mini Mart Goods'}</span>
+                <span>{hasFastFood ? 'Kitchen Consumption & Waste' : isPharmacy ? 'Pharmacy Goods' : 'Retail Mini Mart Goods'}</span>
               </span>
             </div>
           )}
@@ -544,12 +576,15 @@ export function StockOutView(): React.JSX.Element {
                   <CustomSelect
                     label="DEDUCTION REASON *"
                     required
-                    value={field.value || 'Kitchen Usage'}
-                    options={STOCK_OUT_REASONS}
+                    value={field.value || defaultReasonFor(businessFor(form.watch('module')))}
+                    options={reasonOptions(businessFor(form.watch('module')), field.value)}
                     onChange={(val) => field.onChange(val)}
                   />
                 )}
               />
+              <span className={styles.fieldLabel} style={{ display: 'block', marginTop: 4, fontWeight: 400, textTransform: 'none' }}>
+                Count doesn&rsquo;t match the system? Use <strong>Stock count</strong> (top right) — it can add or remove.
+              </span>
             </div>
 
             <div>
@@ -644,14 +679,14 @@ export function StockOutView(): React.JSX.Element {
             </div>
 
             <div>
-              {form.watch('reason') === RETURN_TO_VENDOR ? (
+              {reasonInfo(form.watch('reason')).vendor ? (
                 <Controller
                   control={form.control}
                   name="vendorName"
                   render={({ field }) => (
                     <CustomSelect
-                      label="RETURN TO VENDOR *"
-                      required
+                      label={reasonInfo(form.watch('reason')).vendor === 'required' ? 'RETURN TO VENDOR *' : 'CREDIT FROM VENDOR (OPTIONAL)'}
+                      required={reasonInfo(form.watch('reason')).vendor === 'required'}
                       placeholder="Select vendor..."
                       value={field.value || ''}
                       options={vendorStorage.getVendors().map((v) => ({
@@ -668,7 +703,7 @@ export function StockOutView(): React.JSX.Element {
                   name="note"
                   render={({ field }) => (
                     <CustomInput
-                      label="DISPOSAL / AUDIT NOTE"
+                      label={reasonInfo(form.watch('reason')).requiresNote ? 'NOTE *' : 'NOTE (OPTIONAL)'}
                       placeholder="e.g. Broken in fridge, expired batch..."
                       value={field.value || ''}
                       onChange={field.onChange}
@@ -679,7 +714,7 @@ export function StockOutView(): React.JSX.Element {
             </div>
 
             <div>
-              <label className={styles.fieldLabel}>ESTIMATED LOSS (PKR)</label>
+              <label className={styles.fieldLabel}>{valueLabelFor(form.watch('reason'))}</label>
               <div className={styles.lineTotalBox}>
                 <span className={styles.lineTotalValue}>Rs. {totalLossValue.toLocaleString()}</span>
               </div>
@@ -697,6 +732,70 @@ export function StockOutView(): React.JSX.Element {
               </Button>
             </div>
           </div>
+
+          {/* Reason details: why it goes back, which batch, and the note when the vendor uses its slot */}
+          {(() => {
+            const info = reasonInfo(form.watch('reason'));
+            const showBatch = info.requiresBatch || (batchOptions.length > 0 && info.value === 'Damage / Broken');
+            if (!info.vendor && !showBatch) return null;
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 12 }}>
+                {info.value === RETURN_TO_VENDOR && (
+                  <Controller
+                    control={form.control}
+                    name="returnReason"
+                    render={({ field }) => (
+                      <CustomSelect
+                        label="RETURN REASON"
+                        placeholder="Why is it going back?"
+                        value={field.value || ''}
+                        options={RETURN_SUB_REASONS.map((r) => ({ value: r, label: r }))}
+                        onChange={(val) => field.onChange(val)}
+                      />
+                    )}
+                  />
+                )}
+                {showBatch &&
+                  (batchOptions.length > 0 ? (
+                    <Controller
+                      control={form.control}
+                      name="batchNumber"
+                      render={({ field }) => (
+                        <CustomSelect
+                          label={info.requiresBatch ? 'BATCH *' : 'BATCH (OPTIONAL)'}
+                          placeholder="Select batch..."
+                          value={field.value || ''}
+                          options={batchOptions}
+                          onChange={(val) => field.onChange(val)}
+                        />
+                      )}
+                    />
+                  ) : (
+                    <Controller
+                      control={form.control}
+                      name="batchNumber"
+                      render={({ field }) => (
+                        <CustomInput
+                          label="BATCH NO (OPTIONAL)"
+                          placeholder="No tracked batches for this item"
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                  ))}
+                {info.vendor && (
+                  <Controller
+                    control={form.control}
+                    name="note"
+                    render={({ field }) => (
+                      <CustomInput label="NOTE (OPTIONAL)" placeholder="e.g. Debit note no., rep name..." value={field.value || ''} onChange={field.onChange} />
+                    )}
+                  />
+                )}
+              </div>
+            );
+          })()}
 
           {/* Deduct in wholesale or base unit (only for products with a conversion) */}
           {(() => {
@@ -887,7 +986,7 @@ export function StockOutView(): React.JSX.Element {
                       </td>
                       <td className={styles.td}>
                         <span className={styles.reasonText}>
-                          {mov.reason || 'Deduction'}
+                          {reasonInfo(mov.reason).label}
                         </span>
                       </td>
                       <td className={styles.td}>
@@ -998,8 +1097,8 @@ export function StockOutView(): React.JSX.Element {
                     <CustomSelect
                       label="Deduction Reason Category"
                       required
-                      value={field.value || 'Kitchen Usage'}
-                      options={STOCK_OUT_REASONS}
+                      value={field.value || defaultReasonFor(businessFor(editingMovement?.module))}
+                      options={reasonOptions(businessFor(editingMovement?.module), field.value)}
                       onChange={(val) => field.onChange(val)}
                     />
                   )}
@@ -1043,8 +1142,9 @@ export function StockOutView(): React.JSX.Element {
                 </div>
               </div>
 
-              {/* Estimated Loss Display */}
+              {/* Value display (loss / cost / vendor credit, by reason) */}
               <div>
+                <label className={styles.fieldLabel}>{valueLabelFor(editForm.watch('reason'))}</label>
                 <div className={styles.lineTotalBox}>
                   <span className={styles.lineTotalValue}>Rs. {editTotalLossValue.toLocaleString()}</span>
                 </div>
@@ -1057,7 +1157,7 @@ export function StockOutView(): React.JSX.Element {
                   name="note"
                   render={({ field }) => (
                     <CustomInput
-                      label="Disposal / Audit Remarks"
+                      label={reasonInfo(editForm.watch('reason')).requiresNote ? 'Note *' : 'Note (optional)'}
                       placeholder="e.g. Broken in fridge, expired batch..."
                       value={field.value || ''}
                       onChange={field.onChange}

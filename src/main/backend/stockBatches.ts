@@ -37,11 +37,17 @@ export async function openBatchForReceipt(
 }
 
 /** Draw `qty` from the product's open batches, earliest expiry first. Returns the quantity allocated. */
-export async function consumeFefo(tx: Tx, productId: string, qty: number, movementId: string): Promise<number> {
+export async function consumeFefo(tx: Tx, productId: string, qty: number, movementId: string, preferredBatch?: string | null): Promise<number> {
   let needed = round3(qty);
   if (needed <= 0) return 0;
   const open = await tx.stockBatch.findMany({ where: { productId, remaining: { gt: 0 } } });
   open.sort((a: any, b: any) => {
+    // A batch named on the entry (expired / recalled batch) is taken first
+    if (preferredBatch) {
+      const ap = a.batchNumber === preferredBatch || a.expiryDate === preferredBatch;
+      const bp = b.batchNumber === preferredBatch || b.expiryDate === preferredBatch;
+      if (ap !== bp) return ap ? -1 : 1;
+    }
     if (a.expiryDate && b.expiryDate && a.expiryDate !== b.expiryDate) return a.expiryDate < b.expiryDate ? -1 : 1;
     if (a.expiryDate && !b.expiryDate) return -1;
     if (!a.expiryDate && b.expiryDate) return 1;

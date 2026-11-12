@@ -1305,7 +1305,7 @@ export function registerRoutes(app: Express): void {
       if (isIn) {
         await openBatchForReceipt(tx, { ...created, productId: product.id });
       } else {
-        await consumeFefo(tx, product.id, created.quantity, created.id);
+        await consumeFefo(tx, product.id, created.quantity, created.id, created.batchNumber);
       }
       await syncProductNearestBatch(tx, product.id);
       await evaluateStockAlerts(tx, [product.id]);

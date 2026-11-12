@@ -1769,6 +1769,19 @@ export const posApi = {
     if (res && !res.ok) throw new Error(res.error || 'Could not save alert limits');
   },
 
+  /** Open stock batches of a product, earliest expiry information included ([] offline). */
+  async fetchStockBatches(productId: string): Promise<{ id: string; batchNumber: string | null; expiryDate: string | null; remaining: number }[]> {
+    if (!productId) return [];
+    try {
+      const base = await resolveApiUrl();
+      const headers = await getTenantHeaders();
+      const res = await fetch(`${base}/api/stock-batches?productId=${encodeURIComponent(productId)}&open=1`, { headers });
+      return res.ok ? await res.json() : [];
+    } catch {
+      return [];
+    }
+  },
+
   /** Active low-stock alerts (empty when the backend cannot be reached). */
   async fetchStockAlerts(includeAll = false): Promise<StockAlertRow[]> {
     try {
