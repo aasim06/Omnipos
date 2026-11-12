@@ -1,10 +1,5 @@
-import React, { createContext, useContext, useState, useRef, useCallback, useId, PropsWithChildren } from 'react';
+import React, { createContext, useContext, useState, useRef, useCallback, PropsWithChildren } from 'react';
 import {
-  Toaster,
-  useToastController,
-  Toast,
-  ToastTitle,
-  ToastBody,
   ToastIntent,
   Dialog,
   DialogSurface,
@@ -16,12 +11,8 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import {
-  CheckmarkCircle24Regular,
-  DismissCircle24Regular,
-  Warning24Regular,
-  Info24Regular,
-} from '@fluentui/react-icons';
+import { DynamicIslandToaster, DynamicIslandHandle, IslandIntent } from '@/components/shell/DynamicIslandToaster';
+import { getWindowChrome } from '@/lib/windowChrome';
 
 const useStyles = makeStyles({
   confirmSurface: {
@@ -72,18 +63,6 @@ const useStyles = makeStyles({
       backgroundColor: '#B91C1C !important',
     },
   },
-  successIcon: {
-    color: '#16A34A',
-  },
-  errorIcon: {
-    color: '#DC2626',
-  },
-  warningIcon: {
-    color: '#D97706',
-  },
-  infoIcon: {
-    color: '#2563EB',
-  },
 });
 
 interface ToastOptions {
@@ -113,9 +92,11 @@ interface AppNotificationContextValue {
 const AppNotificationContext = createContext<AppNotificationContextValue | null>(null);
 
 export function AppNotificationProvider({ children }: PropsWithChildren): React.JSX.Element {
-  const toasterId = useId();
-  const { dispatchToast } = useToastController(toasterId);
+  const islandRef = useRef<DynamicIslandHandle>(null);
   const styles = useStyles();
+  // Just below the title bar, above the page's section header
+  const chrome = getWindowChrome();
+  const islandTop = (chrome.customTitleBar ? chrome.titleBarHeight : 0) + 14;
 
   // Confirmation modal state
   const [confirmState, setConfirmState] = useState<{
@@ -158,31 +139,11 @@ export function AppNotificationProvider({ children }: PropsWithChildren): React.
     }
   };
 
-  const notify = useCallback(
-    ({ title, body, intent = 'info', timeout = 4000 }: ToastOptions) => {
-      const getIcon = () => {
-        switch (intent) {
-          case 'success':
-            return <CheckmarkCircle24Regular className={styles.successIcon} />;
-          case 'error':
-            return <DismissCircle24Regular className={styles.errorIcon} />;
-          case 'warning':
-            return <Warning24Regular className={styles.warningIcon} />;
-          default:
-            return <Info24Regular className={styles.infoIcon} />;
-        }
-      };
-
-      dispatchToast(
-        <Toast>
-          <ToastTitle media={getIcon()}>{title}</ToastTitle>
-          {body && <ToastBody>{body}</ToastBody>}
-        </Toast>,
-        { intent, timeout, position: 'top-end' }
-      );
-    },
-    [dispatchToast, styles]
-  );
+  const notify = useCallback(({ title, body, intent = 'info', timeout = 4000 }: ToastOptions) => {
+    const islandIntent: IslandIntent =
+      intent === 'success' || intent === 'error' || intent === 'warning' ? intent : 'info';
+    islandRef.current?.show({ title, body, intent: islandIntent, timeout });
+  }, []);
 
   const notifySuccess = useCallback(
     (title: string, body?: string) => {
@@ -224,7 +185,7 @@ export function AppNotificationProvider({ children }: PropsWithChildren): React.
       }}
     >
       {children}
-      <Toaster toasterId={toasterId} position="top-end" />
+      <DynamicIslandToaster ref={islandRef} top={islandTop} />
 
       {/* Confirmation Modal */}
       <Dialog
