@@ -199,6 +199,42 @@ async function consumeRecipeIngredients(order: any, lineIndex: number, line: any
   }
 }
 
+/**
+ * Order fields the database accepts. The POS sends extra client-only fields (synced flags,
+ * cashier info…); passing those straight to Prisma made every order with a payment mode fail,
+ * so orders never reached the backend and its stock was never reduced.
+ */
+export function sanitizeOrder(raw: any, opts: { forUpdate?: boolean } = {}) {
+  const out: any = {};
+  if (!raw || typeof raw !== 'object') return out;
+  if (!opts.forUpdate && raw.id) out.id = String(raw.id);
+  for (const k of ['module', 'customerName', 'customerPhone', 'orderType', 'stage', 'paymentMode', 'syncStatus']) {
+    if (raw[k] !== undefined) out[k] = raw[k] === null ? null : String(raw[k]);
+  }
+  for (const k of ['discountPercent', 'totalAmount', 'refundedAmount']) {
+    if (raw[k] !== undefined && raw[k] !== null && raw[k] !== '') out[k] = Number(raw[k]) || 0;
+  }
+  if (raw.splitPayments !== undefined) {
+    out.splitPayments =
+      raw.splitPayments === null ? null : typeof raw.splitPayments === 'string' ? raw.splitPayments : JSON.stringify(raw.splitPayments);
+  }
+  if (raw.createdAt && !opts.forUpdate) {
+    const d = new Date(raw.createdAt);
+    if (!Number.isNaN(d.getTime())) out.createdAt = d;
+  }
+  return out;
+}
+
+/** Order as returned to the app: split payments parsed back into an object. */
+function presentOrder(o: any) {
+  if (!o || typeof o.splitPayments !== 'string') return o;
+  try {
+    return { ...o, splitPayments: JSON.parse(o.splitPayments) };
+  } catch {
+    return o;
+  }
+}
+
 export function sanitizeProduct(raw: any) {
   if (!raw || typeof raw !== 'object') return {};
   const allowed = [
@@ -775,7 +811,7 @@ export function registerRoutes(app: Express): void {
         include: { lines: true },
         orderBy: { createdAt: 'desc' },
       });
-      res.json(orders);
+      res.json(orders.map(presentOrder));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -831,7 +867,7 @@ export function registerRoutes(app: Express): void {
 
       const order = await db.order.create({
         data: {
-          ...orderData,
+          ...sanitizeOrder(orderData),
           isSynced: true,
           updatedAt: new Date(),
           lines: {
@@ -918,7 +954,7 @@ export function registerRoutes(app: Express): void {
         }
       }
 
-      res.json(order);
+      res.json(presentOrder(order));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -931,12 +967,12 @@ export function registerRoutes(app: Express): void {
       const order = await db.order.update({
         where: { id },
         data: {
-          ...orderData,
+          ...sanitizeOrder(orderData, { forUpdate: true }),
           updatedAt: new Date(),
         },
         include: { lines: true },
       });
-      res.json(order);
+      res.json(presentOrder(order));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

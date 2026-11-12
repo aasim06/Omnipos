@@ -59,6 +59,9 @@ model Order {
   discountPercent Float       @default(0)
   customerName    String?
   orderType       String?     // "dine-in" | "takeaway" | "delivery"
+  paymentMode     String?     // "cash" | "card" | "online" | "khata" | "split"
+  customerPhone   String?
+  splitPayments   String?     // JSON { cash, card, online, khata } for split bills
   stage           String      @default("paid") // "cart" | "kot" | "billed" | "paid"
   totalAmount     Float       @default(0)
   refundedAmount  Float       @default(0)

@@ -388,6 +388,15 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     }
   }
 
+  // Payment details sent by the POS (orders were rejected without these columns)
+  for (const col of [`"paymentMode" TEXT`, `"customerPhone" TEXT`, `"splitPayments" TEXT`]) {
+    try {
+      await database.$executeRawUnsafe(`ALTER TABLE "Order" ADD COLUMN ${col}`);
+    } catch {
+      /* Ignore if column already exists */
+    }
+  }
+
   try {
     await database.$executeRawUnsafe(`ALTER TABLE "OrderItem" ADD COLUMN "selectedUnit" TEXT`);
   } catch {
