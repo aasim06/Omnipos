@@ -21,7 +21,7 @@ const PAGE_TITLES: Array<[prefix: string, title: string]> = [
   ['/catalog/categories', 'Categories'],
   ['/catalog/new', 'Add product'],
   ['/catalog/barcode-labels', 'Barcode labels'],
-  ['/catalog', 'Products'],
+  ['/catalog', 'Catalog'],
   ['/products', 'Products'],
   ['/product-details', 'Products'],
   ['/quotations', 'Quotations'],

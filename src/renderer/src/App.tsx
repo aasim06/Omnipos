@@ -15,6 +15,7 @@ import { ReportsAnalyticsView } from '@/features/reports/ReportsAnalyticsView';
 import { WebStoreView } from '@/features/web-store/WebStoreView';
 import { AdminSettingsView } from '@/features/admin/AdminSettingsView';
 import { ProductsCatalogView } from '@/features/catalog/ProductsCatalogView';
+import { CatalogDashboardView } from '@/features/catalog/CatalogDashboardView';
 import { CategoriesView } from '@/features/catalog/CategoriesView';
 import { AddProductView } from '@/features/catalog/AddProductView';
 import { ProductDetailsView } from '@/features/catalog/ProductDetailsView';
@@ -410,7 +411,7 @@ export default function App(): React.JSX.Element {
               path="/catalog"
               element={
                 <RouteAccessGate moduleKey="catalog">
-                  <ProductsCatalogView />
+                  <CatalogDashboardView />
                 </RouteAccessGate>
               }
             />

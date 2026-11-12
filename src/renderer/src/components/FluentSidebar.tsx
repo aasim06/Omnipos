@@ -830,7 +830,7 @@ export function FluentSidebar(): React.JSX.Element {
           icon: <Tag24Regular className={styles.icon19} />,
           activeIcon: <Tag24Filled className={styles.icon19} />,
           subItems: [
-            { to: '/catalog', label: 'All Products', icon: <Tag20Regular className={styles.icon15} /> },
+            { to: '/catalog', label: 'Catalog Overview', icon: <Tag20Regular className={styles.icon15} /> },
             { to: '/catalog/fastfood', label: 'Fast Food Menu', moduleKey: 'fastfood' as const, icon: <Food24Regular className={styles.icon15} /> },
             { to: '/catalog/omnimart', label: retailItemsLabel, moduleKey: 'omnimart' as const, icon: <BuildingRetail24Regular className={styles.icon15} /> },
             { to: '/catalog/categories', label: 'Categories', icon: <Grid20Regular className={styles.icon15} /> },

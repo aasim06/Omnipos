@@ -1953,6 +1953,16 @@ export const posApi = {
   },
 
   /** Open stock batches of a product, earliest expiry information included ([] offline). */
+  /** Every batch that still has stock (all products), for expiry overviews; [] when offline. */
+  async fetchOpenBatches(): Promise<
+    { id: string; productId: string; batchNumber: string | null; expiryDate: string | null; remaining: number; unitCost?: number | null }[]
+  > {
+    const res = await quoteBackend('/api/stock-batches?open=1');
+    if (!res?.ok) return [];
+    const rows = await res.json().catch(() => []);
+    return Array.isArray(rows) ? rows : [];
+  },
+
   async fetchStockBatches(productId: string): Promise<{ id: string; batchNumber: string | null; expiryDate: string | null; remaining: number }[]> {
     if (!productId) return [];
     try {
