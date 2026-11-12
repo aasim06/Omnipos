@@ -3,6 +3,7 @@ import { offlineDb, LocalOrder, LocalCustomerKhata, LocalKhataTx, LocalExpense }
 import { syncEngine } from './syncEngine';
 import { KEYS, storage } from './storage';
 import { uid } from './utils';
+import { normalizePhone } from './khataRules';
 import { parseRecipe, recipeLinesFor, recipeMovementId, RECIPE_USAGE_REASON } from './recipes';
 import { decodeProductVariants, encodeProductVariants, setLocalVariantRegistry } from './variants';
 import {
@@ -932,18 +933,8 @@ export const posApi = {
       if (fresh.length > 0) return fresh;
     } catch {}
 
-    return [
-      {
-        id: 'khata_guest',
-        name: 'Guest / Walk-in Customer',
-        phone: '0300-0000000',
-        currentDebt: 0,
-        creditLimit: 50000,
-        synced: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
+    // No accounts yet: an empty list (never a made-up "Guest" account that sales could post udhaar to)
+    return [];
   },
 
   /**
@@ -1009,6 +1000,14 @@ export const posApi = {
     const isNew = !khata.id;
     // The balance moves only through ledger entries; editing a profile keeps what is owed
     const prior = isNew ? undefined : await offlineDb.khatas.get(khata.id!);
+    // A phone number identifies one customer
+    const wantedPhone = normalizePhone(khata.phone);
+    if (wantedPhone.length >= 7) {
+      const clash = (await offlineDb.khatas.toArray()).find(
+        (k) => k.id !== khata.id && normalizePhone(k.phone) === wantedPhone
+      );
+      if (clash) throw new Error(`Phone ${khata.phone} already belongs to customer "${clash.name}".`);
+    }
     const record: LocalCustomerKhata = {
       id: khata.id || `khata_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       name: khata.name || 'Unnamed Customer',
@@ -1116,6 +1115,17 @@ export const posApi = {
       synced: 0,
     };
     await offlineDb.khataTransactions.put(txRecord);
+
+    // Cash received against udhaar is cash in the drawer (the backend does the same)
+    if (params.type === 'CREDIT' && (params.paymentMethod || 'cash').toLowerCase() === 'cash') {
+      try {
+        const drawer = this.fetchCashDrawer();
+        if (drawer?.status !== 'closed') {
+          drawer.cashIn = Number(drawer.cashIn || 0) + amt;
+          localStorage.setItem('omnipos_cash_drawer', JSON.stringify(drawer));
+        }
+      } catch {}
+    }
 
     // 3. Queue into syncEngine
     await syncEngine.enqueue('khata', params.khataId, 'UPDATE', {

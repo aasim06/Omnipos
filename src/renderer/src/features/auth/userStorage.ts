@@ -8,6 +8,7 @@ export type UserPermissionKey =
   | 'inventory'
   | 'stock_adjust'
   | 'khata'
+  | 'refunds'
   | 'expenses'
   | 'reports'
   | 'admin';
@@ -63,6 +64,12 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
     description: 'Customer credit ledger, debt tracking, and payment receipts',
   },
   {
+    key: 'refunds',
+    label: 'Sales Returns & Refunds',
+    category: 'Finance & Admin',
+    description: 'Process customer returns and pay back cash, card or khata credit',
+  },
+  {
     key: 'expenses',
     label: 'Expenses & Cash Drawer',
     category: 'Finance & Admin',
@@ -113,6 +120,7 @@ const DEFAULT_ADMIN_PERMISSIONS: UserPermissionKey[] = [
   'inventory',
   'stock_adjust',
   'khata',
+  'refunds',
   'expenses',
   'reports',
   'admin',

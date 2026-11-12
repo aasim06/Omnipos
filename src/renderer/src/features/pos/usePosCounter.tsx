@@ -16,6 +16,8 @@ import { nowISO, uid } from '@/lib/utils';
 import { printKitchenKot } from '@/lib/kotPrinter';
 import { printCustomerReceipt } from '@/lib/receiptPrinter';
 import { getStockStatus } from '@/lib/stockStatus';
+import { creditLimitProblem } from '@/lib/khataRules';
+import { offlineDb } from '@/lib/offlineDb';
 
 /**
  * All state, data loading, effects and handlers of the POS counter screen.
@@ -938,6 +940,14 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
   /* Checkout Mutation */
   const { mutate: checkout, isPending } = useMutation({
     mutationFn: async () => {
+      // Udhaar must fit the customer's credit limit (latest balance from the local ledger)
+      const khataDebit = paymentMode === 'khata' ? total : paymentMode === 'split' ? Number(splitKhataAmount) || 0 : 0;
+      if (khataDebit > 0) {
+        const account = selectedKhataId ? await offlineDb.khatas.get(selectedKhataId) : undefined;
+        const problem = creditLimitProblem(account, khataDebit);
+        if (problem) throw new Error(problem);
+      }
+
       const quoteForSale = linkedQuotation;
       if (quoteForSale) {
         const q = (await posApi.fetchQuotations()).find((x) => x.id === quoteForSale.id);
@@ -984,6 +994,12 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
         totalAmount: total,
         customerName: assignedCustomerName,
         customerPhone: customerPhone.trim() || undefined,
+        // The account this sale belongs to: the khata it is charged to, else the picked / matched customer
+        customerId:
+          (khataDebit > 0 ? selectedKhataId : undefined) ||
+          (selectedCustomer?.id && selectedCustomer.name.toLowerCase() !== 'guest' ? selectedCustomer.id : undefined) ||
+          (matchedCustomer as any)?.id ||
+          undefined,
         paymentMode,
         splitPayments:
           paymentMode === 'split'

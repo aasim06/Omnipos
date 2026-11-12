@@ -90,6 +90,8 @@ export interface Order {
   lines: CartLine[];
   discountPercent: number;
   customerName?: string;
+  /** Khata / customer account this sale belongs to */
+  customerId?: string;
   customerPhone?: string;
   paymentMode?: 'cash' | 'card' | 'khata' | 'split' | string;
   splitPayments?: SplitPaymentBreakdown;

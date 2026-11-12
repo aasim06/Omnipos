@@ -72,11 +72,25 @@ export function requestUser(req: Request): { name?: string; role?: string; permi
  * backend has no login of its own. Returns true when the request was refused.
  */
 export function refuseWithoutStockAdjust(req: Request, res: Response): boolean {
+  return refuseWithoutPermission(req, res, 'stock_adjust', 'Stock Corrections');
+}
+
+/** Same rule as refuseWithoutStockAdjust, for any permission key. */
+export function refuseWithoutPermission(req: Request, res: Response, key: string, label: string): boolean {
   const user = requestUser(req);
   if (!user) return false;
-  if (user.role === 'admin' || user.permissions.includes('stock_adjust')) return false;
-  res.status(403).json({ error: `${user.name || 'This user'} does not have the "Stock Corrections" permission.`, code: 'FORBIDDEN' });
+  if (user.role === 'admin' || user.permissions.includes(key)) return false;
+  res.status(403).json({ error: `${user.name || 'This user'} does not have the "${label}" permission.`, code: 'FORBIDDEN' });
   return true;
+}
+
+/** Digits of a phone number in local form (03001234567), so +92 / 0 / spaces all compare equal. */
+export function normalizePhone(v: unknown): string {
+  let d = String(v || '').replace(/\D/g, '');
+  if (d.startsWith('0092')) d = d.slice(4);
+  else if (d.startsWith('92') && d.length === 12) d = d.slice(2);
+  if (d.length === 10 && d.startsWith('3')) d = '0' + d;
+  return d;
 }
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -210,7 +224,7 @@ export function sanitizeOrder(raw: any, opts: { forUpdate?: boolean } = {}) {
   const out: any = {};
   if (!raw || typeof raw !== 'object') return out;
   if (!opts.forUpdate && raw.id) out.id = String(raw.id);
-  for (const k of ['module', 'customerName', 'customerPhone', 'orderType', 'stage', 'paymentMode', 'syncStatus']) {
+  for (const k of ['module', 'customerName', 'customerId', 'customerPhone', 'orderType', 'stage', 'paymentMode', 'syncStatus']) {
     if (raw[k] !== undefined) out[k] = raw[k] === null ? null : String(raw[k]);
   }
   for (const k of ['discountPercent', 'totalAmount', 'refundedAmount']) {
@@ -999,6 +1013,8 @@ export function registerRoutes(app: Express): void {
       const { returnedLines, reason } = body;
       const isReplay = body.replay === true;
       const refundId = toOptionalStr(body.id);
+      // Returns need the "Sales Returns" permission (a replay of a return already made is let through)
+      if (!isReplay && refuseWithoutPermission(req, res, 'refunds', 'Sales Returns & Refunds')) return;
 
       // Idempotent: a retried / replayed return that already landed is answered, not re-applied
       if (refundId) {
@@ -2157,6 +2173,13 @@ export function registerRoutes(app: Express): void {
     return out;
   };
   const presentKhataTx = (t: any) => (t ? { ...t, createdAt: t.date } : t);
+  /** Another account already using this phone number, if any (a phone identifies one customer). */
+  const khataWithPhone = async (phone: unknown, exceptId?: string | null) => {
+    const wanted = normalizePhone(phone);
+    if (wanted.length < 7) return null;
+    const all = await db.customerKhata.findMany({ where: { phone: { not: null } }, select: { id: true, name: true, phone: true } });
+    return all.find((k: any) => k.id !== exceptId && normalizePhone(k.phone) === wanted) || null;
+  };
 
   app.get('/api/khata', async (_req: Request, res: Response) => {
     try {
@@ -2177,6 +2200,10 @@ export function registerRoutes(app: Express): void {
       if (id) {
         const existing = await db.customerKhata.findUnique({ where: { id } });
         if (existing) return res.json(existing);
+      }
+      const clash = await khataWithPhone(body.phone, id);
+      if (clash) {
+        return res.status(409).json({ error: `Phone ${body.phone} already belongs to customer "${clash.name}".`, existingId: clash.id });
       }
       const openingDebt = round2(Number(body.currentDebt) || 0);
       const khata = await db.$transaction(async (tx: any) => {
@@ -2217,6 +2244,10 @@ export function registerRoutes(app: Express): void {
       const id = String(req.params.id);
       const existing = await db.customerKhata.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: 'Khata account not found' });
+      if ((req.body || {}).phone !== undefined) {
+        const clash = await khataWithPhone(req.body.phone, id);
+        if (clash) return res.status(409).json({ error: `Phone ${req.body.phone} already belongs to customer "${clash.name}".`, existingId: clash.id });
+      }
       const khata = await db.customerKhata.update({
         where: { id },
         data: { ...khataProfile(req.body || {}), updatedAt: new Date() },
@@ -2299,6 +2330,17 @@ export function registerRoutes(app: Express): void {
           where: { id: khataId },
           data: { currentDebt: newDebt, updatedAt: new Date() },
         });
+        // Cash received against udhaar is cash in the drawer. An entry made on an earlier day
+        // (synced late) belongs to that day's drawer, not today's.
+        const when = new Date(created.date);
+        const today = new Date();
+        const sameDay = when.toDateString() === today.toDateString();
+        if (type === 'CREDIT' && String(body.paymentMethod || '').toLowerCase() === 'cash' && sameDay) {
+          const drawer = await tx.cashDrawer.findFirst({ where: { status: 'open' }, orderBy: { date: 'desc' } });
+          if (drawer) {
+            await tx.cashDrawer.update({ where: { id: drawer.id }, data: { cashIn: Number(drawer.cashIn || 0) + amount } });
+          }
+        }
         return created;
       });
 

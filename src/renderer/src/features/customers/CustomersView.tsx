@@ -42,6 +42,8 @@ import { formatPKR, uid } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { offlineDb, LocalCustomerKhata } from '@/lib/offlineDb';
 import { parseRefundItems, returnedQtyByLine, billPriceFactor, lineRefundValue } from '@shared/refunds';
+import { normalizePhone } from '@/lib/khataRules';
+import { useAuth } from '@/features/auth/AuthContext';
 import { useAppToast } from '../../context/AppNotificationContext';
 
 import { useCustomersStyles, useStyles } from './customers.styles';
@@ -70,6 +72,8 @@ export function CustomersView(): React.JSX.Element {
   const styles = useCustomersStyles();
   const queryClient = useQueryClient();
   const { notifySuccess, notifyWarning, notifyError } = useAppToast();
+  const { hasPermission } = useAuth();
+  const canRefund = hasPermission('refunds');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'customers' | 'refunds'>('customers');
@@ -202,23 +206,45 @@ export function CustomersView(): React.JSX.Element {
       });
     });
 
-    // 2. Aggregate from past orders
+    // 2. Aggregate past sales onto their account: by account id, then phone, then exact name
+    const keyById = new Map<string, string>();
+    const keyByPhone = new Map<string, string>();
+    (customerKhatas || []).forEach((k: any) => {
+      const key = (k.name || '').trim().toLowerCase();
+      if (!key) return;
+      keyById.set(k.id, key);
+      const ph = normalizePhone(k.phone);
+      if (ph.length >= 7) keyByPhone.set(ph, key);
+    });
+    const NON_CUSTOMER = /^(walk-in customer|guest|takeaway|dine-in|delivery|khata customer|customer)\b/i;
+
     (orders || []).forEach((ord: any) => {
       const rawName = (ord.customerName || '').trim();
-      if (!rawName || rawName.toLowerCase() === 'walk-in customer' || rawName.toLowerCase() === 'guest') return;
+      // POS names carry extras ("Ali (0300…)", "Ali · Takeaway (Token #3)"): keep the person's name
+      const cleanName = rawName.split(' · ')[0].replace(/\s*\(.*?\)\s*$/g, '').trim();
+      const phone = normalizePhone(ord.customerPhone || (rawName.match(/\(([+\d\s-]{7,})\)/)?.[1] ?? ''));
+      const hasPhone = phone.length >= 7;
 
-      const key = rawName.toLowerCase();
-      const existing = custMap.get(key);
+      let key =
+        (ord.customerId && keyById.get(ord.customerId)) ||
+        (hasPhone && keyByPhone.get(phone)) ||
+        (custMap.has(cleanName.toLowerCase()) ? cleanName.toLowerCase() : '');
+      if (!key) {
+        if (!cleanName || (NON_CUSTOMER.test(cleanName) && !hasPhone)) return;
+        key = hasPhone ? `phone:${phone}` : cleanName.toLowerCase();
+      }
+
       const netOrderAmount = Math.max(0, Number(ord.totalAmount || 0) - Number(ord.refundedAmount || 0));
-
+      const existing = custMap.get(key);
       if (existing) {
         existing.totalOrders += 1;
         existing.totalSpent += netOrderAmount;
+        if (!existing.phone && hasPhone) existing.phone = ord.customerPhone || phone;
       } else {
         custMap.set(key, {
-          id: uid('cust_'),
-          name: rawName,
-          phone: '',
+          id: key,
+          name: NON_CUSTOMER.test(cleanName) ? `Customer ${phone}` : cleanName,
+          phone: hasPhone ? ord.customerPhone || phone : '',
           address: '',
           accountType: 'regular',
           totalOrders: 1,
@@ -422,6 +448,7 @@ export function CustomersView(): React.JSX.Element {
         subtitle="Customer directory, purchase history, khata and sales returns"
         actions={
           <>
+            {canRefund && (
             <Button
               appearance="secondary"
               icon={<ArrowCounterclockwise20Regular />}
@@ -433,6 +460,7 @@ export function CustomersView(): React.JSX.Element {
             >
               Process return
             </Button>
+            )}
             <Button appearance="primary" icon={<Add20Regular />} onClick={() => setIsAddCustomerOpen(true)}>
               Add customer
             </Button>
@@ -567,6 +595,7 @@ export function CustomersView(): React.JSX.Element {
                       </td>
                       <td className={mergeClasses(styles.td, styles.thRight)}>
                         <div className={mergeClasses(styles.actionGroup, styles.actionGroupRight)}>
+                          {canRefund && (
                           <button
                             type="button"
                             className={styles.refundActionBtn}
@@ -578,6 +607,7 @@ export function CustomersView(): React.JSX.Element {
                           >
                             <ArrowCounterclockwise20Regular className={styles.icon15} />
                           </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -58,6 +58,7 @@ model Order {
   module          String      // "fastfood" | "minimart"
   discountPercent Float       @default(0)
   customerName    String?
+  customerId      String?     // CustomerKhata id of the customer this sale belongs to
   orderType       String?     // "dine-in" | "takeaway" | "delivery"
   paymentMode     String?     // "cash" | "card" | "online" | "khata" | "split"
   customerPhone   String?

@@ -20,6 +20,7 @@ import { CustomInput, CustomSelect } from '@/components/ui';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { useAppToast } from '@/context/AppNotificationContext';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
+import { creditLimitProblem } from '@/lib/khataRules';
 import { getUnitConversion, cartLineBaseQty } from '@/features/pos/usePosCounter';
 
 type PayMode = 'cash' | 'card' | 'online' | 'khata';
@@ -166,6 +167,10 @@ export function SaleEntryDialog({ isOpen, onClose }: Props): React.JSX.Element {
     const today = new Date().toISOString().slice(0, 10);
     const when = saleDate && saleDate !== today ? new Date(`${saleDate}T23:59:00`).toISOString() : new Date().toISOString();
     const khata = khatas.find((k: any) => k.id === khataId);
+    if (payMode === 'khata') {
+      const problem = creditLimitProblem(khata, total);
+      if (problem) return notifyWarning(problem);
+    }
 
     setIsSaving(true);
     try {
@@ -176,6 +181,7 @@ export function SaleEntryDialog({ isOpen, onClose }: Props): React.JSX.Element {
         discountPercent: disc,
         totalAmount: total,
         customerName: payMode === 'khata' ? khata?.name || 'Khata Customer' : customer.trim() || 'Walk-In Customer (Sale entry)',
+        customerId: payMode === 'khata' ? khataId : undefined,
         paymentMode: payMode === 'online' ? 'online' : payMode,
         orderType: payMode === 'khata' ? 'khata' : 'takeaway',
         stage: 'paid',
