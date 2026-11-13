@@ -57,6 +57,8 @@ import { CATEGORY_PROFILES, detectCategoryProfile, ALL_PROFILE_OPTIONS, getFilte
 import { UNIT_OPTIONS } from '@/lib/units';
 import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext';
 import { getStockStatus, lowStockLimit } from '@/lib/stockStatus';
+import { belowCostWarning, marginPercent } from '@/lib/pricing';
+import { useAuth } from '@/features/auth/AuthContext';
 
 /* ── Zod Schemas ───────────────────────────────────────────────────── */
 const productSchema = z.object({
@@ -145,6 +147,9 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
   const retailPosLabel = retailName === 'Mart' ? 'Mart Counter' : `${retailName} POS`;
   const { notifySuccess, notifyError } = useAppToast();
   const confirmModal = useConfirmDialog();
+  // Changing an existing item's average cost is a stock correction
+  const { hasPermission } = useAuth();
+  const canChangeCost = hasPermission('stock_adjust');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -335,9 +340,26 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     setIsProductDialogOpen(true);
   };
 
-  const onProductSubmit = (data: ProductFormData) => {
+  const onProductSubmit = async (data: ProductFormData) => {
+    const warning = belowCostWarning(data.name, data.price, data.costPrice);
+    if (warning) {
+      const ok = await confirmModal({ title: 'Selling below cost', message: `${warning}\n\nSave anyway?`, confirmLabel: 'Save anyway', intent: 'danger' });
+      if (!ok) return;
+    }
+    const costChanged = !!editingProduct && Math.abs(Number(data.costPrice || 0) - Number(editingProduct.costPrice || 0)) > 0.005;
+    if (costChanged) {
+      const ok = await confirmModal({
+        title: 'Change the average cost?',
+        message: `The average cost of "${data.name}" changes from PKR ${Number(editingProduct!.costPrice || 0).toLocaleString()} to PKR ${Number(data.costPrice || 0).toLocaleString()}. This changes the value of the stock on hand and future profit figures. Normally the cost comes from purchases (Stock In).`,
+        confirmLabel: 'Change cost',
+      });
+      if (!ok) return;
+    }
     const isBase64 = imagePreview && imagePreview.startsWith('data:');
     const prod: Product = {
+      // Fields this dialog doesn't show (barcode, units, batch, recipe…) are kept
+      ...(editingProduct || {}),
+      ...(costChanged ? { costOverride: true } : {}),
       id: editingProduct ? editingProduct.id : uid('prod_'),
       name: data.name.trim(),
       nameUrdu: data.nameUrdu?.trim() || undefined,
@@ -1259,14 +1281,25 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                         name="costPrice"
                         render={({ field }) => (
                           <CustomInput
-                            label="Purchase Cost Price (PKR)"
+                            label={editingProduct ? 'Average Cost (PKR)' : 'Purchase Cost Price (PKR)'}
                             type="number"
                             placeholder="e.g. 320"
+                            disabled={!!editingProduct && !canChangeCost}
+                            title={editingProduct && !canChangeCost ? 'Set by purchases. Changing it needs the Stock Corrections permission.' : undefined}
                             value={field.value !== undefined ? String(field.value) : ''}
                             onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                           />
                         )}
                       />
+                      {(() => {
+                        const m = marginPercent(productForm.watch('price'), productForm.watch('costPrice'));
+                        if (m === null) return null;
+                        return (
+                          <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: m <= 0 ? tokens.colorPaletteRedForeground1 : tokens.colorNeutralForeground3 }}>
+                            {m <= 0 ? 'Sale price is at or below cost' : `Margin ${m}%`}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
 

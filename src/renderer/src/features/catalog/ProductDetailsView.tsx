@@ -33,7 +33,9 @@ import { Product, ProductVariant } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { CustomDateField } from '@/components/ui/CustomDateField';
-import { useAppToast } from '../../context/AppNotificationContext';
+import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
+import { useAuth } from '@/features/auth/AuthContext';
+import { belowCostWarning } from '@/lib/pricing';
 import { useProductDetailsStyles } from './productDetails.styles';
 import { getStockStatus } from '@/lib/stockStatus';
 
@@ -112,6 +114,9 @@ export function ProductDetailsView(): React.JSX.Element {
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState<number>(0);
   const [editCostPrice, setEditCostPrice] = useState<number>(0);
+  const { hasPermission } = useAuth();
+  const canChangeCost = hasPermission('stock_adjust');
+  const confirmModal = useConfirmDialog();
   const [editStock, setEditStock] = useState<number>(0);
   const [editCategory, setEditCategory] = useState('');
   const [editSku, setEditSku] = useState('');
@@ -149,7 +154,22 @@ export function ProductDetailsView(): React.JSX.Element {
   const { mutate: handleSaveEdit, isPending: isSaving } = useMutation({
     mutationFn: async () => {
       if (!product) return;
-      const updated: Product = {
+      const warning = belowCostWarning(editName || product.name, editPrice, editCostPrice);
+      if (warning) {
+        const ok = await confirmModal({ title: 'Selling below cost', message: `${warning}\n\nSave anyway?`, confirmLabel: 'Save anyway', intent: 'danger' });
+        if (!ok) throw new Error('Not saved');
+      }
+      const costChanged = Math.abs(Number(editCostPrice || 0) - Number(product.costPrice || 0)) > 0.005;
+      if (costChanged) {
+        const ok = await confirmModal({
+          title: 'Change the average cost?',
+          message: `The average cost changes from PKR ${Number(product.costPrice || 0).toLocaleString()} to PKR ${Number(editCostPrice || 0).toLocaleString()}. This changes the value of the stock on hand and future profit figures.`,
+          confirmLabel: 'Change cost',
+        });
+        if (!ok) throw new Error('Not saved');
+      }
+      const updated: Product & { costOverride?: boolean } = {
+        ...(costChanged ? { costOverride: true } : {}),
         ...product,
         name: editName.trim() || product.name,
         price: Number(editPrice) || 0,
@@ -178,6 +198,7 @@ export function ProductDetailsView(): React.JSX.Element {
       notifySuccess('Product updated successfully!');
     },
     onError: (err: any) => {
+      if (err?.message === 'Not saved') return;
       notifyError(err?.message || 'Failed to update product');
     },
   });
@@ -669,8 +690,10 @@ export function ProductDetailsView(): React.JSX.Element {
                 required
               />
               <CustomInput
-                label="Cost Price (PKR)"
+                label="Average Cost (PKR)"
                 type="number"
+                disabled={!canChangeCost}
+                title={!canChangeCost ? 'Set by purchases. Changing it needs the Stock Corrections permission.' : undefined}
                 value={String(editCostPrice)}
                 onChange={(e) => setEditCostPrice(parseFloat(e.target.value) || 0)}
                 placeholder="0"

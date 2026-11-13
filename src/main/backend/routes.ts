@@ -289,6 +289,13 @@ export function sanitizeProduct(raw: any) {
     }
   }
 
+  // An image URL this backend served (http://host/images/products/x.png) is stored as its relative path
+  if (typeof out.imageUrl === 'string') {
+    const served = out.imageUrl.match(/^https?:\/\/[^/]+\/(images\/products\/[^?#]+)/i);
+    if (served) out.imageUrl = served[1];
+  }
+  if (typeof out.imageBase64 === 'string' && /^https?:\/\//i.test(out.imageBase64)) delete out.imageBase64;
+
   // If image is given as base64, save to disk under userData/images/products and store clean relative path
   const prodId = out.id || `prod_${Date.now()}`;
   if (out.imageUrl && typeof out.imageUrl === 'string' && out.imageUrl.startsWith('data:image/')) {
@@ -297,8 +304,13 @@ export function sanitizeProduct(raw: any) {
   } else if (out.imageBase64 && typeof out.imageBase64 === 'string' && out.imageBase64.startsWith('data:image/')) {
     const savedPath = saveBase64Image(out.imageBase64, prodId);
     if (savedPath) {
-      if (!out.imageUrl) out.imageUrl = savedPath;
+      if (!out.imageUrl || String(out.imageUrl).startsWith('data:')) out.imageUrl = savedPath;
+      // The file is the copy; the database does not keep the base64 as well
+      out.imageBase64 = null;
     }
+  }
+  if (out.imageUrl && typeof out.imageUrl === 'string' && out.imageUrl.startsWith('images/') && out.imageBase64 && String(out.imageBase64).startsWith('data:')) {
+    out.imageBase64 = null;
   }
 
   return out;
@@ -349,8 +361,10 @@ export function registerRoutes(app: Express): void {
    * (receive, stock out, count, sales), so the ledger always explains it. Size stock in the
    * variants is kept too; a newly added size starts at 0.
    */
-  async function updateProductKeepingStock(tx: any, existing: any, data: any) {
+  async function updateProductKeepingStock(tx: any, existing: any, data: any, costOverride = false) {
     const { openingStock: _ignored, ...rest } = data;
+    // The average cost is kept by receipts; a stale copy of the item must not overwrite it
+    if (!costOverride) delete rest.costPrice;
     if (rest.variants !== undefined) rest.variants = keepVariantStock(existing.variants, rest.variants);
     return tx.product.update({ where: { id: existing.id }, data: { ...rest, updatedAt: new Date() } });
   }
@@ -378,6 +392,7 @@ export function registerRoutes(app: Express): void {
 
   app.get('/api/products', async (req: Request, res: Response) => {
     try {
+      const origin = `${req.protocol}://${req.get('host')}`;
       const module = req.query.module as string | undefined;
       const includeArchived = req.query.includeArchived === '1';
       const where = { ...(module ? { module } : {}), ...(includeArchived ? {} : { archivedAt: null }) };
@@ -385,6 +400,17 @@ export function registerRoutes(app: Express): void {
         where,
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
       });
+      // One-time move of pictures stored only as base64 in the database into image files
+      for (const p of products as any[]) {
+        if (typeof p.imageBase64 === 'string' && p.imageBase64.startsWith('data:image/') && !(p.imageUrl && String(p.imageUrl).startsWith('images/'))) {
+          const saved = saveBase64Image(p.imageBase64, p.id);
+          if (saved) {
+            await db.product.update({ where: { id: p.id }, data: { imageUrl: saved, imageBase64: null } }).catch(() => undefined);
+            p.imageUrl = saved;
+            p.imageBase64 = null;
+          }
+        }
+      }
       const parsed = products.map((p: any) => {
         let v = p.variants;
         if (typeof v === 'string') {
@@ -394,18 +420,14 @@ export function registerRoutes(app: Express): void {
             /* ignore */
           }
         }
+        // Images are files served from /images: the list carries their URL, not the picture itself
+        let imageUrl = p.imageUrl;
         let imageBase64 = p.imageBase64;
-        if (!imageBase64 && p.imageUrl && p.imageUrl.startsWith('images/')) {
-          try {
-            const abs = resolveImagePath(p.imageUrl);
-            if (existsSync(abs)) {
-              const ext = extname(abs).replace('.', '') || 'png';
-              const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
-              imageBase64 = `data:${mime};base64,${readFileSync(abs).toString('base64')}`;
-            }
-          } catch {}
+        if (imageUrl && imageUrl.startsWith('images/') && existsSync(resolveImagePath(imageUrl))) {
+          imageUrl = `${origin}/${imageUrl}`;
+          imageBase64 = undefined;
         }
-        return { ...p, imageBase64, variants: v };
+        return { ...p, imageUrl, imageBase64, variants: v };
       });
       res.json(parsed);
     } catch (err: any) {
@@ -418,10 +440,12 @@ export function registerRoutes(app: Express): void {
       const safeData = sanitizeProduct(req.body);
       const id = safeData.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       const by = requestUser(req)?.name || null;
+      const costOverride = (req.body || {}).costOverride === true;
+      if (costOverride && refuseWithoutPermission(req, res, 'stock_adjust', "Stock Corrections (needed to change an item's average cost)")) return;
       const product = await db.$transaction(async (tx: any) => {
         await assertUniqueProductCodes(tx, id, safeData);
         const existing = await tx.product.findUnique({ where: { id } });
-        if (existing) return updateProductKeepingStock(tx, existing, safeData);
+        if (existing) return updateProductKeepingStock(tx, existing, safeData, costOverride);
         // A new item's opening stock is a ledger entry ("Opening Stock") with its cost and batch,
         // so the ledger, valuation and FEFO batches start complete
         const opening = safeData.openingStock === null || safeData.openingStock === undefined ? null : Math.max(0, Number(safeData.openingStock) || 0);
@@ -461,11 +485,13 @@ export function registerRoutes(app: Express): void {
       const id = String(req.params.id);
       const safeData = sanitizeProduct(req.body);
       delete safeData.id;
+      const costOverride = (req.body || {}).costOverride === true;
+      if (costOverride && refuseWithoutPermission(req, res, 'stock_adjust', "Stock Corrections (needed to change an item's average cost)")) return;
       const product = await db.$transaction(async (tx: any) => {
         const existing = await tx.product.findUnique({ where: { id } });
         if (!existing) throw Object.assign(new Error('Product not found'), { status: 404 });
         await assertUniqueProductCodes(tx, id, safeData);
-        return updateProductKeepingStock(tx, existing, safeData);
+        return updateProductKeepingStock(tx, existing, safeData, costOverride);
       });
       let parsedVariants = product.variants;
       if (typeof parsedVariants === 'string') {

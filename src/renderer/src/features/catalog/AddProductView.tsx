@@ -37,7 +37,8 @@ import { posApi } from '@/lib/api';
 import { Product, Category, ModuleKey, ProductVariant } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
-import { useAppToast } from '../../context/AppNotificationContext';
+import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
+import { belowCostWarning, marginPercent } from '@/lib/pricing';
 import {
   CATEGORY_PROFILES,
   detectCategoryProfile,
@@ -483,6 +484,7 @@ export function AddProductView(): React.JSX.Element {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { notifySuccess, notifyWarning, notifyError } = useAppToast();
+  const confirmModal = useConfirmDialog();
 
   const { can, businessProfiles = ['standard', 'food'], refreshModules } = useLicense();
   React.useEffect(() => {
@@ -2229,7 +2231,12 @@ export function AddProductView(): React.JSX.Element {
     reader.readAsDataURL(file);
   };
 
-  const onSubmit = (data: ProductFormData) => {
+  const onSubmit = async (data: ProductFormData) => {
+    const warning = belowCostWarning(data.name, data.price, data.costPrice);
+    if (warning) {
+      const ok = await confirmModal({ title: 'Selling below cost', message: `${warning}\n\nSave anyway?`, confirmLabel: 'Save anyway', intent: 'danger' });
+      if (!ok) return;
+    }
     saveProductMutation.mutate(data);
   };
 
@@ -4101,6 +4108,15 @@ export function AddProductView(): React.JSX.Element {
                         />
                       )}
                     />
+                    {(() => {
+                      const m = marginPercent(productForm.watch('price'), productForm.watch('costPrice'));
+                      if (m === null) return null;
+                      return (
+                        <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: m <= 0 ? tokens.colorPaletteRedForeground1 : tokens.colorNeutralForeground3 }}>
+                          {m <= 0 ? 'Sale price is at or below cost' : `Margin ${m}%`}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {watchedModule !== 'fastfood' && (
