@@ -30,6 +30,7 @@ import { posApi, round3 } from '@/lib/api';
 import { Product, PurchaseBill, PurchaseBillLine, StockMovement, ProductVariant } from '@shared/types';
 import { uid, formatPKR, nowISO } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { CustomDateField } from '@/components/ui/CustomDateField';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { vendorStorage, Vendor } from './vendorStorage';
 import { useAppToast } from '@/context/AppNotificationContext';
@@ -751,12 +752,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                 placeholder="e.g. INV-9842"
               />
 
-              <CustomInput
-                label="Bill Date"
-                type="date"
-                value={billDate}
-                onChange={(e) => setBillDate(e.target.value)}
-              />
+              <CustomDateField label="Bill Date" value={billDate} onChange={setBillDate} max={new Date().toISOString().slice(0, 10)} />
 
               <CustomInput
                 label="Notes / Terms"
@@ -954,12 +950,11 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
 
                         {/* Expiry Date */}
                         <td style={{ padding: '6px 6px', verticalAlign: 'middle' }}>
-                          <input
-                            type="date"
+                          <CustomDateField
                             value={line.expiryDate || ''}
-                            onChange={(e) => updateLine(idx, { expiryDate: e.target.value })}
-                            className={styles.tableInput}
-                            style={{ fontSize: '12px' }}
+                            onChange={(v) => updateLine(idx, { expiryDate: v })}
+                            min={new Date().toISOString().slice(0, 10)}
+                            aria-label={`Expiry date for ${line.productName || 'item'}`}
                           />
                         </td>
 

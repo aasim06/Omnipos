@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { CustomDateField } from '@/components/ui/CustomDateField';
 import {
   makeStyles,
   tokens,
@@ -330,29 +331,9 @@ export function ReportsAnalyticsView(): React.JSX.Element {
 
         {dateFilter === 'custom' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <input
-              type="date"
-              value={customStart}
-              onChange={(e) => setCustomStart(e.target.value)}
-              style={{
-                padding: '4px 8px',
-                borderRadius: '6px',
-                border: `1px solid ${tokens.colorNeutralStroke2}`,
-                fontSize: '12px',
-              }}
-            />
+            <CustomDateField value={customStart} onChange={setCustomStart} max={customEnd || undefined} aria-label="From date" />
             <span style={{ fontSize: '12px', color: tokens.colorNeutralForeground3 }}>to</span>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={(e) => setCustomEnd(e.target.value)}
-              style={{
-                padding: '4px 8px',
-                borderRadius: '6px',
-                border: `1px solid ${tokens.colorNeutralStroke2}`,
-                fontSize: '12px',
-              }}
-            />
+            <CustomDateField value={customEnd} onChange={setCustomEnd} min={customStart || undefined} aria-label="To date" />
           </div>
         )}
       </div>

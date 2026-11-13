@@ -55,6 +55,7 @@ import {
 import { UNIT_OPTIONS } from '@/lib/units';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { CustomDateField } from '@/components/ui/CustomDateField';
 import {
   Tag,
   Circle,
@@ -4607,11 +4608,11 @@ export function AddProductView(): React.JSX.Element {
                     control={productForm.control}
                     name="mfgDate"
                     render={({ field }) => (
-                      <CustomInput
+                      <CustomDateField
                         label="Manufacturing Date (MFG)"
-                        type="date"
                         value={field.value || ''}
                         onChange={field.onChange}
+                        max={new Date().toISOString().slice(0, 10)}
                       />
                     )}
                   />
@@ -4620,12 +4621,7 @@ export function AddProductView(): React.JSX.Element {
                     control={productForm.control}
                     name="expiryDate"
                     render={({ field }) => (
-                      <CustomInput
-                        label="Expiry Date (EXP)"
-                        type="date"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                      />
+                      <CustomDateField label="Expiry Date (EXP)" value={field.value || ''} onChange={field.onChange} />
                     )}
                   />
                 </div>

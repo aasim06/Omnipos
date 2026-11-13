@@ -30,6 +30,7 @@ import { Pager, usePaged } from '@/components/common/Pager';
 import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { CustomDateField } from '@/components/ui/CustomDateField';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -769,9 +770,9 @@ export function StockLedgerView(): React.JSX.Element {
 
             {timeFilter === 'custom' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <CustomInput type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} aria-label="From date" />
+                <CustomDateField value={fromDate} onChange={setFromDate} max={toDate || undefined} aria-label="From date" />
                 <span>to</span>
-                <CustomInput type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} aria-label="To date" />
+                <CustomDateField value={toDate} onChange={setToDate} min={fromDate || undefined} aria-label="To date" />
               </div>
             )}
 

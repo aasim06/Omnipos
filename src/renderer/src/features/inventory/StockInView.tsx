@@ -55,6 +55,8 @@ import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { detectCategoryProfile, getFilteredProfileOptions } from '@/lib/categoryProfiles';
 import { printGrn } from '@/lib/grnPrint';
+import { CustomDateField } from '@/components/ui/CustomDateField';
+import { CustomDateTimeField } from '@/components/ui/CustomDateField';
 import { lowStockLimit } from '@/lib/stockStatus';
 
 export const FOOD_GROUPS: Record<string, { label: string; match: RegExp }> = {
@@ -1899,173 +1901,74 @@ export function StockInView(): React.JSX.Element {
           )}
 
           {/* Row 2: QTY, Unit Price, Discount (%), Line Total, Save Button */}
-          <div className={styles.row2}>
-            <div>
-              <Controller
-                control={form.control}
-                name="quantity"
-                render={({ field }) => (
-                  <CustomInput
-                    label={conversion && watchedReceiveUnit === 'wholesale' ? `QTY (${conversion.wholesale}) *` : 'QTY *'}
-                    required
-                    type="number"
-                    step="any"
-                    placeholder="1"
-                    value={field.value !== undefined ? String(field.value) : ''}
-                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                    error={form.formState.errors.quantity?.message}
-                  />
-                )}
-              />
-            </div>
-
-            <div>
-              <Controller
-                control={form.control}
-                name="unitPrice"
-                render={({ field }) => (
-                  <CustomInput
-                    label={conversion && watchedReceiveUnit === 'wholesale' ? `PRICE / ${conversion.wholesale.toUpperCase()} (PKR)` : 'UNIT PRICE (PKR)'}
-                    type="number"
-                    step="any"
-                    placeholder="0"
-                    value={field.value !== undefined ? String(field.value) : ''}
-                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                  />
-                )}
-              />
-            </div>
-
-            <div>
-              <Controller
-                control={form.control}
-                name="discountPercent"
-                render={({ field }) => (
-                  <CustomInput
-                    label="DISCOUNT (%)"
-                    type="number"
-                    placeholder="0"
-                    min={0}
-                    max={100}
-                    value={field.value !== undefined ? String(field.value) : ''}
-                    onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                    rightElement={<span className={styles.percentSuffix}>%</span>}
-                  />
-                )}
-              />
-            </div>
-
-            <div>
-              <label className={styles.fieldLabel}>LINE TOTAL (PKR)</label>
-              <div className={styles.lineTotalBox}>
-                <span className={styles.lineTotalValue}>Rs. {lineTotal.toLocaleString()}</span>
-                {discountAmount > 0 && (
-                  <span className={styles.discountPill}>
-                    (-{discountAmount.toLocaleString()})
-                  </span>
-                )}
-              </div>
-              {(() => {
-                const factor = conversion && watchedReceiveUnit === 'wholesale' ? conversion.rate : 1;
-                const units = (watchedQty + watchedBonus) * factor;
-                if (!(units > 0) || !(lineTotal > 0)) return null;
-                const costPerUnit = Math.round((lineTotal / units) * 100) / 100;
-                const sale = watchedNewPrice > 0 ? watchedNewPrice : Number(selectedProduct?.price || 0);
-                const margin = sale > 0 ? Math.round(((sale - costPerUnit) / sale) * 1000) / 10 : null;
-                return (
-                  <span
-                    className={styles.fieldLabel}
-                    style={{
-                      display: 'block',
-                      marginTop: 4,
-                      color: margin !== null && margin <= 0 ? tokens.colorPaletteRedForeground1 : tokens.colorNeutralForeground3,
-                    }}
-                  >
-                    Cost Rs. {costPerUnit.toLocaleString()} / {conversion?.base || selectedProduct?.unit || 'unit'}
-                    {margin !== null ? (margin <= 0 ? ' · no margin at this sale price' : ` · margin ${margin}%`) : ''}
-                  </span>
-                );
-              })()}
-            </div>
-
-            <div>
-              <Button
-                appearance="primary"
-                type="submit"
-                disabled={saveMutation.isPending}
-                className={styles.saveBtn}
-              >
-                <Add20Regular className={styles.btnIcon18} />
-                <span>{saveMutation.isPending ? 'Saving...' : 'Save Stock In Invoice'}</span>
-              </Button>
-            </div>
+          {/* ── Quantity & cost ── */}
+          <div className={styles.sectionLabel}>Quantity &amp; cost</div>
+          <div className={styles.fieldGrid}>
+            <Controller
+              control={form.control}
+              name="quantity"
+              render={({ field }) => (
+                <CustomInput
+                  label={conversion && watchedReceiveUnit === 'wholesale' ? `Qty (${conversion.wholesale})` : 'Qty'}
+                  required
+                  type="number"
+                  step="any"
+                  placeholder="1"
+                  value={field.value !== undefined ? String(field.value) : ''}
+                  onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                  error={form.formState.errors.quantity?.message}
+                />
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="bonusQty"
+              render={({ field }) => (
+                <CustomInput
+                  label="Bonus / free qty"
+                  type="number"
+                  placeholder="e.g. 1 for 10 + 1"
+                  value={field.value ? String(field.value) : ''}
+                  onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                />
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="unitPrice"
+              render={({ field }) => (
+                <CustomInput
+                  label={conversion && watchedReceiveUnit === 'wholesale' ? `Cost / ${conversion.wholesale} (PKR)` : 'Cost per unit (PKR)'}
+                  required
+                  type="number"
+                  step="any"
+                  placeholder="0"
+                  value={field.value !== undefined ? String(field.value) : ''}
+                  onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                />
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="discountPercent"
+              render={({ field }) => (
+                <CustomInput
+                  label="Discount"
+                  type="number"
+                  placeholder="0"
+                  min={0}
+                  max={100}
+                  value={field.value !== undefined ? String(field.value) : ''}
+                  onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                  rightElement={<span className={styles.percentSuffix}>%</span>}
+                />
+              )}
+            />
           </div>
 
-          {/* Row 3: Supplier invoice, receive unit (when the product has a wholesale unit), Batch No, Expiry */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginTop: '12px' }}>
-            <div>
-              <Controller
-                control={form.control}
-                name="supplierInvoiceNo"
-                render={({ field }) => (
-                  <CustomInput label="SUPPLIER INVOICE NO" placeholder="From the supplier's bill" value={field.value || ''} onChange={field.onChange} />
-                )}
-              />
-            </div>
-            <div>
-              <Controller
-                control={form.control}
-                name="invoiceDate"
-                render={({ field }) => <CustomInput label="INVOICE DATE" type="date" value={field.value || ''} onChange={field.onChange} />}
-              />
-            </div>
-            <div>
-              <Controller
-                control={form.control}
-                name="bonusQty"
-                render={({ field }) => (
-                  <CustomInput
-                    label="BONUS / FREE QTY"
-                    type="number"
-                    placeholder="e.g. 1 (for 10 + 1)"
-                    value={field.value ? String(field.value) : ''}
-                    onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-                  />
-                )}
-              />
-            </div>
-            <div>
-              <Controller
-                control={form.control}
-                name="newRetailPrice"
-                render={({ field }) => (
-                  <CustomInput
-                    label="SALE PRICE (PKR)"
-                    type="number"
-                    placeholder="Selling price per unit"
-                    value={field.value ? String(field.value) : ''}
-                    onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-                  />
-                )}
-              />
-            </div>
-            <div>
-              <Controller
-                control={form.control}
-                name="payment"
-                render={({ field }) => (
-                  <CustomSelect
-                    label="PAYMENT"
-                    value={field.value || 'credit'}
-                    options={[
-                      { value: 'credit', label: 'On credit (supplier balance)' },
-                      { value: 'cash', label: 'Paid in cash now (from drawer)' },
-                    ]}
-                    onChange={(val) => field.onChange(val || 'credit')}
-                  />
-                )}
-              />
-            </div>
+          {/* ── Batch & selling price ── */}
+          <div className={styles.sectionLabel}>Batch &amp; selling price</div>
+          <div className={styles.fieldGrid}>
             {conversion && (
               <div>
                 <Controller
@@ -2073,7 +1976,7 @@ export function StockInView(): React.JSX.Element {
                   name="receiveUnit"
                   render={({ field }) => (
                     <CustomSelect
-                      label="RECEIVE IN"
+                      label="Receive in"
                       value={field.value || 'base'}
                       options={[
                         { value: 'base', label: `${conversion.base} (stock unit)` },
@@ -2084,41 +1987,133 @@ export function StockInView(): React.JSX.Element {
                   )}
                 />
                 {watchedReceiveUnit === 'wholesale' && (
-                  <span className={styles.fieldLabel} style={{ display: 'block', marginTop: 4 }}>
-                    = {round3((watchedQty || 0) * conversion.rate)} {conversion.base} into stock
+                  <span className={styles.fieldHint}>
+                    = {round3(((watchedQty || 0) + watchedBonus) * conversion.rate)} {conversion.base} into stock
                   </span>
                 )}
               </div>
             )}
-            <div>
-              <Controller
-                control={form.control}
-                name="batchNumber"
-                render={({ field }) => (
-                  <CustomInput
-                    label={needsBatch(form.getValues()) ? 'BATCH NO *' : 'BATCH NO (OPTIONAL)'}
-                    placeholder="e.g. B-2026-11"
-                    value={field.value || ''}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-            </div>
-            <div>
-              <Controller
-                control={form.control}
-                name="expiryDate"
-                render={({ field }) => (
-                  <CustomInput
-                    label={needsBatch(form.getValues()) ? 'EXPIRY DATE *' : 'EXPIRY DATE (OPTIONAL)'}
-                    type="date"
-                    value={field.value || ''}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-            </div>
+            <Controller
+              control={form.control}
+              name="batchNumber"
+              render={({ field }) => (
+                <CustomInput
+                  label={needsBatch(form.getValues()) ? 'Batch no' : 'Batch no (optional)'}
+                  required={needsBatch(form.getValues())}
+                  placeholder="e.g. B-2026-11"
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="expiryDate"
+              render={({ field }) => (
+                <CustomDateField
+                  label={needsBatch(form.getValues()) ? 'Expiry date' : 'Expiry date (optional)'}
+                  required={needsBatch(form.getValues())}
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  min={new Date().toISOString().slice(0, 10)}
+                />
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="newRetailPrice"
+              render={({ field }) => (
+                <CustomInput
+                  label="Sale price (PKR)"
+                  type="number"
+                  placeholder="Selling price per unit"
+                  value={field.value ? String(field.value) : ''}
+                  onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                />
+              )}
+            />
           </div>
+
+          {/* ── Supplier invoice & payment ── */}
+          <div className={styles.sectionLabel}>Supplier invoice &amp; payment</div>
+          <div className={styles.fieldGrid}>
+            <Controller
+              control={form.control}
+              name="supplierInvoiceNo"
+              render={({ field }) => (
+                <CustomInput label="Supplier invoice no" placeholder="From the supplier's bill" value={field.value || ''} onChange={field.onChange} />
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="invoiceDate"
+              render={({ field }) => (
+                <CustomDateField label="Invoice date" value={field.value || ''} onChange={field.onChange} max={new Date().toISOString().slice(0, 10)} />
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="payment"
+              render={({ field }) => (
+                <CustomSelect
+                  label="Payment"
+                  value={field.value || 'credit'}
+                  options={[
+                    { value: 'credit', label: 'On credit (supplier balance)' },
+                    { value: 'cash', label: 'Paid in cash now (from drawer)' },
+                  ]}
+                  onChange={(val) => field.onChange(val || 'credit')}
+                />
+              )}
+            />
+          </div>
+
+          {/* ── Summary & save ── */}
+          {(() => {
+            const factor = conversion && watchedReceiveUnit === 'wholesale' ? conversion.rate : 1;
+            const units = (watchedQty + watchedBonus) * factor;
+            const costPerUnit = units > 0 && lineTotal > 0 ? Math.round((lineTotal / units) * 100) / 100 : 0;
+            const sale = watchedNewPrice > 0 ? watchedNewPrice : Number(selectedProduct?.price || 0);
+            const margin = costPerUnit > 0 && sale > 0 ? Math.round(((sale - costPerUnit) / sale) * 1000) / 10 : null;
+            const unitName = conversion?.base || selectedProduct?.unit || 'unit';
+            return (
+              <div className={styles.summaryBar}>
+                <div className={styles.summaryItems}>
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Line total</span>
+                    <span className={styles.summaryValueStrong}>
+                      Rs. {lineTotal.toLocaleString()}
+                      {discountAmount > 0 && <span className={styles.discountPill}>(-{discountAmount.toLocaleString()})</span>}
+                    </span>
+                  </div>
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Units into stock</span>
+                    <span className={styles.summaryValue}>
+                      {round3(units).toLocaleString()} {unitName}
+                      {watchedBonus > 0 ? ` (incl. ${watchedBonus} free)` : ''}
+                    </span>
+                  </div>
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Cost per {unitName}</span>
+                    <span className={styles.summaryValue}>{costPerUnit > 0 ? `Rs. ${costPerUnit.toLocaleString()}` : '—'}</span>
+                  </div>
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Margin</span>
+                    {margin === null ? (
+                      <span className={styles.summaryValue}>—</span>
+                    ) : (
+                      <Badge appearance="tint" color={margin <= 0 ? 'danger' : margin < 10 ? 'warning' : 'success'}>
+                        {margin <= 0 ? 'No margin' : `${margin}%`}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <Button appearance="primary" type="submit" disabled={saveMutation.isPending} className={styles.saveBtn} icon={<Add20Regular />}>
+                  {saveMutation.isPending ? 'Saving…' : 'Save stock in'}
+                </Button>
+              </div>
+            );
+          })()}
         </form>
       </div>
 
@@ -2505,12 +2500,7 @@ export function StockInView(): React.JSX.Element {
                   control={editForm.control}
                   name="date"
                   render={({ field }) => (
-                    <CustomInput
-                      label="Transaction Date & Time"
-                      type="datetime-local"
-                      value={field.value || ''}
-                      onChange={field.onChange}
-                    />
+                    <CustomDateTimeField label="Transaction Date & Time" value={field.value || ''} onChange={field.onChange} />
                   )}
                 />
               </div>

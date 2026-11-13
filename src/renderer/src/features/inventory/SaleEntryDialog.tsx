@@ -17,6 +17,7 @@ import { posApi, round3 } from '@/lib/api';
 import { CartLine, ModuleKey, Order, Product } from '@shared/types';
 import { formatPKR, uid } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { CustomDateField } from '@/components/ui/CustomDateField';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { useAppToast } from '@/context/AppNotificationContext';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
@@ -245,7 +246,7 @@ export function SaleEntryDialog({ isOpen, onClose }: Props): React.JSX.Element {
                   }}
                 />
               )}
-              <CustomInput label="SALE DATE" type="date" value={saleDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setSaleDate(e.target.value)} />
+              <CustomDateField label="SALE DATE" value={saleDate} max={new Date().toISOString().slice(0, 10)} onChange={setSaleDate} />
               <CustomSelect
                 label="PAYMENT"
                 value={payMode}

@@ -32,6 +32,7 @@ import { offlineDb } from '@/lib/offlineDb';
 import { Product, ProductVariant } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { CustomDateField } from '@/components/ui/CustomDateField';
 import { useAppToast } from '../../context/AppNotificationContext';
 import { useProductDetailsStyles } from './productDetails.styles';
 import { getStockStatus } from '@/lib/stockStatus';
@@ -763,18 +764,8 @@ export function ProductDetailsView(): React.JSX.Element {
                     placeholder="BATCH-2026"
                   />
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
-                    <CustomInput
-                      label="MFG Date"
-                      type="date"
-                      value={editMfgDate}
-                      onChange={(e) => setEditMfgDate(e.target.value)}
-                    />
-                    <CustomInput
-                      label="Expiry Date"
-                      type="date"
-                      value={editExpiryDate}
-                      onChange={(e) => setEditExpiryDate(e.target.value)}
-                    />
+                    <CustomDateField label="MFG Date" value={editMfgDate} onChange={setEditMfgDate} />
+                    <CustomDateField label="Expiry Date" value={editExpiryDate} onChange={setEditExpiryDate} />
                   </div>
                 </>
               )}
