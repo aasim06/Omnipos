@@ -1907,6 +1907,33 @@ export function registerRoutes(app: Express): void {
     address: toOptionalString(b.address),
     category: toOptionalString(b.category),
     notes: toOptionalString(b.notes),
+    ...(b.creditDays !== undefined && b.creditDays !== null && b.creditDays !== ''
+      ? { creditDays: Math.max(0, Math.round(Number(b.creditDays) || 0)) }
+      : {}),
+  });
+
+  // Payables aging: unpaid bills by age (payments settle the oldest first), overdue past credit days
+  app.get('/api/vendors/aging', async (_req: Request, res: Response) => {
+    try {
+      const vendors = await db.vendor.findMany({ where: { archivedAt: null }, include: { transactions: true } });
+      const now = new Date();
+      res.json(
+        vendors.map((v: any) => ({
+          vendorId: v.id,
+          ...computeKhataAging(
+            v.transactions.map((t: any) => {
+              // Bills and positive adjustments add to what we owe; payments and credits reduce it
+              const owed = t.type === 'BILL' || (t.type === 'ADJUSTMENT' && Number(t.amount) >= 0);
+              return { id: t.id, type: owed ? 'DEBIT' : 'CREDIT', amount: Math.abs(Number(t.amount) || 0), date: t.date };
+            }),
+            v.creditDays,
+            { now, balance: Number(v.currentBalance || 0), openedAt: v.createdAt }
+          ),
+        }))
+      );
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   app.get('/api/vendors', async (_req: Request, res: Response) => {
@@ -2014,6 +2041,34 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  /**
+   * Mark purchase bills paid by a supplier payment: the bill the user picked first, then the
+   * oldest unpaid bills, until the payment is used up. Whatever is left is an advance.
+   */
+  async function allocatePaymentToBills(tx: any, vendorId: string, amount: number, preferredBillId?: string | null) {
+    let left = round2(amount);
+    const out: { billId: string; billNumber: string; amount: number }[] = [];
+    if (!(left > 0)) return out;
+    const bills = (await tx.purchaseBill.findMany({ where: { vendorId } }))
+      .filter((b: any) => round2(Number(b.grandTotal || 0) - Number(b.paidAmount || 0)) > 0)
+      .sort((a: any, b: any) =>
+        a.id === preferredBillId ? -1 : b.id === preferredBillId ? 1 : String(a.billDate).localeCompare(String(b.billDate)) || +new Date(a.createdAt) - +new Date(b.createdAt)
+      );
+    for (const bill of bills) {
+      if (left <= 0) break;
+      const due = round2(Number(bill.grandTotal || 0) - Number(bill.paidAmount || 0));
+      const pay = Math.min(due, left);
+      const paid = round2(Number(bill.paidAmount || 0) + pay);
+      await tx.purchaseBill.update({
+        where: { id: bill.id },
+        data: { paidAmount: paid, paymentStatus: paid >= Number(bill.grandTotal || 0) - 0.005 ? 'paid' : 'partial' },
+      });
+      out.push({ billId: bill.id, billNumber: bill.billNumber, amount: pay });
+      left = round2(left - pay);
+    }
+    return out;
+  }
+
   /** Post a ledger entry and move the vendor's running balance atomically (idempotent by id). */
   async function postVendorTransaction(tx: any, t: any) {
     if (t.id) {
@@ -2052,6 +2107,10 @@ export function registerRoutes(app: Express): void {
       const result = await db.$transaction(async (tx: any) => {
         const isNew = !body.id || !(await tx.vendorTransaction.findUnique({ where: { id: String(body.id) } }));
         const posted = await postVendorTransaction(tx, { ...body, createdBy: body.createdBy || requestUser(req)?.name });
+        let allocations: { billId: string; billNumber: string; amount: number }[] = [];
+        if (isNew && body.type === 'PAYMENT') {
+          allocations = await allocatePaymentToBills(tx, String(body.vendorId), Number(posted.transaction.amount) || 0, toOptionalString(body.billId));
+        }
         // Paid in cash today: the money leaves the drawer (a late sync of an older payment does not)
         const today = new Date().toDateString();
         if (
@@ -2062,7 +2121,7 @@ export function registerRoutes(app: Express): void {
         ) {
           await drawerCashOut(tx, Number(posted.transaction.amount) || 0);
         }
-        return posted;
+        return { ...posted, allocations };
       });
       res.json(result);
     } catch (err: any) {

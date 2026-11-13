@@ -207,6 +207,7 @@ model Vendor {
   openingBalance Float    @default(0) // balance owed when the vendor was added
   currentBalance Float    @default(0) // running payable = opening + bills - payments ± adjustments
   archivedAt     DateTime? // hidden from lists; the ledger is kept (suppliers with history are never deleted)
+  creditDays     Int       @default(30) // days we have to pay their bills (payables aging / overdue)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

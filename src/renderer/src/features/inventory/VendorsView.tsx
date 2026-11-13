@@ -32,6 +32,8 @@ import {
   History20Regular,
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
+import { KpiTile } from '@/components/win11';
+import type { KhataAging } from '@shared/khataAging';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -61,6 +63,7 @@ const vendorSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   openingBalance: z.coerce.number().optional().default(0),
+  creditDays: z.coerce.number().min(0).optional().default(30),
 });
 
 type VendorFormData = z.infer<typeof vendorSchema>;
@@ -73,6 +76,7 @@ const editVendorSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   openingBalance: z.coerce.number().optional().default(0),
+  creditDays: z.coerce.number().min(0).optional().default(30),
 });
 
 type EditVendorFormData = z.infer<typeof editVendorSchema>;
@@ -85,6 +89,24 @@ export function VendorsView(): React.JSX.Element {
   const { notifySuccess, notifyWarning } = useAppToast();
   const confirmModal = useConfirmDialog();
   const [vendors, setVendors] = useState<Vendor[]>(() => vendorStorage.getVendors());
+  // Payables aging (unpaid bills by age, overdue past each supplier's credit days)
+  const { data: aging = {}, refetch: refetchAging } = useQuery<Record<string, KhataAging>>({
+    queryKey: ['vendor-aging'],
+    queryFn: () => vendorStorage.fetchAging(),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  const agingTotals = Object.values(aging).reduce(
+    (t, a) => ({
+      d0_30: t.d0_30 + a.buckets.d0_30,
+      d31_60: t.d31_60 + a.buckets.d31_60,
+      d61_90: t.d61_90 + a.buckets.d61_90,
+      d90p: t.d90p + a.buckets.d90p,
+      overdue: t.overdue + a.overdueAmount,
+      overdueCount: t.overdueCount + (a.overdue ? 1 : 0),
+    }),
+    { d0_30: 0, d31_60: 0, d61_90: 0, d90p: 0, overdue: 0, overdueCount: 0 }
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -150,6 +172,7 @@ export function VendorsView(): React.JSX.Element {
       phone: data.phone || '',
       address: data.address || '',
       openingBalance: data.openingBalance || 0,
+      creditDays: data.creditDays ?? 30,
     });
 
     setVendors(vendorStorage.getVendors());
@@ -180,6 +203,7 @@ export function VendorsView(): React.JSX.Element {
       phone: data.phone || '',
       address: data.address || '',
       openingBalance: data.openingBalance || 0,
+      creditDays: data.creditDays ?? 30,
     });
 
     setVendors(vendorStorage.getVendors());
@@ -199,6 +223,7 @@ export function VendorsView(): React.JSX.Element {
       phone: v.phone || '',
       address: v.address || '',
       openingBalance: v.openingBalance || 0,
+      creditDays: v.creditDays ?? 30,
     });
     setIsDrawerOpen(true);
   };
@@ -352,6 +377,21 @@ export function VendorsView(): React.JSX.Element {
               )}
             />
 
+            {/* Credit terms */}
+            <Controller
+              name="creditDays"
+              control={form.control}
+              render={({ field }) => (
+                <CustomInput
+                  label="Credit days"
+                  type="number"
+                  placeholder="30"
+                  value={field.value !== undefined ? String(field.value) : '30'}
+                  onChange={(e) => field.onChange(e.target.value === '' ? 30 : Number(e.target.value))}
+                />
+              )}
+            />
+
             {/* Field 6: COMPANY / ADDRESS NOTE */}
             <Controller
               name="address"
@@ -401,6 +441,20 @@ export function VendorsView(): React.JSX.Element {
           >
             + New Purchase Bill (Kharidari)
           </Button>
+        </div>
+
+        {/* Payables aging */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 12 }}>
+          <KpiTile label="Owed 0–30 days" value={formatPKR(agingTotals.d0_30)} />
+          <KpiTile label="31–60 days" value={formatPKR(agingTotals.d31_60)} tone={agingTotals.d31_60 > 0 ? 'warning' : 'neutral'} />
+          <KpiTile label="61–90 days" value={formatPKR(agingTotals.d61_90)} tone={agingTotals.d61_90 > 0 ? 'warning' : 'neutral'} />
+          <KpiTile label="90+ days" value={formatPKR(agingTotals.d90p)} tone={agingTotals.d90p > 0 ? 'danger' : 'neutral'} />
+          <KpiTile
+            label="Overdue"
+            value={formatPKR(agingTotals.overdue)}
+            tone={agingTotals.overdue > 0 ? 'danger' : 'success'}
+            footer={<span>{agingTotals.overdueCount} supplier{agingTotals.overdueCount === 1 ? '' : 's'} past their credit days</span>}
+          />
         </div>
 
         {/* Filter Bar */}
@@ -482,6 +536,13 @@ export function VendorsView(): React.JSX.Element {
                       </td>
                       <td className={mergeClasses(styles.td, vendorStorage.getBalance(v) > 0 ? styles.tdBalanceDebit : styles.tdBalanceCredit)}>
                         {formatPKR(vendorStorage.getBalance(v))}
+                        {aging[v.id]?.overdue && (
+                          <div>
+                            <Badge appearance="tint" color="danger" size="small">
+                              Overdue {formatPKR(aging[v.id].overdueAmount)} · {aging[v.id].daysOutstanding}d
+                            </Badge>
+                          </div>
+                        )}
                       </td>
                       <td className={styles.td}>
                         <span className={styles.secondaryText}>
@@ -677,6 +738,20 @@ export function VendorsView(): React.JSX.Element {
                     />
                   )}
                 />
+
+                <Controller
+                  name="creditDays"
+                  control={editForm.control}
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Credit days"
+                      type="number"
+                      placeholder="30"
+                      value={field.value !== undefined ? String(field.value) : '30'}
+                      onChange={(e) => field.onChange(e.target.value === '' ? 30 : Number(e.target.value))}
+                    />
+                  )}
+                />
               </div>
 
               <div className={styles.drawerFooter}>
@@ -828,7 +903,11 @@ export function VendorsView(): React.JSX.Element {
         isOpen={isLedgerModalOpen}
         onClose={() => setIsLedgerModalOpen(false)}
         vendor={ledgerVendor}
-        onVendorUpdated={() => setVendors(vendorStorage.getVendors())}
+        aging={ledgerVendor ? aging[ledgerVendor.id] ?? null : null}
+        onVendorUpdated={() => {
+          setVendors(vendorStorage.getVendors());
+          void refetchAging();
+        }}
       />
     </div>
   );

@@ -17,6 +17,8 @@ export interface Vendor {
   notes?: string;
   /** Set when the supplier was removed but has history: hidden from lists, ledger kept */
   archivedAt?: string;
+  /** Days we have to pay their bills (payables aging) */
+  creditDays?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -291,7 +293,13 @@ export const vendorStorage = {
    * ledger and takes a cash payment out of today's drawer. Offline, it is kept here and sent
    * later (same id, once).
    */
-  async recordPayment(vendorId: string, amount: number, paymentMethod: string, description: string): Promise<VendorTransaction> {
+  async recordPayment(
+    vendorId: string,
+    amount: number,
+    paymentMethod: string,
+    description: string,
+    billId?: string
+  ): Promise<VendorTransaction & { allocations?: { billId: string; billNumber: string; amount: number }[] }> {
     const now = new Date().toISOString();
     const id = uid('vtx_');
     const res = await pushToServer('/api/vendor-transactions', 'POST', {
@@ -301,6 +309,7 @@ export const vendorStorage = {
       amount,
       description,
       paymentMethod,
+      ...(billId ? { billId } : {}),
       createdBy: currentUserName(),
       date: now,
     });
@@ -330,11 +339,27 @@ export const vendorStorage = {
         const txs = (storage.getList<VendorTransaction>(TX_STORAGE_KEY) || []).filter((t) => t.id !== tx.id);
         txs.unshift(tx);
         storage.setList(TX_STORAGE_KEY, txs);
-        return tx;
+        return { ...tx, allocations: Array.isArray(body.allocations) ? body.allocations : [] };
       }
     }
     // Backend unreachable: keep it here (the cache is synced when it is back)
     return this.recordTransaction(vendorId, 'PAYMENT', amount, description, paymentMethod, undefined, { id });
+  },
+
+  /** Payables aging per supplier from the backend ledger; {} when unreachable. */
+  async fetchAging(): Promise<Record<string, import('@shared/khataAging').KhataAging>> {
+    try {
+      const base = await resolveApiUrl();
+      const headers = await getTenantHeaders();
+      const res = await fetch(`${base}/api/vendors/aging`, { headers });
+      if (!res.ok) return {};
+      const rows = await res.json();
+      const out: Record<string, any> = {};
+      for (const r of Array.isArray(rows) ? rows : []) out[r.vendorId] = r;
+      return out;
+    } catch {
+      return {};
+    }
   },
 
   /* ── Multi-Item Purchase Bills Storage ── */
