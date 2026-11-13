@@ -8,11 +8,17 @@ import {
   Caption1,
   Dialog,
   DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   mergeClasses,
 } from '@fluentui/react-components';
 import {
   Add20Regular,
   Delete20Regular,
+  Edit20Regular,
+  Warning20Regular,
   Food24Regular,
   BuildingRetail24Regular,
   Dismiss16Regular,
@@ -103,7 +109,14 @@ function renderProfileIcon(iconName: string, size = 18, color?: string) {
 export function CategoriesView(): React.JSX.Element {
   const styles = useCategoriesStyles();
   const queryClient = useQueryClient();
-  const { notifySuccess, notifyError } = useAppToast();
+  const { notifySuccess, notifyError, notifyWarning } = useAppToast();
+  // Rename / delete-with-move / uncategorised items
+  const [renameCat, setRenameCat] = useState<Category | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [deletingCat, setDeletingCat] = useState<Category | null>(null);
+  const [moveTarget, setMoveTarget] = useState('');
+  const [orphanTargets, setOrphanTargets] = useState<Record<string, string>>({});
+  const [isBusy, setIsBusy] = useState(false);
   const confirmModal = useConfirmDialog();
   const { can, businessProfiles = ['standard', 'food'], refreshModules } = useLicense();
   const hasFastFood = can('fastfood');
@@ -264,7 +277,93 @@ export function CategoriesView(): React.JSX.Element {
   }, [isDialogOpen, defaultCategoryOptions, categoryForm, isCustomName]);
 
   const onCategorySubmit = (data: CategoryFormData) => {
+    const dup = categories.find((c) => c.module === data.module && c.name.trim().toLowerCase() === data.name.trim().toLowerCase());
+    if (dup) {
+      notifyWarning(`A category named "${dup.name}" already exists.`);
+      return;
+    }
     createCategoryMutation.mutate(data);
+  };
+
+  // Items are filed by category name; count only this department's items
+  const countFor = (cat: Category) => products.filter((p) => p.category === cat.name && (p.module || 'minimart') === cat.module).length;
+
+  const refreshAll = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['categories'] });
+    await queryClient.invalidateQueries({ queryKey: ['products'] });
+    await queryClient.refetchQueries({ queryKey: ['categories'] });
+    await queryClient.refetchQueries({ queryKey: ['products'] });
+  };
+
+  const requestDelete = async (cat: Category) => {
+    if (countFor(cat) > 0) {
+      setDeletingCat(cat);
+      setMoveTarget('');
+      return;
+    }
+    const ok = await confirmModal({
+      title: 'Delete category',
+      message: `Delete category "${cat.name}"? It has no items.`,
+      confirmLabel: 'Delete category',
+      intent: 'danger',
+    });
+    if (ok) deleteCategoryMutation.mutate(cat.id);
+  };
+
+  const confirmDeleteWithMove = async () => {
+    if (!deletingCat || !moveTarget) return;
+    setIsBusy(true);
+    try {
+      const { moved } = await posApi.deleteCategory(deletingCat.id, moveTarget);
+      await refreshAll();
+      notifySuccess(`"${deletingCat.name}" deleted. ${moved} item(s) moved to "${moveTarget}".`);
+      setDeletingCat(null);
+    } catch (err: any) {
+      notifyError(err?.message || 'Could not delete the category');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const confirmRename = async () => {
+    if (!renameCat) return;
+    const name = renameValue.trim();
+    if (!name || name === renameCat.name) {
+      setRenameCat(null);
+      return;
+    }
+    const dup = categories.find((c) => c.id !== renameCat.id && c.module === renameCat.module && c.name.trim().toLowerCase() === name.toLowerCase());
+    if (dup) {
+      notifyWarning(`A category named "${dup.name}" already exists.`);
+      return;
+    }
+    setIsBusy(true);
+    try {
+      const count = countFor(renameCat);
+      await posApi.saveCategory({ ...renameCat, name });
+      await refreshAll();
+      notifySuccess(`Renamed to "${name}"${count ? `; ${count} item(s) moved with it` : ''}.`);
+      setRenameCat(null);
+    } catch (err: any) {
+      notifyError(err?.message || 'Could not rename the category');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const moveOrphans = async (module: ModuleKey, from: string) => {
+    const to = orphanTargets[`${module}|${from}`];
+    if (!to) return;
+    setIsBusy(true);
+    try {
+      const moved = await posApi.moveCategoryItems(module, from, to);
+      await refreshAll();
+      notifySuccess(`${moved} item(s) moved from "${from || 'no category'}" to "${to}".`);
+    } catch (err: any) {
+      notifyError(err?.message || 'Could not move the items');
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   if ((isLoadingCategories || isLoadingProducts) && categories.length === 0) {
@@ -321,7 +420,7 @@ export function CategoriesView(): React.JSX.Element {
           </div>
           <div className={styles.categoryGrid}>
             {fastFoodCategories.map((cat) => {
-              const count = products.filter((p) => p.category === cat.name).length;
+              const count = countFor(cat);
               const activeProfile = detectCategoryProfile(cat.name, cat.profile);
               const profileConfig = CATEGORY_PROFILES[activeProfile] || CATEGORY_PROFILES.standard;
 
@@ -349,24 +448,28 @@ export function CategoriesView(): React.JSX.Element {
                       </div>
                     </div>
                   </div>
-                  <Button
-                    size="small"
-                    appearance="subtle"
-                    className={styles.deleteActionBtn}
-                    icon={<Delete20Regular />}
-                    onClick={async () => {
-                      const ok = await confirmModal({
-                        title: 'Delete Category',
-                        message: `Delete category "${cat.name}"? Products in this category will remain.`,
-                        confirmLabel: 'Delete Category',
-                        intent: 'danger',
-                      });
-                      if (ok) {
-                        deleteCategoryMutation.mutate(cat.id);
-                      }
-                    }}
-                    title="Delete category"
-                  />
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      icon={<Edit20Regular />}
+                      onClick={() => {
+                        setRenameCat(cat);
+                        setRenameValue(cat.name);
+                      }}
+                      title="Rename category (its items move with it)"
+                      aria-label={`Rename ${cat.name}`}
+                    />
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      className={styles.deleteActionBtn}
+                      icon={<Delete20Regular />}
+                      onClick={() => requestDelete(cat)}
+                      title="Delete category"
+                      aria-label={`Delete ${cat.name}`}
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -396,7 +499,7 @@ export function CategoriesView(): React.JSX.Element {
           </div>
           <div className={styles.categoryGrid}>
             {omnimartCategories.map((cat) => {
-              const count = products.filter((p) => p.category === cat.name).length;
+              const count = countFor(cat);
               const activeProfile = detectCategoryProfile(cat.name, cat.profile);
               const profileConfig = CATEGORY_PROFILES[activeProfile] || CATEGORY_PROFILES.standard;
 
@@ -424,30 +527,85 @@ export function CategoriesView(): React.JSX.Element {
                       </div>
                     </div>
                   </div>
-                  <Button
-                    size="small"
-                    appearance="subtle"
-                    className={styles.deleteActionBtn}
-                    icon={<Delete20Regular />}
-                    onClick={async () => {
-                      const ok = await confirmModal({
-                        title: 'Delete Category',
-                        message: `Delete category "${cat.name}"? Products in this category will remain.`,
-                        confirmLabel: 'Delete Category',
-                        intent: 'danger',
-                      });
-                      if (ok) {
-                        deleteCategoryMutation.mutate(cat.id);
-                      }
-                    }}
-                    title="Delete category"
-                  />
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      icon={<Edit20Regular />}
+                      onClick={() => {
+                        setRenameCat(cat);
+                        setRenameValue(cat.name);
+                      }}
+                      title="Rename category (its items move with it)"
+                      aria-label={`Rename ${cat.name}`}
+                    />
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      className={styles.deleteActionBtn}
+                      icon={<Delete20Regular />}
+                      onClick={() => requestDelete(cat)}
+                      title="Delete category"
+                      aria-label={`Delete ${cat.name}`}
+                    />
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
       )}
+
+      {/* ── Items without a valid category ─────────────────────── */}
+      {(() => {
+        const orphans: { module: ModuleKey; name: string; count: number }[] = [];
+        for (const module of ['fastfood', 'minimart'] as ModuleKey[]) {
+          const names = new Set(categories.filter((c) => c.module === module).map((c) => c.name));
+          const byName = new Map<string, number>();
+          for (const p of products) {
+            if ((p.module || 'minimart') !== module || names.has(p.category)) continue;
+            byName.set(p.category || '', (byName.get(p.category || '') || 0) + 1);
+          }
+          byName.forEach((count, name) => orphans.push({ module, name, count }));
+        }
+        if (orphans.length === 0) return null;
+        return (
+          <div className={`${styles.sectionBox} ${styles.sectionBoxSpaced}`}>
+            <div className={styles.sectionTitle}>
+              <Warning20Regular />
+              <span>Items without a category ({orphans.reduce((s, o) => s + o.count, 0)})</span>
+            </div>
+            <Caption1 style={{ display: 'block', margin: '4px 0 10px', color: tokens.colorNeutralForeground3 }}>
+              These items are filed under a category that does not exist, so they are missing from category filters and POS tabs.
+              Move them to a category.
+            </Caption1>
+            {orphans.map((o) => {
+              const key = `${o.module}|${o.name}`;
+              const options = categories.filter((c) => c.module === o.module).map((c) => ({ value: c.name, label: c.name }));
+              return (
+                <div key={key} style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                  <div style={{ minWidth: 200 }}>
+                    <Body1 style={{ fontWeight: 600 }}>{o.name || '(no category)'}</Body1>
+                    <Caption1 style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
+                      {o.count} item{o.count === 1 ? '' : 's'} · {o.module === 'fastfood' ? 'Fast Food' : storeMod.shortRetailLabel}
+                    </Caption1>
+                  </div>
+                  <div style={{ minWidth: 220 }}>
+                    <CustomSelect
+                      value={orphanTargets[key] || ''}
+                      onChange={(v) => setOrphanTargets((t) => ({ ...t, [key]: v }))}
+                      options={[{ value: '', label: 'Move to…' }, ...options]}
+                    />
+                  </div>
+                  <Button appearance="primary" size="small" disabled={!orphanTargets[key] || isBusy} onClick={() => moveOrphans(o.module, o.name)}>
+                    Move items
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* ── Create Category Dialog ─────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>
@@ -647,6 +805,62 @@ export function CategoriesView(): React.JSX.Element {
           </form>
         </DialogSurface>
       </Dialog>
+      <Dialog open={!!renameCat} onOpenChange={(_, d) => !d.open && setRenameCat(null)}>
+        <DialogSurface style={{ maxWidth: 440 }}>
+          <DialogBody>
+            <DialogTitle>Rename category</DialogTitle>
+            <DialogContent>
+              <CustomInput label="Category name" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} autoFocus />
+              {renameCat && countFor(renameCat) > 0 && (
+                <Caption1 style={{ display: 'block', marginTop: 8, color: tokens.colorNeutralForeground3 }}>
+                  Its {countFor(renameCat)} item(s) move to the new name.
+                </Caption1>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setRenameCat(null)}>
+                Cancel
+              </Button>
+              <Button appearance="primary" onClick={confirmRename} disabled={isBusy || !renameValue.trim()}>
+                Rename
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      <Dialog open={!!deletingCat} onOpenChange={(_, d) => !d.open && setDeletingCat(null)}>
+        <DialogSurface style={{ maxWidth: 460 }}>
+          <DialogBody>
+            <DialogTitle>Delete "{deletingCat?.name}"</DialogTitle>
+            <DialogContent>
+              <Caption1 style={{ display: 'block', marginBottom: 10 }}>
+                {deletingCat ? countFor(deletingCat) : 0} item(s) are in this category. Choose where they go; then the category is deleted.
+              </Caption1>
+              <CustomSelect
+                label="Move items to"
+                value={moveTarget}
+                onChange={setMoveTarget}
+                options={[
+                  { value: '', label: 'Choose a category…' },
+                  ...categories
+                    .filter((c) => deletingCat && c.module === deletingCat.module && c.id !== deletingCat.id)
+                    .map((c) => ({ value: c.name, label: c.name })),
+                ]}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setDeletingCat(null)}>
+                Cancel
+              </Button>
+              <Button appearance="primary" onClick={confirmDeleteWithMove} disabled={isBusy || !moveTarget}>
+                Move items &amp; delete
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
       <PosBoardDialog
         open={boardModule !== null}
         module={boardModule ?? 'fastfood'}

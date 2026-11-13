@@ -50,6 +50,7 @@ model Category {
   name         String
   color        String?  // POS tile colour key ("" = automatic)
   icon         String?  // POS tile icon key ("" = automatic)
+  profile      String?  // business profile (pharmacy, footwear…) that drives the item forms
   displayOrder Int?     @default(0)
   createdAt    DateTime @default(now())
 }

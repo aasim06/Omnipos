@@ -403,6 +403,20 @@ export interface StockAlertRow {
   createdAt: string;
 }
 
+/** Re-file this till's copies of the items in category `from` under `to` (same department). */
+async function moveLocalItems(module: string, from: string, to: string): Promise<void> {
+  try {
+    const items = (await offlineDb.products.toArray()).filter((p) => (p.module || 'minimart') === module && p.category === from);
+    for (const p of items) await offlineDb.products.update(p.id, { category: to });
+    const list = storage.getList<Product>(KEYS.products);
+    storage.setList(
+      KEYS.products,
+      list.map((p) => ((p.module || 'minimart') === module && p.category === from ? { ...p, category: to } : p))
+    );
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
+  } catch {}
+}
+
 /** Call a quotation endpoint on the backend; null when it cannot be reached. */
 async function quoteBackend(path: string, init?: RequestInit): Promise<Response | null> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return null;
@@ -829,6 +843,24 @@ export const posApi = {
   },
 
   async saveCategory(cat: Category): Promise<Category> {
+    const previous = await offlineDb.categories.get(cat.id).catch(() => undefined);
+    // Backend first: it refuses a duplicate name and moves the items of a renamed category
+    const res = await quoteBackend('/api/categories', { method: 'POST', body: JSON.stringify(cat) });
+    if (res && res.status >= 400 && res.status < 500) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || `Category refused (${res.status})`);
+    }
+    if (res?.ok) {
+      const saved = await res.json().catch(() => null);
+      const merged: Category = { ...cat, ...(saved || {}) };
+      await offlineDb.categories.put(merged);
+      const current = storage.getList<Category>(KEYS.categories);
+      storage.setList(KEYS.categories, [merged, ...current.filter((c) => c.id !== merged.id)]);
+      if (previous && previous.name !== merged.name) {
+        await moveLocalItems(merged.module, previous.name, merged.name);
+      }
+      return merged;
+    }
     try {
       await offlineDb.categories.put(cat);
       const current = storage.getList<Category>(KEYS.categories);
@@ -850,23 +882,32 @@ export const posApi = {
     return cat;
   },
 
-  async deleteCategory(id: string): Promise<void> {
-    try {
-      await offlineDb.categories.delete(id);
-      const current = storage.getList<Category>(KEYS.categories);
-      storage.setList(KEYS.categories, current.filter((c) => c.id !== id));
+  /**
+   * Delete a category. A category with items needs `moveTo` (another category of the same
+   * department); its items are moved there first. Returns how many items moved.
+   */
+  async deleteCategory(id: string, moveTo?: string): Promise<{ moved: number }> {
+    const cat = await offlineDb.categories.get(id).catch(() => undefined);
+    const qs = moveTo ? `?moveTo=${encodeURIComponent(moveTo)}` : '';
+    const res = await quoteBackend(`/api/categories/${encodeURIComponent(id)}${qs}`, { method: 'DELETE' });
+    if (!res) throw new Error('Deleting a category needs the backend. Check the connection and try again.');
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.error || `Could not delete the category (${res.status})`);
+    await offlineDb.categories.delete(id);
+    const current = storage.getList<Category>(KEYS.categories);
+    storage.setList(KEYS.categories, current.filter((c) => c.id !== id));
+    if (cat && moveTo) await moveLocalItems(cat.module, cat.name, moveTo);
+    return { moved: Number(body?.moved) || 0 };
+  },
 
-      if (typeof navigator === 'undefined' || navigator.onLine) {
-        const base = await resolveApiUrl();
-        const tenantHeaders = await getTenantHeaders();
-        await fetch(`${base}/api/categories/${id}`, {
-          method: 'DELETE',
-          headers: tenantHeaders,
-        });
-      }
-    } catch {
-      /* Handled */
-    }
+  /** Move every item filed under `from` (e.g. a category that no longer exists) to category `to`. */
+  async moveCategoryItems(module: ModuleKey, from: string, to: string): Promise<number> {
+    const res = await quoteBackend('/api/categories/move-items', { method: 'POST', body: JSON.stringify({ module, from, to }) });
+    if (!res) throw new Error('Moving items needs the backend. Check the connection and try again.');
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.error || `Could not move the items (${res.status})`);
+    await moveLocalItems(module, from, to);
+    return Number(body?.moved) || 0;
   },
 
   /**

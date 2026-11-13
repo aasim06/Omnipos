@@ -318,12 +318,14 @@ export function sanitizeProduct(raw: any) {
 
 export function sanitizeCategory(raw: any) {
   if (!raw || typeof raw !== 'object') return {};
-  const allowed = ['id', 'module', 'name', 'color', 'icon', 'displayOrder'];
+  const allowed = ['id', 'module', 'name', 'color', 'icon', 'displayOrder', 'profile'];
   const out: any = {};
   for (const k of allowed) {
     if (raw[k] === undefined) continue;
     if (k === 'displayOrder') {
       out[k] = raw[k] === null || raw[k] === '' ? 0 : Math.round(Number(raw[k])) || 0;
+    } else if (k === 'profile') {
+      out[k] = raw[k] === null || raw[k] === '' ? null : String(raw[k]).slice(0, 40);
     } else if (k === 'color' || k === 'icon') {
       out[k] = raw[k] === null ? null : String(raw[k]).slice(0, 40);
     } else {
@@ -345,7 +347,17 @@ export function registerRoutes(app: Express): void {
    * Barcodes and SKUs identify one item: a scan must never match two products.
    * Archived items do not count.
    */
+  /** File an item under the existing category whose name matches apart from case / spaces. */
+  async function normaliseProductCategory(tx: any, data: any) {
+    if (!data.category) return;
+    const wanted = String(data.category).trim().toLowerCase();
+    const cats = await tx.category.findMany({ where: data.module ? { module: data.module } : {} });
+    const match = cats.find((c: any) => String(c.name).trim().toLowerCase() === wanted);
+    if (match) data.category = match.name;
+  }
+
   async function assertUniqueProductCodes(tx: any, id: string, data: any) {
+    await normaliseProductCategory(tx, data);
     for (const field of ['barcode', 'skuCode'] as const) {
       const code = String(data[field] || '').trim();
       if (!code) continue;
@@ -855,14 +867,29 @@ export function registerRoutes(app: Express): void {
   app.post('/api/categories', async (req: Request, res: Response) => {
     try {
       const safeData = sanitizeCategory(req.body);
-      // Upsert so editing a category (colour, icon, order) updates the existing row.
-      const cat = safeData.id
-        ? await db.category.upsert({ where: { id: safeData.id }, update: safeData, create: safeData })
-        : await db.category.create({ data: safeData });
+      if (safeData.name !== undefined) safeData.name = String(safeData.name).trim();
+      const cat = await db.$transaction(async (tx: any) => {
+        const existing = safeData.id ? await tx.category.findUnique({ where: { id: safeData.id } }) : null;
+        const module = safeData.module || existing?.module || 'minimart';
+        const name = safeData.name ?? existing?.name;
+        if (!name) throw Object.assign(new Error('Category name is required.'), { status: 400 });
+        // One category per name in a department (case and spaces ignored)
+        const same = (await tx.category.findMany({ where: { module } })).find(
+          (c: any) => c.id !== (existing?.id || safeData.id) && String(c.name).trim().toLowerCase() === String(name).toLowerCase()
+        );
+        if (same) throw Object.assign(new Error(`A category named "${same.name}" already exists.`), { status: 409 });
+        if (!existing) return tx.category.create({ data: { ...safeData, module, name } });
+        const updated = await tx.category.update({ where: { id: existing.id }, data: safeData });
+        // Items are filed by category name: a rename moves them with it
+        if (name !== existing.name) {
+          await tx.product.updateMany({ where: { module: existing.module, category: existing.name }, data: { category: name } });
+        }
+        return updated;
+      });
       res.json(cat);
     } catch (err: any) {
       console.error('[API POST /api/categories] Error:', err.message);
-      res.status(500).json({ error: err.message });
+      res.status(err?.status || 500).json({ error: err.message });
     }
   });
 
@@ -918,8 +945,42 @@ export function registerRoutes(app: Express): void {
   app.delete('/api/categories/:id', async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id);
-      await db.category.delete({ where: { id } });
-      res.json({ ok: true });
+      const moveTo = typeof req.query.moveTo === 'string' ? req.query.moveTo.trim() : '';
+      const result = await db.$transaction(async (tx: any) => {
+        const cat = await tx.category.findUnique({ where: { id } });
+        if (!cat) return { ok: true, moved: 0 };
+        const items = await tx.product.count({ where: { module: cat.module, category: cat.name, archivedAt: null } });
+        let moved = 0;
+        if (items > 0) {
+          if (!moveTo) {
+            throw Object.assign(new Error(`${items} item(s) are in "${cat.name}". Choose a category to move them to first.`), { status: 409, items });
+          }
+          const target = (await tx.category.findMany({ where: { module: cat.module } })).find(
+            (c: any) => c.id !== cat.id && String(c.name).toLowerCase() === moveTo.toLowerCase()
+          );
+          if (!target) throw Object.assign(new Error(`Category "${moveTo}" was not found.`), { status: 400 });
+          moved = (await tx.product.updateMany({ where: { module: cat.module, category: cat.name }, data: { category: target.name } })).count;
+        }
+        await tx.category.delete({ where: { id } });
+        return { ok: true, moved };
+      });
+      res.json(result);
+    } catch (err: any) {
+      res.status(err?.status || 500).json({ error: err.message, ...(err?.items ? { items: err.items } : {}) });
+    }
+  });
+
+  /** Move every item filed under a category name (e.g. one that no longer exists) to a category. */
+  app.post('/api/categories/move-items', async (req: Request, res: Response) => {
+    try {
+      const { module, from, to } = req.body || {};
+      if (!module || !from || !to) return res.status(400).json({ error: 'module, from and to are required.' });
+      const target = (await db.category.findMany({ where: { module: String(module) } })).find(
+        (c: any) => String(c.name).toLowerCase() === String(to).trim().toLowerCase()
+      );
+      if (!target) return res.status(400).json({ error: `Category "${to}" was not found.` });
+      const r = await db.product.updateMany({ where: { module: String(module), category: String(from) }, data: { category: target.name } });
+      res.json({ ok: true, moved: r.count });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
