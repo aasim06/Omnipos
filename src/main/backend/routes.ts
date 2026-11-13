@@ -1353,6 +1353,18 @@ export function registerRoutes(app: Express): void {
       if (existing) return existing;
     }
     const allocations = parseAllocations(b.variantAllocations);
+    if (b.type === 'out') {
+      const prod = await resolveMovementProduct(tx, b.productId, b.productName);
+      // Stock leaving the shelf is valued at what it cost (the weighted average), never left blank
+      if (!(Number(b.unitCost) > 0) && prod && Number(prod.costPrice) > 0) b = { ...b, unitCost: prod.costPrice };
+      // A deduction larger than the stock on hand is refused, not silently clamped to zero.
+      // Sales are exempt: they already happened at the counter (possibly offline).
+      const exempt = ['POS Sale', 'Recipe Usage', 'Reversal'].includes(String(b.reason || ''));
+      const qty = round3(Number(b.quantity || 0));
+      if (!exempt && prod && prod.openingStock !== null && prod.openingStock !== undefined && qty > round3(Number(prod.openingStock) || 0) + 0.0005) {
+        throw Object.assign(new Error(`Only ${round3(Number(prod.openingStock) || 0)} of "${prod.name}" in stock — cannot remove ${qty}.`), { status: 409 });
+      }
+    }
     const created = await tx.stockMovement.create({
       data: {
         ...(b.id ? { id: String(b.id) } : {}),
@@ -1451,7 +1463,28 @@ export function registerRoutes(app: Express): void {
    * transaction as the stock, once per receipt (the ledger entry id follows the movement id).
    */
   async function postReceiptPayable(tx: any, m: any, lineTotal?: unknown) {
-    if (m.type !== 'in' || !m.vendorId || m.reversalOf || m.reason === 'Reversal') return;
+    if (!m.vendorId || m.reversalOf || m.reason === 'Reversal') return;
+    if (m.type === 'out') {
+      // Only goods sent back to the supplier earn a credit (not a loss that happens to name a supplier)
+      if (!['Return to Vendor', 'Product Recall'].includes(String(m.reason || ''))) return;
+      // Goods sent back to the supplier: they owe us their value (credit on their ledger)
+      const credit = Number(lineTotal) > 0 ? round2(Number(lineTotal)) : receiptValue(m);
+      if (!(credit > 0)) return;
+      if (!(await tx.vendor.findUnique({ where: { id: m.vendorId } }))) {
+        throw Object.assign(new Error('The supplier for this return was not found. Sync suppliers and try again.'), { status: 409 });
+      }
+      await postVendorTransaction(tx, {
+        id: `vtx_${m.id}`,
+        vendorId: m.vendorId,
+        type: 'ADJUSTMENT',
+        amount: -credit,
+        description: `${m.reason || 'Purchase return'}: ${m.productName} × ${m.quantity}${m.referenceInvoice ? ` (${m.referenceInvoice})` : ''}`,
+        paymentMethod: 'return',
+        createdBy: m.createdBy,
+        date: m.date,
+      });
+      return;
+    }
     // The bill's own line total when given (unit cost is rounded to paisa, so qty × cost can drift)
     const amount = Number(lineTotal) > 0 ? round2(Number(lineTotal)) : receiptValue(m);
     if (!(amount > 0)) return;
@@ -1531,7 +1564,7 @@ export function registerRoutes(app: Express): void {
       data: { reversedAt: new Date(), reversedBy: toOptionalString(by) },
     });
     // A reversed supplier receipt is no longer owed
-    if (original.type === 'in' && original.vendorId && receiptValue(original) > 0) {
+    if (original.vendorId) {
       const posted = await tx.vendorTransaction.findUnique({ where: { id: `vtx_${original.id}` } });
       if (posted && (await tx.vendor.findUnique({ where: { id: original.vendorId } }))) {
         await postVendorTransaction(tx, {
@@ -1539,7 +1572,7 @@ export function registerRoutes(app: Express): void {
           vendorId: original.vendorId,
           type: 'ADJUSTMENT',
           amount: -Number(posted.amount),
-          description: `Stock in ${why === 'corrected' ? 'corrected' : 'reversed'}: ${original.productName} × ${original.quantity}`,
+          description: `${original.type === 'in' ? 'Stock in' : 'Return to supplier'} ${why === 'corrected' ? 'corrected' : 'reversed'}: ${original.productName} × ${original.quantity}`,
           createdBy: by,
         });
       }

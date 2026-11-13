@@ -86,7 +86,7 @@ const editOutSchema = z.object({
   id: z.string(),
   productName: z.string().min(1, 'Product name is required'),
   reason: z.string().min(1, 'Please select a reason'),
-  quantity: z.coerce.number().min(1, 'Qty must be at least 1'),
+  quantity: z.coerce.number().positive('Qty must be more than 0'),
   unitCost: z.coerce.number().min(0).optional(),
   note: z.string().optional(),
 });
@@ -220,7 +220,7 @@ export function StockOutView(): React.JSX.Element {
       const conv = data.deductUnit === 'wholesale' ? getConversion(data.selectedProductId) : null;
       const baseQty = round3(data.quantity * (conv ? conv.rate : 1));
       // unit cost is entered per the chosen unit; store it per base unit
-      const baseUnitCost = conv && data.unitCost ? round3(Number(data.unitCost) / conv.rate) : data.unitCost;
+      const typedBaseCost = conv && data.unitCost ? round3(Number(data.unitCost) / conv.rate) : data.unitCost;
       const tracked = getTrackedStock(data.selectedProductId, data.productName);
       if (tracked && baseQty > tracked.stock) {
         throw new Error(`Only ${tracked.stock} unit(s) of "${tracked.name}" in stock — cannot deduct ${baseQty}.`);
@@ -239,6 +239,9 @@ export function StockOutView(): React.JSX.Element {
       if (returnVendor && !(Number(data.unitCost) > 0)) {
         throw new Error('Enter the unit cost so the vendor can be credited for the return.');
       }
+      // A return is credited at the rate agreed with the supplier; every other deduction is valued
+      // at the stock's average cost (the backend fills it in), so losses can't be under- or over-stated.
+      const baseUnitCost = returnVendor ? typedBaseCost : null;
       const saved = await posApi.saveStockMovement({
         module: data.module || 'fastfood',
         type: 'out',
@@ -257,22 +260,10 @@ export function StockOutView(): React.JSX.Element {
           .join(' • '),
         // The backend removes this batch first (then earliest expiry)
         ...(data.batchNumber ? { batchNumber: data.batchNumber } : {}),
-        ...(returnVendor ? { vendorName: returnVendor.name } : {}),
+        // The backend credits this supplier in the same transaction as the stock
+        ...(returnVendor ? { vendorName: returnVendor.name, vendorId: returnVendor.id } : {}),
       });
-
-      // Purchase return: credit the vendor (reduces what we owe)
-      if (returnVendor) {
-        const value = returnValue(saved);
-        if (value > 0) {
-          vendorStorage.recordTransaction(
-            returnVendor.id,
-            'ADJUSTMENT',
-            -value,
-            `${data.reason === PRODUCT_RECALL ? 'Recall return' : 'Purchase return'}: ${data.productName} × ${baseQty}`,
-            'return'
-          );
-        }
-      }
+      if (returnVendor && saved) void vendorStorage.syncWithServer();
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
@@ -326,12 +317,17 @@ export function StockOutView(): React.JSX.Element {
       await posApi.updateStockMovement(data.id, {
         productName: data.productName,
         quantity: data.quantity,
-        unitCost: data.unitCost ?? null,
+        // Only a return's rate is editable; a loss keeps the average cost it was recorded at
+        ...(isReturn ? { unitCost: data.unitCost ?? null } : {}),
         reason: data.reason,
         note: data.note || '',
       });
+      if (prev?.vendorId) {
+        void vendorStorage.syncWithServer();
+        return;
+      }
 
-      // Keep the vendor credit in step with the edited return value
+      // Older return (credit posted by this screen): keep the vendor credit in step here
       if (returnVendor && (wasReturn || isReturn)) {
         const prevCredit = wasReturn && prev ? returnValue(prev) : 0;
         const nextCredit = isReturn ? returnValue({ quantity: data.quantity, unitCost: data.unitCost }) : 0;
@@ -370,8 +366,10 @@ export function StockOutView(): React.JSX.Element {
       const target = movements.find((m) => m.id === id);
       await posApi.reverseStockMovement(id);
 
-      // Deleting a purchase return takes the vendor credit back
-      if (target && creditsVendor(target.reason, target.vendorName)) {
+      // Deleting a purchase return takes the vendor credit back (the backend does it for new ones)
+      if (target?.vendorId) {
+        void vendorStorage.syncWithServer();
+      } else if (target && creditsVendor(target.reason, target.vendorName)) {
         const vendor = vendorStorage.findVendor({ name: target.vendorName || undefined });
         const value = returnValue(target);
         if (vendor && value > 0) {
@@ -620,11 +618,8 @@ export function StockOutView(): React.JSX.Element {
                         if (prod.category && selectedCategory === 'all') {
                           setSelectedCategory(prod.category);
                         }
-                        if (prod.costPrice !== undefined && prod.costPrice !== null) {
-                          form.setValue('unitCost', prod.costPrice);
-                        } else if (prod.price) {
-                          form.setValue('unitCost', prod.price);
-                        }
+                        // Average purchase cost (never the retail price)
+                        form.setValue('unitCost', Number(prod.costPrice) > 0 ? Number(prod.costPrice) : 0);
                       } else {
                         form.setValue('selectedProductId', '');
                       }
@@ -665,9 +660,15 @@ export function StockOutView(): React.JSX.Element {
                 name="unitCost"
                 render={({ field }) => (
                   <CustomInput
-                    label={form.watch('deductUnit') === 'wholesale' && getConversion(form.watch('selectedProductId'))
-                      ? `COST / ${getConversion(form.watch('selectedProductId'))!.wholesale.toUpperCase()} (PKR)`
-                      : 'UNIT COST (PKR)'}
+                    label={
+                      !reasonInfo(form.watch('reason')).vendor
+                        ? 'AVERAGE COST (PKR)'
+                        : form.watch('deductUnit') === 'wholesale' && getConversion(form.watch('selectedProductId'))
+                          ? `RETURN RATE / ${getConversion(form.watch('selectedProductId'))!.wholesale.toUpperCase()} (PKR)`
+                          : 'RETURN RATE (PKR)'
+                    }
+                    title={!reasonInfo(form.watch('reason')).vendor ? 'Losses are valued at the stock\'s average cost' : undefined}
+                    disabled={!reasonInfo(form.watch('reason')).vendor}
                     type="number"
                     step="any"
                     placeholder="0"

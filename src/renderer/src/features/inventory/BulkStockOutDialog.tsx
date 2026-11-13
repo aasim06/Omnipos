@@ -171,7 +171,8 @@ export function BulkStockOutDialog({ isOpen, onClose }: Props): React.JSX.Elemen
           productId: l.productId,
           productName: l.name,
           quantity: qty,
-          unitCost: Number(l.unitCost) || null,
+          // A return is credited at the typed rate; other deductions at the average cost (backend)
+          unitCost: vendor ? Number(l.unitCost) || null : null,
           reason,
           referenceInvoice: [
             'Bulk stock out',
@@ -182,22 +183,14 @@ export function BulkStockOutDialog({ isOpen, onClose }: Props): React.JSX.Elemen
             .filter(Boolean)
             .join(' • '),
           ...(l.batchNumber ? { batchNumber: l.batchNumber } : {}),
-          ...(vendor ? { vendorName: vendor.name } : {}),
+          ...(vendor ? { vendorName: vendor.name, vendorId: vendor.id } : {}),
           date: stamp,
         });
         saved++;
         credit += Math.round((Number(m.quantity) || 0) * (Number(m.unitCost) || 0) * 100) / 100;
       }
-      // One vendor credit for the whole return
-      if (vendor && credit > 0) {
-        vendorStorage.recordTransaction(
-          vendor.id,
-          'ADJUSTMENT',
-          -credit,
-          `${reason === PRODUCT_RECALL ? 'Recall return' : 'Purchase return'} (bulk): ${saved} item(s)`,
-          'return'
-        );
-      }
+      // Each line credited the supplier with its stock entry (backend); refresh the balances
+      if (vendor && credit > 0) void vendorStorage.syncWithServer();
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['stock-movements'] }),
         queryClient.invalidateQueries({ queryKey: ['products'] }),
@@ -333,6 +326,8 @@ export function BulkStockOutDialog({ isOpen, onClose }: Props): React.JSX.Elemen
                               step="any"
                               min={0}
                               aria-label={`Unit cost of ${l.name}`}
+                              disabled={!info.vendor}
+                              title={info.vendor ? 'Rate credited by the supplier' : 'Valued at the average cost'}
                               value={l.unitCost === '' ? '' : String(l.unitCost)}
                               onChange={(e) => patch(l.key, { unitCost: e.target.value === '' ? '' : Number(e.target.value) })}
                             />

@@ -1800,10 +1800,11 @@ export const posApi = {
       ...(Number(data.lineTotal) > 0 ? { lineTotal: Number(data.lineTotal) } : {}),
     };
 
-    // 0. Receipts go to the backend first: a refusal (unknown supplier…) is shown to the user and
-    //    nothing changes here. Unreachable backend: saved locally and sent later (same id, once).
+    // 0. Manual stock entries go to the backend first: a refusal (unknown supplier, more than in
+    //    stock…) is shown to the user and nothing changes here. Unreachable backend: saved locally
+    //    and sent later (same id, once).
     let pushedOk = false;
-    if (record.type === 'in') {
+    {
       const res = await quoteBackend('/api/stock-movements', { method: 'POST', body: JSON.stringify(record) });
       if (res && res.status >= 400 && res.status < 500) {
         const err = await res.json().catch(() => ({}));
