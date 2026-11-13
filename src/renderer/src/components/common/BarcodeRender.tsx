@@ -54,18 +54,10 @@ export const BarcodeRender: React.FC<BarcodeRenderProps> = ({
           flat: true,
         });
       } catch (err) {
+        // Never draw a different code than the item's: a label that scans as something else is
+        // worse than no label. The page warns about codes that cannot be encoded.
         console.warn('JsBarcode render warning:', err);
-        // Fallback: try alphanumeric clean string
-        try {
-          const fallbackVal = cleanVal.replace(/[^0-9A-Za-z]/g, '') || '00000000';
-          JsBarcode(svgRef.current, fallbackVal, {
-            format: 'CODE128',
-            width,
-            height,
-            displayValue,
-            margin,
-          });
-        } catch {}
+        while (svgRef.current.firstChild) svgRef.current.removeChild(svgRef.current.firstChild);
       }
     }
   }, [value, format, width, height, displayValue, fontSize, margin, background, lineColor]);

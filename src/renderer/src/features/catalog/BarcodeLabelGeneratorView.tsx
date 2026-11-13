@@ -22,15 +22,36 @@ import { storage, KEYS } from '@/lib/storage';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { BarcodeRender } from '@/components/common/BarcodeRender';
+import { CustomSelect } from '@/components/ui';
+import { useAppToast } from '@/context/AppNotificationContext';
+import type { StockMovement } from '@shared/types';
 
 export interface LabelQueueItem {
+  /** product id + size label */
   id: string;
+  productId: string;
   name: string;
   sku: string;
   price: number;
   variant?: string;
   quantity: number;
+  /** Units on hand (null = not stock-tracked) */
+  stock?: number | null;
+  batch?: string | null;
+  expiry?: string | null;
 }
+
+/** Code-128 encodes printable ASCII only; anything else would not scan as the item's code. */
+const isEncodable = (code: string) => /^[\x20-\x7E]+$/.test(code);
+const PRINTED_PRICES_KEY = 'omnipos_label_prices';
+const readPrinted = (): Record<string, number> => {
+  try {
+    return JSON.parse(localStorage.getItem(PRINTED_PRICES_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+const MAX_PER_ITEM = 500;
 
 export type SheetLayout = 'a4_40' | 'a4_24' | 'a4_65' | 'thermal_50x25' | 'thermal_38x25' | 'thermal_80mm';
 
@@ -371,6 +392,11 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
   const [showVariant, setShowVariant] = useState(true);
   const [showSkuText, setShowSkuText] = useState(true);
   const [showPrice, setShowPrice] = useState(true);
+  const [showBatch, setShowBatch] = useState(false);
+  const [bulkCategory, setBulkCategory] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const { notifySuccess, notifyWarning, notifyError } = useAppToast();
+  const { data: movements = [] } = useQuery<StockMovement[]>({ queryKey: ['stock-movements'], queryFn: () => posApi.fetchStockMovements() });
 
   // Fetch Products
   const { data: products = [] } = useQuery<Product[]>({
@@ -378,30 +404,132 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
     queryFn: () => posApi.fetchProducts(),
   });
 
-  // Add Product to Queue
-  const handleSelectProduct = (prod: Product) => {
-    const sku = prod.skuCode || prod.barcode || `SKU-${prod.id.slice(-6).toUpperCase()}`;
-    setQueue((prev) => {
-      const exists = prev.find((item) => item.sku === sku);
-      if (exists) {
-        return prev.map((item) => (item.sku === sku ? { ...item, quantity: item.quantity + 4 } : item));
-      }
-      return [
-        ...prev,
-        {
-          id: prod.id,
-          name: prod.name,
-          sku,
-          price: prod.price,
-          variant: prod.unit,
-          quantity: 4,
-        },
-      ];
+  /**
+   * Make sure the item (and each of its sizes) has a code the POS can find, saving any code it
+   * gives. A label must carry a code that is on the item, or the scan finds nothing.
+   */
+  const ensureCodes = async (prod: Product): Promise<Product> => {
+    const used = new Set(
+      products.flatMap((p) => [p.skuCode, p.barcode, ...(p.variants || []).flatMap((v: any) => [v.skuCode, v.barcode])].filter(Boolean).map(String))
+    );
+    const fresh = () => {
+      let code = '';
+      do code = `SKU-${Math.floor(10000000 + Math.random() * 90000000)}`;
+      while (used.has(code));
+      used.add(code);
+      return code;
+    };
+    let changed = false;
+    const base = prod.skuCode || prod.barcode || ((changed = true), fresh());
+    const variants = (prod.variants || []).map((v: any) => {
+      if (v.skuCode || v.barcode) return v;
+      changed = true;
+      let code = `${base}-${String(v.label || v.id || 'V').replace(/[^0-9A-Za-z]+/g, '').toUpperCase() || 'V'}`;
+      while (used.has(code)) code = `${code}X`;
+      used.add(code);
+      return { ...v, skuCode: code };
     });
+    if (!changed) return prod;
+    const updated: Product = { ...prod, skuCode: prod.skuCode || (prod.barcode ? prod.skuCode : base), ...(variants.length ? { variants } : {}) };
+    const saved = await posApi.saveProduct(updated);
+    notifySuccess(`Code ${saved.skuCode || saved.barcode} saved on "${prod.name}" so its labels scan at the POS.`);
+    return saved;
   };
 
+  /** Queue lines for an item: one per size (with its own code / price / stock), else one. */
+  const linesFor = (prod: Product, qty?: number, extra?: { batch?: string | null; expiry?: string | null }): LabelQueueItem[] => {
+    const stockQty = (n: unknown) => (n === null || n === undefined ? null : Math.max(0, Math.floor(Number(n) || 0)));
+    const defaultQty = (stock: number | null) => Math.min(MAX_PER_ITEM, qty ?? (stock && stock > 0 ? stock : 1));
+    const batch = extra?.batch ?? prod.batchNumber ?? null;
+    const expiry = extra?.expiry ?? prod.expiryDate ?? null;
+    if (prod.variants && prod.variants.length > 0) {
+      return prod.variants.map((v: any) => {
+        const stock = stockQty(v.stock);
+        return {
+          id: `${prod.id}|${v.label}`,
+          productId: prod.id,
+          name: prod.name,
+          sku: String(v.skuCode || v.barcode || prod.skuCode || prod.barcode || ''),
+          price: v.price !== undefined && v.price !== null ? Number(v.price) : Number(prod.price || 0) + Number(v.priceDelta || 0),
+          variant: v.label,
+          quantity: defaultQty(stock),
+          stock,
+          batch,
+          expiry,
+        };
+      });
+    }
+    const stock = stockQty(prod.openingStock);
+    return [
+      {
+        id: `${prod.id}|`,
+        productId: prod.id,
+        name: prod.name,
+        sku: String(prod.skuCode || prod.barcode || ''),
+        price: Number(prod.price || 0),
+        variant: prod.unit,
+        quantity: defaultQty(stock),
+        stock,
+        batch,
+        expiry,
+      },
+    ];
+  };
+
+  const addProducts = async (list: { prod: Product; qty?: number; batch?: string | null; expiry?: string | null }[]) => {
+    if (list.length === 0) return;
+    setIsAdding(true);
+    try {
+      const lines: LabelQueueItem[] = [];
+      for (const entry of list) {
+        const prod = await ensureCodes(entry.prod);
+        lines.push(...linesFor(prod, entry.qty, entry));
+      }
+      setQueue((prev) => {
+        const next = [...prev];
+        for (const l of lines) {
+          const i = next.findIndex((x) => x.id === l.id);
+          if (i >= 0) next[i] = { ...next[i], quantity: Math.min(MAX_PER_ITEM, next[i].quantity + (l.quantity || 1)) };
+          else next.push(l);
+        }
+        return next;
+      });
+    } catch (err: any) {
+      notifyError(err?.message || 'Could not add the item');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  // Add Product to Queue
+  const handleSelectProduct = (prod: Product) => {
+    void addProducts([{ prod }]);
+  };
+
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort().map((c) => ({ value: c, label: c })),
+    [products]
+  );
+
+  // The most recent delivery: receipts sharing the latest invoice (or the same minute)
+  const lastDelivery = useMemo(() => {
+    const receipts = movements
+      .filter((m) => m.type === 'in' && !m.reversedAt && !m.reversalOf && !['Reversal', 'Sales Return / Customer Refund', 'Stock Count Adjustment'].includes(m.reason || ''))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const latest = receipts[0];
+    if (!latest) return [] as StockMovement[];
+    const minute = (d: string) => new Date(d).toISOString().slice(0, 16);
+    return receipts.filter((m) => (latest.referenceInvoice ? m.referenceInvoice === latest.referenceInvoice : minute(m.date) === minute(latest.date)));
+  }, [movements]);
+
+  // Items whose selling price changed since their labels were last printed
+  const priceChanged = useMemo(() => {
+    const printed = readPrinted();
+    return products.filter((p) => printed[p.id] !== undefined && Math.abs(printed[p.id] - Number(p.price || 0)) > 0.005);
+  }, [products, queue.length]);
+
   const updateQuantity = (id: string, qty: number) => {
-    setQueue((prev) => prev.map((item) => (item.id === id ? { ...item, quantity: Math.max(1, qty) } : item)));
+    setQueue((prev) => prev.map((item) => (item.id === id ? { ...item, quantity: Math.min(MAX_PER_ITEM, Math.max(1, qty)) } : item)));
   };
 
   const removeItem = (id: string) => {
@@ -420,6 +548,21 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
   }, [queue]);
 
   const handlePrint = () => {
+    const bad = queue.filter((i) => !i.sku || !isEncodable(i.sku));
+    if (bad.length > 0) {
+      notifyWarning(
+        `${bad.map((b) => `"${b.name}${b.variant ? ` (${b.variant})` : ''}"`).join(', ')}: the code has letters a barcode can't carry (use English letters and digits). Fix the SKU or remove the item.`
+      );
+      return;
+    }
+    try {
+      const printed = readPrinted();
+      for (const i of queue) {
+        const p = products.find((x) => x.id === i.productId);
+        if (p) printed[p.id] = Number(p.price || 0);
+      }
+      localStorage.setItem(PRINTED_PRICES_KEY, JSON.stringify(printed));
+    } catch {}
     const printArea = document.getElementById('barcode-sheet-print-area');
     if (!printArea) {
       window.print();
@@ -640,6 +783,48 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
             />
           </div>
 
+          {/* Bulk add */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <CustomSelect
+                  label="Whole category"
+                  value={bulkCategory}
+                  onChange={setBulkCategory}
+                  options={[{ value: '', label: 'Choose a category…' }, ...categoryOptions]}
+                />
+              </div>
+              <Button
+                size="small"
+                disabled={!bulkCategory || isAdding}
+                onClick={() => void addProducts(products.filter((p) => p.category === bulkCategory).map((prod) => ({ prod })))}
+              >
+                Add
+              </Button>
+            </div>
+            <Button
+              size="small"
+              appearance="secondary"
+              disabled={lastDelivery.length === 0 || isAdding}
+              title="One label per unit received, with its batch and expiry"
+              onClick={() =>
+                void addProducts(
+                  lastDelivery
+                    .map((m) => ({ m, prod: products.find((p) => p.id === m.productId) }))
+                    .filter((x) => !!x.prod)
+                    .map(({ m, prod }) => ({ prod: prod!, qty: Math.max(1, Math.floor(Number(m.quantity) || 1)), batch: m.batchNumber, expiry: m.expiryDate }))
+                )
+              }
+            >
+              Add last delivery{lastDelivery.length ? ` (${lastDelivery.length} item${lastDelivery.length === 1 ? '' : 's'}${lastDelivery[0]?.referenceInvoice ? `, inv ${lastDelivery[0].referenceInvoice}` : ''})` : ''}
+            </Button>
+            {priceChanged.length > 0 && (
+              <Button size="small" appearance="primary" disabled={isAdding} onClick={() => void addProducts(priceChanged.map((prod) => ({ prod })))}>
+                Price changed since last print ({priceChanged.length})
+              </Button>
+            )}
+          </div>
+
           {/* Queue List */}
           <div>
             <div className={styles.queueHeader}>
@@ -664,8 +849,15 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
                         {item.name}
                       </div>
                       <div className={styles.queueItemMeta}>
-                        {item.sku} • {formatPKR(item.price)}
+                        {item.variant ? `${item.variant} • ` : ''}
+                        {item.sku || 'no code'} • {formatPKR(item.price)}
+                        {item.stock !== null && item.stock !== undefined ? ` • ${item.stock} in stock` : ''}
                       </div>
+                      {(!item.sku || !isEncodable(item.sku)) && (
+                        <div style={{ fontSize: 11, color: tokens.colorPaletteRedForeground1 }}>
+                          Code can't be printed as a barcode (English letters / digits only)
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.queueItemActions}>
@@ -675,7 +867,13 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
                         value={item.quantity}
                         onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
                         className={styles.qtyInput}
+                        aria-label={`Labels for ${item.name}`}
                       />
+                      {item.stock && item.stock > 0 && item.quantity !== Math.min(MAX_PER_ITEM, item.stock) ? (
+                        <Button size="small" appearance="subtle" title="One label per unit in stock" onClick={() => updateQuantity(item.id, item.stock || 1)}>
+                          = stock
+                        </Button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => removeItem(item.id)}
@@ -735,6 +933,11 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
                 checked={showPrice}
                 onChange={(_, d) => setShowPrice(!!d.checked)}
                 label="Show Selling Price (PKR)"
+              />
+              <Checkbox
+                checked={showBatch}
+                onChange={(_, d) => setShowBatch(!!d.checked)}
+                label="Show Batch & Expiry (medicines)"
               />
             </div>
           </div>
@@ -840,6 +1043,14 @@ export function BarcodeLabelGeneratorView(): React.JSX.Element {
                             margin={4}
                           />
                         </div>
+
+                        {showBatch && (sticker.batch || sticker.expiry) && (
+                          <div style={{ fontSize: 8.5, lineHeight: 1.1, textAlign: 'center' }}>
+                            {sticker.batch ? `B: ${sticker.batch}` : ''}
+                            {sticker.batch && sticker.expiry ? ' · ' : ''}
+                            {sticker.expiry ? `Exp: ${new Date(sticker.expiry).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}` : ''}
+                          </div>
+                        )}
 
                         {/* SKU & Price Bottom Row */}
                         <div className={`${styles.stickerBottomRow} ${showSkuText && showPrice ? 'justify-between' : 'justify-center'}`}>
