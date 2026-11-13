@@ -461,6 +461,9 @@ export function registerRoutes(app: Express): void {
         // A new item's opening stock is a ledger entry ("Opening Stock") with its cost and batch,
         // so the ledger, valuation and FEFO batches start complete
         const opening = safeData.openingStock === null || safeData.openingStock === undefined ? null : Math.max(0, Number(safeData.openingStock) || 0);
+        if (opening && opening > 0 && !(Number(safeData.costPrice) > 0)) {
+          throw Object.assign(new Error('Enter the purchase cost for the opening stock (it is valued at cost).'), { status: 400 });
+        }
         await tx.product.create({ data: { ...safeData, id, openingStock: opening === null ? null : 0, updatedAt: new Date() } });
         if (opening && opening > 0) {
           await createMovementTx(tx, {

@@ -2138,8 +2138,30 @@ export function AddProductView(): React.JSX.Element {
       }
       return await posApi.saveProduct(newProduct);
     },
-    onSuccess: () => {
+    onSuccess: (saved: any) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      if (addAnotherRef.current) {
+        addAnotherRef.current = false;
+        notifySuccess(`"${saved?.name || 'Item'}" saved. Enter the next item.`);
+        // Keep department, category, type and unit; clear the item's own details
+        const keep = productForm.getValues();
+        productForm.reset({
+          ...keep,
+          name: '',
+          price: undefined as any,
+          costPrice: undefined,
+          skuCode: '',
+          openingStock: keep.module === 'fastfood' ? undefined : 0,
+          batchNumber: '',
+          mfgDate: '',
+          expiryDate: '',
+          imageUrl: '',
+          description: '',
+        });
+        setImagePreview('');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
       const returnUrl = searchParams.get('returnUrl');
       if (returnUrl) {
         navigate(returnUrl);
@@ -2224,14 +2246,84 @@ export function AddProductView(): React.JSX.Element {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64 = reader.result as string;
-      setImagePreview(base64);
-      productForm.setValue('imageUrl', base64);
+      const original = reader.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const max = 800;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        // Small images are kept as they are
+        if (scale === 1 && file.size <= 300 * 1024) {
+          setImagePreview(original);
+          productForm.setValue('imageUrl', original);
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setImagePreview(original);
+          productForm.setValue('imageUrl', original);
+          return;
+        }
+        ctx.fillStyle = '#ffffff'; // JPEG has no transparency
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const small = canvas.toDataURL('image/jpeg', 0.85);
+        setImagePreview(small);
+        productForm.setValue('imageUrl', small);
+      };
+      img.onerror = () => notifyWarning('That file could not be read as an image.');
+      img.src = original;
     };
     reader.readAsDataURL(file);
   };
 
+  // Keep the page open for the next item (pharmacies enter many in a row)
+  const addAnotherRef = React.useRef(false);
+
   const onSubmit = async (data: ProductFormData) => {
+    const isStocked = data.module !== 'fastfood';
+    const opening = Number(data.openingStock) || 0;
+    // Opening stock is valued at cost on the ledger
+    if (isStocked && opening > 0 && !(Number(data.costPrice) > 0)) {
+      notifyWarning('Enter the purchase cost for the opening stock: it is what the stock is worth.');
+      return;
+    }
+    // Medicines are tracked batch by batch (FEFO, expiry alerts, recalls)
+    const isMedicine = isStocked && (businessProfiles.includes('pharmacy') || detectedProfile === 'pharmacy');
+    if (isMedicine && opening > 0 && (!data.batchNumber?.trim() || !data.expiryDate)) {
+      notifyWarning('Batch number and expiry date are required for medicines with opening stock.');
+      return;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (data.expiryDate && new Date(`${data.expiryDate}T00:00:00`).getTime() < today.getTime()) {
+      notifyWarning('The expiry date has already passed. Expired stock should not be added.');
+      return;
+    }
+    if (data.mfgDate && data.expiryDate && data.mfgDate > data.expiryDate) {
+      notifyWarning('The manufacturing date is after the expiry date.');
+      return;
+    }
+    // A wholesale unit must hold more than one retail unit
+    if (data.primaryUnit?.trim() && !(Number(data.conversionRate) > 1)) {
+      notifyWarning(`Enter how many ${data.secondaryUnit || data.unit || 'pieces'} are in one ${data.primaryUnit} (more than 1).`);
+      return;
+    }
+    // Same name in the same department: usually a mistake
+    const same = allProducts.find(
+      (p) => (p.module || 'minimart') === data.module && p.name.trim().toLowerCase() === data.name.trim().toLowerCase()
+    );
+    if (same) {
+      const ok = await confirmModal({
+        title: 'An item with this name exists',
+        message: `"${same.name}" is already in ${same.category}${same.skuCode ? ` (SKU ${same.skuCode})` : ''}. Two items with one name split their stock and confuse search. Add a strength or pack size to the name if it is a different item.\n\nCreate it anyway?`,
+        confirmLabel: 'Create anyway',
+        intent: 'danger',
+      });
+      if (!ok) return;
+    }
     const warning = belowCostWarning(data.name, data.price, data.costPrice);
     if (warning) {
       const ok = await confirmModal({ title: 'Selling below cost', message: `${warning}\n\nSave anyway?`, confirmLabel: 'Save anyway', intent: 'danger' });
@@ -2276,10 +2368,23 @@ export function AddProductView(): React.JSX.Element {
             Cancel
           </Button>
           <Button
+            appearance="secondary"
+            disabled={saveProductMutation.isPending}
+            onClick={() => {
+              addAnotherRef.current = true;
+              void productForm.handleSubmit(onSubmit, () => (addAnotherRef.current = false))();
+            }}
+          >
+            Save &amp; add another
+          </Button>
+          <Button
             appearance="primary"
             icon={<Save20Regular />}
             disabled={saveProductMutation.isPending}
-            onClick={productForm.handleSubmit(onSubmit)}
+            onClick={() => {
+              addAnotherRef.current = false;
+              void productForm.handleSubmit(onSubmit)();
+            }}
             className={styles.btnPrimarySave}
           >
             {saveProductMutation.isPending ? 'Saving...' : 'Save Product'}
@@ -4512,7 +4617,7 @@ export function AddProductView(): React.JSX.Element {
                 <span style={{ fontWeight: 600, fontSize: '14px', color: tokens.colorNeutralForeground1 }}>
                   Dual Units / Unit Conversion (Wholesale vs Retail)
                 </span>
-                <span style={{ fontSize: '11px', backgroundColor: '#EFF6FC', color: tokens.colorPaletteBlueForeground2, padding: '2px 8px', borderRadius: '8px', fontWeight: 600 }}>
+                <span style={{ fontSize: '11px', backgroundColor: tokens.colorPaletteBlueBackground2, color: tokens.colorPaletteBlueForeground2, padding: '2px 8px', borderRadius: '8px', fontWeight: 600 }}>
                   Box ➔ Pieces
                 </span>
               </div>
@@ -4578,7 +4683,7 @@ export function AddProductView(): React.JSX.Element {
             </div>
 
             {/* ── Feature: Batch Number, Expiry & Manufacturing Dates ── */}
-            <div style={{ marginTop: '16px', padding: '16px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: '1px solid #F2E8A2' }}>
+            <div style={{ marginTop: '16px', padding: '16px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorPaletteYellowBorder1}` }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Calendar20Regular style={{ color: tokens.colorStatusWarningForeground1 }} />
