@@ -56,7 +56,7 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
     return all.find((v) => v.id === vendor.id) || vendor;
   }, [vendor, refreshKey, isOpen]);
 
-  const handleRecordPayment = () => {
+  const handleRecordPayment = async () => {
     if (!currentVendor) return;
     const amt = Number(paymentAmount);
     if (!amt || amt <= 0) {
@@ -65,13 +65,12 @@ export function VendorLedgerModal({ isOpen, onClose, vendor, onVendorUpdated }: 
     }
 
     const desc = paymentNote.trim() || `Payment via ${paymentMethod.toUpperCase()}`;
-    vendorStorage.recordTransaction(
-      currentVendor.id,
-      'PAYMENT',
-      amt,
-      desc,
-      paymentMethod
-    );
+    try {
+      await vendorStorage.recordPayment(currentVendor.id, amt, paymentMethod, desc);
+    } catch (err: any) {
+      notifyWarning(err?.message || 'Could not record the payment');
+      return;
+    }
 
     notifySuccess(`Recorded payment of ${formatPKR(amt)} to ${currentVendor.name}`);
     setPaymentAmount('');

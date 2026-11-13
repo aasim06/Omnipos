@@ -206,6 +206,7 @@ model Vendor {
   notes          String?
   openingBalance Float    @default(0) // balance owed when the vendor was added
   currentBalance Float    @default(0) // running payable = opening + bills - payments ± adjustments
+  archivedAt     DateTime? // hidden from lists; the ledger is kept (suppliers with history are never deleted)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

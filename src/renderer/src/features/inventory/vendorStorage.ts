@@ -15,6 +15,8 @@ export interface Vendor {
   currentBalance?: number; // Running balance payable
   category?: string;
   notes?: string;
+  /** Set when the supplier was removed but has history: hidden from lists, ledger kept */
+  archivedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -87,7 +89,13 @@ const LEGACY_DUMMY_NAMES = new Set([
 ]);
 
 export const vendorStorage = {
+  /** Active suppliers (archived ones are hidden from lists and pickers). */
   getVendors(): Vendor[] {
+    return this.getAllVendors().filter((v) => !v.archivedAt);
+  },
+
+  /** Every supplier including archived ones (for history and ledger lookups). */
+  getAllVendors(): Vendor[] {
     const list = storage.getList<Vendor>(STORAGE_KEY);
     if (!list || list.length === 0) {
       return [];
@@ -135,7 +143,7 @@ export const vendorStorage = {
     opts: { push?: boolean } = {}
   ): Vendor {
     const push = opts.push !== false;
-    const list = this.getVendors();
+    const list = this.getAllVendors();
     const now = new Date().toISOString();
 
     if (vendor.id) {
@@ -181,10 +189,31 @@ export const vendorStorage = {
     return newVendor;
   },
 
+  /**
+   * Remove a supplier. The backend refuses while a balance is owed either way, archives a
+   * supplier that has history (ledger, bills, receipts are kept) and deletes one that has none.
+   * Returns whether it was archived.
+   */
+  async removeVendor(id: string): Promise<{ archived: boolean }> {
+    const res = await pushToServer(`/api/vendors/${encodeURIComponent(id)}`, 'DELETE');
+    if (!res) throw new Error('Removing a supplier needs the backend. Check the connection and try again.');
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.error || `Could not remove the supplier (${res.status})`);
+    const list = this.getAllVendors();
+    if (body.archived) {
+      storage.setList(
+        STORAGE_KEY,
+        list.map((v) => (v.id === id ? { ...v, archivedAt: body.vendor?.archivedAt || new Date().toISOString() } : v))
+      );
+    } else {
+      storage.setList(STORAGE_KEY, list.filter((v) => v.id !== id));
+    }
+    return { archived: !!body.archived };
+  },
+
+  /** @deprecated use removeVendor (which never loses a ledger) */
   deleteVendor(id: string): void {
-    const list = this.getVendors().filter((v) => v.id !== id);
-    storage.setList(STORAGE_KEY, list);
-    void pushToServer(`/api/vendors/${encodeURIComponent(id)}`, 'DELETE');
+    void this.removeVendor(id).catch(() => undefined);
   },
 
   /** Payable balance we owe this vendor (running ledger balance). */
@@ -195,7 +224,7 @@ export const vendorStorage = {
 
   /** Find a vendor by id first, then by (company) name, case-insensitive. */
   findVendor(idOrName?: { id?: string; name?: string }): Vendor | undefined {
-    const all = this.getVendors();
+    const all = this.getAllVendors();
     if (idOrName?.id) {
       const byId = all.find((v) => v.id === idOrName.id);
       if (byId) return byId;
@@ -223,7 +252,7 @@ export const vendorStorage = {
     billId?: string,
     opts: { id?: string } = {}
   ): VendorTransaction {
-    const vendors = this.getVendors();
+    const vendors = this.getAllVendors();
     const vendor = vendors.find((v) => v.id === vendorId);
     const prevBalance = vendor?.currentBalance ?? vendor?.openingBalance ?? 0;
     // BILL increases what we owe (+amount), PAYMENT decreases what we owe (-amount)
@@ -255,6 +284,57 @@ export const vendorStorage = {
     storage.setList(TX_STORAGE_KEY, txs);
     void pushToServer('/api/vendor-transactions', 'POST', newTx);
     return newTx;
+  },
+
+  /**
+   * Pay a supplier. Recorded on the backend first, which works out the new balance from its own
+   * ledger and takes a cash payment out of today's drawer. Offline, it is kept here and sent
+   * later (same id, once).
+   */
+  async recordPayment(vendorId: string, amount: number, paymentMethod: string, description: string): Promise<VendorTransaction> {
+    const now = new Date().toISOString();
+    const id = uid('vtx_');
+    const res = await pushToServer('/api/vendor-transactions', 'POST', {
+      id,
+      vendorId,
+      type: 'PAYMENT',
+      amount,
+      description,
+      paymentMethod,
+      createdBy: currentUserName(),
+      date: now,
+    });
+    if (res && !res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error || `Payment refused (${res.status})`);
+    }
+    // This till's drawer copy, for a cash payment
+    if (paymentMethod === 'cash') {
+      try {
+        const raw = localStorage.getItem('omnipos_cash_drawer');
+        const drawer = raw ? JSON.parse(raw) : null;
+        if (drawer && drawer.status !== 'closed') {
+          drawer.cashOut = Number(drawer.cashOut || 0) + amount;
+          localStorage.setItem('omnipos_cash_drawer', JSON.stringify(drawer));
+        }
+      } catch {}
+    }
+    if (res?.ok) {
+      const body = await res.json().catch(() => null);
+      const tx: VendorTransaction | undefined = body?.transaction ? nullToUndefined(body.transaction) : undefined;
+      if (tx) {
+        const list = this.getAllVendors().map((v) =>
+          v.id === vendorId && body.vendor ? { ...v, currentBalance: Number(body.vendor.currentBalance) || 0 } : v
+        );
+        storage.setList(STORAGE_KEY, list);
+        const txs = (storage.getList<VendorTransaction>(TX_STORAGE_KEY) || []).filter((t) => t.id !== tx.id);
+        txs.unshift(tx);
+        storage.setList(TX_STORAGE_KEY, txs);
+        return tx;
+      }
+    }
+    // Backend unreachable: keep it here (the cache is synced when it is back)
+    return this.recordTransaction(vendorId, 'PAYMENT', amount, description, paymentMethod, undefined, { id });
   },
 
   /* ── Multi-Item Purchase Bills Storage ── */

@@ -437,6 +437,7 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
     ["Quotation", `"sales" TEXT`],
     ["StockMovement", `"vendorId" TEXT`],
     ["PurchaseBill", `"freightAmount" REAL NOT NULL DEFAULT 0`],
+    ["Vendor", `"archivedAt" DATETIME`],
   ]) {
     try {
       await database.$executeRawUnsafe(`ALTER TABLE "${table}" ADD COLUMN ${col}`);

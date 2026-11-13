@@ -1920,40 +1920,81 @@ export function registerRoutes(app: Express): void {
   app.post('/api/vendors', async (req: Request, res: Response) => {
     try {
       const b = req.body || {};
-      const opening = Number(b.openingBalance || 0);
+      const opening = round2(Number(b.openingBalance || 0));
       const vendor = await db.$transaction(async (tx: any) => {
         const existing = b.id ? await tx.vendor.findUnique({ where: { id: String(b.id) } }) : null;
+        // One active supplier per name: purchases and returns find suppliers by name too
+        const name = String(b.name || b.companyName || existing?.name || '').trim().toLowerCase();
+        if (name) {
+          const others = await tx.vendor.findMany({ where: { archivedAt: null }, select: { id: true, name: true } });
+          const clash = others.find((v: any) => v.id !== (existing?.id || b.id) && String(v.name || '').trim().toLowerCase() === name);
+          if (clash) throw Object.assign(new Error(`A supplier named "${clash.name}" already exists.`), { status: 409, existingId: clash.id });
+        }
         if (existing) {
-          // Editing the opening balance shifts the running balance by the same amount
-          const shift = b.openingBalance !== undefined ? opening - (existing.openingBalance || 0) : 0;
-          return tx.vendor.update({
+          const updated = await tx.vendor.update({
             where: { id: existing.id },
             data: {
               ...vendorData({ ...existing, ...b }),
               ...(b.openingBalance !== undefined ? { openingBalance: opening } : {}),
-              currentBalance: (existing.currentBalance || 0) + shift,
             },
           });
+          // A changed opening balance moves the balance through the ledger, so the change is on record
+          const shift = b.openingBalance !== undefined ? round2(opening - (existing.openingBalance || 0)) : 0;
+          if (Math.abs(shift) >= 0.01) {
+            await postVendorTransaction(tx, {
+              vendorId: existing.id,
+              type: 'ADJUSTMENT',
+              amount: shift,
+              description: `Opening balance changed: ${(existing.openingBalance || 0).toLocaleString()} → ${opening.toLocaleString()}`,
+              createdBy: requestUser(req)?.name,
+            });
+            return tx.vendor.findUnique({ where: { id: existing.id } });
+          }
+          return updated;
         }
-        return tx.vendor.create({
-          data: {
-            ...(b.id ? { id: String(b.id) } : {}),
-            ...vendorData(b),
-            openingBalance: opening,
-            currentBalance: opening,
-          },
+        const created = await tx.vendor.create({
+          data: { ...(b.id ? { id: String(b.id) } : {}), ...vendorData(b), openingBalance: opening, currentBalance: 0 },
         });
+        if (Math.abs(opening) >= 0.01) {
+          await postVendorTransaction(tx, {
+            id: `vtx_open_${created.id}`,
+            vendorId: created.id,
+            type: 'ADJUSTMENT',
+            amount: opening,
+            description: 'Opening balance',
+            createdBy: requestUser(req)?.name,
+          });
+          return tx.vendor.findUnique({ where: { id: created.id } });
+        }
+        return created;
       });
       res.json(vendor);
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      res.status(err?.status || 500).json({ error: err.message, ...(err?.existingId ? { existingId: err.existingId } : {}) });
     }
   });
 
   app.delete('/api/vendors/:id', async (req: Request, res: Response) => {
     try {
-      await (db as any).vendor.deleteMany({ where: { id: String(req.params.id) } });
-      res.json({ success: true });
+      const id = String(req.params.id);
+      const vendor = await db.vendor.findUnique({ where: { id } });
+      if (!vendor) return res.json({ success: true });
+      if (Math.abs(Number(vendor.currentBalance || 0)) >= 0.01) {
+        return res.status(409).json({
+          error: `${vendor.name} still has a balance of PKR ${Number(vendor.currentBalance).toLocaleString()}. Settle it before removing the supplier.`,
+        });
+      }
+      const history =
+        (await db.vendorTransaction.count({ where: { vendorId: id } })) +
+        (await db.purchaseBill.count({ where: { vendorId: id } })) +
+        (await db.stockMovement.count({ where: { vendorId: id } }));
+      if (history > 0) {
+        // Keep the ledger, bills and receipts; just hide the supplier
+        const archived = await db.vendor.update({ where: { id }, data: { archivedAt: new Date() } });
+        return res.json({ success: true, archived: true, vendor: archived });
+      }
+      await db.vendor.delete({ where: { id } });
+      res.json({ success: true, archived: false });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -2004,7 +2045,25 @@ export function registerRoutes(app: Express): void {
 
   app.post('/api/vendor-transactions', async (req: Request, res: Response) => {
     try {
-      const result = await db.$transaction((tx: any) => postVendorTransaction(tx, req.body || {}));
+      const body = req.body || {};
+      if (body.type === 'PAYMENT' && !(Number(body.amount) > 0)) {
+        return res.status(400).json({ error: 'Enter a payment amount greater than zero.' });
+      }
+      const result = await db.$transaction(async (tx: any) => {
+        const isNew = !body.id || !(await tx.vendorTransaction.findUnique({ where: { id: String(body.id) } }));
+        const posted = await postVendorTransaction(tx, { ...body, createdBy: body.createdBy || requestUser(req)?.name });
+        // Paid in cash today: the money leaves the drawer (a late sync of an older payment does not)
+        const today = new Date().toDateString();
+        if (
+          isNew &&
+          body.type === 'PAYMENT' &&
+          String(body.paymentMethod || '').toLowerCase() === 'cash' &&
+          new Date(posted.transaction.date).toDateString() === today
+        ) {
+          await drawerCashOut(tx, Number(posted.transaction.amount) || 0);
+        }
+        return posted;
+      });
       res.json(result);
     } catch (err: any) {
       res.status(err.status || 500).json({ error: err.message });

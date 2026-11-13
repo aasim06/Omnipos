@@ -82,7 +82,7 @@ import { useVendorsStyles, useStyles } from './vendors.styles';
 export function VendorsView(): React.JSX.Element {
   const styles = useVendorsStyles();
   const navigate = useNavigate();
-  const { notifySuccess } = useAppToast();
+  const { notifySuccess, notifyWarning } = useAppToast();
   const confirmModal = useConfirmDialog();
   const [vendors, setVendors] = useState<Vendor[]>(() => vendorStorage.getVendors());
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,6 +136,12 @@ export function VendorsView(): React.JSX.Element {
   });
 
   const onSave = (data: VendorFormData) => {
+    // One active supplier per name (purchases and returns also find suppliers by name)
+    const dup = vendorStorage.getVendors().find((v) => (v.name || '').trim().toLowerCase() === data.name.trim().toLowerCase());
+    if (dup) {
+      notifyWarning(`A supplier named "${dup.name}" already exists.`);
+      return;
+    }
     const created = vendorStorage.saveVendor({
       name: data.name,
       companyName: data.name,
@@ -158,6 +164,13 @@ export function VendorsView(): React.JSX.Element {
   };
 
   const onUpdate = (data: EditVendorFormData) => {
+    const dup = vendorStorage
+      .getVendors()
+      .find((v) => v.id !== data.id && (v.name || '').trim().toLowerCase() === data.name.trim().toLowerCase());
+    if (dup) {
+      notifyWarning(`A supplier named "${dup.name}" already exists.`);
+      return;
+    }
     vendorStorage.saveVendor({
       id: data.id,
       name: data.name,
@@ -172,6 +185,8 @@ export function VendorsView(): React.JSX.Element {
     setVendors(vendorStorage.getVendors());
     setIsDrawerOpen(false);
     setEditingVendor(null);
+    // A changed opening balance is posted to the ledger by the backend: refresh from it
+    void vendorStorage.syncWithServer().then(() => setVendors(vendorStorage.getVendors()));
   };
 
   const handleOpenEdit = (v: Vendor) => {
@@ -194,16 +209,26 @@ export function VendorsView(): React.JSX.Element {
   };
 
   const handleDelete = async (id: string) => {
+    const v = vendors.find((x) => x.id === id);
+    if (v && Math.abs(vendorStorage.getBalance(v)) >= 0.01) {
+      notifyWarning(`${v.name} still has a balance of ${formatPKR(vendorStorage.getBalance(v))}. Settle it before removing the supplier.`);
+      return;
+    }
     const ok = await confirmModal({
-      title: 'Delete Vendor',
-      message: 'Are you sure you want to delete this vendor record? This action cannot be undone.',
-      confirmLabel: 'Delete Vendor',
+      title: 'Remove supplier',
+      message:
+        'A supplier with purchases or payments on record is archived: hidden from lists, with its ledger and bills kept. A supplier with no history is deleted.',
+      confirmLabel: 'Remove supplier',
       intent: 'danger',
     });
     if (ok) {
-      vendorStorage.deleteVendor(id);
-      setVendors(vendorStorage.getVendors());
-      notifySuccess('Vendor record deleted successfully');
+      try {
+        const { archived } = await vendorStorage.removeVendor(id);
+        setVendors(vendorStorage.getVendors());
+        notifySuccess(archived ? 'Supplier archived. Its ledger and bills are kept.' : 'Supplier deleted.');
+      } catch (err: any) {
+        notifyWarning(err?.message || 'Could not remove the supplier');
+      }
     }
   };
 
