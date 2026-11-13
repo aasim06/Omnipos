@@ -527,7 +527,8 @@ export const posApi = {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-        const res = await fetch(`${base}/api/products${module ? `?module=${module}` : ''}`, {
+        // Archived items come too, so a till drops what another till removed
+        const res = await fetch(`${base}/api/products?includeArchived=1${module ? `&module=${module}` : ''}`, {
           headers: tenantHeaders,
           signal: controller.signal,
         });
@@ -536,10 +537,17 @@ export const posApi = {
         if (res.ok) {
           const remoteRaw = await res.json();
           if (Array.isArray(remoteRaw) && remoteRaw.length > 0) {
-            const currentLocal = storage.getList<Product>(KEYS.products);
+            const archivedIds = remoteRaw.filter((p: any) => p?.archivedAt).map((p: any) => p.id as string);
+            if (archivedIds.length > 0) {
+              try {
+                await offlineDb.products.bulkDelete(archivedIds);
+              } catch {}
+            }
+            const remoteActive = remoteRaw.filter((p: any) => !p?.archivedAt);
+            const currentLocal = storage.getList<Product>(KEYS.products).filter((p) => !archivedIds.includes(p.id));
             const localMap = new Map(currentLocal.map((p) => [p.id, p]));
 
-            const normalizedProducts: Product[] = remoteRaw.map((rawP: Product) => {
+            const normalizedProducts: Product[] = remoteActive.map((rawP: Product) => {
               const existing = localMap.get(rawP.id);
               const merged: Product = {
                 ...rawP,
@@ -612,16 +620,38 @@ export const posApi = {
       ),
     };
 
-    try {
-      // 1. Write immediately to local Dexie IndexedDB
-      await offlineDb.products.put(decodedProduct);
-
-      // 2. Write immediately to LocalStorage
+    const keepLocal = async (p: Product) => {
+      await offlineDb.products.put(p);
       const currentList = storage.getList<Product>(KEYS.products);
-      const updated = [decodedProduct, ...currentList.filter((p) => p.id !== decodedProduct.id)];
-      storage.setList(KEYS.products, updated);
+      storage.setList(KEYS.products, [p, ...currentList.filter((x) => x.id !== p.id)]);
+    };
 
-      // 3. Queue in Outbox for background cloud sync
+    // 0. Backend first: it refuses duplicate barcodes / SKUs, keeps stock as the ledger says and
+    //    turns a new item's opening stock into an "Opening Stock" entry. Its copy is kept here.
+    const res = await quoteBackend('/api/products', { method: 'POST', body: JSON.stringify(cloudPayload) });
+    if (res && res.status >= 400 && res.status < 500) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || `Product refused (${res.status})`);
+    }
+    if (res?.ok) {
+      const remote = await res.json().catch(() => null);
+      if (remote?.id) {
+        const saved = decodeProductVariants({ ...remote, variants: decodedProduct.variants ?? remote.variants, pricingType: decodedProduct.pricingType });
+        // Size stock comes from the backend (edits never change it)
+        if (Array.isArray(remote.variants) && Array.isArray(saved.variants)) {
+          saved.variants = saved.variants.map((v: any) => {
+            const r = remote.variants.find((x: any) => (v.id && x.id === v.id) || x.label === v.label);
+            return r && r.stock !== undefined ? { ...v, stock: r.stock } : v;
+          });
+        }
+        await keepLocal(saved);
+        return saved;
+      }
+    }
+
+    try {
+      // Backend unreachable: keep it here and send it later
+      await keepLocal(decodedProduct);
       await syncEngine.enqueue('product', decodedProduct.id, 'CREATE', cloudPayload);
 
       // 4. Try immediate network push if online
@@ -652,7 +682,20 @@ export const posApi = {
     return decodedProduct;
   },
 
-  async deleteProduct(id: string): Promise<void> {
+  async deleteProduct(id: string): Promise<{ archived: boolean }> {
+    const res = await quoteBackend(`/api/products/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (!res) throw new Error('Removing an item needs the backend. Check the connection and try again.');
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.error || `Could not remove the item (${res.status})`);
+    await offlineDb.products.delete(id);
+    const list = storage.getList<Product>(KEYS.products);
+    storage.setList(KEYS.products, list.filter((p) => p.id !== id));
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
+    return { archived: !!body.archived };
+  },
+
+  /** @deprecated kept for older callers; use deleteProduct */
+  async deleteProductLocalOnly(id: string): Promise<void> {
     try {
       await offlineDb.products.delete(id);
       const currentList = storage.getList<Product>(KEYS.products);

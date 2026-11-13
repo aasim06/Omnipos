@@ -154,7 +154,8 @@ export function ProductDetailsView(): React.JSX.Element {
         name: editName.trim() || product.name,
         price: Number(editPrice) || 0,
         costPrice: Number(editCostPrice) || 0,
-        openingStock: Number(editStock) || 0,
+        // Stock is not edited here: it changes only through Stock In / Stock Out / Stock count
+        openingStock: product.openingStock,
         category: editCategory.trim() || product.category,
         skuCode: editSku.trim() || product.skuCode,
         unit: editUnit || product.unit || 'PCS',
@@ -677,10 +678,11 @@ export function ProductDetailsView(): React.JSX.Element {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <CustomInput
-                label="Current Stock"
+                label="Current Stock (change via Stock In / Out / Count)"
                 type="number"
                 value={String(editStock)}
-                onChange={(e) => setEditStock(parseFloat(e.target.value) || 0)}
+                disabled
+                title="Stock changes only through stock entries, so the ledger always explains it"
                 placeholder="0"
               />
               <CustomInput
@@ -790,9 +792,10 @@ export function ProductDetailsView(): React.JSX.Element {
       {/* Delete Confirmation Modal */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={(_, data) => setIsDeleteDialogOpen(data.open)}>
         <DialogSurface style={{ maxWidth: '400px' }}>
-          <DialogTitle>Delete Product?</DialogTitle>
+          <DialogTitle>Remove product?</DialogTitle>
           <DialogBody>
-            Are you sure you want to delete <strong>{product.name}</strong>? This action cannot be undone.
+            Remove <strong>{product.name}</strong>? An item with sales or stock history is archived (hidden from lists and
+            the POS, its history kept); an item with none is deleted. Items still in stock must be written off first.
           </DialogBody>
           <DialogActions style={{ marginTop: '16px' }}>
             <Button appearance="secondary" onClick={() => setIsDeleteDialogOpen(false)}>
@@ -804,7 +807,7 @@ export function ProductDetailsView(): React.JSX.Element {
               onClick={() => handleDelete()}
               disabled={isDeleting}
             >
-              {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+              {isDeleting ? 'Removing…' : 'Remove'}
             </Button>
           </DialogActions>
         </DialogSurface>

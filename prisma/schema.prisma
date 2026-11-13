@@ -25,6 +25,7 @@ model Product {
   tags         String?         // JSON string array
   allergens    String?         // JSON string array
   isAvailable  Boolean         @default(true)
+  archivedAt   DateTime?       // removed item with history: hidden, its sales and ledger kept
   imageBase64  String?
   imageUrl     String?
   variants     String?         // JSON string of ProductVariant[]

@@ -251,15 +251,15 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
 
   const handleDeleteProduct = async (product: Product) => {
     const ok = await confirmModal({
-      title: 'Delete Product',
-      message: `Are you sure you want to delete "${product.name}"? This action cannot be undone and will permanently remove this item from the catalog.`,
-      confirmLabel: 'Delete Product',
+      title: 'Remove product',
+      message: `Remove "${product.name}"? An item with sales or stock history is archived (hidden from lists and the POS, its history kept); an item with none is deleted. Items still in stock must be written off first.`,
+      confirmLabel: 'Remove',
       intent: 'danger',
     });
     if (ok) {
       try {
-        await deleteProductMutation.mutateAsync(product.id);
-        notifySuccess(`Product "${product.name}" deleted successfully.`);
+        const result = await deleteProductMutation.mutateAsync(product.id);
+        notifySuccess(result?.archived ? `"${product.name}" archived. Its sales and stock history are kept.` : `"${product.name}" deleted.`);
       } catch (err: any) {
         notifyError(err?.message || 'Failed to delete product');
       }
@@ -348,7 +348,9 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
       unit: data.unit || 'PCS',
       skuCode: data.skuCode?.trim() || `SKU-${Math.floor(10000000 + Math.random() * 90000000)}`,
       rackLocation: data.rackLocation?.trim() || undefined,
-      openingStock: data.openingStock,
+      // An existing item's stock is changed only through stock entries; a new item's opening
+      // stock becomes an "Opening Stock" ledger entry on the backend
+      openingStock: editingProduct ? editingProduct.openingStock : data.openingStock,
       imageUrl: data.imageUrl?.trim() || (isBase64 ? imagePreview : undefined),
       imageBase64: isBase64 ? imagePreview : (editingProduct?.imageBase64 || undefined),
       description: data.description?.trim() || undefined,
@@ -1307,9 +1309,10 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                         name="openingStock"
                         render={({ field }) => (
                           <CustomInput
-                            label="Opening Stock"
+                            label={editingProduct ? 'Current Stock (change via Stock In / Out / Count)' : 'Opening Stock'}
                             type="number"
                             placeholder="50"
+                            disabled={!!editingProduct}
                             value={field.value !== undefined ? String(field.value) : ''}
                             onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
                             error={productForm.formState.errors.openingStock?.message}

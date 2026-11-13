@@ -329,10 +329,58 @@ export function registerRoutes(app: Express): void {
   });
 
   // ── Products ──
+  /**
+   * Barcodes and SKUs identify one item: a scan must never match two products.
+   * Archived items do not count.
+   */
+  async function assertUniqueProductCodes(tx: any, id: string, data: any) {
+    for (const field of ['barcode', 'skuCode'] as const) {
+      const code = String(data[field] || '').trim();
+      if (!code) continue;
+      const clash = await tx.product.findFirst({ where: { [field]: code, id: { not: id }, archivedAt: null } });
+      if (clash) {
+        throw Object.assign(new Error(`${field === 'barcode' ? 'Barcode' : 'SKU'} ${code} is already used by "${clash.name}".`), { status: 409 });
+      }
+    }
+  }
+
+  /**
+   * Edit an item's details. Stock is never written here: it changes only through stock entries
+   * (receive, stock out, count, sales), so the ledger always explains it. Size stock in the
+   * variants is kept too; a newly added size starts at 0.
+   */
+  async function updateProductKeepingStock(tx: any, existing: any, data: any) {
+    const { openingStock: _ignored, ...rest } = data;
+    if (rest.variants !== undefined) rest.variants = keepVariantStock(existing.variants, rest.variants);
+    return tx.product.update({ where: { id: existing.id }, data: { ...rest, updatedAt: new Date() } });
+  }
+
+  function keepVariantStock(prevRaw: unknown, nextRaw: unknown): string | null {
+    const parse = (v: unknown) => {
+      if (Array.isArray(v)) return v;
+      try {
+        const a = typeof v === 'string' ? JSON.parse(v) : null;
+        return Array.isArray(a) ? a : null;
+      } catch {
+        return null;
+      }
+    };
+    const next = parse(nextRaw);
+    if (!next) return (nextRaw as string) ?? null;
+    const prev = parse(prevRaw) || [];
+    const merged = next.map((v: any) => {
+      const before = prev.find((p: any) => (v.id && p.id === v.id) || (v.label && p.label === v.label));
+      if (v.stock === undefined && (!before || before.stock === undefined)) return v;
+      return { ...v, stock: before && before.stock !== undefined ? before.stock : 0 };
+    });
+    return JSON.stringify(merged);
+  }
+
   app.get('/api/products', async (req: Request, res: Response) => {
     try {
       const module = req.query.module as string | undefined;
-      const where = module ? { module } : {};
+      const includeArchived = req.query.includeArchived === '1';
+      const where = { ...(module ? { module } : {}), ...(includeArchived ? {} : { archivedAt: null }) };
       const products = await db.product.findMany({
         where,
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
@@ -369,17 +417,32 @@ export function registerRoutes(app: Express): void {
     try {
       const safeData = sanitizeProduct(req.body);
       const id = safeData.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const product = await db.product.upsert({
-        where: { id },
-        update: {
-          ...safeData,
-          updatedAt: new Date(),
-        },
-        create: {
-          ...safeData,
-          id,
-          updatedAt: new Date(),
-        },
+      const by = requestUser(req)?.name || null;
+      const product = await db.$transaction(async (tx: any) => {
+        await assertUniqueProductCodes(tx, id, safeData);
+        const existing = await tx.product.findUnique({ where: { id } });
+        if (existing) return updateProductKeepingStock(tx, existing, safeData);
+        // A new item's opening stock is a ledger entry ("Opening Stock") with its cost and batch,
+        // so the ledger, valuation and FEFO batches start complete
+        const opening = safeData.openingStock === null || safeData.openingStock === undefined ? null : Math.max(0, Number(safeData.openingStock) || 0);
+        await tx.product.create({ data: { ...safeData, id, openingStock: opening === null ? null : 0, updatedAt: new Date() } });
+        if (opening && opening > 0) {
+          await createMovementTx(tx, {
+            id: `open_${id}`,
+            type: 'in',
+            module: safeData.module || 'minimart',
+            productId: id,
+            productName: safeData.name,
+            quantity: opening,
+            unitCost: Number(safeData.costPrice) > 0 ? Number(safeData.costPrice) : null,
+            reason: 'Opening Stock',
+            note: 'Stock entered when the item was created',
+            batchNumber: safeData.batchNumber || null,
+            expiryDate: safeData.expiryDate || null,
+            createdBy: by,
+          });
+        }
+        return tx.product.findUnique({ where: { id } });
       });
       let parsedVariants = product.variants;
       if (typeof parsedVariants === 'string') {
@@ -389,7 +452,7 @@ export function registerRoutes(app: Express): void {
       res.json({ ...product, variants: parsedVariants });
     } catch (err: any) {
       console.error('[API POST /api/products] Error:', err.message);
-      res.status(500).json({ error: err.message });
+      res.status(err?.status || 500).json({ error: err.message });
     }
   });
 
@@ -398,12 +461,11 @@ export function registerRoutes(app: Express): void {
       const id = String(req.params.id);
       const safeData = sanitizeProduct(req.body);
       delete safeData.id;
-      const product = await db.product.update({
-        where: { id },
-        data: {
-          ...safeData,
-          updatedAt: new Date(),
-        },
+      const product = await db.$transaction(async (tx: any) => {
+        const existing = await tx.product.findUnique({ where: { id } });
+        if (!existing) throw Object.assign(new Error('Product not found'), { status: 404 });
+        await assertUniqueProductCodes(tx, id, safeData);
+        return updateProductKeepingStock(tx, existing, safeData);
       });
       let parsedVariants = product.variants;
       if (typeof parsedVariants === 'string') {
@@ -412,15 +474,31 @@ export function registerRoutes(app: Express): void {
       res.json({ ...product, variants: parsedVariants });
     } catch (err: any) {
       console.error('[API PUT /api/products] Error:', err.message);
-      res.status(500).json({ error: err.message });
+      res.status(err?.status || 500).json({ error: err.message });
     }
   });
 
   app.delete('/api/products/:id', async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id);
+      const product = await db.product.findUnique({ where: { id } });
+      if (!product) return res.json({ ok: true });
+      if (Number(product.openingStock) > 0) {
+        return res.status(409).json({
+          error: `${product.name} still has ${product.openingStock} ${product.unit || 'units'} in stock. Write it off or return it (Stock Out) before removing the item.`,
+        });
+      }
+      const history =
+        (await db.stockMovement.count({ where: { productId: id } })) +
+        (await db.orderItem.count({ where: { productId: id } })) +
+        (await db.stockBatch.count({ where: { productId: id } }));
+      if (history > 0) {
+        // Sales, ledger and batches stay linked; the item is just hidden from lists and the POS
+        await db.product.update({ where: { id }, data: { archivedAt: new Date(), isAvailable: false } });
+        return res.json({ ok: true, archived: true });
+      }
       await db.product.delete({ where: { id } });
-      res.json({ ok: true });
+      res.json({ ok: true, archived: false });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -790,9 +868,11 @@ export function registerRoutes(app: Express): void {
         const safeP = sanitizeProduct(rawP);
         const pId = String(safeP.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
         try {
+          // Only items the database lacks are added; existing items (and their stock) are never
+          // overwritten from a till's cached copy
           await db.product.upsert({
             where: { id: pId },
-            update: { ...safeP, updatedAt: new Date() },
+            update: {},
             create: { ...safeP, id: pId, updatedAt: new Date() },
           });
           pCount++;

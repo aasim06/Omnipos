@@ -334,9 +334,11 @@ export function registerBackupIpc(): void {
         try {
           const safeData = sanitizeProduct(rawP);
           const id = safeData.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          // Only items the database lacks are added; existing items (and their stock) are never
+          // overwritten from a till's cached copy
           await prisma.product.upsert({
             where: { id },
-            update: { ...safeData, updatedAt: new Date() },
+            update: {},
             create: { ...safeData, id, updatedAt: new Date() },
           });
           pCount++;
