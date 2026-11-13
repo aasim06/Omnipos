@@ -428,9 +428,31 @@ export function InventoryDashboardView(): React.JSX.Element {
           icon={<CalendarClock20Regular />}
           count={view.expiry.length}
           action={
-            <Button size="small" appearance="secondary" onClick={() => navigate('/inventory/stock-out')}>
-              Stock out
-            </Button>
+            view.expiredCount > 0 ? (
+              <Button
+                size="small"
+                appearance="primary"
+                onClick={() =>
+                  navigate('/inventory/stock-out', {
+                    state: {
+                      bulkPreset: {
+                        reason: 'Expired Goods',
+                        note: 'Expired stock written off',
+                        lines: view.expiry
+                          .filter((e) => e.days < 0)
+                          .map((e) => ({ productId: e.productId, batchNumber: e.batch, quantity: e.qty })),
+                      },
+                    },
+                  })
+                }
+              >
+                Write off expired ({view.expiredCount})
+              </Button>
+            ) : (
+              <Button size="small" appearance="secondary" onClick={() => navigate('/inventory/stock-out')}>
+                Stock out
+              </Button>
+            )
           }
         >
           {view.expiry.length === 0 ? (

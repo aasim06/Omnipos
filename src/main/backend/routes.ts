@@ -12,7 +12,7 @@ import {
   syncProductNearestBatch,
 } from './stockBatches';
 import { parseRefundItems, returnedQtyByLine, billPriceFactor, lineRefundValue } from '@shared/refunds';
-import { nextQuoteNumber, sameQuoteNumber, nextCreditNoteNumber, applyQuotationSale } from '@shared/quotes';
+import { nextQuoteNumber, sameQuoteNumber, nextCreditNoteNumber, applyQuotationSale, nextYearlyNumber } from '@shared/quotes';
 import { computeKhataAging } from '@shared/khataAging';
 import { evaluateStockAlerts, readLowStockDefault, alertLimitFor, LOW_STOCK_DEFAULT_SETTING } from './stockAlerts';
 
@@ -1365,6 +1365,10 @@ export function registerRoutes(app: Express): void {
         throw Object.assign(new Error(`Only ${round3(Number(prod.openingStock) || 0)} of "${prod.name}" in stock — cannot remove ${qty}.`), { status: 409 });
       }
     }
+    if (b.type === 'out' && b.vendorId && SUPPLIER_RETURN_REASONS.includes(String(b.reason || '')) && !/^DN-\d{4}-\d+$/.test(String(b.referenceInvoice || ''))) {
+      const used = await tx.stockMovement.findMany({ where: { referenceInvoice: { startsWith: 'DN-' } }, select: { referenceInvoice: true } });
+      b = { ...b, referenceInvoice: nextYearlyNumber('DN', used.map((u: any) => u.referenceInvoice), b.date ? new Date(b.date) : new Date()) };
+    }
     const created = await tx.stockMovement.create({
       data: {
         ...(b.id ? { id: String(b.id) } : {}),
@@ -1419,6 +1423,24 @@ export function registerRoutes(app: Express): void {
     return created;
   }
 
+  /** Stock-out reasons that send goods back to a supplier (credit + debit note). */
+  const SUPPLIER_RETURN_REASONS = ['Return to Vendor', 'Product Recall'];
+  /** Stock-out reasons that are a loss / write-off. */
+  const WRITE_OFF_REASONS = ['Damage / Broken', 'Expired Goods', 'Spoiled / Wastage', 'Theft', 'Lost / Missing', 'Other Reason', 'Theft / Lost', 'Audit Adjustment'];
+  /** Write-offs that always need a manager, whatever their value. */
+  const ALWAYS_APPROVE_REASONS = ['Theft', 'Lost / Missing', 'Theft / Lost'];
+  const WRITE_OFF_LIMIT_SETTING = 'inventory.writeOffApprovalLimit';
+  /** Loss value (PKR) from which a write-off needs the Stock Corrections permission; 0 = off. */
+  async function readWriteOffApprovalLimit(): Promise<number> {
+    try {
+      const row = await db.appSetting.findUnique({ where: { key: WRITE_OFF_LIMIT_SETTING } });
+      const n = Number(row ? JSON.parse(row.value)?.value : NaN);
+      return Number.isFinite(n) && n >= 0 ? n : 5000;
+    } catch {
+      return 5000;
+    }
+  }
+
   /** Take cash out of today's open drawer (supplier paid in cash). */
   async function drawerCashOut(tx: any, amount: number) {
     if (!(amount > 0)) return;
@@ -1466,7 +1488,7 @@ export function registerRoutes(app: Express): void {
     if (!m.vendorId || m.reversalOf || m.reason === 'Reversal') return;
     if (m.type === 'out') {
       // Only goods sent back to the supplier earn a credit (not a loss that happens to name a supplier)
-      if (!['Return to Vendor', 'Product Recall'].includes(String(m.reason || ''))) return;
+      if (!SUPPLIER_RETURN_REASONS.includes(String(m.reason || ''))) return;
       // Goods sent back to the supplier: they owe us their value (credit on their ledger)
       const credit = Number(lineTotal) > 0 ? round2(Number(lineTotal)) : receiptValue(m);
       if (!(credit > 0)) return;
@@ -1508,6 +1530,29 @@ export function registerRoutes(app: Express): void {
     try {
       const body = req.body || {};
       if (body.reason === 'Stock Count Adjustment' && refuseWithoutStockAdjust(req, res)) return;
+      // Write-offs that need a manager: theft / missing stock, or a loss worth the approval limit or more
+      if (body.type === 'out' && WRITE_OFF_REASONS.includes(String(body.reason || ''))) {
+        const already = body.id ? await db.stockMovement.findUnique({ where: { id: String(body.id) } }) : null;
+        if (!already) {
+          const prod = body.productId ? await db.product.findUnique({ where: { id: String(body.productId) } }) : null;
+          const value = round2((Number(body.quantity) || 0) * (Number(body.unitCost) || Number(prod?.costPrice) || 0));
+          const limit = await readWriteOffApprovalLimit();
+          const needsApproval = ALWAYS_APPROVE_REASONS.includes(String(body.reason)) || (limit > 0 && value >= limit);
+          if (
+            needsApproval &&
+            refuseWithoutPermission(
+              req,
+              res,
+              'stock_adjust',
+              ALWAYS_APPROVE_REASONS.includes(String(body.reason))
+                ? `Stock Corrections (needed to write off "${body.reason}")`
+                : `Stock Corrections (needed for write-offs of PKR ${limit.toLocaleString()} or more; this one is PKR ${value.toLocaleString()})`
+            )
+          ) {
+            return;
+          }
+        }
+      }
       const movement = await db.$transaction(async (tx: any) => {
         const isNew = !body.id || !(await tx.stockMovement.findUnique({ where: { id: String(body.id) } }));
         const created = await createMovementTx(tx, { ...body, createdBy: body.createdBy || requestUser(req)?.name });

@@ -1811,6 +1811,11 @@ export const posApi = {
         throw new Error(err?.error || `Stock in refused (${res.status})`);
       }
       pushedOk = !!res?.ok;
+      if (res?.ok) {
+        const saved = await res.json().catch(() => null);
+        if (saved?.referenceInvoice) record.referenceInvoice = saved.referenceInvoice;
+        if (saved?.unitCost !== undefined && saved?.unitCost !== null) record.unitCost = saved.unitCost;
+      }
     }
 
     // 1. Instant local write to Dexie

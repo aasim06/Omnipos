@@ -24,7 +24,7 @@ import { StockCountDialog } from './StockCountDialog';
 import { RecipeDialog } from './RecipeDialog';
 import { StockAlertLimitsDialog } from './StockAlertLimitsDialog';
 import { SaleEntryDialog } from './SaleEntryDialog';
-import { BulkStockOutDialog } from './BulkStockOutDialog';
+import { BulkStockOutDialog, BulkStockOutPreset } from './BulkStockOutDialog';
 import { loadLowStockDefault } from '@/lib/stockStatus';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -164,6 +164,15 @@ export function InventoryLayout(): React.JSX.Element {
   const [isAlertLimitsOpen, setIsAlertLimitsOpen] = useState(false);
   const [isSaleEntryOpen, setIsSaleEntryOpen] = useState(false);
   const [isBulkOutOpen, setIsBulkOutOpen] = useState(false);
+  const [bulkPreset, setBulkPreset] = useState<BulkStockOutPreset | null>(null);
+  // e.g. "Write off expired" on the Inventory Dashboard
+  useEffect(() => {
+    const preset = (location.state as any)?.bulkPreset as BulkStockOutPreset | undefined;
+    if (!preset) return;
+    setBulkPreset(preset);
+    setIsBulkOutOpen(true);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state]);
   const { can } = useLicense();
   const hasFastFood = can('fastfood');
   // Stock counts and recipes change stock levels directly: "Stock Corrections" permission only
@@ -247,7 +256,14 @@ export function InventoryLayout(): React.JSX.Element {
 
       {/* ── Sale entry (no POS terminal) & bulk stock out ── */}
       <SaleEntryDialog isOpen={isSaleEntryOpen} onClose={() => setIsSaleEntryOpen(false)} />
-      <BulkStockOutDialog isOpen={isBulkOutOpen} onClose={() => setIsBulkOutOpen(false)} />
+      <BulkStockOutDialog
+        isOpen={isBulkOutOpen}
+        preset={bulkPreset}
+        onClose={() => {
+          setIsBulkOutOpen(false);
+          setBulkPreset(null);
+        }}
+      />
 
       {/* ── Low stock alert limits ── */}
       <StockAlertLimitsDialog isOpen={isAlertLimitsOpen} onClose={() => setIsAlertLimitsOpen(false)} />

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -18,7 +18,8 @@ import { ModuleKey, Product } from '@shared/types';
 import { formatPKR, uid } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
-import { useAppToast } from '@/context/AppNotificationContext';
+import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext';
+import { printDebitNote } from '@/lib/debitNotePrint';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { vendorStorage } from './vendorStorage';
 import {
@@ -71,9 +72,17 @@ const useStyles = makeStyles({
   grand: { fontSize: '18px', fontWeight: 700 },
 });
 
+export interface BulkStockOutPreset {
+  reason: string;
+  note?: string;
+  lines: { productId: string; batchNumber?: string | null; quantity: number }[];
+}
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  /** Open with a reason and lines already filled (e.g. write off every expired batch) */
+  preset?: BulkStockOutPreset | null;
 }
 
 /**
@@ -81,10 +90,11 @@ interface Props {
  * breakage, a return of several items to a supplier). Each line becomes a normal stock-out entry,
  * with the same rules as a single entry (note / batch / vendor by reason).
  */
-export function BulkStockOutDialog({ isOpen, onClose }: Props): React.JSX.Element {
+export function BulkStockOutDialog({ isOpen, onClose, preset }: Props): React.JSX.Element {
   const styles = useStyles();
   const queryClient = useQueryClient();
   const { notifySuccess, notifyWarning, notifyError } = useAppToast();
+  const confirmModal = useConfirmDialog();
   const { can, businessProfiles = [] } = useLicense();
   const hasFastFood = can('fastfood');
   const hasOmnimart = can('omnimart');
@@ -129,6 +139,40 @@ export function BulkStockOutDialog({ isOpen, onClose }: Props): React.JSX.Elemen
     ]);
   };
 
+  // Fill reason and lines from a preset once the products are loaded
+  const appliedPreset = useRef<BulkStockOutPreset | null>(null);
+  useEffect(() => {
+    if (!isOpen || !preset || appliedPreset.current === preset || products.length === 0) return;
+    appliedPreset.current = preset;
+    void (async () => {
+      const built: OutLine[] = [];
+      for (const pl of preset.lines) {
+        const p = products.find((x) => x.id === pl.productId);
+        if (!p) continue;
+        const batches = (await posApi.fetchStockBatches(p.id)).filter((b) => b.remaining > 0 && (b.batchNumber || b.expiryDate));
+        built.push({
+          key: uid('bo_'),
+          productId: p.id,
+          name: p.name,
+          stock: p.openingStock ?? null,
+          unit: p.unit,
+          quantity: pl.quantity,
+          unitCost: Number(p.costPrice) || 0,
+          batches,
+          batchNumber: pl.batchNumber || '',
+        });
+      }
+      const first = products.find((x) => x.id === preset.lines[0]?.productId);
+      if (first?.module) setModule(first.module as ModuleKey);
+      setReason(preset.reason);
+      if (preset.note) setNote(preset.note);
+      setLines(built);
+    })();
+  }, [isOpen, preset, products]);
+  useEffect(() => {
+    if (!isOpen) appliedPreset.current = null;
+  }, [isOpen]);
+
   const patch = (key: string, change: Partial<OutLine>) => setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...change } : l)));
   const total = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitCost) || 0), 0);
 
@@ -161,11 +205,15 @@ export function BulkStockOutDialog({ isOpen, onClose }: Props): React.JSX.Elemen
     setIsSaving(true);
     let saved = 0;
     let credit = 0;
+    // One debit note number for the whole return (the backend gives it with the first line)
+    let debitNote = '';
+    const dnLines: { name: string; quantity: number; unit?: string; batch?: string | null; rate: number }[] = [];
     try {
       const stamp = new Date().toISOString();
       for (const l of lines) {
         const qty = round3(Number(l.quantity));
         const m = await posApi.saveStockMovement({
+          ...(vendor && debitNote ? { referenceInvoice: debitNote } : {}),
           module,
           type: 'out',
           productId: l.productId,
@@ -174,7 +222,7 @@ export function BulkStockOutDialog({ isOpen, onClose }: Props): React.JSX.Elemen
           // A return is credited at the typed rate; other deductions at the average cost (backend)
           unitCost: vendor ? Number(l.unitCost) || null : null,
           reason,
-          referenceInvoice: [
+          note: [
             'Bulk stock out',
             info.vendor && returnReason ? `Return reason: ${returnReason}` : '',
             l.batchNumber ? `Batch: ${l.batchNumber}` : '',
@@ -188,6 +236,10 @@ export function BulkStockOutDialog({ isOpen, onClose }: Props): React.JSX.Elemen
         });
         saved++;
         credit += Math.round((Number(m.quantity) || 0) * (Number(m.unitCost) || 0) * 100) / 100;
+        if (vendor && /^DN-/.test(m.referenceInvoice || '')) {
+          debitNote = debitNote || m.referenceInvoice!;
+          dnLines.push({ name: l.name, quantity: qty, unit: l.unit, batch: l.batchNumber || null, rate: Number(m.unitCost) || 0 });
+        }
       }
       // Each line credited the supplier with its stock entry (backend); refresh the balances
       if (vendor && credit > 0) void vendorStorage.syncWithServer();
@@ -197,6 +249,24 @@ export function BulkStockOutDialog({ isOpen, onClose }: Props): React.JSX.Elemen
       ]);
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('pos_inventory_updated'));
       notifySuccess(`Stock out saved: ${saved} item(s) as "${info.label}".`);
+      if (vendor && debitNote) {
+        const ok = await confirmModal({
+          title: `Debit note ${debitNote}`,
+          message: `${saved} item(s) returned to ${vendor.name}. Print the debit note for the supplier?`,
+          confirmLabel: 'Print debit note',
+        });
+        if (ok) {
+          printDebitNote({
+            number: debitNote,
+            vendorName: vendor.name,
+            date: stamp,
+            reason: info.label,
+            returnReason: returnReason || undefined,
+            note: note.trim() || undefined,
+            lines: dnLines,
+          });
+        }
+      }
       handleClose();
     } catch (err: any) {
       notifyError(`${saved} of ${lines.length} saved. ${err?.message || 'The rest failed.'}`);

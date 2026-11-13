@@ -46,6 +46,7 @@ import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
 import { useAuth } from '@/features/auth/AuthContext';
 import { vendorStorage } from './vendorStorage';
+import { printDebitNote } from '@/lib/debitNotePrint';
 
 import {
   RETURN_TO_VENDOR,
@@ -250,7 +251,7 @@ export function StockOutView(): React.JSX.Element {
         quantity: baseQty,
         unitCost: baseUnitCost ?? null,
         reason: data.reason,
-        referenceInvoice: [
+        note: [
           conv ? `Deducted: ${data.quantity} ${conv.wholesale} × ${conv.rate} = ${baseQty} ${conv.base}` : '',
           info.vendor && data.returnReason ? `Return reason: ${data.returnReason}` : '',
           data.batchNumber ? `Batch: ${data.batchNumber}` : '',
@@ -263,7 +264,30 @@ export function StockOutView(): React.JSX.Element {
         // The backend credits this supplier in the same transaction as the stock
         ...(returnVendor ? { vendorName: returnVendor.name, vendorId: returnVendor.id } : {}),
       });
-      if (returnVendor && saved) void vendorStorage.syncWithServer();
+      if (returnVendor && saved) {
+        void vendorStorage.syncWithServer();
+        // Hand the supplier a debit note for what went back
+        if (/^DN-/.test(saved.referenceInvoice || '')) {
+          const ok = await confirmModal({
+            title: `Debit note ${saved.referenceInvoice}`,
+            message: `${data.productName} × ${baseQty} returned to ${returnVendor.name}. Print the debit note for the supplier?`,
+            confirmLabel: 'Print debit note',
+          });
+          if (ok) {
+            const product = allProducts.find((p) => p.id === data.selectedProductId);
+            printDebitNote({
+              number: saved.referenceInvoice!,
+              vendorName: returnVendor.name,
+              date: saved.date,
+              reason: info.label,
+              returnReason: data.returnReason || undefined,
+              note: data.note || undefined,
+              createdBy: saved.createdBy,
+              lines: [{ name: data.productName, quantity: baseQty, unit: product?.unit, batch: data.batchNumber || null, rate: Number(saved.unitCost) || 0 }],
+            });
+          }
+        }
+      }
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
@@ -421,6 +445,27 @@ export function StockOutView(): React.JSX.Element {
   };
 
   const handleOpenPrint = (mov: StockMovement) => {
+    if (/^DN-/.test(mov.referenceInvoice || '')) {
+      const lines = movements.filter((m) => m.referenceInvoice === mov.referenceInvoice && m.type === 'out' && !m.reversalOf);
+      const ok = printDebitNote({
+        number: mov.referenceInvoice!,
+        vendorName: mov.vendorName || 'Supplier',
+        date: mov.date,
+        reason: reasonInfo(mov.reason).label,
+        createdBy: mov.createdBy,
+        note: mov.note || undefined,
+        lines: lines.map((m) => ({
+          name: m.productName,
+          quantity: Number(m.quantity) || 0,
+          unit: allProducts.find((p) => p.id === m.productId)?.unit,
+          batch: m.batchNumber || null,
+          expiry: m.expiryDate || null,
+          rate: Number(m.unitCost) || 0,
+        })),
+      });
+      if (!ok) notifyError('Allow pop-ups to print the debit note.');
+      return;
+    }
     setPrintingMovement(mov);
     setIsPrintModalOpen(true);
   };
@@ -790,7 +835,7 @@ export function StockOutView(): React.JSX.Element {
                     control={form.control}
                     name="note"
                     render={({ field }) => (
-                      <CustomInput label="NOTE (OPTIONAL)" placeholder="e.g. Debit note no., rep name..." value={field.value || ''} onChange={field.onChange} />
+                      <CustomInput label="NOTE (OPTIONAL)" placeholder="e.g. Rep name, supplier's return ref..." value={field.value || ''} onChange={field.onChange} />
                     )}
                   />
                 )}
