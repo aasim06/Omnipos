@@ -31,7 +31,17 @@ const DAY = 86_400_000;
 const LIST_LIMIT = 6;
 
 const useStyles = makeStyles({
-  page: { display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px 32px 32px', minWidth: 0 },
+  // The app's main area does not scroll; each page scrolls itself
+  page: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    padding: '24px 32px 32px',
+    minWidth: 0,
+    height: '100%',
+    overflowY: 'auto',
+    boxSizing: 'border-box',
+  },
   kpis: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '12px' },
   card: {

@@ -835,7 +835,7 @@ export function FluentSidebar(): React.JSX.Element {
             { to: '/catalog/omnimart', label: retailItemsLabel, moduleKey: 'omnimart' as const, icon: <BuildingRetail24Regular className={styles.icon15} /> },
             { to: '/catalog/categories', label: 'Categories', icon: <Grid20Regular className={styles.icon15} /> },
             { to: '/catalog/barcode-labels', label: 'Barcode Stickers', icon: <BarcodeScanner20Regular className={styles.icon15} /> },
-            { to: '/catalog/new', label: '+ Add New Item', icon: <Add20Regular className={styles.icon15Red} />, isSpecial: true },
+            { to: '/catalog/new', label: 'Add New Item', icon: <Add20Regular className={styles.icon15Red} />, isSpecial: true },
           ],
         },
         {

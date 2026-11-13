@@ -1675,7 +1675,7 @@ export function StockInView(): React.JSX.Element {
                   );
                 }}
               >
-                + Add Product in &quot;{selectedCategory}&quot;
+                Add Product in &quot;{selectedCategory}&quot;
               </Button>
             </div>
           )}

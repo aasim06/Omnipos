@@ -120,6 +120,22 @@ export function QuotationsView(): React.JSX.Element {
     queryFn: () => posApi.fetchProducts(),
   });
   const products = useMemo(() => rawProducts.map(decodeProductVariants), [rawProducts]);
+  // The department a line's item belongs to (custom service lines have none)
+  const lineModule = React.useCallback(
+    (l: { productId?: string }): ModuleKey | undefined => {
+      const m = products.find((p) => p.id === l.productId)?.module;
+      return m === 'fastfood' || m === 'minimart' ? m : undefined;
+    },
+    [products]
+  );
+  // A quotation is sold at one counter: all its catalog items come from one department
+  const itemsModule = (ls: { productId?: string }[]): ModuleKey | undefined => {
+    for (const l of ls) {
+      const m = lineModule(l);
+      if (m) return m;
+    }
+    return undefined;
+  };
 
   // Mutations
   const saveQuotationMutation = useMutation({
@@ -269,7 +285,7 @@ export function QuotationsView(): React.JSX.Element {
     setCustomerName('');
     setCustomerPhone('');
     setCustomerAddress('');
-    setTargetModule('minimart');
+    setTargetModule(storeMod.defaultModule);
     setValidDays(7);
     setLines([]);
     setDiscountPercent(0);
@@ -307,6 +323,16 @@ export function QuotationsView(): React.JSX.Element {
     const vPrice = targetVariant
       ? (targetVariant.price !== undefined ? targetVariant.price : (prod.price + (targetVariant.priceDelta || 0)))
       : prod.price;
+
+    const prodModule: ModuleKey = prod.module === 'fastfood' ? 'fastfood' : 'minimart';
+    const current = itemsModule(lines);
+    if (current && current !== prodModule) {
+      notifyWarning(
+        `"${prod.name}" is a ${prodModule === 'fastfood' ? 'Food Menu' : 'Mart'} item, but this quotation has ${current === 'fastfood' ? 'Food Menu' : 'Mart'} items. One quotation is sold at one counter: make a separate quotation for it.`
+      );
+      return;
+    }
+    if (targetModule !== prodModule) setTargetModule(prodModule);
 
     setLines((prev) => {
       const existingIdx = prev.findIndex(
@@ -388,7 +414,7 @@ export function QuotationsView(): React.JSX.Element {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDialogOpen, products]);
+  }, [isDialogOpen, products, lines, targetModule]);
 
   const addCustomLine = () => {
     setLines((prev) => [
@@ -474,7 +500,7 @@ export function QuotationsView(): React.JSX.Element {
     const quote: Quotation = {
       id: editingQuotation ? editingQuotation.id : uid('quote_'),
       quoteNumber: finalNumber,
-      module: targetModule,
+      module: itemsModule(lines) || targetModule,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim() || undefined,
       customerAddress: customerAddress.trim() || undefined,
@@ -737,6 +763,7 @@ export function QuotationsView(): React.JSX.Element {
                                 notifyWarning(err?.message || 'This quotation can no longer be sold.');
                                 return;
                               }
+                              const saleModule = itemsModule(quote.lines) || quote.module;
                               try {
                                 localStorage.setItem(
                                   'pos_pending_quotation_load',
@@ -757,11 +784,11 @@ export function QuotationsView(): React.JSX.Element {
                                       .filter((l) => l.quantity > 0),
                                     advanceKhataId: quote.advanceKhataId,
                                     discountPercent: quote.discountPercent,
-                                    module: quote.module,
+                                    module: saleModule,
                                   })
                                 );
                                 notifySuccess(`Loading ${quote.quoteNumber} into POS Counter...`);
-                                const targetRoute = quote.module === 'fastfood' ? '/pos/fastfood' : '/pos/omnimart';
+                                const targetRoute = saleModule === 'fastfood' ? '/pos/fastfood' : '/pos/omnimart';
                                 navigate(targetRoute);
                               } catch {
                                 notifyError('Could not transfer quotation to POS cart');
@@ -929,7 +956,16 @@ export function QuotationsView(): React.JSX.Element {
                 label="Target Store Module"
                 value={targetModule}
                 options={storeMod.moduleOptions}
-                onChange={(val) => setTargetModule(val as ModuleKey)}
+                onChange={(val) => {
+                  const current = itemsModule(lines);
+                  if (current && current !== val) {
+                    notifyWarning(
+                      `This quotation has ${current === 'fastfood' ? 'Food Menu' : 'Mart'} items, so it is sold at that counter. Remove them to change the department.`
+                    );
+                    return;
+                  }
+                  setTargetModule(val as ModuleKey);
+                }}
               />
             )}
 

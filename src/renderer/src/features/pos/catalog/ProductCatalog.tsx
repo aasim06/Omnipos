@@ -232,7 +232,7 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                   No Products in Catalog
                 </p>
                 <p style={{ fontSize: '13px', margin: 0 }}>
-                  Store catalog is empty. Click "+ Add New Item" from the left menu to create your products.
+                  Store catalog is empty. Click "Add New Item" from the left menu to create your products.
                 </p>
               </div>
             ) : (
