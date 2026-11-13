@@ -107,14 +107,51 @@ const useStyles = makeStyles({
   danger: { color: tokens.colorPaletteRedForeground1 },
   warn: { color: tokens.colorPaletteMarigoldForeground1 },
   success: { color: tokens.colorPaletteGreenForeground1 },
-  summaryLine: {
+  statGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '8px' },
+  statTile: {
     display: 'flex',
-    justifyContent: 'space-between',
-    gap: '8px',
-    padding: '6px',
-    color: tokens.colorNeutralForeground2,
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    flexDirection: 'column',
+    gap: '2px',
+    padding: '8px 10px',
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: tokens.colorNeutralBackground2,
+    minWidth: 0,
   },
+  statTileLoss: { ...shorthands.border('1px', 'solid', tokens.colorPaletteRedBorder1) },
+  statLabel: { fontSize: '11.5px', color: tokens.colorNeutralForeground3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  statValue: { fontSize: '15px', fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground1, whiteSpace: 'nowrap' },
+  chipRow: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' },
+  chip: {
+    fontSize: '12px',
+    padding: '3px 8px',
+    borderRadius: tokens.borderRadiusCircular,
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground2,
+  },
+  chipButton: {
+    fontSize: '12px',
+    padding: '3px 8px',
+    borderRadius: tokens.borderRadiusCircular,
+    backgroundColor: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground2,
+    border: 'none',
+    cursor: 'pointer',
+    ':hover': { backgroundColor: tokens.colorNeutralBackground3Hover },
+  },
+  miniTable: { width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' },
+  miniRow: { cursor: 'pointer', ':hover': { backgroundColor: tokens.colorSubtleBackgroundHover } },
+  miniCell: {
+    padding: '6px',
+    fontSize: '13px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke3}`,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  miniWhen: { width: '64px', color: tokens.colorNeutralForeground3, fontVariantNumeric: 'tabular-nums' },
+  miniName: { fontWeight: tokens.fontWeightSemibold, color: tokens.colorNeutralForeground1 },
+  miniReason: { color: tokens.colorNeutralForeground3, width: '34%' },
+  miniQty: { width: '96px', textAlign: 'right', fontWeight: tokens.fontWeightSemibold },
 });
 
 const fmtQ = (n: number) => Number((Number(n) || 0).toFixed(3)).toLocaleString();
@@ -422,53 +459,58 @@ export function InventoryDashboardView(): React.JSX.Element {
           )}
         </Section>
 
-        {/* This month */}
+        {/* This month: compact stat tiles */}
         <Section title="This month at cost" subtitle="What came in and what left the shelf other than sales" icon={<ShoppingBag20Regular />}>
-          <div className={styles.row}>
-            <span>Purchases received</span>
-            <span className={styles.success}>+{formatPKR(Math.round(view.month.purchasesValue))}</span>
-          </div>
-          <div className={styles.row}>
-            <span>Customer returns back on the shelf</span>
-            <span className={styles.success}>+{formatPKR(Math.round(view.month.customerReturnsValue))}</span>
-          </div>
-          <div className={styles.row}>
-            <span>Cost of goods sold</span>
-            <span>-{formatPKR(Math.round(view.month.salesCostValue))}</span>
-          </div>
-          <div className={styles.row}>
-            <span>Returned to suppliers</span>
-            <span>-{formatPKR(Math.round(view.month.vendorReturnsValue))}</span>
-          </div>
-          <div className={styles.row}>
-            <span>Internal use (store use, samples…)</span>
-            <span>-{formatPKR(Math.round(view.month.usageValue))}</span>
-          </div>
-          <div className={styles.row}>
-            <span>Stock count corrections</span>
-            <span>
-              {view.month.countGainValue > 0 ? <span className={styles.success}>+{formatPKR(Math.round(view.month.countGainValue))} </span> : null}
-              <span className={view.month.countLossValue > 0 ? styles.danger : undefined}>-{formatPKR(Math.round(view.month.countLossValue))}</span>
-            </span>
-          </div>
-          <div className={styles.summaryLine}>
-            <strong>Loss / write-off</strong>
-            <strong className={view.month.lossValue > 0 ? styles.danger : undefined}>-{formatPKR(Math.round(view.month.lossValue))}</strong>
-          </div>
-          {view.month.losses.map((l) => (
-            <div key={l.reason} className={styles.row}>
-              <span className={styles.sub}>
-                {l.label} · {l.entries} entr{l.entries === 1 ? 'y' : 'ies'} · {fmtQ(l.units)} units
-              </span>
-              <span className={styles.danger}>-{formatPKR(Math.round(l.value))}</span>
-            </div>
-          ))}
+          {(() => {
+            const pk = (n: number) => formatPKR(Math.round(n));
+            const tiles: { label: string; value: React.ReactNode; tone?: 'success' | 'danger' }[] = [
+              { label: 'Purchases received', value: `+${pk(view.month.purchasesValue)}`, tone: 'success' },
+              { label: 'Customer returns', value: `+${pk(view.month.customerReturnsValue)}`, tone: 'success' },
+              { label: 'Cost of goods sold', value: `-${pk(view.month.salesCostValue)}` },
+              { label: 'Returned to suppliers', value: `-${pk(view.month.vendorReturnsValue)}` },
+              { label: 'Internal use', value: `-${pk(view.month.usageValue)}` },
+              {
+                label: 'Count corrections',
+                value:
+                  view.month.countGainValue > 0
+                    ? `+${pk(view.month.countGainValue)} / -${pk(view.month.countLossValue)}`
+                    : `-${pk(view.month.countLossValue)}`,
+              },
+            ];
+            return (
+              <>
+                <div className={styles.statGrid}>
+                  {tiles.map((t) => (
+                    <div key={t.label} className={styles.statTile}>
+                      <span className={styles.statLabel}>{t.label}</span>
+                      <span className={mergeClasses(styles.statValue, t.tone === 'success' && styles.success, t.tone === 'danger' && styles.danger)}>
+                        {t.value}
+                      </span>
+                    </div>
+                  ))}
+                  <div className={mergeClasses(styles.statTile, styles.statTileLoss)}>
+                    <span className={styles.statLabel}>Loss / write-off</span>
+                    <span className={mergeClasses(styles.statValue, view.month.lossValue > 0 && styles.danger)}>-{pk(view.month.lossValue)}</span>
+                  </div>
+                </div>
+                {view.month.losses.length > 0 && (
+                  <div className={styles.chipRow}>
+                    {view.month.losses.map((l) => (
+                      <span key={l.reason} className={styles.chip} title={`${l.entries} entr${l.entries === 1 ? 'y' : 'ies'}`}>
+                        {l.label} · {fmtQ(l.units)} units · <span className={styles.danger}>-{pk(l.value)}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </Section>
 
-        {/* Today + suppliers */}
+        {/* Today: one line per entry */}
         <Section
           title="Today"
-          subtitle={`${view.todayMoves.length} stock entr${view.todayMoves.length === 1 ? 'y' : 'ies'} · in ${formatPKR(Math.round(view.todayIn))} · out ${formatPKR(Math.round(view.todayOut))} at cost`}
+          subtitle={`${view.todayMoves.length} stock entr${view.todayMoves.length === 1 ? 'y' : 'ies'} today · in ${formatPKR(Math.round(view.todayIn))} · out ${formatPKR(Math.round(view.todayOut))} at cost`}
           icon={<History20Regular />}
           action={
             <Button size="small" appearance="secondary" onClick={() => navigate('/inventory/ledger')}>
@@ -479,44 +521,41 @@ export function InventoryDashboardView(): React.JSX.Element {
           {view.recent.length === 0 ? (
             <div className={styles.empty}>No stock movements yet.</div>
           ) : (
-            view.recent.map((m) => {
-              const isIn = m.type === 'in';
-              const d = new Date(m.date);
-              const isToday = d.getTime() >= startOfToday();
-              return (
-                <div key={m.id} className={mergeClasses(styles.row, styles.clickable)} onClick={() => navigate('/inventory/ledger')}>
-                  <div className={styles.rowMain}>
-                    <span className={styles.name}>{m.productName}</span>
-                    <span className={styles.sub}>
-                      {m.reason || (isIn ? 'Stock in' : 'Stock out')}
-                      {' · '}
-                      {isToday ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString()}
-                      {m.reversedAt ? ' · reversed' : ''}
-                    </span>
-                  </div>
-                  <div className={styles.right}>
-                    <span className={isIn ? styles.success : styles.danger}>
-                      {isIn ? '+' : '-'}
-                      {fmtQ(Number(m.quantity) || 0)} {view.unitOf(m.productId)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })
+            <table className={styles.miniTable}>
+              <tbody>
+                {view.recent.map((m) => {
+                  const isIn = m.type === 'in';
+                  const d = new Date(m.date);
+                  const isToday = d.getTime() >= startOfToday();
+                  return (
+                    <tr key={m.id} className={styles.miniRow} onClick={() => navigate('/inventory/ledger')}>
+                      <td className={mergeClasses(styles.miniCell, styles.miniWhen)}>
+                        {isToday ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString([], { day: '2-digit', month: 'short' })}
+                      </td>
+                      <td className={mergeClasses(styles.miniCell, styles.miniName)}>{m.productName}</td>
+                      <td className={mergeClasses(styles.miniCell, styles.miniReason)}>
+                        {m.reason || (isIn ? 'Stock in' : 'Stock out')}
+                        {m.reversedAt ? ' · reversed' : ''}
+                      </td>
+                      <td className={mergeClasses(styles.miniCell, styles.miniQty, isIn ? styles.success : styles.danger)}>
+                        {isIn ? '+' : '-'}
+                        {fmtQ(Number(m.quantity) || 0)} {view.unitOf(m.productId)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
           {owed.length > 0 && (
-            <>
-              <div className={styles.summaryLine}>
-                <strong>Owed to suppliers</strong>
-                <strong>{formatPKR(Math.round(totalOwed))}</strong>
-              </div>
+            <div className={styles.chipRow}>
+              <span className={styles.statLabel}>Owed to suppliers {formatPKR(Math.round(totalOwed))}:</span>
               {owed.slice(0, 4).map(({ v, balance }) => (
-                <div key={v.id} className={mergeClasses(styles.row, styles.clickable)} onClick={() => navigate('/inventory/vendors')}>
-                  <span className={styles.name}>{v.companyName || v.name}</span>
-                  <span className={styles.warn}>{formatPKR(Math.round(balance))}</span>
-                </div>
+                <button key={v.id} type="button" className={styles.chipButton} onClick={() => navigate('/inventory/vendors')}>
+                  {v.companyName || v.name} · <span className={styles.warn}>{formatPKR(Math.round(balance))}</span>
+                </button>
               ))}
-            </>
+            </div>
           )}
         </Section>
       </div>
