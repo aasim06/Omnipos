@@ -322,7 +322,7 @@ export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
                       </>
                     )}
 
-                    {storeSettings.showGoogleMapQrOnReceipt !== false && storeSettings.googleMapsUrl && modalGoogleQrDataUrl && (
+                    {storeSettings.showGoogleMapQrOnReceipt !== false && (storeSettings.googleMapsUrl || storeSettings.googleReviewUrl) && modalGoogleQrDataUrl && (
                       <div style={{ textAlign: 'center', margin: '10px 0 4px', paddingTop: '8px', borderTop: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }}>
                         <div style={{ fontSize: '10.5px', fontWeight: 800, color: isDark ? '#E2E8F0' : '#0F172A' }}>
                           {storeSettings.googleQrAction === 'map'

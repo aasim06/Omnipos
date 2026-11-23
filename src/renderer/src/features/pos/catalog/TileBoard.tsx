@@ -6,11 +6,17 @@ import { PosCounterState } from '@/features/pos/usePosCounter';
 import { decodeProductVariants } from '@/lib/variants';
 import { playBeep } from '@/lib/soundFx';
 import { hasOpenPosDialog } from '@/features/pos/posDialog';
-import { Add16Filled, Apps24Regular, ArrowLeft20Regular, ChevronRight16Regular, MoreVertical16Regular, Options16Regular, Scales16Regular, Star16Filled, Star16Regular } from '@fluentui/react-icons';
+import { Add16Filled, Apps24Regular, ArrowLeft20Regular, ChevronRight16Regular, MoreVertical16Regular, Options16Regular, ReOrderDotsVertical16Regular, Scales16Regular, Star16Filled, Star16Regular } from '@fluentui/react-icons';
 import { CategoryTileIcon, TileTint, autoTintIndex, categoryTint, sortCategoryNames } from '@/features/pos/categoryStyle';
 import { lowStockLimit } from '@/lib/stockStatus';
 
 type Tint = TileTint;
+
+const ALL_ITEMS_KEY = '__ALL_ITEMS__';
+const ALL_ITEMS_TINT: Record<'light' | 'dark', TileTint> = {
+  light: { bg: '#E0E7FF', ink: '#1E1B4B', shine: '#4F46E5', border: '#818CF8' },
+  dark: { bg: '#1E293B', ink: '#FFFFFF', shine: '#2563EB', border: '#3B82F6' },
+};
 
 /** Product tags arrive as an array or as a JSON string from the database. */
 export function parseTags(raw: unknown): string[] {
@@ -68,10 +74,109 @@ export function TileBoard({ pos }: { pos: PosCounterState }) {
     () => sortCategoryNames(allCategoryTabs.filter((c) => c !== 'All'), categoryMeta),
     [allCategoryTabs, categoryMeta],
   );
+
+  // Tile size (Admin > Settings > Touch layout) and a column count that fits the width.
+  const tileSize = useTileSize();
+  const [boardRef, boardWidth] = useWidth<HTMLDivElement>();
+  const spec = TILE_SPECS[tileSize];
+  const fit = (min: number, max: number, gap: number) =>
+    boardWidth > 0 ? Math.max(2, Math.min(max, Math.floor((boardWidth + gap) / (min + gap)))) : max;
+  const categoryCols = fit(spec.categoryMin, spec.categoryMax, 6);
+  const itemCols = Math.max(1, fit(spec.itemMin, 8, 10));
+  const narrow = boardWidth > 0 && boardWidth < 520;
+
+  // Slots state: holds (categoryName | '__ALL_ITEMS__' | null)[]
+  const [slots, setSlots] = React.useState<(string | null)[]>([]);
+  const [draggedSlot, setDraggedSlot] = React.useState<number | null>(null);
+  const [dropTargetSlot, setDropTargetSlot] = React.useState<number | null>(null);
+
+  // Synchronize and reconcile slots when categories, module, or categoryCols change
+  React.useEffect(() => {
+    const storageKey = `omnipos_category_board_slots_${module}`;
+    const allAvailable = [ALL_ITEMS_KEY, ...categories];
+    let loaded: (string | null)[] = [];
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) loaded = parsed;
+      }
+    } catch {}
+
+    // Clean up items that no longer exist
+    let current = loaded.map((item) => (item && allAvailable.includes(item) ? item : null));
+
+    // Place any available items that are missing
+    const missing = allAvailable.filter((item) => !current.includes(item));
+    for (const item of missing) {
+      const firstNull = current.indexOf(null);
+      if (firstNull !== -1) {
+        current[firstNull] = item;
+      } else {
+        current.push(item);
+      }
+    }
+
+    if (!current.includes(ALL_ITEMS_KEY)) {
+      current.unshift(ALL_ITEMS_KEY);
+    }
+
+    // Minimum rows to fill the screen as a neat grid
+    const minSlots = Math.max(categoryCols * 3, 12);
+    let lastFilled = -1;
+    current.forEach((val, i) => {
+      if (val !== null) lastFilled = i;
+    });
+
+    const targetLength = Math.max(
+      minSlots,
+      Math.ceil((Math.max(lastFilled + 1, minSlots)) / Math.max(1, categoryCols)) * Math.max(1, categoryCols)
+    );
+
+    while (current.length < targetLength) {
+      current.push(null);
+    }
+
+    setSlots(current);
+  }, [module, categories, categoryCols]);
+
+  const handleMoveSlot = React.useCallback(
+    (fromIdx: number, toIdx: number) => {
+      if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return;
+      setSlots((prev) => {
+        const next = [...prev];
+        const moving = next[fromIdx];
+        const target = next[toIdx];
+        next[toIdx] = moving;
+        next[fromIdx] = target;
+
+        try {
+          localStorage.setItem(`omnipos_category_board_slots_${module}`, JSON.stringify(next));
+        } catch {}
+
+        // Persist displayOrder in background for categories in database
+        let order = 1;
+        next.forEach((item) => {
+          if (item && item !== ALL_ITEMS_KEY) {
+            const cat = categoryMeta.get(item);
+            if (cat && cat.displayOrder !== order) {
+              posApi.saveCategory({ ...cat, displayOrder: order }).catch(() => {});
+            }
+            order++;
+          }
+        });
+
+        return next;
+      });
+    },
+    [module, categoryMeta],
+  );
+
   const tintFor = React.useCallback(
-    (category?: string) => {
-      const i = category ? categories.indexOf(category) : -1;
-      return categoryTint(category ? categoryMeta.get(category)?.color : null, i >= 0 ? i : autoTintIndex(category || ''), isDark);
+    (category?: string, slotIndex?: number) => {
+      const savedColor = category ? categoryMeta.get(category)?.color : null;
+      const idx = slotIndex !== undefined ? slotIndex : (category ? categories.indexOf(category) : 0);
+      return categoryTint(savedColor, idx, isDark);
     },
     [categories, categoryMeta, isDark],
   );
@@ -84,16 +189,6 @@ export function TileBoard({ pos }: { pos: PosCounterState }) {
         .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.name.localeCompare(b.name)),
     [products, module],
   );
-
-  // Tile size (Admin > Settings > Touch layout) and a column count that fits the width.
-  const tileSize = useTileSize();
-  const [boardRef, boardWidth] = useWidth<HTMLDivElement>();
-  const spec = TILE_SPECS[tileSize];
-  const fit = (min: number, max: number, gap: number) =>
-    boardWidth > 0 ? Math.max(2, Math.min(max, Math.floor((boardWidth + gap) / (min + gap)))) : max;
-  const categoryCols = fit(spec.categoryMin, spec.categoryMax, 12);
-  const itemCols = Math.max(1, fit(spec.itemMin, 8, 10));
-  const narrow = boardWidth > 0 && boardWidth < 520;
 
   const toggleTag = useToggleProductTag(module);
 
@@ -195,6 +290,11 @@ export function TileBoard({ pos }: { pos: PosCounterState }) {
           <span style={{ marginLeft: '4px', fontSize: '13px', fontWeight: 400, color: F.textMuted, whiteSpace: 'nowrap' }}>
             {count} {countLabel}
           </span>
+          {showCategoryBoard && (
+            <span style={{ marginLeft: '8px', fontSize: '12px', fontWeight: 400, color: F.textMuted, opacity: 0.8 }}>
+              · Drag tiles into any box to arrange
+            </span>
+          )}
         </div>
       </div>
 
@@ -216,33 +316,107 @@ export function TileBoard({ pos }: { pos: PosCounterState }) {
               display: 'grid',
               gridTemplateColumns: `repeat(${categoryCols}, minmax(0, 1fr))`,
               gridAutoRows: `${spec.categoryRow}px`,
-              gap: '12px',
+              gap: '6px',
+              padding: '6px',
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+              borderRadius: '12px',
+              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}`,
             }}
           >
-            <CategoryTile
-              F={F}
-              isDark={isDark}
-              tint={{ bg: F.bgCard, ink: F.textPrimary, shine: F.bgCard }}
-              outlined
-              iconSize={spec.categoryIcon}
-              onClick={() => setShowAllItems(true)}
-              icon={<Apps24Regular style={{ width: spec.categoryIcon, height: spec.categoryIcon }} />}
-              name="All items"
-              count={categoryCounts.All ?? 0}
-            />
-            {categories.map((cat) => (
-              <CategoryTile
-                key={cat}
-                F={F}
-                isDark={isDark}
-                tint={tintFor(cat)}
-                iconSize={spec.categoryIcon}
-                onClick={() => setActiveCategory(cat)}
-                icon={<CategoryTileIcon name={cat} iconKey={categoryMeta.get(cat)?.icon} size={spec.categoryIcon} module={module} />}
-                name={cat}
-                count={categoryCounts[cat] ?? 0}
-              />
-            ))}
+            {slots.map((item, slotIdx) => {
+              if (item === null) {
+                return (
+                  <EmptySlot
+                    key={`empty-slot-${slotIdx}`}
+                    index={slotIdx}
+                    isOver={dropTargetSlot === slotIdx}
+                    isDark={isDark}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dropTargetSlot !== slotIdx) setDropTargetSlot(slotIdx);
+                    }}
+                    onDragLeave={() => {
+                      if (dropTargetSlot === slotIdx) setDropTargetSlot(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const from = draggedSlot ?? parseInt(e.dataTransfer.getData('text/plain'), 10);
+                      if (!isNaN(from)) handleMoveSlot(from, slotIdx);
+                      setDraggedSlot(null);
+                      setDropTargetSlot(null);
+                    }}
+                  />
+                );
+              }
+
+              const isAll = item === ALL_ITEMS_KEY;
+              const catName = isAll ? 'All items' : item;
+              const itemCount = isAll ? (categoryCounts.All ?? 0) : (categoryCounts[item] ?? 0);
+              const tint = isAll
+                ? (isDark ? ALL_ITEMS_TINT.dark : ALL_ITEMS_TINT.light)
+                : tintFor(item, slotIdx);
+
+              const icon = isAll ? (
+                <Apps24Regular style={{ width: spec.categoryIcon, height: spec.categoryIcon }} />
+              ) : (
+                <CategoryTileIcon
+                  name={item}
+                  iconKey={categoryMeta.get(item)?.icon}
+                  size={spec.categoryIcon}
+                  module={module}
+                />
+              );
+
+              return (
+                <CategoryTile
+                  key={`tile-${item}-${slotIdx}`}
+                  F={F}
+                  isDark={isDark}
+                  tint={tint}
+                  iconSize={spec.categoryIcon}
+                  icon={icon}
+                  name={catName}
+                  count={itemCount}
+                  slotIndex={slotIdx}
+                  isDragging={draggedSlot === slotIdx}
+                  isDropTarget={dropTargetSlot === slotIdx && draggedSlot !== slotIdx}
+                  onDragStart={(e, idx) => {
+                    e.dataTransfer.setData('text/plain', String(idx));
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDraggedSlot(idx);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedSlot(null);
+                    setDropTargetSlot(null);
+                  }}
+                  onDragOver={(e, idx) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dropTargetSlot !== idx) setDropTargetSlot(idx);
+                  }}
+                  onDragLeave={() => {
+                    if (dropTargetSlot === slotIdx) setDropTargetSlot(null);
+                  }}
+                  onDrop={(e, idx) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const from = draggedSlot ?? parseInt(e.dataTransfer.getData('text/plain'), 10);
+                    if (!isNaN(from)) handleMoveSlot(from, idx);
+                    setDraggedSlot(null);
+                    setDropTargetSlot(null);
+                  }}
+                  onClick={() => {
+                    if (isAll) {
+                      setShowAllItems(true);
+                    } else {
+                      setActiveCategory(item);
+                    }
+                  }}
+                />
+              );
+            })}
           </div>
         </>
       ) : filteredProducts.length === 0 ? (
@@ -365,36 +539,105 @@ function SectionTitle({ F, icon, text, note }: { F: PosCounterState['F']; icon?:
   );
 }
 
+/* ─── Empty slot (drop target & grid placeholder) ─────────────────── */
+function EmptySlot({
+  index,
+  isOver,
+  isDark,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: {
+  index: number;
+  isOver: boolean;
+  isDark: boolean;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+}) {
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        borderRadius: '8px',
+        border: isOver
+          ? '2px dashed #3B82F6'
+          : `1px dashed ${isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'}`,
+        backgroundColor: isOver
+          ? (isDark ? 'rgba(59, 130, 246, 0.18)' : 'rgba(59, 130, 246, 0.10)')
+          : (isDark ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.015)'),
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '4px',
+        color: isOver ? '#3B82F6' : (isDark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(0, 0, 0, 0.28)'),
+        transition: 'all 0.12s ease',
+        userSelect: 'none',
+      }}
+    >
+      <span style={{ fontSize: '18px', lineHeight: 1, opacity: isOver ? 1 : 0.45 }}>+</span>
+      <span style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.02em', opacity: isOver ? 1 : 0.55 }}>
+        {isOver ? 'Drop here' : `Slot ${index + 1}`}
+      </span>
+    </div>
+  );
+}
+
 /* ─── Category tile ──────────────────────────────────────────────── */
 function CategoryTile({
   F,
   isDark,
   tint,
-  outlined,
   onClick,
   iconSize = 46,
   icon,
   name,
   count,
+  slotIndex,
+  isDragging,
+  isDropTarget,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
 }: {
   F: PosCounterState['F'];
   isDark: boolean;
   tint: Tint;
-  outlined?: boolean;
   onClick: () => void;
   iconSize?: number;
   icon: React.ReactNode;
   name: string;
   count: number;
+  slotIndex: number;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
+  onDragStart?: (e: React.DragEvent, idx: number) => void;
+  onDragEnd?: () => void;
+  onDragOver?: (e: React.DragEvent, idx: number) => void;
+  onDragLeave?: () => void;
+  onDrop?: (e: React.DragEvent, idx: number) => void;
 }) {
   const empty = count === 0;
-  // Flat, like the app's cards: solid colour, hairline border, the same light card shadow (no glow or bevel).
-  const color = outlined ? tint.bg : tint.shine ?? tint.bg;
+  const color = tint.bg;
   const shadow = F.shadowCard;
   return (
     <button
       type="button"
       className="pos-board-tile"
+      draggable
+      onDragStart={(e) => onDragStart?.(e, slotIndex)}
+      onDragEnd={onDragEnd}
+      onDragOver={(e) => onDragOver?.(e, slotIndex)}
+      onDragLeave={onDragLeave}
+      onDrop={(e) => onDrop?.(e, slotIndex)}
       aria-label={`${name}, ${count} items`}
       aria-disabled={empty}
       onClick={() => !empty && onClick()}
@@ -402,36 +645,81 @@ function CategoryTile({
         position: 'relative',
         width: '100%',
         height: '100%',
-        padding: '16px',
-        border: outlined ? `1px solid ${F.border}` : `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-        borderRadius: '16px',
+        padding: '12px 8px',
+        border: isDropTarget
+          ? '2px solid #3B82F6'
+          : tint.border
+          ? `1px solid ${tint.border}`
+          : `1px solid ${isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.12)'}`,
+        borderRadius: '8px',
         backgroundColor: color,
-        boxShadow: empty ? 'none' : shadow,
+        boxShadow: isDropTarget
+          ? '0 0 16px rgba(59, 130, 246, 0.55)'
+          : empty
+          ? 'none'
+          : shadow,
         color: tint.ink,
         fontFamily: F.font,
-        cursor: empty ? 'not-allowed' : 'pointer',
-        opacity: empty ? 0.45 : 1,
+        cursor: isDragging ? 'grabbing' : empty ? 'default' : 'grab',
+        opacity: isDragging ? 0.35 : empty ? 0.45 : 1,
+        transform: isDropTarget ? 'scale(1.02)' : 'scale(1)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '12px',
+        gap: '8px',
         textAlign: 'center',
         overflow: 'hidden',
         userSelect: 'none',
         touchAction: 'manipulation',
-        transition: 'transform 0.08s ease, filter 0.12s ease',
+        transition: 'transform 0.12s ease, filter 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease',
       }}
     >
       <span
+        title="Drag to rearrange"
         style={{
-          width: `${Math.round(iconSize * 1.7)}px`,
-          height: `${Math.round(iconSize * 1.7)}px`,
+          position: 'absolute',
+          top: '6px',
+          left: '6px',
+          opacity: 0.45,
+          display: 'flex',
+          alignItems: 'center',
+          cursor: 'grab',
+        }}
+      >
+        <ReOrderDotsVertical16Regular style={{ width: 14, height: 14 }} />
+      </span>
+      <span
+        style={{
+          position: 'absolute',
+          top: '6px',
+          right: '6px',
+          minWidth: '20px',
+          height: '19px',
+          padding: '0 6px',
+          borderRadius: '10px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: isDark ? 'rgba(0,0,0,0.38)' : 'rgba(255,255,255,0.75)',
+          color: tint.ink,
+          fontSize: '11px',
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
+        }}
+      >
+        {count}
+      </span>
+      <span
+        style={{
+          width: `${Math.round(iconSize * 1.4)}px`,
+          height: `${Math.round(iconSize * 1.4)}px`,
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: outlined ? F.bgSubtle : isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.5)',
+          backgroundColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.55)',
           flexShrink: 0,
         }}
       >
@@ -439,38 +727,19 @@ function CategoryTile({
       </span>
       <span
         style={{
-          fontSize: iconSize >= 46 ? '17px' : '15px',
+          fontSize: iconSize >= 46 ? '15px' : '13px',
           fontWeight: 700,
-          lineHeight: '21px',
-          maxHeight: '42px',
+          lineHeight: '19px',
+          maxHeight: '38px',
           overflow: 'hidden',
           display: '-webkit-box',
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           wordBreak: 'break-word',
+          padding: '0 4px',
         }}
       >
         {name}
-      </span>
-      <span
-        style={{
-          position: 'absolute',
-          top: '10px',
-          right: '10px',
-          minWidth: '24px',
-          height: '22px',
-          padding: '0 7px',
-          borderRadius: '11px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: outlined ? F.bgSubtle : isDark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.65)',
-          fontSize: '12px',
-          fontWeight: 700,
-          fontVariantNumeric: 'tabular-nums',
-        }}
-      >
-        {count}
       </span>
     </button>
   );

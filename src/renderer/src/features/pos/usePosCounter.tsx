@@ -10,6 +10,7 @@ import { CartLine, Category, Order, Product } from '@shared/types';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { KEYS, storage } from '@/lib/storage';
 import { generateQrDataUrl } from '@/lib/qrCode';
+import { getEffectiveGoogleQrUrl } from '@/lib/googleMapsUrl';
 import { posApi, resolveApiUrl } from '@/lib/api';
 import { playBeep, playErrorBeep, playSuccessChime } from '@/lib/soundFx';
 import { nowISO, uid } from '@/lib/utils';
@@ -23,7 +24,7 @@ import { offlineDb } from '@/lib/offlineDb';
  * All state, data loading, effects and handlers of the POS counter screen.
  * Moved verbatim from PosCounterView (P3 split) — hook order is unchanged.
  */
-export type PosViewMode = 'grid' | 'table' | 'tiles';
+export type PosViewMode = 'table' | 'tiles';
 // v2: the tile board became the default for both terminals, so older saved choices start fresh.
 const VIEW_MODE_KEY = 'omnipos_pos_view_mode_v2';
 
@@ -31,7 +32,7 @@ function readViewMode(module: string): PosViewMode {
   const fallback: PosViewMode = 'tiles';
   try {
     const saved = JSON.parse(localStorage.getItem(VIEW_MODE_KEY) || '{}')[module];
-    if (saved === 'tiles' || saved === 'grid' || (saved === 'table' && module !== 'fastfood')) return saved;
+    if (saved === 'tiles' || saved === 'table') return saved;
   } catch {
     /* storage unavailable or corrupt */
   }
@@ -105,14 +106,15 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
   const [modalReceiptLang, setModalReceiptLang] = useState<'english' | 'urdu' | 'bilingual'>('english');
   const [modalGoogleQrDataUrl, setModalGoogleQrDataUrl] = useState<string>('');
   React.useEffect(() => {
-    if (storeSettings.showGoogleMapQrOnReceipt !== false && storeSettings.googleMapsUrl) {
-      generateQrDataUrl(storeSettings.googleMapsUrl, { width: 100, margin: 1 })
+    const effectiveUrl = getEffectiveGoogleQrUrl(storeSettings);
+    if (storeSettings.showGoogleMapQrOnReceipt !== false && effectiveUrl) {
+      generateQrDataUrl(effectiveUrl, { width: 100, margin: 1 })
         .then(setModalGoogleQrDataUrl)
         .catch(() => setModalGoogleQrDataUrl(''));
     } else {
       setModalGoogleQrDataUrl('');
     }
-  }, [storeSettings.showGoogleMapQrOnReceipt, storeSettings.googleMapsUrl]);
+  }, [storeSettings.showGoogleMapQrOnReceipt, storeSettings.googleMapsUrl, storeSettings.googleReviewUrl, storeSettings.googleQrAction]);
   const refreshStoreSettings = React.useCallback(() => {
     const updated = storage.getItem<StoreSettings>(KEYS.storeSettings, {
       storeName: module === 'fastfood' ? 'OMNIPOS RESTAURANT' : 'OMNIPOS RETAIL',

@@ -5,6 +5,7 @@ import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { formatPKR } from '@/lib/utils';
 import { Printer, X, Receipt, MapPin, Star } from 'lucide-react';
 import { generateQrDataUrl } from '@/lib/qrCode';
+import { getEffectiveGoogleQrUrl } from '@/lib/googleMapsUrl';
 
 interface A4InvoiceTemplateProps {
   order: Order;
@@ -465,14 +466,15 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
   const [googleQrDataUrl, setGoogleQrDataUrl] = useState<string>('');
 
   useEffect(() => {
-    if (storeSettings?.showGoogleMapQrOnReceipt !== false && storeSettings?.googleMapsUrl) {
-      generateQrDataUrl(storeSettings.googleMapsUrl, { width: 120, margin: 1 })
+    const effectiveUrl = getEffectiveGoogleQrUrl(storeSettings);
+    if (storeSettings?.showGoogleMapQrOnReceipt !== false && effectiveUrl) {
+      generateQrDataUrl(effectiveUrl, { width: 120, margin: 1 })
         .then(setGoogleQrDataUrl)
         .catch(() => setGoogleQrDataUrl(''));
     } else {
       setGoogleQrDataUrl('');
     }
-  }, [storeSettings?.showGoogleMapQrOnReceipt, storeSettings?.googleMapsUrl]);
+  }, [storeSettings?.showGoogleMapQrOnReceipt, storeSettings?.googleMapsUrl, storeSettings?.googleReviewUrl, storeSettings?.googleQrAction]);
 
   const storeName = storeSettings?.storeName || 'OmniPos Store & Solutions';
   const storePhone = storeSettings?.phone || '+92 300 1234567';

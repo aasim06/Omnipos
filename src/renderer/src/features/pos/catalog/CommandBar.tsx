@@ -5,8 +5,8 @@ import {
   BarcodeScanner20Regular,
   Dismiss16Regular,
   Food20Regular,
-  Grid20Regular,
   GridKanban20Regular,
+  List20Regular,
   Search20Regular,
   ShoppingBag20Regular,
   Sparkle20Regular,
@@ -161,12 +161,16 @@ export function CommandBar({
       {/* Terminal mode (only when both POS modules are licensed) */}
       {hasFastFood && hasOmnimart && (
         <div style={segmentTrack} role="group" aria-label="Terminal mode">
-          {segmentButton({ active: module === 'fastfood', onClick: () => navigate('/pos/fastfood'), title: "Fast food restaurant (KOT, tables)", children: <>
-            <Food20Regular style={{ width: 16, height: 16 }} />
-            <span>Fast Food</span></> })}
-          {segmentButton({ active: module === 'minimart', onClick: () => navigate('/pos/omnimart'), title: "Retail mini mart (barcode scanner)", children: <>
-            <ShoppingBag20Regular style={{ width: 16, height: 16 }} />
-            <span>Mart</span></> })}
+          {segmentButton({
+            active: module === 'fastfood', onClick: () => navigate('/pos/fastfood'), title: "Fast food restaurant (KOT, tables)", children: <>
+              <Food20Regular style={{ width: 16, height: 16 }} />
+              <span>Fast Food</span></>
+          })}
+          {segmentButton({
+            active: module === 'minimart', onClick: () => navigate('/pos/omnimart'), title: "Retail mini mart (barcode scanner)", children: <>
+              <ShoppingBag20Regular style={{ width: 16, height: 16 }} />
+              <span>Mart</span></>
+          })}
         </div>
       )}
 
@@ -253,15 +257,20 @@ export function CommandBar({
 
       <div style={{ flex: 1 }} />
 
-      {/* Catalog view: touch tiles / cards / dense table (mart only) */}
+      {/* Catalog view: touch tiles / item list */}
       <div style={segmentTrack} role="group" aria-label="Catalog view">
-        {segmentButton({ active: viewMode === 'tiles', onClick: () => setViewMode('tiles'), title: 'Touch tiles', children: <>
-          <GridKanban20Regular style={{ width: 16, height: 16 }} /></> })}
-        {segmentButton({ active: viewMode === 'grid', onClick: () => setViewMode('grid'), title: 'Product cards', children: <>
-          <Grid20Regular style={{ width: 16, height: 16 }} /></> })}
-        {module === 'minimart' &&
-          segmentButton({ active: viewMode === 'table', onClick: () => setViewMode('table'), title: 'Dense table', children: <>
-            <Table20Regular style={{ width: 16, height: 16 }} /></> })}
+        {segmentButton({
+          active: viewMode === 'tiles',
+          onClick: () => setViewMode('tiles'),
+          title: 'Touch tiles',
+          children: <GridKanban20Regular style={{ width: 16, height: 16 }} />
+        })}
+        {segmentButton({
+          active: viewMode === 'table',
+          onClick: () => setViewMode('table'),
+          title: 'Item list',
+          children: <List20Regular style={{ width: 16, height: 16 }} />
+        })}
       </div>
 
       {/* Featured item / meal builder card (fast food), hidden by default to save space */}

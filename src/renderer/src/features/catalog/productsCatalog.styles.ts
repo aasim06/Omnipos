@@ -65,7 +65,7 @@ export const useProductsCatalogStyles = makeStyles({
   },
   tableCard: {
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: '8px',
+    borderRadius: '16px',
     boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02)',
     borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px', borderRightWidth: '1px',
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',

@@ -6,25 +6,48 @@ import { CategoryGlyph, resolveCategoryIconKey } from '@/features/pos/categoryIc
  * Shared by the POS tile board and the admin colour picker.
  * bg/ink: soft fill + text (item photo boxes); shine: the solid glossy fill of the category tile.
  */
-export type TileTint = { bg: string; ink: string; shine: string };
+export type TileTint = { bg: string; ink: string; shine: string; border?: string };
 
 export const CATEGORY_COLORS: { key: string; label: string; light: TileTint; dark: TileTint }[] = [
-  { key: 'yellow', label: 'Yellow', light: { bg: '#FCE38A', ink: '#4D3D00', shine: '#FFD95A' }, dark: { bg: '#4F4314', ink: '#FBE7A1', shine: '#6B5A16' } },
-  { key: 'green', label: 'Green', light: { bg: '#B9E4A9', ink: '#1C4612', shine: '#9EE07F' }, dark: { bg: '#2C4724', ink: '#C8EFBA', shine: '#3B6430' } },
-  { key: 'pink', label: 'Pink', light: { bg: '#F8B9D1', ink: '#661634', shine: '#F9A6C6' }, dark: { bg: '#552839', ink: '#F9CCDD', shine: '#743550' } },
-  { key: 'blue', label: 'Blue', light: { bg: '#AAD7F5', ink: '#0E3A5A', shine: '#8FCBF6' }, dark: { bg: '#213F57', ink: '#C4E3FA', shine: '#2E5878' } },
-  { key: 'peach', label: 'Peach', light: { bg: '#F9CBA3', ink: '#62300D', shine: '#FBBB82' }, dark: { bg: '#553823', ink: '#FAD8BA', shine: '#744B2E' } },
-  { key: 'mint', label: 'Mint', light: { bg: '#A9E6D8', ink: '#0D4639', shine: '#7FDCC6' }, dark: { bg: '#1E4840', ink: '#BEEFE3', shine: '#2A6457' } },
-  { key: 'lavender', label: 'Lavender', light: { bg: '#D0C1F3', ink: '#352270', shine: '#BCA8F2' }, dark: { bg: '#382F5C', ink: '#DDD2F8', shine: '#4E4280' } },
-  { key: 'coral', label: 'Coral', light: { bg: '#F6B0A8', ink: '#661A12', shine: '#F79C90' }, dark: { bg: '#562B26', ink: '#F9C6C0', shine: '#77392F' } },
-  { key: 'red', label: 'Red', light: { bg: '#F4A3A3', ink: '#5E0F0F', shine: '#F17C7C' }, dark: { bg: '#5A2222', ink: '#F8C2C2', shine: '#7C2B2B' } },
-  { key: 'teal', label: 'Teal', light: { bg: '#9ED9E3', ink: '#0B3D46', shine: '#6CC7D6' }, dark: { bg: '#1D4249', ink: '#BDE8EF', shine: '#275C66' } },
-  { key: 'lime', label: 'Lime', light: { bg: '#D9EE9A', ink: '#3A4A06', shine: '#C6E66A' }, dark: { bg: '#3D4718', ink: '#E3F2B5', shine: '#55631F' } },
-  { key: 'slate', label: 'Slate', light: { bg: '#C9D1DB', ink: '#1F2A37', shine: '#AEBACA' }, dark: { bg: '#323A45', ink: '#D5DCE5', shine: '#46505E' } },
+  { key: 'blue', label: 'Blue', light: { bg: '#DBEAFE', ink: '#1E3A8A', shine: '#3B82F6', border: '#93C5FD' }, dark: { bg: '#1E3A8A', ink: '#FFFFFF', shine: '#2563EB', border: '#3B82F6' } },
+  { key: 'green', label: 'Green', light: { bg: '#D1FAE5', ink: '#064E3B', shine: '#10B981', border: '#6EE7B7' }, dark: { bg: '#064E3B', ink: '#FFFFFF', shine: '#059669', border: '#10B981' } },
+  { key: 'amber', label: 'Amber', light: { bg: '#FEF3C7', ink: '#78350F', shine: '#F59E0B', border: '#FCD34D' }, dark: { bg: '#78350F', ink: '#FFFFFF', shine: '#D97706', border: '#F59E0B' } },
+  { key: 'purple', label: 'Purple', light: { bg: '#EDE9FE', ink: '#4C1D95', shine: '#8B5CF6', border: '#C4B5FD' }, dark: { bg: '#4C1D95', ink: '#FFFFFF', shine: '#7C3AED', border: '#8B5CF6' } },
+  { key: 'rose', label: 'Rose', light: { bg: '#FFE4E6', ink: '#881337', shine: '#F43F5E', border: '#FDA4AF' }, dark: { bg: '#881337', ink: '#FFFFFF', shine: '#E11D48', border: '#F43F5E' } },
+  { key: 'teal', label: 'Teal', light: { bg: '#CCFBF1', ink: '#134E4A', shine: '#14B8A6', border: '#5EEAD4' }, dark: { bg: '#134E4A', ink: '#FFFFFF', shine: '#0D9488', border: '#14B8A6' } },
+  { key: 'orange', label: 'Orange', light: { bg: '#FFEDD5', ink: '#7C2D12', shine: '#F97316', border: '#FDBA74' }, dark: { bg: '#7C2D12', ink: '#FFFFFF', shine: '#EA580C', border: '#F97316' } },
+  { key: 'cyan', label: 'Cyan', light: { bg: '#CFFAFE', ink: '#164E63', shine: '#06B6D4', border: '#67E8F9' }, dark: { bg: '#164E63', ink: '#FFFFFF', shine: '#0891B2', border: '#06B6D4' } },
+  { key: 'pink', label: 'Pink', light: { bg: '#FCE7F3', ink: '#701A75', shine: '#EC4899', border: '#F472B6' }, dark: { bg: '#701A75', ink: '#FFFFFF', shine: '#C026D3', border: '#EC4899' } },
+  { key: 'indigo', label: 'Indigo', light: { bg: '#E0E7FF', ink: '#312E81', shine: '#6366F1', border: '#A5B4FC' }, dark: { bg: '#312E81', ink: '#FFFFFF', shine: '#4F46E5', border: '#6366F1' } },
+  { key: 'lime', label: 'Lime', light: { bg: '#ECFCCB', ink: '#365314', shine: '#84CC16', border: '#BEF264' }, dark: { bg: '#365314', ink: '#FFFFFF', shine: '#65A30D', border: '#84CC16' } },
+  { key: 'red', label: 'Red', light: { bg: '#FEE2E2', ink: '#7F1D1D', shine: '#EF4444', border: '#FCA5A5' }, dark: { bg: '#7F1D1D', ink: '#FFFFFF', shine: '#DC2626', border: '#EF4444' } },
+  { key: 'yellow', label: 'Yellow', light: { bg: '#FEF9C3', ink: '#713F12', shine: '#EAB308', border: '#FDE047' }, dark: { bg: '#713F12', ink: '#FFFFFF', shine: '#CA8A04', border: '#EAB308' } },
+  { key: 'mint', label: 'Mint', light: { bg: '#D1FAE5', ink: '#064E3B', shine: '#10B981', border: '#6EE7B7' }, dark: { bg: '#044E3B', ink: '#FFFFFF', shine: '#059669', border: '#10B981' } },
+  { key: 'slate', label: 'Slate', light: { bg: '#F1F5F9', ink: '#1E293B', shine: '#64748B', border: '#CBD5E1' }, dark: { bg: '#1E293B', ink: '#FFFFFF', shine: '#475569', border: '#64748B' } },
+  { key: 'peach', label: 'Peach', light: { bg: '#FFEDD5', ink: '#7C2D12', shine: '#FB923C', border: '#FDBA74' }, dark: { bg: '#6B2D1B', ink: '#FFFFFF', shine: '#C2410C', border: '#FB923C' } },
+  { key: 'lavender', label: 'Lavender', light: { bg: '#EDE9FE', ink: '#4C1D95', shine: '#8B5CF6', border: '#C4B5FD' }, dark: { bg: '#4C1D95', ink: '#FFFFFF', shine: '#7C3AED', border: '#8B5CF6' } },
+  { key: 'coral', label: 'Coral', light: { bg: '#FFE4E6', ink: '#881337', shine: '#F43F5E', border: '#FDA4AF' }, dark: { bg: '#881337', ink: '#FFFFFF', shine: '#E11D48', border: '#F43F5E' } },
 ];
 
 /** Colours used automatically (by board position) when a category has none set. */
-const AUTO_ORDER = ['yellow', 'green', 'pink', 'blue', 'peach', 'mint', 'lavender', 'coral'];
+const AUTO_ORDER = [
+  'blue',
+  'green',
+  'amber',
+  'purple',
+  'rose',
+  'teal',
+  'orange',
+  'cyan',
+  'pink',
+  'indigo',
+  'lime',
+  'red',
+  'yellow',
+  'mint',
+  'slate',
+  'peach',
+];
 
 function hashIndex(key: string): number {
   let h = 0;

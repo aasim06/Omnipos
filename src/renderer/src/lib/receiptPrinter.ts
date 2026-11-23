@@ -2,6 +2,7 @@ import { Order } from './types';
 import { posApi } from './api';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { generateQrDataUrl } from './qrCode';
+import { getEffectiveGoogleQrUrl } from './googleMapsUrl';
 import { storage, KEYS } from './storage';
 
 export interface ReceiptPrintOptions {
@@ -426,13 +427,14 @@ export async function printCustomerReceipt(order: Order, options?: ReceiptPrintO
     storage.getItem<StoreSettings>(KEYS.storeSettings, {} as any);
 
   let googleQrDataUrl = options?.googleQrDataUrl;
+  const effectiveGoogleUrl = getEffectiveGoogleQrUrl(storeSettings);
   const showGoogleQr =
     storeSettings?.showGoogleMapQrOnReceipt !== false &&
-    !!storeSettings?.googleMapsUrl;
+    !!effectiveGoogleUrl;
 
-  if (showGoogleQr && !googleQrDataUrl && storeSettings?.googleMapsUrl) {
+  if (showGoogleQr && !googleQrDataUrl && effectiveGoogleUrl) {
     try {
-      googleQrDataUrl = await generateQrDataUrl(storeSettings.googleMapsUrl, {
+      googleQrDataUrl = await generateQrDataUrl(effectiveGoogleUrl, {
         width: 130,
         margin: 1,
       });

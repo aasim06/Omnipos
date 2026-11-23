@@ -60,6 +60,17 @@ import { getStockStatus, lowStockLimit } from '@/lib/stockStatus';
 import { belowCostWarning, marginPercent } from '@/lib/pricing';
 import { useAuth } from '@/features/auth/AuthContext';
 
+/* ── Initials Monogram Helper ────────────────────────────────────────── */
+function initials(name: string): string {
+  const words = name
+    .replace(/\(.*?\)/g, ' ')
+    .split(/[^A-Za-z0-9؀-ۿ]+/)
+    .filter((w) => /^[A-Za-z؀-ۿ]/.test(w));
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
 /* ── Zod Schemas ───────────────────────────────────────────────────── */
 const productSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters'),
@@ -940,24 +951,56 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                       <TableRow key={p.id} className={styles.tbodyTr}>
                         <TableCell className={styles.tdDetails}>
                           <div className={styles.prodDetailsRow}>
-                            <div className={styles.prodThumbnailWrap}>
+                            <div
+                              style={{
+                                width: '46px',
+                                height: '46px',
+                                borderRadius: '12px',
+                                backgroundColor: tokens.colorNeutralBackground3,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                overflow: 'hidden',
+                                flexShrink: 0,
+                                border: `1px solid ${tokens.colorNeutralStroke2}`,
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                              }}
+                            >
                               {p.imageBase64 || p.imageUrl ? (
-                                <img src={p.imageBase64 || p.imageUrl} alt={p.name} className={styles.cardImg} />
-                              ) : isFastFood ? (
-                                <Food24Regular style={{ color: tokens.colorBrandForeground1, width: 22, height: 22 }} />
+                                <img src={p.imageBase64 || p.imageUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               ) : (
-                                <BuildingRetail24Regular style={{ color: tokens.colorPaletteBlueForeground2, width: 22, height: 22 }} />
+                                <span style={{ fontSize: '15px', fontWeight: 700, color: tokens.colorNeutralForeground1, letterSpacing: '0.02em' }}>
+                                  {initials(p.name)}
+                                </span>
                               )}
                             </div>
                             <div className={styles.prodTextCol}>
-                              <Body1
-                                className={styles.prodTitle}
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => navigate(`/catalog/products/${p.id}`, { state: { from: location.pathname + location.search } })}
-                                title="Click to view product details"
-                              >
-                                {p.name}
-                              </Body1>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Body1
+                                  className={styles.prodTitle}
+                                  style={{ cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: tokens.colorNeutralForeground1 }}
+                                  onClick={() => navigate(`/catalog/products/${p.id}`, { state: { from: location.pathname + location.search } })}
+                                  title="Click to view product details"
+                                >
+                                  {p.name}
+                                </Body1>
+                                {p.unit && (
+                                  <span
+                                    style={{
+                                      fontSize: '10px',
+                                      fontWeight: 700,
+                                      color: tokens.colorNeutralForeground3,
+                                      backgroundColor: tokens.colorNeutralBackground3,
+                                      padding: '1px 5px',
+                                      borderRadius: '4px',
+                                      letterSpacing: '0.02em',
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    {p.unit.toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
                               {p.description && (
                                 <Caption1 className={styles.prodDesc}>
                                   {p.description}
@@ -1009,39 +1052,94 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                         </TableCell>
 
                         <TableCell className={styles.tdCell}>
-                          <div className={styles.badgeRow}>
-                            <span className={isFastFood ? styles.categoryPillFood : styles.categoryPillRetail}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                backgroundColor: isFastFood ? 'rgba(239, 68, 68, 0.10)' : 'rgba(14, 165, 233, 0.10)',
+                                color: isFastFood ? '#E51937' : '#0284C7',
+                                border: `1px solid ${isFastFood ? 'rgba(239, 68, 68, 0.22)' : 'rgba(14, 165, 233, 0.22)'}`,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                fontWeight: 600,
+                                fontSize: '11.5px',
+                              }}
+                            >
                               {p.category}
                             </span>
-                            <span className={styles.typeTag}>
+                            <span style={{ fontSize: '10px', fontWeight: 600, color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                               {isFastFood ? 'Food' : 'Retail'}
                             </span>
                           </div>
                         </TableCell>
 
                         <TableCell className={styles.tdCell}>
-                          <div style={{ display: 'flex', alignItems: 'baseline' }}>
-                            <span className={styles.priceNumber}>{p.price.toLocaleString()}</span>
-                            <span className={styles.currencyTag}>PKR</span>
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#E51937', fontVariantNumeric: 'tabular-nums' }}>
+                              PKR {Number(p.price || 0).toLocaleString()}
+                            </div>
+                            {p.secondaryPrice != null && (
+                              <div style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground3, marginTop: '1px' }}>
+                                PKR {Number(p.secondaryPrice).toLocaleString()}/{p.secondaryUnit || 'pc'}
+                              </div>
+                            )}
                           </div>
                         </TableCell>
 
                         <TableCell className={styles.tdCell}>
-                          <span className={styles.costCaption}>
-                            {p.costPrice ? `${p.costPrice.toLocaleString()} PKR` : '—'}
-                          </span>
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground2, fontVariantNumeric: 'tabular-nums' }}>
+                              {p.costPrice != null ? `PKR ${Number(p.costPrice).toLocaleString()}` : '—'}
+                            </div>
+                            {p.costPrice != null && Number(p.costPrice) > 0 && Number(p.price || 0) > Number(p.costPrice) && (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 600,
+                                  color: '#10B981',
+                                  backgroundColor: 'rgba(16, 185, 129, 0.10)',
+                                  padding: '1px 5px',
+                                  borderRadius: '4px',
+                                  display: 'inline-block',
+                                  marginTop: '2px',
+                                }}
+                              >
+                                +{marginPercent(p.price, p.costPrice)}% margin
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
 
                         {activeTab !== 'fastfood' && (
                           <TableCell className={styles.tdCell}>
-                            <Badge
-                              size="medium"
-                              appearance="filled"
-                              color={isLow ? 'danger' : 'success'}
-                              className={styles.stockBadge}
-                            >
-                              {p.openingStock ?? 0} {p.unit || 'PCS'}
-                            </Badge>
+                            {(() => {
+                              const isOut = p.openingStock !== null && p.openingStock !== undefined && p.openingStock <= 0;
+                              const isLowStock = !isOut && p.openingStock !== null && p.openingStock !== undefined && p.openingStock <= lowStockLimit(p);
+                              const toneColor = isOut ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981';
+                              const bgColor = isOut ? 'rgba(239, 68, 68, 0.10)' : isLowStock ? 'rgba(245, 158, 11, 0.10)' : 'rgba(16, 185, 129, 0.10)';
+                              const borderColor = isOut ? 'rgba(239, 68, 68, 0.25)' : isLowStock ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.25)';
+
+                              return (
+                                <div
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    backgroundColor: bgColor,
+                                    border: `1px solid ${borderColor}`,
+                                  }}
+                                >
+                                  <Box20Regular style={{ width: 14, height: 14, color: toneColor, flexShrink: 0 }} />
+                                  <span style={{ fontSize: '12px', fontWeight: 700, color: toneColor, fontVariantNumeric: 'tabular-nums' }}>
+                                    {isOut ? 'Out of Stock' : `${Number(p.openingStock || 0).toLocaleString()} ${p.unit || 'PCS'}`}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </TableCell>
                         )}
 
@@ -1063,20 +1161,54 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                             </div>
                           ) : (
                             <div className={styles.skuCol}>
-                              <Caption1 className={styles.skuCode}>{p.skuCode || '—'}</Caption1>
+                              <span
+                                style={{
+                                  fontFamily: tokens.fontFamilyMonospace,
+                                  fontWeight: 600,
+                                  fontSize: '11.5px',
+                                  color: tokens.colorNeutralForeground2,
+                                  backgroundColor: tokens.colorNeutralBackground3,
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  width: 'fit-content',
+                                }}
+                              >
+                                {p.skuCode || '—'}
+                              </span>
                               {p.rackLocation && (
-                                <Caption1 className={styles.rackText}>Rack: {p.rackLocation}</Caption1>
+                                <span style={{ fontSize: '11px', color: tokens.colorNeutralForeground3, marginTop: '2px' }}>
+                                  Rack: {p.rackLocation}
+                                </span>
                               )}
                             </div>
                           )}
                         </TableCell>
 
                         <TableCell className={styles.tdActions}>
-                          <div className={styles.actionsRow}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                             <button
                               type="button"
-                              className={styles.actionBtn}
-                              style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
+                              style={{
+                                width: '30px',
+                                height: '30px',
+                                borderRadius: '6px',
+                                border: `1px solid ${tokens.colorNeutralStroke2}`,
+                                backgroundColor: tokens.colorNeutralBackground1,
+                                color: tokens.colorNeutralForeground2,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground1Hover;
+                                e.currentTarget.style.color = tokens.colorNeutralForeground1;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground1;
+                                e.currentTarget.style.color = tokens.colorNeutralForeground2;
+                              }}
                               onClick={() => navigate(`/catalog/products/${p.id}`, { state: { from: location.pathname + location.search } })}
                               title="View Product Details"
                             >
@@ -1084,8 +1216,27 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                             </button>
                             <button
                               type="button"
-                              className={styles.actionBtn}
-                              style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
+                              style={{
+                                width: '30px',
+                                height: '30px',
+                                borderRadius: '6px',
+                                border: `1px solid ${tokens.colorNeutralStroke2}`,
+                                backgroundColor: tokens.colorNeutralBackground1,
+                                color: tokens.colorPaletteBlueForeground2,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground1Hover;
+                                e.currentTarget.style.borderColor = tokens.colorPaletteBlueBorderActive;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground1;
+                                e.currentTarget.style.borderColor = tokens.colorNeutralStroke2;
+                              }}
                               onClick={() => handleOpenEditProduct(p)}
                               title="Edit Product"
                             >
@@ -1093,8 +1244,25 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                             </button>
                             <button
                               type="button"
-                              className={styles.actionBtnDelete}
-                              style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
+                              style={{
+                                width: '30px',
+                                height: '30px',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                backgroundColor: 'rgba(239, 68, 68, 0.06)',
+                                color: '#EF4444',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.06)';
+                              }}
                               onClick={() => handleDeleteProduct(p)}
                               title="Delete Product"
                             >

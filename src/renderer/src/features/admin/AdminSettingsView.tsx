@@ -64,6 +64,7 @@ import { clearAllLocalData } from '@/lib/offlineDb';
 import { storage, KEYS } from '@/lib/storage';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { generateQrDataUrl } from '@/lib/qrCode';
+import { getEffectiveGoogleQrUrl, buildGoogleUrls } from '@/lib/googleMapsUrl';
 import { printTestReceipt } from '@/lib/receiptPrinter';
 import {
   userStorage,
@@ -93,6 +94,7 @@ export interface StoreSettings {
   headerNoteUrdu?: string;
   footerNoteUrdu?: string;
   googleMapsUrl?: string;
+  googleReviewUrl?: string;
   showGoogleMapQrOnReceipt?: boolean;
   googleQrAction?: 'review' | 'map';
   receiptPrinterName?: string;
@@ -121,6 +123,7 @@ const defaultSettings: StoreSettings = {
   headerNoteUrdu: 'تازہ اور معیاری اشیاء کی ضمانت',
   footerNoteUrdu: 'تشریف آوری کا شکریہ! خریدا ہوا مال واپس یا تبدیل نہیں ہو سکتا۔',
   googleMapsUrl: '',
+  googleReviewUrl: '',
   showGoogleMapQrOnReceipt: false,
   googleQrAction: 'review',
   receiptPrinterName: '',
@@ -147,14 +150,15 @@ export function AdminSettingsView(): React.JSX.Element {
   const [googleQrPreview, setGoogleQrPreview] = useState<string>('');
 
   useEffect(() => {
-    if (settings.googleMapsUrl && settings.googleMapsUrl.trim()) {
-      generateQrDataUrl(settings.googleMapsUrl.trim(), { width: 140, margin: 1 })
+    const effectiveUrl = getEffectiveGoogleQrUrl(settings);
+    if (effectiveUrl && effectiveUrl.trim()) {
+      generateQrDataUrl(effectiveUrl.trim(), { width: 140, margin: 1 })
         .then((url) => setGoogleQrPreview(url))
         .catch(() => setGoogleQrPreview(''));
     } else {
       setGoogleQrPreview('');
     }
-  }, [settings.googleMapsUrl]);
+  }, [settings.googleMapsUrl, settings.googleReviewUrl, settings.googleQrAction]);
   const [printTestMsg, setPrintTestMsg] = useState('');
   const [installedPrinters, setInstalledPrinters] = useState<Array<{ name: string; isDefault?: boolean }>>([]);
   const [loadingPrinters, setLoadingPrinters] = useState(false);
@@ -399,15 +403,12 @@ export function AdminSettingsView(): React.JSX.Element {
   };
 
   const handleTestGoogleMapsUrl = () => {
-    if (!settings.googleMapsUrl || !settings.googleMapsUrl.trim()) {
-      notifyWarning('Please enter a Google Maps URL first.');
+    const effectiveUrl = getEffectiveGoogleQrUrl(settings);
+    if (!effectiveUrl) {
+      notifyWarning('Please enter a Google Maps or Review URL first.');
       return;
     }
-    let url = settings.googleMapsUrl.trim();
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = `https://${url}`;
-    }
-    window.open(url, '_blank');
+    window.open(effectiveUrl, '_blank');
   };
 
   const handleActivateLicense = async () => {
@@ -1086,23 +1087,23 @@ export function AdminSettingsView(): React.JSX.Element {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
                   <div style={{ flex: 1 }}>
                     <CustomInput
-                      label="Google Maps / Google Review Link (URL)"
+                      label="Google Maps / Shop Location Link (URL)"
                       value={settings.googleMapsUrl || ''}
                       onChange={(e) => setSettings({ ...settings, googleMapsUrl: e.target.value })}
-                      placeholder="e.g. https://maps.app.goo.gl/... or https://g.page/r/.../review"
+                      placeholder="e.g. https://maps.app.goo.gl/... or https://www.google.com/maps/place/..."
                     />
                   </div>
                   <Button
                     appearance="outline"
                     onClick={handleTestGoogleMapsUrl}
-                    disabled={!settings.googleMapsUrl?.trim()}
-                    style={{ height: '36px', marginBottom: '1px' }}
+                    disabled={!settings.googleMapsUrl?.trim() && !settings.googleReviewUrl?.trim()}
+                    style={{ height: '36px', marginBottom: '1px', whiteSpace: 'nowrap' }}
                   >
-                    Test Link
+                    {settings.googleQrAction === 'map' ? 'Test Location Link' : 'Test Review Modal'}
                   </Button>
                 </div>
                 <Caption2 style={{ color: tokens.colorNeutralForeground2 }}>
-                  Tip: Google Maps app mein apni shop open karein, &quot;Share&quot; ya &quot;Ask for reviews&quot; pe click kar ke link yahan paste karein.
+                  Tip: Google Maps app ya browser mein apni shop open kar ke &quot;Share&quot; link yahan paste karein.
                 </Caption2>
               </div>
 
@@ -1112,13 +1113,28 @@ export function AdminSettingsView(): React.JSX.Element {
                 value={settings.googleQrAction || 'review'}
                 onChange={(val) => setSettings({ ...settings, googleQrAction: val as any })}
                 options={[
-                  { value: 'review', label: 'Rate & Review us on Google (5-Star Rating Boost)' },
+                  { value: 'review', label: 'Rate & Review us on Google (Direct 5-Star Review Modal)' },
                   { value: 'map', label: 'Locate us on Google Maps (Store Navigation & Directions)' },
                 ]}
               />
 
+              {/* Optional Custom Review Link Override */}
+              {settings.googleQrAction === 'review' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+                  <CustomInput
+                    label="Direct Google Review Link (Optional Override)"
+                    value={settings.googleReviewUrl || ''}
+                    onChange={(e) => setSettings({ ...settings, googleReviewUrl: e.target.value })}
+                    placeholder="e.g. https://search.google.com/local/writereview?placeid=... or https://g.page/r/.../review"
+                  />
+                  <Caption2 style={{ color: tokens.colorNeutralForeground2 }}>
+                    Agar Google Business Profile ka direct &quot;Ask for reviews&quot; link hai to yahan paste karein. Khali chhorne par Google Maps link se direct review modal generate hoga.
+                  </Caption2>
+                </div>
+              )}
+
               {/* Live Preview Box */}
-              {settings.googleMapsUrl && googleQrPreview && (
+              {(settings.googleMapsUrl || settings.googleReviewUrl) && googleQrPreview && (
                 <div
                   style={{
                     marginTop: '10px',
@@ -1141,21 +1157,44 @@ export function AdminSettingsView(): React.JSX.Element {
                       padding: '4px',
                       borderRadius: '6px',
                       border: '1px solid #E2E8F0',
+                      flexShrink: 0,
                     }}
                   />
-                  <div>
-                    <Badge appearance="tint" color="success" style={{ marginBottom: '4px' }}>
-                      Live Receipt QR Preview
-                    </Badge>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                      <Badge appearance="tint" color="success">
+                        Live Receipt QR Preview
+                      </Badge>
+                      <Badge appearance="outline" color={settings.googleQrAction === 'map' ? 'brand' : 'warning'}>
+                        {settings.googleQrAction === 'map' ? 'Action: Store Location' : 'Action: 5-Star Review Modal'}
+                      </Badge>
+                    </div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground1 }}>
-                      {settings.googleQrAction === 'map' ? (
-                        'Locate us on Google Maps'
-                      ) : (
-                        'Rate us on Google Maps'
-                      )}
+                      {settings.googleQrAction === 'map'
+                        ? 'Locate us on Google Maps (Directions & Navigation)'
+                        : 'Rate & Review us on Google (Direct 5-Star Review Dialog)'}
                     </div>
                     <div style={{ fontSize: '11px', color: tokens.colorNeutralForeground2, marginTop: '3px' }}>
-                      Yeh QR code customer ke thermal receipt aur invoice ke bottom par print hoga.
+                      {settings.googleQrAction === 'map'
+                        ? 'Customer thermal receipt ya invoice se scan kare ga to seedha aap ki dukan ka Google Map navigation open hoga.'
+                        : 'Customer thermal receipt ya invoice se scan kare ga to seedha 5-Star review write modal pop-up open hoga.'}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '10.5px',
+                        color: tokens.colorBrandForeground1,
+                        marginTop: '6px',
+                        fontFamily: 'monospace',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        background: 'rgba(0,0,0,0.04)',
+                        padding: '3px 6px',
+                        borderRadius: '4px',
+                      }}
+                      title={getEffectiveGoogleQrUrl(settings)}
+                    >
+                      Target: {getEffectiveGoogleQrUrl(settings)}
                     </div>
                   </div>
                 </div>
