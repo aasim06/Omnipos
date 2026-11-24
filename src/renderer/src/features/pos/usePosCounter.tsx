@@ -1,5 +1,5 @@
 import { CustomerOption, FastFoodOrderType, ParkedOrder, PosCounterProps } from '@/features/pos/posTypes';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppToast } from '@/context/AppNotificationContext';
 import { useAppTheme } from '@/theme/AppProviders';
@@ -50,6 +50,7 @@ function writeViewMode(module: string, mode: PosViewMode) {
 
 export function usePosCounter({ module, modeType }: PosCounterProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { notifySuccess, notifyWarning } = useAppToast();
   const { mode } = useAppTheme();
@@ -74,6 +75,21 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     if (prevCartLen.current > 0 && cart.length === 0) setLinkedQuotation(null);
     prevCartLen.current = cart.length;
   }, [cart.length]);
+
+  // Load items from external navigation (e.g. Orders Directory "Load to POS Cart")
+  React.useEffect(() => {
+    const state = location.state as any;
+    if (state?.loadOrderLines && Array.isArray(state.loadOrderLines) && state.loadOrderLines.length > 0) {
+      setCart(state.loadOrderLines);
+      if (typeof state.loadDiscount === 'number' && state.loadDiscount > 0) {
+        setDiscountMode('percent');
+        setDiscountValue(state.loadDiscount);
+        setDiscountInput(String(state.loadDiscount));
+      }
+      notifySuccess(`✓ Loaded ${state.loadOrderLines.length} items from previous bill into cart`);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
   const [isCartExpanded, setIsCartExpanded] = useState(false);
   const [discountMode, setDiscountMode] = useState<'percent' | 'fixed'>('percent');
   const [discountValue, setDiscountValue] = useState<number>(0);
@@ -82,6 +98,7 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
   const [isSuccess, setIsSuccess] = useState(false);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showRecentBillsModal, setShowRecentBillsModal] = useState(false);
   const [showA4Invoice, setShowA4Invoice] = useState(false);
   const [paymentMode, setPaymentMode] = useState<'cash' | 'card' | 'khata' | 'split'>('cash');
   const [splitCashAmount, setSplitCashAmount] = useState<number | ''>('');
@@ -484,10 +501,64 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     return isWeightUnit(unit) || isLiquidUnit(unit);
   };
   /* Barcode Scanner Logic (Hardware Gun & Fast Keyboard Input) */
-  const handleBarcodeScan = (e?: React.FormEvent) => {
+  const handleBarcodeScan = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const raw = barcodeInput.trim();
     if (!raw) return;
+
+    // ── First: Check if this scanned barcode is a Bill / Order Barcode ──
+    const cleanBillTerm = raw.replace(/^(BILL|INV|ORD)[-:#]/i, '').trim();
+    let matchedOrder: Order | undefined = undefined;
+    try {
+      matchedOrder = await offlineDb.orders.get(cleanBillTerm);
+      if (!matchedOrder && cleanBillTerm !== raw) {
+        matchedOrder = await offlineDb.orders.get(raw);
+      }
+      if (!matchedOrder) {
+        const allLocalOrders = await offlineDb.orders.toArray();
+        matchedOrder = allLocalOrders.find(
+          (o) =>
+            o.id.toLowerCase() === raw.toLowerCase() ||
+            o.id.toLowerCase() === cleanBillTerm.toLowerCase() ||
+            (cleanBillTerm.length >= 6 && o.id.toLowerCase().endsWith(cleanBillTerm.toLowerCase()))
+        );
+      }
+    } catch (err) {
+      console.warn('[POS] Error looking up bill barcode:', err);
+    }
+
+    if (matchedOrder) {
+      playSuccessChime();
+      setBarcodeInput('');
+      setLastOrder(matchedOrder);
+      setShowReceiptModal(true);
+
+      // Load items from this scanned bill into the active cart
+      if (matchedOrder.lines && matchedOrder.lines.length > 0) {
+        setCart(matchedOrder.lines);
+        if (matchedOrder.discountPercent) {
+          setDiscountMode('percent');
+          setDiscountValue(matchedOrder.discountPercent);
+          setDiscountInput(String(matchedOrder.discountPercent));
+        }
+        if (
+          matchedOrder.paymentMode &&
+          (matchedOrder.paymentMode === 'cash' ||
+            matchedOrder.paymentMode === 'card' ||
+            matchedOrder.paymentMode === 'khata' ||
+            matchedOrder.paymentMode === 'split')
+        ) {
+          setPaymentMode(matchedOrder.paymentMode as any);
+        }
+      }
+
+      setLastScannedFeedback({
+        isSuccess: true,
+        text: `✓ Bill #${matchedOrder.id.slice(-6).toUpperCase()} scanned! (${matchedOrder.lines?.length || 0} items in cart)`,
+      });
+      setTimeout(() => setLastScannedFeedback(null), 4000);
+      return;
+    }
 
     let qty = 1;
     let lookupTerm = raw;
@@ -1167,13 +1238,15 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
             ? (isUrduLang ? `ٹوکن نمبر: #${currentToken || 1}` : isBilingualLang ? `Token / ٹوکن: #${currentToken || 1}` : `TOKEN: #${currentToken || 1}`)
             : (isUrduLang ? 'ڈیلیوری (DELIVERY)' : isBilingualLang ? 'Delivery / ڈیلیوری' : 'DELIVERY');
 
-        void printCustomerReceipt(savedOrder, {
-          tableOrToken,
-          storeSettings: freshSettings,
-          paymentMode: savedOrder.paymentMode || paymentMode,
-          tenderedAmount: typeof tenderedAmount === 'number' ? tenderedAmount : undefined,
-          language: currentLang,
-        });
+        if (freshSettings?.autoPrintOnSale !== false) {
+          void printCustomerReceipt(savedOrder, {
+            tableOrToken,
+            storeSettings: freshSettings,
+            paymentMode: savedOrder.paymentMode || paymentMode,
+            tenderedAmount: typeof tenderedAmount === 'number' ? tenderedAmount : undefined,
+            language: currentLang,
+          });
+        }
       } catch (printErr) {
         console.warn('[Auto-Print] Error during auto print on confirm:', printErr);
       }
@@ -1206,6 +1279,12 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
         if (cart.length > 0 && !isPending && !(paymentMode === 'khata' && !selectedKhataId)) {
           checkout();
         }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setShowRecentBillsModal((prev) => !prev);
         return;
       }
 
@@ -1265,6 +1344,8 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     setLastOrder,
     showReceiptModal,
     setShowReceiptModal,
+    showRecentBillsModal,
+    setShowRecentBillsModal,
     showA4Invoice,
     setShowA4Invoice,
     paymentMode,

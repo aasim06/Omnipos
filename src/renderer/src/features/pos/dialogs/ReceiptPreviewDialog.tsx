@@ -1,6 +1,14 @@
 import { PosCounterState } from '@/features/pos/usePosCounter';
-import { CheckmarkCircle20Filled, Dismiss20Regular, Receipt20Regular } from '@fluentui/react-icons';
+import {
+  CheckmarkCircle20Filled,
+  Dismiss20Regular,
+  Receipt20Regular,
+  Print20Regular,
+  ArrowRepeatAll20Regular,
+} from '@fluentui/react-icons';
 import { DIALOG_SHADOW, DIALOG_SMOKE, useEscapeToClose } from '@/features/pos/posDialog';
+import { generateBarcodeDataUrl } from '@/lib/barcodeGenerator';
+import { printCustomerReceipt } from '@/lib/receiptPrinter';
 
 export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
   const {
@@ -230,59 +238,60 @@ export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
                       {previewStoreName}
                     </div>
                     {previewStoreNameSub && (
-                      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: '13px', color: isDark ? '#EEE' : '#1E293B', marginTop: '1px' }}>
+                      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: '13px', color: isDark ? '#EEE' : '#1E293B', marginTop: '1px', fontFamily: 'Urdu Typesetting, Tahoma, sans-serif' }}>
                         {previewStoreNameSub}
                       </div>
                     )}
                     {storeSettings.address && (
-                      <div style={{ textAlign: 'center', fontSize: '10.5px', color: isDark ? '#AAA' : '#64748B', marginTop: '1px' }}>
+                      <div style={{ textAlign: 'center', fontSize: '11px', color: isDark ? '#AAA' : '#475569', marginTop: '2px' }}>
                         {storeSettings.address}
                       </div>
                     )}
                     {storeSettings.phone && (
-                      <div style={{ textAlign: 'center', fontSize: '10.5px', color: isDark ? '#AAA' : '#64748B' }}>
-                        {isUrdu ? 'فون:' : 'Tel:'} {storeSettings.phone}
+                      <div style={{ textAlign: 'center', fontSize: '11px', color: isDark ? '#AAA' : '#475569' }}>
+                        {storeSettings.phone}
                       </div>
                     )}
-                    <div style={{ textAlign: 'center', fontSize: '10.5px', color: isDark ? '#999' : '#64748B', marginTop: '2px', fontStyle: 'italic' }}>
-                      {previewHeader}
+
+                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#64748B'}` }} />
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700 }}>
+                      <span>Bill #{lastOrder.id.slice(-6).toUpperCase()}</span>
+                      <span style={{ fontWeight: 800, color: isDark ? '#4ADE80' : '#16A34A' }}>PAID</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: isDark ? '#94A3B8' : '#64748B', marginTop: '2px', fontWeight: 600 }}>
+                      {new Date(lastOrder.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}, {orderTimeStr}
                     </div>
 
-                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
-
-                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '13px', color: isDark ? '#FFF' : '#0F172A', padding: '3px 0', backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC', borderRadius: '4px', border: `1px dashed ${isDark ? '#555' : '#E2E8F0'}` }}>
-                      {previewTokenLabel}
-                      {previewCustomer ? ` • ${previewCustomer}` : ''}
-                    </div>
-
-                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                      <span>{previewOrderLabel} #{lastOrder.id.slice(-6).toUpperCase()}</span>
-                      <span>{orderTimeStr}</span>
-                    </div>
-
-                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
+                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#64748B'}` }} />
 
                     {lastOrder.lines.map((line, idx) => {
-                      const lineDisplayName = isUrdu
-                        ? (line.nameUrdu || line.name)
-                        : isBilingual && line.nameUrdu && line.nameUrdu.trim() !== line.name.trim()
-                        ? `${line.name} (${line.nameUrdu})`
-                        : line.name;
+                      const urduName = line.nameUrdu ? line.nameUrdu.trim() : '';
 
                       return (
-                        <div key={`${line.productId}-${idx}`} style={{ marginBottom: '5px' }}>
+                        <div key={`${line.productId}-${idx}`} style={{ marginBottom: '6px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
-                            <span style={{ fontWeight: 600, flex: 1, wordBreak: 'break-word' }}>
-                              {line.quantity}x {lineDisplayName} {line.variantLabel ? `(${line.variantLabel})` : ''}
+                            <span style={{ fontWeight: 700, flex: 1, wordBreak: 'break-word', fontSize: '12px' }}>
+                              {line.name} {line.variantLabel ? `(${line.variantLabel})` : ''}
                             </span>
-                            <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
-                              {currencySymbol} {(line.unitPrice * line.quantity).toLocaleString()}
+                            <span style={{ fontWeight: 800, whiteSpace: 'nowrap', fontSize: '12px' }}>
+                              {(line.unitPrice * line.quantity).toLocaleString()}
                             </span>
                           </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: isDark ? '#94A3B8' : '#475569', marginTop: '1px' }}>
+                            <span>
+                              {line.quantity} × {line.unitPrice.toLocaleString()}
+                            </span>
+                            {urduName ? (
+                              <span style={{ fontFamily: 'Urdu Typesetting, Tahoma, sans-serif', fontSize: '12px', fontWeight: 700 }}>
+                                {urduName}
+                              </span>
+                            ) : (
+                              <span />
+                            )}
+                          </div>
                           {line.notes && (
-                            <div style={{ fontSize: '10px', color: '#F59E0B', paddingRight: isRtl ? '8px' : 0, paddingLeft: !isRtl ? '8px' : 0 }}>
+                            <div style={{ fontSize: '10px', color: '#F59E0B', fontStyle: 'italic', marginTop: '1px' }}>
                               * {line.notes}
                             </div>
                           )}
@@ -290,37 +299,39 @@ export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
                       );
                     })}
 
-                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }} />
+                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#64748B'}` }} />
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: isDark ? '#AAA' : '#64748B' }}>
-                      <span>{isUrdu ? 'کل اشیاء:' : isBilingual ? 'Total Items / کل آئٹمز:' : 'Total Items:'}</span>
-                      <span>{totalQty} {isUrdu ? 'عدد' : 'units'}</span>
+                    {/* Totals */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '15px', margin: '4px 0', color: isDark ? '#FFF' : '#0F172A' }}>
+                      <span>TOTAL</span>
+                      <span style={{ color: F.accentRed }}>{currencySymbol} {lastOrder.totalAmount?.toLocaleString()}</span>
                     </div>
 
                     {discountAmt > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#10B981', marginTop: '2px' }}>
-                        <span>{isUrdu ? `رعایت (${lastOrder.discountPercent}%):` : isBilingual ? `Discount / رعایت (${lastOrder.discountPercent}%):` : `Discount (${lastOrder.discountPercent}%):`}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#10B981', margin: '2px 0' }}>
+                        <span>Discount ({lastOrder.discountPercent}%)</span>
                         <span>- {currencySymbol} {discountAmt.toLocaleString()}</span>
                       </div>
                     )}
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '14px', marginTop: '4px', color: isDark ? '#FFF' : '#0F172A' }}>
-                      <span>{isUrdu ? 'کل واجب الادا:' : isBilingual ? 'NET TOTAL / کل رقم:' : 'NET TOTAL:'}</span>
-                      <span style={{ color: F.accentRed }}>{currencySymbol} {lastOrder.totalAmount?.toLocaleString()}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', fontWeight: 600, color: isDark ? '#CBD5E1' : '#334155', marginTop: '2px' }}>
+                      <span>Paid by {paymentMode === 'cash' ? 'Cash' : paymentMode === 'card' ? 'Card' : 'Khata'}</span>
+                      <span>{typeof tenderedAmount === 'number' && tenderedAmount >= (lastOrder.totalAmount || 0) ? tenderedAmount.toLocaleString() : (lastOrder.totalAmount || 0).toLocaleString()}</span>
                     </div>
 
                     {paymentMode === 'cash' && typeof tenderedAmount === 'number' && tenderedAmount >= (lastOrder.totalAmount || 0) && (
-                      <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginTop: '4px' }}>
-                          <span>{isUrdu ? 'وصول شدہ رقم:' : isBilingual ? 'Tendered / وصول:' : 'Cash Tendered:'}</span>
-                          <span>{currencySymbol} {tenderedAmount.toLocaleString()}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold', color: '#10B981', marginTop: '1px' }}>
-                          <span>{isUrdu ? 'بقایا رقم:' : isBilingual ? 'Change / بقایا:' : 'Change Due:'}</span>
-                          <span>{currencySymbol} {(tenderedAmount - (lastOrder.totalAmount || 0)).toLocaleString()}</span>
-                        </div>
-                      </>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', fontWeight: 600, color: isDark ? '#CBD5E1' : '#334155' }}>
+                        <span>Change</span>
+                        <span>{(tenderedAmount - (lastOrder.totalAmount || 0)).toLocaleString()}</span>
+                      </div>
                     )}
+
+                    <div style={{ margin: '8px 0', borderBottom: `1px dashed ${isDark ? '#444' : '#64748B'}` }} />
+
+                    {/* Footer note */}
+                    <div style={{ textAlign: 'center', fontSize: '11px', fontWeight: 600, color: isDark ? '#94A3B8' : '#475569', marginTop: '4px' }}>
+                      {previewFooter}
+                    </div>
 
                     {storeSettings.showGoogleMapQrOnReceipt !== false && (storeSettings.googleMapsUrl || storeSettings.googleReviewUrl) && modalGoogleQrDataUrl && (
                       <div style={{ textAlign: 'center', margin: '10px 0 4px', paddingTop: '8px', borderTop: `1px dashed ${isDark ? '#444' : '#CBD5E1'}` }}>
@@ -340,6 +351,62 @@ export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
                       </div>
                     )}
 
+                    {/* Scannable Bill Barcode Box */}
+                    {lastOrder?.id && (
+                      <div
+                        style={{
+                          textAlign: 'center',
+                          margin: '10px 0 4px',
+                          paddingTop: '8px',
+                          borderTop: `1px dashed ${isDark ? '#444' : '#CBD5E1'}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: '9px',
+                            fontWeight: 800,
+                            color: isDark ? '#AAA' : '#64748B',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {isUrdu ? 'بل بارکوڈ (اسکین کے لیے)' : 'BILL BARCODE'}
+                        </div>
+                        {(() => {
+                          const bUrl = generateBarcodeDataUrl(lastOrder.id, {
+                            width: 1.4,
+                            height: 32,
+                            displayValue: false,
+                          });
+                          return bUrl ? (
+                            <img
+                              src={bUrl}
+                              alt="Bill Barcode"
+                              style={{
+                                maxWidth: '85%',
+                                height: '32px',
+                                margin: '4px auto 2px',
+                                display: 'block',
+                                background: '#FFF',
+                                padding: '2px',
+                                borderRadius: '2px',
+                              }}
+                            />
+                          ) : null;
+                        })()}
+                        <div
+                          style={{
+                            fontSize: '9px',
+                            fontFamily: 'monospace',
+                            color: isDark ? '#CCC' : '#333',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {lastOrder.id}
+                        </div>
+                      </div>
+                    )}
+
                     <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '10px', color: isDark ? '#888' : '#94A3B8', wordBreak: 'break-word' }}>
                       <div>{previewFooter}</div>
                       {previewFooterSub && <div style={{ marginTop: '2px' }}>{previewFooterSub}</div>}
@@ -349,7 +416,7 @@ export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
               );
             })()}
 
-            {/* Modal Footer: Simple close button & status */}
+            {/* Modal Footer: Action buttons */}
             <div
               style={{
                 padding: '12px 18px',
@@ -359,6 +426,8 @@ export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 flexShrink: 0,
+                flexWrap: 'wrap',
+                gap: '8px',
               }}
             >
               <div
@@ -366,39 +435,96 @@ export function ReceiptPreviewDialog({ pos }: { pos: PosCounterState }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   color: '#10B981',
                   fontWeight: 600,
                   fontFamily: F.font,
                 }}
               >
-                <CheckmarkCircle20Filled style={{ width: 17, height: 17 }} />
-                <span>رسید پرنٹر پر خودکار پرنٹ ہو رہی ہے...</span>
+                <CheckmarkCircle20Filled style={{ width: 16, height: 16 }} />
+                <span>Bill #{lastOrder.id.slice(-6).toUpperCase()}</span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowReceiptModal(false)}
-                style={{
-                  padding: '0 20px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  border: `1px solid ${F.border}`,
-                  backgroundColor: isDark ? '#262626' : '#FFFFFF',
-                  color: F.textPrimary,
-                  cursor: 'pointer',
-                  fontFamily: F.font,
-                  fontSize: '12.5px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                }}
-              >
-                <span>Close / بند کریں</span>
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (lastOrder.lines && lastOrder.lines.length > 0) {
+                      pos.setCart(lastOrder.lines);
+                      if (lastOrder.discountPercent) {
+                        pos.setDiscountMode('percent');
+                        pos.setDiscountValue(lastOrder.discountPercent);
+                        pos.setDiscountInput(String(lastOrder.discountPercent));
+                      }
+                      setShowReceiptModal(false);
+                      pos.notifySuccess(`✓ ${lastOrder.lines.length} items loaded into cart!`);
+                    }
+                  }}
+                  title="Load items to active cart for re-order or edit"
+                  style={{
+                    padding: '0 12px',
+                    height: '34px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: 'rgba(229, 25, 55, 0.1)',
+                    color: F.accentRed,
+                    cursor: 'pointer',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <ArrowRepeatAll20Regular style={{ width: 15, height: 15 }} />
+                  <span>Load to Cart</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    printCustomerReceipt(lastOrder, { storeSettings, language: modalReceiptLang });
+                    pos.notifySuccess('Reprinting receipt…');
+                  }}
+                  title="Print thermal receipt"
+                  style={{
+                    padding: '0 12px',
+                    height: '34px',
+                    borderRadius: '6px',
+                    border: `1px solid ${F.border}`,
+                    backgroundColor: isDark ? '#262626' : '#FFFFFF',
+                    color: F.textPrimary,
+                    cursor: 'pointer',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Print20Regular style={{ width: 15, height: 15 }} />
+                  <span>Print Receipt</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowReceiptModal(false)}
+                  style={{
+                    padding: '0 16px',
+                    height: '34px',
+                    borderRadius: '6px',
+                    border: `1px solid ${F.border}`,
+                    backgroundColor: isDark ? '#262626' : '#FFFFFF',
+                    color: F.textPrimary,
+                    cursor: 'pointer',
+                    fontFamily: F.font,
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                >
+                  <span>Close</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

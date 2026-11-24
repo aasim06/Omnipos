@@ -3,6 +3,7 @@ import { posApi } from './api';
 import { StoreSettings } from '@/features/admin/AdminSettingsView';
 import { generateQrDataUrl } from './qrCode';
 import { getEffectiveGoogleQrUrl } from './googleMapsUrl';
+import { generateBarcodeDataUrl } from './barcodeGenerator';
 import { storage, KEYS } from './storage';
 
 export interface ReceiptPrintOptions {
@@ -14,6 +15,7 @@ export interface ReceiptPrintOptions {
   currency?: string;
   language?: 'english' | 'urdu' | 'bilingual';
   googleQrDataUrl?: string;
+  billBarcodeDataUrl?: string;
 }
 
 /**
@@ -25,136 +27,112 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
   const isBilingual = lang === 'bilingual';
   const isRtl = isUrdu;
 
-  const defaultStoreName = options?.storeSettings?.storeName || 'OMNIPOS RESTAURANT';
-  const storeName = isUrdu
-    ? options?.storeSettings?.storeNameUrdu || defaultStoreName
-    : isBilingual && options?.storeSettings?.storeNameUrdu
-      ? `${defaultStoreName}<div style="font-size: 13px; font-weight: 700; margin-top: 2px;">${options.storeSettings.storeNameUrdu}</div>`
-      : defaultStoreName;
+  const defaultStoreName = options?.storeSettings?.storeName || 'Omnipos Store';
+  const storeName = options?.storeSettings?.storeName || defaultStoreName;
+  const storeNameUrdu = options?.storeSettings?.storeNameUrdu || '';
 
-  const defaultHeaderNote = options?.storeSettings?.headerNote || 'Order Fresh • Eat Fresh';
-  const headerNote = isUrdu
-    ? options?.storeSettings?.headerNoteUrdu || defaultHeaderNote
-    : isBilingual && options?.storeSettings?.headerNoteUrdu
-      ? `${defaultHeaderNote} • ${options.storeSettings.headerNoteUrdu}`
-      : defaultHeaderNote;
-
-  const defaultFooterNote = options?.storeSettings?.footerNote || 'Thank you for shopping with us! Please come again.';
-  const footerNote = isUrdu
-    ? options?.storeSettings?.footerNoteUrdu || defaultFooterNote
-    : isBilingual && options?.storeSettings?.footerNoteUrdu
-      ? `${defaultFooterNote}<div style="margin-top: 3px;">${options.storeSettings.footerNoteUrdu}</div>`
-      : defaultFooterNote;
-
-  const phone = options?.storeSettings?.phone || '';
   const address = options?.storeSettings?.address || '';
-  const currency = isUrdu ? 'روپے' : options?.currency || 'PKR';
+  const phone = options?.storeSettings?.phone || '';
+  const currency = isUrdu ? 'روپے' : options?.currency || options?.storeSettings?.currency || 'Rs.';
 
   const is58mm = options?.storeSettings?.paperWidth === '58mm';
-  const targetWidth = is58mm ? '48mm' : '72mm';
+  const configuredWidth = options?.storeSettings?.printerPrintWidth;
+  const targetWidth =
+    configuredWidth && configuredWidth !== 'auto'
+      ? configuredWidth
+      : is58mm
+        ? '48mm'
+        : '72mm';
+  const shiftRight = options?.storeSettings?.printerShiftRight || '0mm';
+  const spaceTop = options?.storeSettings?.printerSpaceTop || '0mm';
+  const extraBottom = options?.storeSettings?.printerExtraBottom || '0mm';
 
-  let rawType = (order.orderType || 'takeaway').toLowerCase();
-  let tableOrToken = options?.tableOrToken;
-  if (!tableOrToken) {
-    if (rawType === 'dine-in') {
-      tableOrToken = isUrdu ? 'ڈائن ان (DINE-IN)' : 'DINE-IN';
-    } else if (rawType === 'delivery') {
-      tableOrToken = isUrdu ? 'ڈیلیوری (DELIVERY)' : 'DELIVERY';
-    } else {
-      tableOrToken = isUrdu ? 'ٹیک اوے (TAKEAWAY)' : 'TAKEAWAY';
-    }
-  }
-
-  const cashier = options?.cashierName || (isUrdu ? 'کاؤنٹر کیشیئر' : 'POS Terminal');
-  const orderTime = new Date(order.createdAt || Date.now()).toLocaleTimeString([], {
+  const billNo = order.id ? `#${order.id.slice(-6).toUpperCase()}` : '#000000';
+  const orderDate = new Date(order.createdAt || Date.now());
+  const dateFormatted = orderDate.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  const timeFormatted = orderDate.toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
   });
-  const orderDate = new Date(order.createdAt || Date.now()).toLocaleDateString();
+  const dateTimeStr = `${dateFormatted}, ${timeFormatted}`;
 
-  // ── Labels Dictionary ──
-  const L = {
-    invoice: isUrdu ? 'رسید نمبر:' : isBilingual ? 'Invoice / رسید:' : 'Invoice:',
-    date: isUrdu ? 'تاریخ:' : isBilingual ? 'Date / تاریخ:' : 'Date:',
-    server: isUrdu ? 'کیشیئر:' : isBilingual ? 'Server / کیشیئر:' : 'Server:',
-    time: isUrdu ? 'وقت:' : isBilingual ? 'Time / وقت:' : 'Time:',
-    customer: isUrdu ? 'گاہک:' : isBilingual ? 'Customer / گاہک:' : 'Customer:',
-    item: isUrdu ? 'تفصیل / اشیاء' : isBilingual ? 'Item / اشیاء' : 'Item',
-    qty: isUrdu ? 'تعداد' : isBilingual ? 'Qty / تعداد' : 'Qty',
-    price: isUrdu ? 'قیمت' : isBilingual ? 'Price / قیمت' : 'Price',
-    total: isUrdu ? 'کل رقم' : isBilingual ? 'Total / رقم' : 'Total',
-    totalItems: isUrdu ? 'کل اشیاء:' : isBilingual ? 'Total Items / کل آئٹمز:' : 'Total Items:',
-    subtotal: isUrdu ? 'سب ٹوٹل:' : isBilingual ? 'Subtotal / سب ٹوٹل:' : 'Subtotal:',
-    discount: (pct: number) => isUrdu ? `رعایت (${pct}%):` : isBilingual ? `Discount / رعایت (${pct}%):` : `Discount (${pct}%):`,
-    netTotal: isUrdu ? 'کل واجب الادا:' : isBilingual ? 'NET TOTAL / کل رقم:' : 'NET TOTAL:',
-    paymentMethod: isUrdu ? 'ادائیگی کا طریقہ:' : isBilingual ? 'Payment / ادائیگی:' : 'Payment Method:',
-    cashTendered: isUrdu ? 'وصول شدہ رقم:' : isBilingual ? 'Tendered / وصول:' : 'Cash Tendered:',
-    changeDue: isUrdu ? 'بقایا رقم:' : isBilingual ? 'Change / بقایا:' : 'Change Due:',
-    unitLabel: isUrdu ? 'عدد' : 'units',
-    poweredBy: isUrdu ? 'اومنی پوز سافٹ ویئر سسٹم' : 'OmniPOS Software System',
-  };
+  const isPaid = ((order as any).paymentStatus || (order as any).status || 'paid').toLowerCase() !== 'unpaid';
+  const statusLabel = isUrdu
+    ? isPaid ? 'ادا شدہ (PAID)' : 'غیر ادا شدہ (UNPAID)'
+    : isPaid ? 'PAID' : 'UNPAID';
 
-  const linesHtml = (order.lines || [])
-    .map((line: any) => {
-      let displayName = line.name;
-      if (isUrdu) {
-        displayName = line.nameUrdu || line.name;
-      } else if (isBilingual) {
-        if (line.nameUrdu && line.nameUrdu.trim() !== line.name.trim()) {
-          displayName = `<div>${line.name}</div><div style="font-size: 10px; font-weight: 700; color: #222; margin-top: 1px;">${line.nameUrdu}</div>`;
-        } else {
-          displayName = line.name;
-        }
-      }
+  const customer =
+    order.customerName && order.customerName !== 'Walk-In Customer' && order.customerName !== 'Guest'
+      ? order.customerName
+      : '';
 
-      return `
-      <tr style="border-bottom: 1px dashed #CCC;">
-        <td style="padding: 4px 0; font-size: ${isUrdu ? '12px' : '11.5px'}; font-weight: 700; line-height: 1.3; vertical-align: top; word-break: break-word; text-align: ${isRtl ? 'right' : 'left'};">
-          ${displayName}
-          ${line.variantLabel ? `<div style="font-size: 9.5px; color: #333; font-weight: 600;">${isUrdu ? 'قسم:' : 'Var:'} ${line.variantLabel}</div>` : ''}
-          ${line.notes ? `<div style="font-size: 9.5px; font-style: italic; color: #555;">${isUrdu ? 'نوٹ:' : 'Note:'} ${line.notes}</div>` : ''}
-        </td>
-        <td style="padding: 4px 0; font-size: 11px; text-align: center; vertical-align: top; font-weight: 600;">
-          ${line.quantity}
-        </td>
-        <td style="padding: 4px 0; font-size: 11px; text-align: right; vertical-align: top; white-space: nowrap;">
-          ${line.unitPrice.toLocaleString()}
-        </td>
-        <td style="padding: 4px 0; font-size: 11.5px; font-weight: 800; text-align: right; vertical-align: top; white-space: nowrap;">
-          ${(line.unitPrice * line.quantity).toLocaleString()}
-        </td>
-      </tr>
-    `;
-    })
-    .join('');
+  const subtotal = (order.lines || []).reduce(
+    (sum, l) => sum + (l.unitPrice || 0) * (l.quantity || 1),
+    0,
+  );
+  const discountAmount =
+    order.discountPercent && order.discountPercent > 0
+      ? Math.round((subtotal * order.discountPercent) / 100)
+      : 0;
+  const totalAmount = order.totalAmount || subtotal - discountAmount;
 
-  const totalQty = (order.lines || []).reduce((sum, l) => sum + (l.quantity || 1), 0);
-  const subtotal = (order.lines || []).reduce((sum, l) => sum + (l.unitPrice || 0) * (l.quantity || 1), 0);
-  const discountAmount = order.discountPercent && order.discountPercent > 0
-    ? Math.round((subtotal * order.discountPercent) / 100)
-    : 0;
-  const totalAmount = order.totalAmount || 0;
-  let paymentMode = (options?.paymentMode || (order as any).paymentMethod || 'Cash').toUpperCase();
+  let rawPaymentMode = (options?.paymentMode || (order as any).paymentMethod || 'Cash').toLowerCase();
+  let paymentModeLabel = 'Cash';
+  if (rawPaymentMode.includes('card')) paymentModeLabel = 'Card';
+  else if (rawPaymentMode.includes('khata')) paymentModeLabel = 'Khata';
+
   if (isUrdu) {
-    if (paymentMode.includes('CASH')) paymentMode = 'نقد (CASH)';
-    else if (paymentMode.includes('CARD')) paymentMode = 'کارڈ (CARD)';
-    else if (paymentMode.includes('KHATA')) paymentMode = 'کھاتہ / ادھار';
+    if (paymentModeLabel === 'Cash') paymentModeLabel = 'نقد (Cash)';
+    else if (paymentModeLabel === 'Card') paymentModeLabel = 'کارڈ (Card)';
+    else if (paymentModeLabel === 'Khata') paymentModeLabel = 'کھاتہ (Khata)';
   }
+
   const tendered = options?.tenderedAmount;
   const changeDue = tendered !== undefined && tendered >= totalAmount ? tendered - totalAmount : 0;
 
-  const fontStack = `'Noto Sans Arabic', 'Segoe UI', Tahoma, 'Urdu Typesetting', 'Courier New', Courier, monospace, system-ui, sans-serif`;
+  const defaultFooterNote = 'Thank you for your visit! Goods once sold are not refundable.';
+  const footerNote = isUrdu
+    ? options?.storeSettings?.footerNoteUrdu || options?.storeSettings?.footerNote || 'تشریف آوری کا شکریہ! خریدا ہوا مال واپس یا تبدیل نہیں ہو سکتا۔'
+    : options?.storeSettings?.footerNote || defaultFooterNote;
+
+  const itemsHtml = (order.lines || [])
+    .map((line: any) => {
+      let displayName = line.name || 'Item';
+      if (line.variantLabel) {
+        displayName += ` (${line.variantLabel})`;
+      }
+      const urduName = line.nameUrdu ? line.nameUrdu.trim() : '';
+      const lineTotal = ((line.unitPrice || 0) * (line.quantity || 1)).toLocaleString();
+      const qtyStr = line.quantity;
+      const unitPriceStr = (line.unitPrice || 0).toLocaleString();
+
+      return `
+      <div class="item-row">
+        <div class="item-header">
+          <span class="item-name">${displayName}</span>
+          <span class="item-total">${lineTotal}</span>
+        </div>
+        <div class="item-sub">
+          <span>${qtyStr} × ${unitPriceStr}</span>
+          ${urduName ? `<span class="urdu-item">${urduName}</span>` : '<span></span>'}
+        </div>
+        ${line.notes ? `<div style="font-size: 9.5px; font-style: italic; color: #555;">Note: ${line.notes}</div>` : ''}
+      </div>`;
+    })
+    .join('');
 
   return `<!DOCTYPE html>
 <html lang="${isUrdu ? 'ur' : 'en'}" dir="${isRtl ? 'rtl' : 'ltr'}">
 <head>
   <meta charset="utf-8" />
-  <title>Receipt #${order.id.slice(-6).toUpperCase()}</title>
+  <title>Receipt ${billNo}</title>
   <style>
     @page {
       margin: 0;
-      size: ${is58mm ? '58mm 297mm' : '80mm 297mm'};
     }
     * {
       box-sizing: border-box;
@@ -164,256 +142,226 @@ export function generateCustomerReceiptHtml(order: Order, options?: ReceiptPrint
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    html, body {
+    html {
+      margin: 0;
+      padding: 0;
+      background: #ffffff !important;
+    }
+    body {
       font-family: Arial, "Segoe UI", Tahoma, sans-serif;
       direction: ${isRtl ? 'rtl' : 'ltr'};
-      width: 100%;
+      width: ${targetWidth};
       max-width: ${targetWidth};
-      margin: 0 auto;
-      padding: 2mm 1mm 4mm 1mm;
+      margin: 0;
+      padding: 0;
+      padding-left: ${shiftRight};
+      padding-top: ${spaceTop};
+      padding-bottom: ${extraBottom};
+      box-sizing: border-box;
       color: #000000 !important;
       background: #ffffff !important;
       font-size: 13px;
       font-weight: 700;
       line-height: 1.35;
-      overflow-x: hidden;
+      overflow: hidden;
     }
     .header {
       text-align: center;
-      padding-bottom: 5px;
-      margin-bottom: 5px;
-      border-bottom: 2px solid #000;
-      word-break: break-word;
+      margin-bottom: 6px;
     }
     .store-name {
-      font-size: 17px;
-      font-weight: 900;
-      letter-spacing: 0.3px;
-      word-break: break-word;
-    }
-    .store-sub {
-      font-size: 11.5px;
-      color: #000;
-      font-weight: 700;
-      margin-top: 1.5px;
-      word-break: break-word;
-    }
-    .token-box {
-      border: 2px solid #000;
-      padding: 6px;
-      margin: 6px 0;
-      text-align: center;
-    }
-    .token-num {
-      font-size: 18px;
-      font-weight: 900;
-      letter-spacing: 0.5px;
-    }
-    .meta-table {
-      width: 100%;
-      table-layout: fixed;
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 5px;
-      border-bottom: 1.5px solid #000;
-      padding-bottom: 3px;
-    }
-    .meta-table td {
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .items-table {
-      width: 100%;
-      table-layout: fixed;
-      border-collapse: collapse;
-      margin: 4px 0;
-    }
-    .items-head {
-      border-bottom: 2px solid #000;
-      font-size: 12px;
-      font-weight: 900;
-      text-transform: uppercase;
-    }
-    .totals-table {
-      width: 100%;
-      table-layout: fixed;
-      margin-top: 5px;
-      border-top: 2px solid #000;
-      padding-top: 3px;
-      font-size: 13px;
-      font-weight: 700;
-    }
-    .grand-total {
       font-size: 16px;
       font-weight: 900;
-      border-top: 1.5px solid #000;
-      border-bottom: 2px solid #000;
-      padding: 4px 0;
-      margin-top: 4px;
+      letter-spacing: 0.2px;
     }
-    .google-qr-box {
-      margin-top: 8px;
-      padding-top: 6px;
-      border-top: 1.5px solid #000;
-      text-align: center;
-    }
-    .google-qr-title {
-      font-size: 12px;
+    .urdu-name {
+      font-size: 14px;
       font-weight: 800;
-      letter-spacing: 0.3px;
-    }
-    .google-qr-sub {
-      font-size: 10px;
-      color: #000;
+      font-family: 'Urdu Typesetting', Tahoma, sans-serif;
       margin-top: 2px;
     }
-    .google-qr-img {
-      width: 95px;
-      height: 95px;
-      margin: 4px auto 2px auto;
-      display: block;
+    .meta-sub {
+      font-size: 11px;
+      margin-top: 2px;
+      font-weight: 600;
     }
-    .footer {
-      margin-top: 8px;
+    .dash-line {
+      border-bottom: 1px dashed #444;
+      margin: 6px 0;
+    }
+    .bill-meta {
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+    }
+    .item-row {
+      margin: 5px 0;
+      font-size: 12px;
+    }
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 800;
+    }
+    .item-name {
+      flex: 1;
+      word-break: break-word;
+      padding-right: 6px;
+    }
+    .item-total {
+      white-space: nowrap;
+      font-weight: 800;
+    }
+    .item-sub {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      color: #333;
+      margin-top: 1px;
+    }
+    .urdu-item {
+      font-family: 'Urdu Typesetting', Tahoma, sans-serif;
+      font-size: 12px;
+      text-align: right;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 16px;
+      font-weight: 900;
+      margin: 4px 0;
+    }
+    .tender-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 700;
+      margin: 2px 0;
+    }
+    .footer-text {
       text-align: center;
       font-size: 11px;
       font-weight: 700;
-      color: #000;
-      border-top: 1.5px solid #000;
-      padding-top: 5px;
-      word-break: break-word;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+    .qr-container {
+      text-align: center;
+      margin-top: 8px;
+    }
+    .qr-img {
+      width: 85px;
+      height: 85px;
+      margin: 0 auto;
+      display: block;
+    }
+    .barcode-container {
+      text-align: center;
+      margin-top: 8px;
+    }
+    .barcode-img {
+      max-width: 90%;
+      height: 35px;
+      margin: 0 auto;
+      display: block;
     }
   </style>
 </head>
 <body>
-  <!-- Header -->
+  <!-- Store Header -->
   <div class="header">
     <div class="store-name">${storeName}</div>
-    ${address ? `<div class="store-sub">${address}</div>` : ''}
-    ${phone ? `<div class="store-sub">${isUrdu ? 'فون:' : 'Tel:'} ${phone}</div>` : ''}
-    ${headerNote ? `<div class="store-sub" style="font-style: italic; margin-top: 3px;">"${headerNote}"</div>` : ''}
+    ${storeNameUrdu ? `<div class="urdu-name">${storeNameUrdu}</div>` : ''}
+    ${address ? `<div class="meta-sub">${address}</div>` : ''}
+    ${phone ? `<div class="meta-sub">${phone}</div>` : ''}
   </div>
 
-  <!-- Token / Table Badge -->
-  <div class="token-box">
-    <div class="token-num">${tableOrToken}</div>
+  <div class="dash-line"></div>
+
+  <!-- Bill Metadata (Bill # and PAID/Date) -->
+  <div class="bill-meta">
+    <span>Bill ${billNo}</span>
+    <span style="font-weight: 800;">${statusLabel}</span>
+  </div>
+  <div style="font-size: 10px; color: #333; margin-top: 2px; font-weight: 600;">
+    ${dateTimeStr}
+  </div>
+  ${customer ? `<div style="font-size: 11px; font-weight: 700; margin-top: 2px;">Customer: ${customer}</div>` : ''}
+
+  <div class="dash-line"></div>
+
+  <!-- Items list (clean 2-line layout) -->
+  ${itemsHtml}
+
+  <div class="dash-line"></div>
+
+  <!-- Totals Section -->
+  <div class="total-row">
+    <span>TOTAL</span>
+    <span>${currency} ${totalAmount.toLocaleString()}</span>
   </div>
 
-  <!-- Order Meta -->
-  <table class="meta-table">
-    <tr>
-      <td style="text-align: ${isRtl ? 'right' : 'left'};"><strong>${L.invoice}</strong> #${order.id.slice(-6).toUpperCase()}</td>
-      <td style="text-align: ${isRtl ? 'left' : 'right'};"><strong>${L.date}</strong> ${orderDate}</td>
-    </tr>
-    <tr>
-      <td style="text-align: ${isRtl ? 'right' : 'left'};"><strong>${L.server}</strong> ${cashier}</td>
-      <td style="text-align: ${isRtl ? 'left' : 'right'};"><strong>${L.time}</strong> ${orderTime}</td>
-    </tr>
-    ${order.customerName ? `<tr><td colspan="2" style="font-weight: bold; text-align: ${isRtl ? 'right' : 'left'};">${L.customer} ${order.customerName}</td></tr>` : ''}
-  </table>
+  ${
+    discountAmount > 0
+      ? `
+  <div class="tender-row">
+    <span>Discount (${order.discountPercent}%)</span>
+    <span>-${currency} ${discountAmount.toLocaleString()}</span>
+  </div>`
+      : ''
+  }
 
-  <!-- Items Table -->
-  <table class="items-table">
-    <thead>
-      <tr class="items-head">
-        <th style="text-align: ${isRtl ? 'right' : 'left'}; padding-bottom: 4px; width: 44%;">${L.item}</th>
-        <th style="text-align: center; padding-bottom: 4px; width: 14%;">${L.qty}</th>
-        <th style="text-align: right; padding-bottom: 4px; width: 20%;">${L.price}</th>
-        <th style="text-align: right; padding-bottom: 4px; width: 22%;">${L.total}</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${linesHtml}
-    </tbody>
-  </table>
+  ${
+    tendered !== undefined && tendered >= totalAmount
+      ? `
+  <div class="tender-row">
+    <span>Paid by ${paymentModeLabel}</span>
+    <span>${tendered.toLocaleString()}</span>
+  </div>
+  <div class="tender-row">
+    <span>Change</span>
+    <span>${changeDue.toLocaleString()}</span>
+  </div>`
+      : `
+  <div class="tender-row">
+    <span>Paid by ${paymentModeLabel}</span>
+    <span>${totalAmount.toLocaleString()}</span>
+  </div>`
+  }
 
-  <!-- Totals -->
-  <table class="totals-table">
-    <tr>
-      <td style="text-align: ${isRtl ? 'right' : 'left'};">${L.totalItems}</td>
-      <td style="text-align: ${isRtl ? 'left' : 'right'}; font-weight: bold;">${totalQty} ${L.unitLabel}</td>
-    </tr>
-    ${
-      discountAmount > 0
-        ? `
-    <tr>
-      <td style="text-align: ${isRtl ? 'right' : 'left'};">${L.subtotal}</td>
-      <td style="text-align: ${isRtl ? 'left' : 'right'};">${currency} ${subtotal.toLocaleString()}</td>
-    </tr>
-    <tr style="font-weight: bold;">
-      <td style="text-align: ${isRtl ? 'right' : 'left'};">${L.discount(order.discountPercent)}</td>
-      <td style="text-align: ${isRtl ? 'left' : 'right'};">-${currency} ${discountAmount.toLocaleString()}</td>
-    </tr>
-    `
-        : ''
-    }
-    <tr class="grand-total">
-      <td style="text-align: ${isRtl ? 'right' : 'left'};">${L.netTotal}</td>
-      <td style="text-align: ${isRtl ? 'left' : 'right'};">${currency} ${totalAmount.toLocaleString()}</td>
-    </tr>
-    <tr>
-      <td style="padding-top: 4px; text-align: ${isRtl ? 'right' : 'left'};">${L.paymentMethod}</td>
-      <td style="text-align: ${isRtl ? 'left' : 'right'}; padding-top: 4px; font-weight: bold;">${paymentMode}</td>
-    </tr>
-    ${
-      tendered !== undefined && tendered >= totalAmount
-        ? `
-    <tr>
-      <td style="text-align: ${isRtl ? 'right' : 'left'};">${L.cashTendered}</td>
-      <td style="text-align: ${isRtl ? 'left' : 'right'};">${currency} ${tendered.toLocaleString()}</td>
-    </tr>
-    <tr style="font-weight: bold; font-size: 13px;">
-      <td style="text-align: ${isRtl ? 'right' : 'left'};">${L.changeDue}</td>
-      <td style="text-align: ${isRtl ? 'left' : 'right'};">${currency} ${changeDue.toLocaleString()}</td>
-    </tr>
-    `
-        : ''
-    }
-  </table>
+  <div class="dash-line"></div>
+
+  <!-- Footer Note -->
+  <div class="footer-text">${footerNote}</div>
 
   <!-- Google Review / Maps QR Code (if configured) -->
-  ${(() => {
-    const showGoogleQr =
-      options?.storeSettings?.showGoogleMapQrOnReceipt !== false &&
-      !!(options?.googleQrDataUrl || options?.storeSettings?.googleMapsUrl);
+  ${
+    options?.googleQrDataUrl && options?.storeSettings?.showGoogleMapQrOnReceipt !== false
+      ? `
+  <div class="qr-container">
+    <img class="qr-img" src="${options.googleQrDataUrl}" alt="Google QR" />
+    <div style="font-size: 9px; color: #444; margin-top: 2px;">
+      ${options?.storeSettings?.googleQrAction === 'map' ? 'Scan to view location on Google Maps' : 'Scan to rate & review us on Google'}
+    </div>
+  </div>`
+      : ''
+  }
 
-    if (!showGoogleQr || !options?.googleQrDataUrl) return '';
+  <!-- Bill Barcode for Scanner Lookup -->
+  ${
+    options?.billBarcodeDataUrl
+      ? `
+  <div class="barcode-container">
+    <img class="barcode-img" src="${options.billBarcodeDataUrl}" alt="Bill Barcode" />
+    <div style="font-size: 9px; font-family: monospace; color: #444; margin-top: 2px;">${order.id}</div>
+  </div>`
+      : ''
+  }
 
-    const isMapAction = options?.storeSettings?.googleQrAction === 'map';
-    const qrTitle = isMapAction
-      ? isUrdu
-        ? 'گوگل میپ پر ہماری لوکیشن دیکھیں'
-        : isBilingual
-        ? 'Locate on Google Maps / گوگل لوکیشن'
-        : 'Locate us on Google Maps'
-      : isUrdu
-      ? 'گوگل پر ہمیں ریٹنگ دیں'
-      : isBilingual
-      ? 'Rate Us on Google / گوگل پر ریٹنگ دیں'
-      : 'Rate us on Google Maps';
-
-    const qrSub = isUrdu
-      ? 'موبائل کیمرہ سے کیو آر کوڈ اسکین کریں'
-      : isBilingual
-      ? 'Scan with phone camera / کیمرہ سے اسکین کریں'
-      : 'Scan with camera to review us';
-
-    return `
-  <div class="google-qr-box">
-    <div class="google-qr-title">${qrTitle}</div>
-    <img class="google-qr-img" src="${options.googleQrDataUrl}" alt="Google Maps QR" />
-    <div class="google-qr-sub">${qrSub}</div>
-  </div>`;
-  })()}
-
-  <!-- Footer -->
-  <div class="footer">
-    <div>${footerNote}</div>
-    <div style="font-size: 9px; color: #888; margin-top: 4px;">${L.poweredBy}</div>
-  </div>
-
-  <!-- Feed space for cutter / tear-bar clearance -->
-  <div style="height: 18mm; min-height: 50px;"></div>
+  <!-- Feed space for tear-bar / auto-cutter -->
+  <div style="height: calc(18mm + ${extraBottom}); min-height: 50px;"></div>
 </body>
 </html>`;
 }
@@ -443,16 +391,372 @@ export async function printCustomerReceipt(order: Order, options?: ReceiptPrintO
     }
   }
 
+  let billBarcodeDataUrl = options?.billBarcodeDataUrl;
+  if (!billBarcodeDataUrl && order?.id) {
+    try {
+      billBarcodeDataUrl = generateBarcodeDataUrl(order.id, {
+        width: 1.5,
+        height: 38,
+        displayValue: false,
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
   const html = generateCustomerReceiptHtml(order, {
     ...options,
     storeSettings,
     googleQrDataUrl,
+    billBarcodeDataUrl,
   });
 
   return await posApi.printReceipt({
     html,
     printerName: storeSettings?.receiptPrinterName,
     silent: storeSettings?.silentPrint ?? true,
+    copies: storeSettings?.receiptCopies || 1,
+    is58mm: storeSettings?.paperWidth === '58mm',
+    printWidth: storeSettings?.printerPrintWidth || 'auto',
+  });
+}
+
+/**
+ * Generate sample customer receipt HTML for live preview and "Print sample receipt"
+ */
+export function generateSampleReceiptHtml(
+  settings?: Partial<StoreSettings>,
+  sampleQrDataUrl?: string,
+): string {
+  const is58mm = settings?.paperWidth === '58mm';
+  const configuredWidth = settings?.printerPrintWidth;
+  const targetWidth =
+    configuredWidth && configuredWidth !== 'auto'
+      ? configuredWidth
+      : is58mm
+        ? '48mm'
+        : '72mm';
+  const shiftRight = settings?.printerShiftRight || '0mm';
+  const spaceTop = settings?.printerSpaceTop || '0mm';
+  const extraBottom = settings?.printerExtraBottom || '0mm';
+
+  const storeName = settings?.storeName || 'Al-Jannat Sweets & Bakers';
+  const storeNameUrdu = settings?.storeNameUrdu || 'الجنت سویٹس اینڈ بیکرز';
+  const address = settings?.address || 'Grain Market Phularwan';
+  const phone = settings?.phone || '0307-4099638';
+  const footerNote = settings?.footerNote || 'Serving quality with a smile. Thank you!';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Sample Thermal Receipt</title>
+  <style>
+    @page { margin: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      color: #000000 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html {
+      margin: 0;
+      padding: 0;
+      background: #ffffff !important;
+    }
+    body {
+      font-family: Arial, "Segoe UI", Tahoma, sans-serif;
+      width: ${targetWidth};
+      max-width: ${targetWidth};
+      margin: 0;
+      padding: 0;
+      padding-left: ${shiftRight};
+      padding-top: ${spaceTop};
+      padding-bottom: ${extraBottom};
+      box-sizing: border-box;
+      color: #000000 !important;
+      background: #ffffff !important;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+      overflow: hidden;
+    }
+    .header { text-align: center; margin-bottom: 6px; }
+    .store-name { font-size: 16px; font-weight: 900; }
+    .urdu-name { font-size: 14px; font-weight: 800; font-family: 'Urdu Typesetting', Tahoma, sans-serif; margin-top: 2px; }
+    .meta-sub { font-size: 11px; margin-top: 2px; font-weight: 600; }
+    .dash-line { border-bottom: 1px dashed #000; margin: 6px 0; }
+    .bill-meta { font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .item-row { margin: 4px 0; font-size: 12px; }
+    .item-header { display: flex; justify-content: space-between; font-weight: 800; }
+    .item-sub { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: #222; }
+    .urdu-item { font-family: 'Urdu Typesetting', Tahoma, sans-serif; font-size: 12px; text-align: right; }
+    .total-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; margin: 4px 0; }
+    .tender-row { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700; margin: 2px 0; }
+    .footer-text { text-align: center; font-size: 11px; font-weight: 700; margin-top: 6px; }
+    .qr-container { text-align: center; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="store-name">${storeName}</div>
+    ${storeNameUrdu ? `<div class="urdu-name">${storeNameUrdu}</div>` : ''}
+    ${address ? `<div class="meta-sub">${address}</div>` : ''}
+    ${phone ? `<div class="meta-sub">${phone}</div>` : ''}
+  </div>
+
+  <div class="dash-line"></div>
+
+  <div class="bill-meta">
+    <span>Bill #I-0123</span>
+    <span>PAID</span>
+  </div>
+  <div class="bill-meta" style="font-size: 10px; opacity: 0.9;">
+    <span>24-Nov-2026, 11:05 am</span>
+  </div>
+
+  <div class="dash-line"></div>
+
+  <div class="item-row">
+    <div class="item-header">
+      <span>Gulab Jamun (1/2 Kg)</span>
+      <span>600</span>
+    </div>
+    <div class="item-sub">
+      <span>1 × 600</span>
+      <span class="urdu-item">گلاب جامن</span>
+    </div>
+  </div>
+
+  <div class="item-row">
+    <div class="item-header">
+      <span>Cake Rusk</span>
+      <span>450</span>
+    </div>
+    <div class="item-sub">
+      <span>500 g × 900</span>
+      <span class="urdu-item">کیک رس</span>
+    </div>
+  </div>
+
+  <div class="item-row">
+    <div class="item-header">
+      <span>Coca-Cola 500ml</span>
+      <span>240</span>
+    </div>
+    <div class="item-sub">
+      <span>2 × 120</span>
+      <span></span>
+    </div>
+  </div>
+
+  <div class="dash-line"></div>
+
+  <div class="total-row">
+    <span>TOTAL</span>
+    <span>Rs. 1,290</span>
+  </div>
+
+  <div class="tender-row">
+    <span>Paid by Cash</span>
+    <span>1,500</span>
+  </div>
+  <div class="tender-row">
+    <span>Change</span>
+    <span>210</span>
+  </div>
+
+  <div class="dash-line"></div>
+
+  <div class="footer-text">${footerNote}</div>
+
+  ${
+    sampleQrDataUrl
+      ? `<div class="qr-container"><img src="${sampleQrDataUrl}" style="width: 85px; height: 85px; margin: 4px auto; display: block;" alt="QR" /></div>`
+      : ''
+  }
+
+  <div style="height: calc(18mm + ${extraBottom}); min-height: 50px;"></div>
+</body>
+</html>`;
+}
+
+/**
+ * Generate test edges page HTML for hardware roll/margins calibration
+ */
+export function generateTestEdgesPageHtml(settings?: Partial<StoreSettings>): string {
+  const is58mm = settings?.paperWidth === '58mm';
+  const configuredWidth = settings?.printerPrintWidth;
+  const targetWidth =
+    configuredWidth && configuredWidth !== 'auto'
+      ? configuredWidth
+      : is58mm
+        ? '48mm'
+        : '72mm';
+  const shiftRight = settings?.printerShiftRight || '0mm';
+  const spaceTop = settings?.printerSpaceTop || '0mm';
+  const extraBottom = settings?.printerExtraBottom || '0mm';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>OmniPOS Edge Calibration Test</title>
+  <style>
+    @page { margin: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      color: #000000 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html {
+      margin: 0;
+      padding: 0;
+      background: #ffffff !important;
+    }
+    body {
+      font-family: Arial, monospace, sans-serif;
+      width: ${targetWidth};
+      max-width: ${targetWidth};
+      margin: 0;
+      padding: 0;
+      padding-left: ${shiftRight};
+      padding-top: ${spaceTop};
+      padding-bottom: ${extraBottom};
+      box-sizing: border-box;
+      color: #000000 !important;
+      background: #ffffff !important;
+      font-size: 11px;
+      line-height: 1.3;
+      overflow: hidden;
+    }
+    .edge-box {
+      border: 2px solid #000;
+      padding: 4px;
+      text-align: center;
+      margin: 4px 0;
+      font-weight: 800;
+    }
+    .edge-top {
+      border-top: 4px solid #000;
+      background: #eee;
+    }
+    .edge-bottom {
+      border-bottom: 4px solid #000;
+      background: #eee;
+    }
+    .side-ruler {
+      display: flex;
+      justify-content: space-between;
+      border-left: 3px solid #000;
+      border-right: 3px solid #000;
+      padding: 6px 4px;
+      margin: 4px 0;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .guide-box {
+      border: 1px dashed #000;
+      padding: 6px;
+      font-size: 9.5px;
+      margin: 4px 0;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="edge-box edge-top">
+    ▲ ▲ ▲ TOP EDGE ▲ ▲ ▲<br/>
+    <span style="font-size: 9px; font-weight: normal;">If cut at top, increase "Space at top"</span>
+  </div>
+
+  <div class="side-ruler">
+    <span>◄ LEFT</span>
+    <span style="font-weight: 900;">CALIBRATION</span>
+    <span>RIGHT ►</span>
+  </div>
+
+  <div style="border-left: 2px solid #000; border-right: 2px solid #000; padding: 4px; font-size: 10px;">
+    <div><strong>Target Width:</strong> ${targetWidth} (${settings?.paperWidth || '80mm'})</div>
+    <div><strong>Shift Right:</strong> ${shiftRight}</div>
+    <div><strong>Space Top:</strong> ${spaceTop}</div>
+    <div><strong>Extra Bottom:</strong> ${extraBottom}</div>
+    <div style="font-family: monospace; font-size: 9px; margin-top: 4px;">|10mm---20mm---30mm---40mm---50mm---60mm---70mm|</div>
+  </div>
+
+  <div class="guide-box">
+    <strong>Adjustment Guide:</strong><br/>
+    • <strong>Cut on right?</strong> Choose smaller Print width.<br/>
+    • <strong>Cut on left?</strong> Increase Shift right.<br/>
+    • <strong>Too close to top?</strong> Increase Space at top.<br/>
+    • <strong>Cutter cuts last line?</strong> Increase Extra paper at bottom.
+  </div>
+
+  <div class="edge-box edge-bottom">
+    ▼ ▼ ▼ BOTTOM EDGE ▼ ▼ ▼<br/>
+    <span style="font-size: 9px; font-weight: normal;">Cutter must cut AFTER this box</span>
+  </div>
+
+  <div style="height: calc(20mm + ${extraBottom}); min-height: 60px;"></div>
+</body>
+</html>`;
+}
+
+/**
+ * Print Sample Receipt
+ */
+export async function printSampleReceipt(settings?: Partial<StoreSettings>): Promise<boolean> {
+  const currentSettings =
+    settings || storage.getItem<StoreSettings>(KEYS.storeSettings, {} as any);
+
+  let qrDataUrl = '';
+  const effectiveGoogleUrl = getEffectiveGoogleQrUrl(currentSettings);
+  if (effectiveGoogleUrl) {
+    try {
+      qrDataUrl = await generateQrDataUrl(effectiveGoogleUrl, { width: 120, margin: 1 });
+    } catch {
+      /* ignore */
+    }
+  }
+  if (!qrDataUrl) {
+    try {
+      qrDataUrl = await generateQrDataUrl('https://maps.google.com', { width: 120, margin: 1 });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const html = generateSampleReceiptHtml(currentSettings, qrDataUrl);
+  return await posApi.printReceipt({
+    html,
+    printerName: currentSettings?.receiptPrinterName,
+    silent: currentSettings?.silentPrint ?? true,
+    copies: currentSettings?.receiptCopies || 1,
+    is58mm: currentSettings?.paperWidth === '58mm',
+    printWidth: currentSettings?.printerPrintWidth || 'auto',
+  });
+}
+
+/**
+ * Print Calibration Test Page (Edges)
+ */
+export async function printTestEdgesPage(settings?: Partial<StoreSettings>): Promise<boolean> {
+  const currentSettings =
+    settings || storage.getItem<StoreSettings>(KEYS.storeSettings, {} as any);
+
+  const html = generateTestEdgesPageHtml(currentSettings);
+  return await posApi.printReceipt({
+    html,
+    printerName: currentSettings?.receiptPrinterName,
+    silent: currentSettings?.silentPrint ?? true,
+    copies: 1,
+    is58mm: currentSettings?.paperWidth === '58mm',
+    printWidth: currentSettings?.printerPrintWidth || 'auto',
   });
 }
 
@@ -464,7 +768,17 @@ export function generateTestReceiptHtml(
   targetType: 'receipt' | 'kot' = 'receipt',
 ): string {
   const is58mm = settings?.paperWidth === '58mm';
-  const targetWidth = is58mm ? '48mm' : '72mm';
+  const configuredWidth = settings?.printerPrintWidth;
+  const targetWidth =
+    configuredWidth && configuredWidth !== 'auto'
+      ? configuredWidth
+      : is58mm
+        ? '48mm'
+        : '72mm';
+  const shiftRight = settings?.printerShiftRight || '0mm';
+  const spaceTop = settings?.printerSpaceTop || '0mm';
+  const extraBottom = settings?.printerExtraBottom || '0mm';
+
   const storeName = settings?.storeName || 'OMNIPOS POS SYSTEM';
   const now = new Date();
   const dateStr = now.toLocaleDateString();
@@ -482,7 +796,6 @@ export function generateTestReceiptHtml(
   <style>
     @page {
       margin: 0;
-      size: ${is58mm ? '58mm 297mm' : '80mm 297mm'};
     }
     * {
       box-sizing: border-box;
@@ -492,18 +805,27 @@ export function generateTestReceiptHtml(
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    html, body {
+    html {
+      margin: 0;
+      padding: 0;
+      background: #ffffff !important;
+    }
+    body {
       font-family: Arial, "Segoe UI", Tahoma, sans-serif;
-      width: 100%;
+      width: ${targetWidth};
       max-width: ${targetWidth};
-      margin: 0 auto;
-      padding: 2mm 1mm;
+      margin: 0;
+      padding: 0;
+      padding-left: ${shiftRight};
+      padding-top: ${spaceTop};
+      padding-bottom: ${extraBottom};
+      box-sizing: border-box;
       color: #000000 !important;
       background: #ffffff !important;
       font-size: 13px;
       font-weight: 700;
       line-height: 1.35;
-      overflow-x: hidden;
+      overflow: hidden;
     }
     .header {
       text-align: center;
@@ -681,5 +1003,8 @@ export async function printTestReceipt(
     html,
     printerName: targetPrinter,
     silent: currentSettings?.silentPrint ?? true,
+    copies: 1,
+    is58mm: currentSettings?.paperWidth === '58mm',
+    printWidth: currentSettings?.printerPrintWidth || 'auto',
   });
 }

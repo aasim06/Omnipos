@@ -11,6 +11,7 @@ import {
   ShoppingBag20Regular,
   Sparkle20Regular,
   Table20Regular,
+  Receipt20Regular,
 } from '@fluentui/react-icons';
 import { playErrorBeep } from '@/lib/soundFx';
 
@@ -256,6 +257,37 @@ export function CommandBar({
       </div>
 
       <div style={{ flex: 1 }} />
+
+      {/* Bills / Invoices History Shortcut */}
+      <button
+        type="button"
+        onClick={() => pos.setShowRecentBillsModal(true)}
+        title="Bills History (Ctrl+B)"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          height: '32px',
+          padding: '0 10px',
+          borderRadius: '4px',
+          border: `1px solid ${F.border}`,
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.045)' : '#FFFFFF',
+          color: F.textPrimary,
+          fontSize: '12px',
+          fontFamily: F.font,
+          fontWeight: 600,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = subtleHover)}
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.045)' : '#FFFFFF')
+        }
+      >
+        <Receipt20Regular style={{ width: 16, height: 16, color: F.accentRed }} />
+        <span>Bills</span>
+      </button>
 
       {/* Catalog view: touch tiles / item list */}
       <div style={segmentTrack} role="group" aria-label="Catalog view">

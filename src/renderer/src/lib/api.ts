@@ -2311,7 +2311,14 @@ export const posApi = {
   /**
    * Print receipt or thermal KOT ticket
    */
-  async printReceipt(options?: { printerName?: string; silent?: boolean; html?: string }): Promise<boolean> {
+  async printReceipt(options?: {
+    printerName?: string;
+    silent?: boolean;
+    html?: string;
+    copies?: number;
+    is58mm?: boolean;
+    printWidth?: string;
+  }): Promise<boolean> {
     // 1. Electron Desktop Environment
     if (typeof window !== 'undefined' && window.posApi?.printReceipt) {
       const res = await window.posApi.printReceipt(options);

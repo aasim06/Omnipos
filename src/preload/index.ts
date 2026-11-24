@@ -60,7 +60,14 @@ export interface PosApi {
     status: () => Promise<boolean>;
   };
   getPrinters: () => Promise<any[]>;
-  printReceipt: (options?: { printerName?: string; silent?: boolean; html?: string }) => Promise<{ ok: boolean; error?: string }>;
+  printReceipt: (options?: {
+    printerName?: string;
+    silent?: boolean;
+    html?: string;
+    copies?: number;
+    is58mm?: boolean;
+    printWidth?: string;
+  }) => Promise<{ ok: boolean; error?: string }>;
   backup: {
     create: (options?: { promptDialog?: boolean }) => Promise<{ ok: boolean; path?: string; size?: number; cancelled?: boolean; error?: string }>;
     restore: (filePath?: string) => Promise<{ ok: boolean; message?: string; cancelled?: boolean; error?: string }>;

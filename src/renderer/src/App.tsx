@@ -22,6 +22,7 @@ import { ProductDetailsView } from '@/features/catalog/ProductDetailsView';
 import { BarcodeLabelGeneratorView } from '@/features/catalog/BarcodeLabelGeneratorView';
 import { QuotationsView } from '@/features/quotations/QuotationsView';
 import { CustomersView } from '@/features/customers/CustomersView';
+import { OrdersDirectoryView } from '@/features/orders/OrdersDirectoryView';
 import { LoginView } from '@/features/auth/LoginView';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
 import { LicenseModulesProvider, useLicense } from '@/features/auth/LicenseModulesContext';
@@ -338,6 +339,17 @@ export default function App(): React.JSX.Element {
             <Route path="/pos/minimart" element={<Navigate to="/pos/omnimart" replace />} />
 
             <Route path="/pos/paint" element={<Navigate to="/pos/omnimart" replace />} />
+
+            {/* Bills & Invoices Directory */}
+            <Route
+              path="/orders"
+              element={
+                <RouteAccessGate>
+                  <OrdersDirectoryView />
+                </RouteAccessGate>
+              }
+            />
+            <Route path="/bills" element={<Navigate to="/orders" replace />} />
 
             {/* Kitchen Display KDS */}
             <Route

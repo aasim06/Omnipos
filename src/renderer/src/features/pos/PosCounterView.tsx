@@ -8,6 +8,7 @@ import { VariantPickerDialog } from '@/features/pos/dialogs/VariantPickerDialog'
 import { KitchenNoteDialog } from '@/features/pos/dialogs/KitchenNoteDialog';
 import { ParkedOrdersDialog } from '@/features/pos/dialogs/ParkedOrdersDialog';
 import { ReceiptPreviewDialog } from '@/features/pos/dialogs/ReceiptPreviewDialog';
+import { RecentBillsDialog } from '@/features/pos/dialogs/RecentBillsDialog';
 import { ExpandedCartDrawer } from '@/features/pos/dialogs/ExpandedCartDrawer';
 import { A4InvoiceDialog } from '@/features/pos/dialogs/A4InvoiceDialog';
 import { WeightScaleDialog } from '@/features/pos/dialogs/WeightScaleDialog';
@@ -171,6 +172,9 @@ export function PosCounterView(props: PosCounterProps): React.JSX.Element {
 
       {/* ── Modal: Thermal Receipt Preview Modal ── */}
       <ReceiptPreviewDialog pos={pos} />
+
+      {/* ── Modal: Recent Bills & Invoices History Drawer ── */}
+      <RecentBillsDialog pos={pos} />
 
       {/* ── Drawer: Expanded Cart List with Blurry Backdrop ── */}
       <ExpandedCartDrawer pos={pos} />

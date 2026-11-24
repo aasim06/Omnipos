@@ -55,6 +55,8 @@ import {
   BarcodeScanner20Regular,
   DocumentBulletList24Regular,
   DocumentBulletList24Filled,
+  Receipt24Regular,
+  Receipt24Filled,
 } from '@fluentui/react-icons';
 import { posApi } from '@/lib/api';
 import { resolveStoreModules } from '@/lib/categoryProfiles';
@@ -804,6 +806,12 @@ export function FluentSidebar(): React.JSX.Element {
           moduleKey: 'omnimart' as const,
           icon: <BuildingRetail24Regular className={styles.icon19} />,
           activeIcon: <BuildingRetail24Filled className={styles.icon19} />,
+        },
+        {
+          to: '/orders',
+          label: 'Bills & Invoices',
+          icon: <Receipt24Regular className={styles.icon19} />,
+          activeIcon: <Receipt24Filled className={styles.icon19} />,
         },
         {
           to: '/kitchen',

@@ -65,7 +65,7 @@ import { storage, KEYS } from '@/lib/storage';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { generateQrDataUrl } from '@/lib/qrCode';
 import { getEffectiveGoogleQrUrl, buildGoogleUrls } from '@/lib/googleMapsUrl';
-import { printTestReceipt } from '@/lib/receiptPrinter';
+import { printTestReceipt, printSampleReceipt, printTestEdgesPage } from '@/lib/receiptPrinter';
 import {
   userStorage,
   AppUser,
@@ -80,6 +80,12 @@ export interface StoreSettings {
   headerNote: string;
   footerNote: string;
   paperWidth: '80mm' | '58mm';
+  printerPrintWidth?: string;
+  printerShiftRight?: string;
+  printerSpaceTop?: string;
+  printerExtraBottom?: string;
+  receiptCopies?: number;
+  autoPrintOnSale?: boolean;
   autoCut: boolean;
   drawerKick: boolean;
   currency: string;
@@ -109,6 +115,12 @@ const defaultSettings: StoreSettings = {
   headerNote: 'Order Fresh • Eat Fresh',
   footerNote: 'Thank you for your visit! Goods once sold are not refundable.',
   paperWidth: '80mm',
+  printerPrintWidth: 'auto',
+  printerShiftRight: '0mm',
+  printerSpaceTop: '0mm',
+  printerExtraBottom: '0mm',
+  receiptCopies: 1,
+  autoPrintOnSale: true,
   autoCut: true,
   drawerKick: true,
   currency: 'PKR',
@@ -389,6 +401,38 @@ export function AdminSettingsView(): React.JSX.Element {
       const success = await printTestReceipt(settings, targetType);
       if (success) {
         setPrintTestMsg(`✓ Test print sent to ${printerLabel}!`);
+      } else {
+        setPrintTestMsg(`⚠ Print failed. Check printer connection or Windows driver.`);
+      }
+    } catch (err: any) {
+      setPrintTestMsg(`❌ Error: ${err?.message || 'Print dispatch failed'}`);
+    }
+    setTimeout(() => setPrintTestMsg(''), 6000);
+  };
+
+  const handlePrintSampleReceipt = async () => {
+    const printerLabel = settings.receiptPrinterName || 'Windows Default Thermal Printer';
+    setPrintTestMsg(`Printing sample receipt to ${printerLabel}…`);
+    try {
+      const success = await printSampleReceipt(settings);
+      if (success) {
+        setPrintTestMsg(`✓ Sample receipt sent to ${printerLabel}!`);
+      } else {
+        setPrintTestMsg(`⚠ Print failed. Check printer connection or Windows driver.`);
+      }
+    } catch (err: any) {
+      setPrintTestMsg(`❌ Error: ${err?.message || 'Print dispatch failed'}`);
+    }
+    setTimeout(() => setPrintTestMsg(''), 6000);
+  };
+
+  const handlePrintTestEdges = async () => {
+    const printerLabel = settings.receiptPrinterName || 'Windows Default Thermal Printer';
+    setPrintTestMsg(`Printing edge calibration page to ${printerLabel}…`);
+    try {
+      const success = await printTestEdgesPage(settings);
+      if (success) {
+        setPrintTestMsg(`✓ Edge calibration page sent to ${printerLabel}!`);
       } else {
         setPrintTestMsg(`⚠ Print failed. Check printer connection or Windows driver.`);
       }
@@ -1202,45 +1246,6 @@ export function AdminSettingsView(): React.JSX.Element {
             </div>
           </div>
 
-          {/* Database Engine Info */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.cardIconBox}>
-                <ShieldCheckmark20Regular className={styles.icon20} />
-              </div>
-              <div className={styles.headerTextCol}>
-                <Body1 className={styles.headerTitle}>
-                  Database
-                </Body1>
-                <Caption1 className={styles.headerSubtitle}>
-                  Local storage resilience and cloud synchronization
-                </Caption1>
-              </div>
-            </div>
-
-            <div className={styles.cardBody}>
-              <div className={styles.engineCard}>
-                <Body2 className={styles.engineTitle}>
-                  SQLite WAL (Write-Ahead Logging) Mode Active
-                </Body2>
-                <Caption1 className={styles.engineSubtitle}>
-                  All store preferences, orders, products, inventory transactions, and staff accounts are committed locally to SQLite instantly with zero network latency.
-                </Caption1>
-                <div className={styles.engineStatusRow}>
-                  <span className={styles.engineDot} />
-                  <span className={styles.engineReadyText}>
-                    Local Database Healthy &amp; Ready
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── TAB 3: Hardware, Printer & Taxes ── */}
-      {activeTab === 'hardware' && (
-        <div className={styles.grid}>
           {/* CARD: Touch layout (POS tile board size) */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>
@@ -1255,12 +1260,18 @@ export function AdminSettingsView(): React.JSX.Element {
               </div>
             </div>
             <div className={styles.cardBody}>
-              <div role="radiogroup" aria-label="Tile size" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                {([
-                  ['S', 'Small', 'More tiles, 6 per row'],
-                  ['M', 'Medium', 'Default, 5 per row'],
-                  ['L', 'Large', 'Big touch targets, 4 per row'],
-                ] as [TileSize, string, string][]).map(([key, label, hint]) => {
+              <div
+                role="radiogroup"
+                aria-label="Tile size"
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}
+              >
+                {(
+                  [
+                    ['S', 'Small', 'More tiles, 6 per row'],
+                    ['M', 'Medium', 'Default, 5 per row'],
+                    ['L', 'Large', 'Big touch targets, 4 per row'],
+                  ] as [TileSize, string, string][]
+                ).map(([key, label, hint]) => {
                   const active = tileSize === key;
                   return (
                     <button
@@ -1300,35 +1311,76 @@ export function AdminSettingsView(): React.JSX.Element {
               </Caption1>
             </div>
           </div>
-          {/* CARD 2: Thermal Receipt Printer & Drawer (wide card, two columns) */}
-          <div className={mergeClasses(styles.card, styles.cardWide)}>
+
+          {/* Database Engine Info */}
+          <div className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardIconBox}>
-                <Print24Regular className={styles.icon20} />
+                <ShieldCheckmark20Regular className={styles.icon20} />
               </div>
               <div className={styles.headerTextCol}>
                 <Body1 className={styles.headerTitle}>
-                  Receipt printer and cash drawer
+                  Database
                 </Body1>
                 <Caption1 className={styles.headerSubtitle}>
-                  Hardware configuration for 80mm / 58mm ESC/POS printers
+                  Local storage resilience and cloud synchronization
                 </Caption1>
               </div>
             </div>
 
-            <div className={mergeClasses(styles.cardBody, styles.cardBodySplit)}>
-              {/* Left column: printers and paper */}
-              <div className={styles.cardBodyCol}>
-              {/* Printer Hardware Selection */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className={styles.cardBody}>
+              <div className={styles.engineCard}>
+                <Body2 className={styles.engineTitle}>
+                  SQLite WAL (Write-Ahead Logging) Mode Active
+                </Body2>
+                <Caption1 className={styles.engineSubtitle}>
+                  All store preferences, orders, products, inventory transactions, and staff accounts are committed locally to SQLite instantly with zero network latency.
+                </Caption1>
+                <div className={styles.engineStatusRow}>
+                  <span className={styles.engineDot} />
+                  <span className={styles.engineReadyText}>
+                    Local Database Healthy &amp; Ready
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 3: Hardware, Thermal Printer & Taxes ── */}
+      {activeTab === 'hardware' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Main 2-Column Section: Printer Settings (Left) & Live Receipt Preview (Right) */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 380px)',
+              gap: '20px',
+              alignItems: 'start',
+            }}
+          >
+            {/* LEFT CARD: Printer Configuration (exact reference design) */}
+            <div className={styles.card} style={{ padding: '24px' }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                <Print24Regular style={{ fontSize: '22px' }} />
+                <span style={{ fontSize: '18px', fontWeight: 700 }}>Printer</span>
+              </div>
+              <div style={{ fontSize: '13px', color: 'rgba(128, 128, 128, 0.9)', marginBottom: '20px' }}>
+                Receipts print straight to this printer, with no print dialog.
+              </div>
+
+              {/* Receipt printer selector */}
+              <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
                   <div style={{ flex: 1 }}>
                     <CustomSelect
-                      label="Customer Receipt Thermal Printer"
+                      label="Receipt printer"
                       value={settings.receiptPrinterName || ''}
                       onChange={(val) => setSettings({ ...settings, receiptPrinterName: val })}
                       options={[
-                        { value: '', label: '⚡ Auto-Detect Thermal Printer (XP-80 / Bixolon / ESC-POS)' },
+                        { value: '', label: 'Windows default printer' },
                         ...installedPrinters.map((p) => ({
                           value: p.name,
                           label: `${p.name}${p.isDefault ? ' [System Default]' : ''}`,
@@ -1344,133 +1396,432 @@ export function AdminSettingsView(): React.JSX.Element {
                     disabled={loadingPrinters}
                   />
                 </div>
-
-                <CustomSelect
-                  label="Kitchen KOT Ticket Printer"
-                  value={settings.kotPrinterName || ''}
-                  onChange={(val) => setSettings({ ...settings, kotPrinterName: val })}
-                  options={[
-                    { value: '', label: '⚡ Same as Receipt Printer' },
-                    ...installedPrinters.map((p) => ({
-                      value: p.name,
-                      label: `${p.name}${p.isDefault ? ' [System Default]' : ''}`,
-                    })),
-                  ]}
-                />
-              </div>
-
-              <Divider />
-
-              <div className={styles.formRow}>
-                <Caption1 className={styles.paperWidthLabel}>Paper Roll Width</Caption1>
-                <div className={styles.segmentedGroup}>
-                  <button
-                    type="button"
-                    className={mergeClasses(
-                      styles.segmentedItem,
-                      settings.paperWidth === '80mm' ? styles.segmentedItemActive : styles.segmentedItemInactive
-                    )}
-                    onClick={() => setSettings({ ...settings, paperWidth: '80mm' })}
-                  >
-                    80mm Standard
-                  </button>
-                  <button
-                    type="button"
-                    className={mergeClasses(
-                      styles.segmentedItem,
-                      settings.paperWidth === '58mm' ? styles.segmentedItemActive : styles.segmentedItemInactive
-                    )}
-                    onClick={() => setSettings({ ...settings, paperWidth: '58mm' })}
-                  >
-                    58mm Compact
-                  </button>
+                <div style={{ fontSize: '11.5px', color: 'rgba(128, 128, 128, 0.85)', marginTop: '4px' }}>
+                  {(() => {
+                    const roll = settings.paperWidth === '58mm' ? '58 x 210' : '80 x 210';
+                    const printable =
+                      settings.printerPrintWidth && settings.printerPrintWidth !== 'auto'
+                        ? settings.printerPrintWidth
+                        : settings.paperWidth === '58mm'
+                          ? '48 mm'
+                          : '72.1 mm';
+                    return `Windows driver: Thermal Paper(${roll}), prints ${printable}. Receipts print at full size.`;
+                  })()}
                 </div>
               </div>
+
+              {/* Row 1: Paper roll & Print width (this computer) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <CustomSelect
+                    label="Paper roll"
+                    value={settings.paperWidth || '80mm'}
+                    onChange={(val) => setSettings({ ...settings, paperWidth: val as '80mm' | '58mm' })}
+                    options={[
+                      { value: '80mm', label: '80 mm roll' },
+                      { value: '58mm', label: '58 mm roll' },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <CustomSelect
+                    label="Print width (this computer)"
+                    value={settings.printerPrintWidth || 'auto'}
+                    onChange={(val) => setSettings({ ...settings, printerPrintWidth: val })}
+                    options={[
+                      { value: 'auto', label: 'Auto (72 mm, or what the printer prints)' },
+                      { value: '80mm', label: '80 mm' },
+                      { value: '72mm', label: '72 mm' },
+                      { value: '68mm', label: '68 mm' },
+                      { value: '58mm', label: '58 mm' },
+                      { value: '48mm', label: '48 mm' },
+                      { value: '44mm', label: '44 mm' },
+                    ]}
+                  />
+                </div>
               </div>
 
-              {/* Right column: print behaviour and test print */}
-              <div className={styles.cardBodyCol}>
-              <div className={styles.switchRow}>
-                <div className={styles.switchLabel}>
-                  <Body2 className={styles.switchRowTitle}>Silent Print (Direct ESC/POS)</Body2>
-                  <Caption1 className={styles.switchRowDesc}>
-                    Prints directly to thermal paper without opening print dialog
-                  </Caption1>
+              {/* Row 2: Shift right (this computer) & Space at top (this computer) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <CustomSelect
+                    label="Shift right (this computer)"
+                    value={settings.printerShiftRight || '0mm'}
+                    onChange={(val) => setSettings({ ...settings, printerShiftRight: val })}
+                    options={[
+                      { value: '0mm', label: 'None' },
+                      { value: '1mm', label: '1 mm' },
+                      { value: '2mm', label: '2 mm' },
+                      { value: '3mm', label: '3 mm' },
+                      { value: '4mm', label: '4 mm' },
+                      { value: '5mm', label: '5 mm' },
+                      { value: '-1mm', label: '-1 mm' },
+                      { value: '-2mm', label: '-2 mm' },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <CustomSelect
+                    label="Space at top (this computer)"
+                    value={settings.printerSpaceTop || '0mm'}
+                    onChange={(val) => setSettings({ ...settings, printerSpaceTop: val })}
+                    options={[
+                      { value: '0mm', label: 'None' },
+                      { value: '2mm', label: '2 mm' },
+                      { value: '4mm', label: '4 mm' },
+                      { value: '6mm', label: '6 mm' },
+                      { value: '8mm', label: '8 mm' },
+                      { value: '10mm', label: '10 mm' },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Extra paper at bottom (this computer) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+                <div>
+                  <CustomSelect
+                    label="Extra paper at bottom (this computer)"
+                    value={settings.printerExtraBottom || '0mm'}
+                    onChange={(val) => setSettings({ ...settings, printerExtraBottom: val })}
+                    options={[
+                      { value: '0mm', label: 'None (usual)' },
+                      { value: '5mm', label: '5 mm' },
+                      { value: '10mm', label: '10 mm' },
+                      { value: '15mm', label: '15 mm' },
+                      { value: '20mm', label: '20 mm' },
+                      { value: '25mm', label: '25 mm' },
+                      { value: '30mm', label: '30 mm' },
+                    ]}
+                  />
+                </div>
+                <div />
+              </div>
+
+              {/* Help / Guidance paragraph */}
+              <div style={{ fontSize: '11.5px', color: 'rgba(128, 128, 128, 0.85)', lineHeight: 1.5, marginBottom: '20px' }}>
+                Text cut on the right: choose a smaller width. Cut on the left: shift right. First line too close to the top: add space at top. Last line cut by the cutter, or you want a longer slip: add paper at the bottom. Print the test page to check. These are saved for this computer's printer only.
+              </div>
+
+              {/* Copies after each sale */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                <div>
+                  <CustomSelect
+                    label="Copies after each sale"
+                    value={String(settings.receiptCopies || 1)}
+                    onChange={(val) => setSettings({ ...settings, receiptCopies: parseInt(val, 10) || 1 })}
+                    options={[
+                      { value: '1', label: '1 copy' },
+                      { value: '2', label: '2 copies' },
+                      { value: '3', label: '3 copies' },
+                    ]}
+                  />
+                </div>
+                <div />
+              </div>
+
+              {/* Print automatically switch */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 0',
+                  borderTop: '1px solid rgba(128,128,128,0.15)',
+                  borderBottom: '1px solid rgba(128,128,128,0.15)',
+                  marginBottom: '20px',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '13.5px', fontWeight: 600 }}>Print automatically after each sale</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(128, 128, 128, 0.85)', marginTop: '2px' }}>
+                    Off: print from POS with the printer button (Print last bill).
+                  </div>
                 </div>
                 <Switch
-                  checked={settings.silentPrint !== false}
-                  onChange={(_, d) => setSettings({ ...settings, silentPrint: d.checked })}
+                  checked={settings.autoPrintOnSale !== false}
+                  onChange={(_, d) => setSettings({ ...settings, autoPrintOnSale: d.checked })}
                 />
               </div>
 
-              <Divider />
-
-              <div className={styles.switchRow}>
-                <div className={styles.switchLabel}>
-                  <Body2 className={styles.switchRowTitle}>Auto Paper Cut</Body2>
-                  <Caption1 className={styles.switchRowDesc}>
-                    Sends full cut command (GS V 66 0) after bill prints
-                  </Caption1>
+              {/* Hardware options: Auto cut & Cash Drawer */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(128,128,128,0.2)',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '12.5px', fontWeight: 600 }}>Auto Paper Cut</div>
+                    <div style={{ fontSize: '10.5px', color: 'rgba(128,128,128,0.8)' }}>Full cut after bill</div>
+                  </div>
+                  <Switch
+                    checked={settings.autoCut}
+                    onChange={(_, d) => setSettings({ ...settings, autoCut: d.checked })}
+                  />
                 </div>
-                <Switch
-                  checked={settings.autoCut}
-                  onChange={(_, d) => setSettings({ ...settings, autoCut: d.checked })}
-                />
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(128,128,128,0.2)',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '12.5px', fontWeight: 600 }}>Kick Cash Drawer</div>
+                    <div style={{ fontSize: '10.5px', color: 'rgba(128,128,128,0.8)' }}>24V pulse on checkout</div>
+                  </div>
+                  <Switch
+                    checked={settings.drawerKick}
+                    onChange={(_, d) => setSettings({ ...settings, drawerKick: d.checked })}
+                  />
+                </div>
               </div>
 
-              <Divider />
-
-              <div className={styles.switchRow}>
-                <div className={styles.switchLabel}>
-                  <Body2 className={styles.switchRowTitle}>Kick Cash Drawer</Body2>
-                  <Caption1 className={styles.switchRowDesc}>
-                    Sends 24V pulse to open cash drawer on cash checkout
-                  </Caption1>
-                </div>
-                <Switch
-                  checked={settings.drawerKick}
-                  onChange={(_, d) => setSettings({ ...settings, drawerKick: d.checked })}
-                />
-              </div>
-
-              <Divider />
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <Button
-                    appearance="primary"
-                    icon={<Print24Regular />}
-                    onClick={() => handleTestPrint('receipt')}
-                    className={styles.testPrintBtn}
-                  >
-                    Test Receipt Feed &amp; Print
-                  </Button>
-                  <Button
-                    appearance="outline"
-                    icon={<Print24Regular />}
-                    onClick={() => handleTestPrint('kot')}
-                  >
-                    Test Kitchen KOT Feed
-                  </Button>
-                </div>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <Button
+                  appearance="secondary"
+                  onClick={handlePrintSampleReceipt}
+                  style={{ padding: '8px 18px', fontWeight: 600 }}
+                >
+                  Print sample receipt
+                </Button>
+                <Button
+                  appearance="secondary"
+                  onClick={handlePrintTestEdges}
+                  style={{ padding: '8px 18px', fontWeight: 600 }}
+                >
+                  Test page (edges)
+                </Button>
                 {printTestMsg && (
-                  <Caption1 className={styles.testPrintSuccess}>{printTestMsg}</Caption1>
+                  <Caption1
+                    style={{
+                      color: printTestMsg.startsWith('✓')
+                        ? '#107C41'
+                        : printTestMsg.startsWith('❌')
+                          ? '#D13438'
+                          : '#0078D4',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {printTestMsg}
+                  </Caption1>
                 )}
               </div>
+            </div>
+
+            {/* RIGHT CARD: Live Receipt Preview (matching reference screenshot) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(128, 128, 128, 0.9)' }}>
+                Preview ({settings.paperWidth === '58mm' ? '58 mm roll' : '80 mm roll'})
+              </div>
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  color: '#000000',
+                  borderRadius: '8px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                  padding: '24px 22px',
+                  width: '100%',
+                  maxWidth: settings.paperWidth === '58mm' ? '280px' : '360px',
+                  fontFamily: 'Arial, "Segoe UI", Tahoma, sans-serif',
+                  boxSizing: 'border-box',
+                }}
+              >
+                {/* Store Name & Info */}
+                <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '17px', fontWeight: 900, color: '#000000', letterSpacing: '0.2px' }}>
+                    {settings.storeName || 'Al-Jannat Sweets & Bakers'}
+                  </div>
+                  {settings.storeNameUrdu && (
+                    <div
+                      style={{
+                        fontSize: '15px',
+                        fontWeight: 800,
+                        color: '#000000',
+                        fontFamily: 'Urdu Typesetting, Tahoma, sans-serif',
+                        marginTop: '2px',
+                      }}
+                    >
+                      {settings.storeNameUrdu}
+                    </div>
+                  )}
+                  {settings.address && (
+                    <div style={{ fontSize: '11px', color: '#111111', fontWeight: 600, marginTop: '3px' }}>
+                      {settings.address}
+                    </div>
+                  )}
+                  {settings.phone && (
+                    <div style={{ fontSize: '11px', color: '#111111', fontWeight: 600 }}>
+                      {settings.phone}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ borderBottom: '1px dashed #666', margin: '8px 0' }} />
+
+                {/* Bill Meta */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: '#000',
+                  }}
+                >
+                  <span>Bill #I-0123</span>
+                  <span style={{ fontWeight: 800 }}>PAID</span>
+                </div>
+                <div style={{ fontSize: '10px', color: '#444', fontWeight: 600, marginTop: '2px' }}>
+                  24-Nov-2026, 11:05 am
+                </div>
+
+                <div style={{ borderBottom: '1px dashed #666', margin: '8px 0' }} />
+
+                {/* Sample Items */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', color: '#000' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                      <span>Gulab Jamun (1/2 Kg)</span>
+                      <span>600</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#444' }}>
+                      <span>1 × 600</span>
+                      <span
+                        style={{
+                          fontFamily: 'Urdu Typesetting, Tahoma, sans-serif',
+                          fontSize: '12px',
+                          color: '#000',
+                          fontWeight: 700,
+                        }}
+                      >
+                        گلاب جامن
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                      <span>Cake Rusk</span>
+                      <span>450</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#444' }}>
+                      <span>500 g × 900</span>
+                      <span
+                        style={{
+                          fontFamily: 'Urdu Typesetting, Tahoma, sans-serif',
+                          fontSize: '12px',
+                          color: '#000',
+                          fontWeight: 700,
+                        }}
+                      >
+                        کیک رس
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                      <span>Coca-Cola 500ml</span>
+                      <span>240</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#444' }}>
+                      <span>2 × 120</span>
+                      <span />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ borderBottom: '1px dashed #666', margin: '8px 0' }} />
+
+                {/* Totals */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '16px',
+                    fontWeight: 900,
+                    color: '#000',
+                    margin: '4px 0',
+                  }}
+                >
+                  <span>TOTAL</span>
+                  <span>Rs. 1,290</span>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    color: '#000',
+                    marginTop: '2px',
+                  }}
+                >
+                  <span>Paid by Cash</span>
+                  <span>1,500</span>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    color: '#000',
+                  }}
+                >
+                  <span>Change</span>
+                  <span>210</span>
+                </div>
+
+                <div style={{ borderBottom: '1px dashed #666', margin: '8px 0' }} />
+
+                {/* Footer Note */}
+                <div
+                  style={{
+                    textAlign: 'center',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: '#222',
+                    marginTop: '6px',
+                  }}
+                >
+                  {settings.footerNote || 'Serving quality with a smile. Thank you!'}
+                </div>
+
+                {/* QR Code */}
+                {googleQrPreview && (
+                  <div style={{ textAlign: 'center', marginTop: '8px' }}>
+                    <img
+                      src={googleQrPreview}
+                      alt="QR Preview"
+                      style={{ width: '85px', height: '85px', display: 'block', margin: '0 auto' }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* CARD 3: Billing, Taxes & Currency */}
-          <div className={styles.card}>
+          {/* CARD: Billing, Taxes & Currency (accessible below printer settings) */}
+          <div className={styles.card} style={{ maxWidth: '500px' }}>
             <div className={styles.cardHeader}>
               <div className={styles.cardIconBox}>
                 <MoneySettings24Regular className={styles.icon20} />
               </div>
               <div className={styles.headerTextCol}>
-                <Body1 className={styles.headerTitle}>
-                  Currency and tax
-                </Body1>
+                <Body1 className={styles.headerTitle}>Currency and tax</Body1>
                 <Caption1 className={styles.headerSubtitle}>
                   Currency symbol and tax calculations at checkout
                 </Caption1>

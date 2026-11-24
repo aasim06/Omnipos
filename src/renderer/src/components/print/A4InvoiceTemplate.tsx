@@ -6,6 +6,7 @@ import { formatPKR } from '@/lib/utils';
 import { Printer, X, Receipt, MapPin, Star } from 'lucide-react';
 import { generateQrDataUrl } from '@/lib/qrCode';
 import { getEffectiveGoogleQrUrl } from '@/lib/googleMapsUrl';
+import { generateBarcodeDataUrl } from '@/lib/barcodeGenerator';
 
 interface A4InvoiceTemplateProps {
   order: Order;
@@ -582,6 +583,14 @@ export const A4InvoiceTemplate: React.FC<A4InvoiceTemplateProps> = ({
                 <strong className={styles.boldDark}>{cashierName}</strong>
               </div>
             </div>
+            {(() => {
+              const bUrl = generateBarcodeDataUrl(order.id, { width: 1.3, height: 26, displayValue: false });
+              return bUrl ? (
+                <div style={{ marginTop: '5px', textAlign: 'right' }}>
+                  <img src={bUrl} alt="Bill Barcode" style={{ height: '24px', maxWidth: '160px', display: 'inline-block' }} />
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
 

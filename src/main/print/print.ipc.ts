@@ -16,7 +16,14 @@ export function registerPrintIpc(): void {
     'print:receipt',
     async (
       event,
-      options?: { printerName?: string; silent?: boolean; html?: string },
+      options?: {
+        printerName?: string;
+        silent?: boolean;
+        html?: string;
+        copies?: number;
+        is58mm?: boolean;
+        printWidth?: string;
+      },
     ) => {
       const senderWin = BrowserWindow.fromWebContents(event.sender);
       let installedPrinters: Electron.PrinterInfo[] = [];
@@ -59,10 +66,17 @@ export function registerPrintIpc(): void {
 
       // 1. If custom HTML (e.g. KOT Kitchen Ticket or Thermal Receipt) is provided:
       if (options?.html) {
+        const is58 =
+          options?.is58mm ||
+          options?.printWidth === '58mm' ||
+          options?.printWidth === '48mm' ||
+          options?.printWidth === '44mm';
+        const winWidth = is58 ? 240 : 330;
+
         const printWin = new BrowserWindow({
           show: false,
-          width: 380,
-          height: 800,
+          width: winWidth,
+          height: 1000,
           paintWhenInitiallyHidden: true,
           webPreferences: {
             nodeIntegration: false,
@@ -77,7 +91,7 @@ export function registerPrintIpc(): void {
           );
 
           // Allow DOM, layout, CSS and fonts to completely paint
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 600));
 
           if (printWin.isDestroyed()) {
             return { ok: false, error: 'Print window closed unexpectedly' };
@@ -104,6 +118,7 @@ export function registerPrintIpc(): void {
                 printBackground: true,
                 deviceName: targetPrinter,
                 margins: { marginType: 'none' },
+                copies: options.copies && options.copies > 1 ? options.copies : 1,
               },
               (success, failureReason) => {
                 if (settled) return;
