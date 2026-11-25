@@ -13,6 +13,7 @@ import { ExpandedCartDrawer } from '@/features/pos/dialogs/ExpandedCartDrawer';
 import { A4InvoiceDialog } from '@/features/pos/dialogs/A4InvoiceDialog';
 import { WeightScaleDialog } from '@/features/pos/dialogs/WeightScaleDialog';
 import { BulkQtyDialog } from '@/features/pos/dialogs/BulkQtyDialog';
+import { DualUnitDialog } from '@/features/pos/dialogs/DualUnitDialog';
 import { DIALOG_SMOKE, useEscapeToClose } from '@/features/pos/posDialog';
 
 /** Below this window width the order pane turns into a bottom sheet. */
@@ -184,6 +185,9 @@ export function PosCounterView(props: PosCounterProps): React.JSX.Element {
 
       {/* ── Modal: Loose / Weight Scale Calculator ── */}
       <WeightScaleDialog pos={pos} />
+
+      {/* ── Modal: Dual Unit / Packaging Selector (Wholesale vs Retail Piece) ── */}
+      <DualUnitDialog pos={pos} />
 
       {/* ── Modal: Wholesale Quantity Numpad / Multiplier Popover ── */}
       <BulkQtyDialog pos={pos} />

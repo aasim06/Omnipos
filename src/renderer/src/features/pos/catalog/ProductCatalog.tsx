@@ -71,6 +71,8 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
     setWeighingProduct,
     setWeightAmount,
     setVariantPickerProduct,
+    setDualUnitProduct,
+    getUnitConversion,
     filteredProducts,
     isWeighableOrLiquid,
     inCartMap,
@@ -273,6 +275,7 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                   const isLowStock = !isFood && !isOut && product.openingStock !== null && product.openingStock !== undefined && product.openingStock <= lowStockLimit(product);
                   const inCartCount = inCartMap[product.id] || 0;
                   const isWeightItem = isWeighableOrLiquid(product.unit);
+                  const conv = getUnitConversion(product);
                   const photo = product.imageBase64 || product.imageUrl;
 
                   // Truly dynamic stock health calculation for each product
@@ -321,6 +324,9 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                         if (isWeightItem) {
                           setWeighingProduct(product);
                           setWeightAmount(1.0);
+                          playBeep();
+                        } else if (conv) {
+                          setDualUnitProduct(product);
                           playBeep();
                         } else if (product.hasVariants && product.variants && product.variants.length > 0) {
                           setVariantPickerProduct(product);
@@ -507,7 +513,8 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                         {isWeightItem ? (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setWeighingProduct(product);
                               setWeightAmount(1.0);
                               playBeep();
@@ -532,6 +539,34 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                             <Scales20Regular style={{ width: 13, height: 13 }} />
                             <span>Weigh</span>
                           </button>
+                        ) : conv ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDualUnitProduct(product);
+                              playBeep();
+                            }}
+                            style={{
+                              height: '30px',
+                              padding: '0 10px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              backgroundColor: '#0284C7',
+                              color: '#FFFFFF',
+                              fontWeight: 600,
+                              fontSize: '11px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              flexShrink: 0,
+                              boxShadow: '0 2px 4px rgba(2, 132, 199, 0.3)',
+                            }}
+                          >
+                            <Box20Regular style={{ width: 13, height: 13 }} />
+                            <span>{inCartCount > 0 ? `Unit (${inCartCount})` : 'Select Unit'}</span>
+                          </button>
                         ) : inCartCount > 0 ? (
                           <div
                             style={{
@@ -548,7 +583,14 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                             <button
                               type="button"
                               title="Decrease"
-                              onClick={() => updateCartQty(product.id, inCartCount - 1)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (inCartCount <= 1) {
+                                  removeFromCart(product.id);
+                                } else {
+                                  updateCartQty(product.id, -1);
+                                }
+                              }}
                               style={{
                                 width: '24px',
                                 height: '24px',
@@ -580,7 +622,10 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                             <button
                               type="button"
                               title="Add another"
-                              onClick={() => addToCart(product, 1)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addToCart(product, 1);
+                              }}
                               style={{
                                 width: '24px',
                                 height: '24px',
@@ -682,6 +727,8 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                     setWeighingProduct={setWeighingProduct}
                     setWeightAmount={setWeightAmount}
                     setVariantPickerProduct={setVariantPickerProduct}
+                    setDualUnitProduct={setDualUnitProduct}
+                    getUnitConversion={getUnitConversion}
                   />
                 );
               })

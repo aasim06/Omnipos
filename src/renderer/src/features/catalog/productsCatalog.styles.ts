@@ -766,6 +766,8 @@ export const useProductsCatalogStyles = makeStyles({
   thCategory: {
     padding: '14px 14px',
     width: '16%',
+    minWidth: '150px',
+    whiteSpace: 'nowrap',
     fontWeight: 600,
     fontSize: '11px',
     color: tokens.colorNeutralForeground2,
@@ -968,6 +970,7 @@ export const useProductsCatalogStyles = makeStyles({
     borderTopStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid', borderRightStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke2, borderBottomColor: tokens.colorNeutralStroke2, borderLeftColor: tokens.colorNeutralStroke2, borderRightColor: tokens.colorNeutralStroke2,
     width: 'fit-content',
+    whiteSpace: 'nowrap',
   },
   statusAvailable: {
     display: 'inline-flex',

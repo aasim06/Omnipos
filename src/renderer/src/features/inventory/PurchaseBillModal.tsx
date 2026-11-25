@@ -40,9 +40,9 @@ import { printGrn } from '@/lib/grnPrint';
 
 const useStyles = makeStyles({
   dialogSurface: {
-    maxWidth: '1020px',
+    maxWidth: '1060px',
     width: '95vw',
-    maxHeight: '92vh',
+    maxHeight: '94vh',
     height: 'auto',
     display: 'flex',
     flexDirection: 'column',
@@ -50,8 +50,8 @@ const useStyles = makeStyles({
     overflowX: 'hidden',
     paddingTop: '20px',
     paddingBottom: '16px',
-    paddingLeft: '32px',
-    paddingRight: '32px',
+    paddingLeft: '28px',
+    paddingRight: '28px',
     boxSizing: 'border-box',
   },
   dialogTitle: {
@@ -64,10 +64,10 @@ const useStyles = makeStyles({
     overflowY: 'auto',
     overflowX: 'hidden',
     marginTop: '6px',
-    marginBottom: '10px',
-    paddingRight: '16px',
+    marginBottom: '8px',
+    paddingRight: '12px',
     paddingLeft: '4px',
-    paddingBottom: '10px',
+    paddingBottom: '20px',
     boxSizing: 'border-box',
   },
   dialogActions: {
@@ -146,11 +146,11 @@ const useStyles = makeStyles({
   },
   tableInput: {
     width: '100%',
-    height: '38px',
-    paddingTop: '6px',
-    paddingBottom: '6px',
-    paddingLeft: '10px',
-    paddingRight: '10px',
+    height: '34px',
+    paddingTop: '4px',
+    paddingBottom: '4px',
+    paddingLeft: '8px',
+    paddingRight: '8px',
     borderRadius: '6px',
     borderTopWidth: '1px',
     borderBottomWidth: '1px',
@@ -166,7 +166,7 @@ const useStyles = makeStyles({
     borderRightColor: tokens.colorNeutralStroke1,
     backgroundColor: tokens.colorNeutralBackground1,
     color: tokens.colorNeutralForeground1,
-    fontSize: '13px',
+    fontSize: '12.5px',
     fontWeight: 500,
     boxSizing: 'border-box',
     outlineStyle: 'none',
@@ -800,7 +800,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                       return (
                       <tr key={line.id} className={styles.tableRow}>
                         {/* Item Name / Autocomplete */}
-                        <td style={{ padding: '6px 8px', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '8px 8px', verticalAlign: 'top' }}>
                           <ProductAutocomplete
                             placeholder="Select product or type..."
                             value={line.productName}
@@ -842,7 +842,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                         </td>
 
                         {/* Qty */}
-                        <td style={{ padding: '6px 6px', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '8px 6px', verticalAlign: 'top' }}>
                           <input
                             type="number"
                             min="0"
@@ -864,17 +864,18 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                                 onChange={(e) => updateLine(idx, { unitMode: e.target.value as 'base' | 'wholesale' })}
                                 className={styles.tableInput}
                                 style={{ marginTop: 4, fontSize: 11, padding: '2px 4px' }}
-                                title={`1 ${prod.primaryUnit} = ${rate} ${base}`}
                               >
                                 <option value="base">{base}</option>
-                                <option value="wholesale">{prod.primaryUnit} (×{rate})</option>
+                                <option value="wholesale">
+                                  {prod.primaryUnit} (×{rate})
+                                </option>
                               </select>
                             );
                           })()}
                         </td>
 
                         {/* Bonus / free qty */}
-                        <td style={{ padding: '6px 6px', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '8px 6px', verticalAlign: 'top' }}>
                           <input
                             type="number"
                             min="0"
@@ -889,7 +890,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                         </td>
 
                         {/* Purchase Cost */}
-                        <td style={{ padding: '6px 6px', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '8px 6px', verticalAlign: 'top' }}>
                           <input
                             type="number"
                             min="0"
@@ -901,7 +902,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                         </td>
 
                         {/* Retail Price */}
-                        <td style={{ padding: '6px 6px', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '8px 6px', verticalAlign: 'top' }}>
                           <input
                             type="number"
                             min="0"
@@ -923,10 +924,11 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                             return (
                               <div
                                 style={{
-                                  fontSize: 10.5,
-                                  marginTop: 3,
+                                  fontSize: '10.5px',
+                                  marginTop: '3px',
                                   textAlign: 'right',
-                                  color: margin <= 0 ? tokens.colorPaletteRedForeground1 : tokens.colorNeutralForeground3,
+                                  fontWeight: 600,
+                                  color: margin <= 0 ? tokens.colorPaletteRedForeground1 : tokens.colorPaletteGreenForeground1,
                                 }}
                                 title={`Cost per unit after discount and bonus: Rs. ${Math.round(cost * 100) / 100}`}
                               >
@@ -937,7 +939,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                         </td>
 
                         {/* Batch No */}
-                        <td style={{ padding: '6px 6px', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '8px 6px', verticalAlign: 'top' }}>
                           <input
                             type="text"
                             value={line.batchNumber || ''}
@@ -949,7 +951,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                         </td>
 
                         {/* Expiry Date */}
-                        <td style={{ padding: '6px 6px', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '8px 6px', verticalAlign: 'top' }}>
                           <CustomDateField
                             value={line.expiryDate || ''}
                             onChange={(v) => updateLine(idx, { expiryDate: v })}
@@ -959,13 +961,13 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                         </td>
 
                         {/* Line Total */}
-                        <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, fontSize: '13px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, fontSize: '13px', verticalAlign: 'top', height: '34px', lineHeight: '34px', whiteSpace: 'nowrap' }}>
                           PKR {line.totalCost.toLocaleString()}
                         </td>
 
                         {/* Remove & Add Size */}
-                        <td style={{ padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                        <td style={{ padding: '8px 4px', textAlign: 'center', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '34px', gap: '3px' }}>
                             {hasVariants && linkedProduct && (
                               <button
                                 type="button"
@@ -1104,14 +1106,17 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                     onChange={(e) => setFreightAmount(Number(e.target.value) || 0)}
                     placeholder="0"
                   />
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: tokens.colorNeutralForeground2 }}>
-                    <input type="checkbox" checked={taxClaimable} onChange={(e) => setTaxClaimable(e.target.checked)} />
-                    Tax is claimable (GST-registered: keep it out of stock cost)
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: tokens.colorNeutralForeground2 }}>
-                    <input type="checkbox" checked={printAfterSave} onChange={(e) => setPrintAfterSave(e.target.checked)} />
-                    Print GRN after saving
-                  </label>
+                  {/* Dedicated full-width row for checkboxes */}
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '6px' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: tokens.colorNeutralForeground2, userSelect: 'none' }}>
+                      <input type="checkbox" checked={taxClaimable} onChange={(e) => setTaxClaimable(e.target.checked)} style={{ cursor: 'pointer', width: '15px', height: '15px' }} />
+                      <span>Tax is claimable (GST-registered: keep it out of stock cost)</span>
+                    </label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: tokens.colorNeutralForeground2, userSelect: 'none' }}>
+                      <input type="checkbox" checked={printAfterSave} onChange={(e) => setPrintAfterSave(e.target.checked)} style={{ cursor: 'pointer', width: '15px', height: '15px' }} />
+                      <span>Print GRN after saving</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 

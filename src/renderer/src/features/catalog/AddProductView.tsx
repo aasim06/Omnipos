@@ -27,7 +27,6 @@ import {
   Scales20Regular,
   Flash20Regular,
   Checkmark16Filled,
-  Calendar20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -56,7 +55,6 @@ import {
 import { UNIT_OPTIONS } from '@/lib/units';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { CustomInput, CustomSelect } from '@/components/ui';
-import { CustomDateField } from '@/components/ui/CustomDateField';
 import {
   Tag,
   Circle,
@@ -2124,10 +2122,7 @@ export function AddProductView(): React.JSX.Element {
         secondaryUnit: data.secondaryUnit?.trim() || undefined,
         conversionRate: data.conversionRate ? Number(data.conversionRate) : undefined,
         secondaryPrice: data.secondaryPrice !== undefined ? Number(data.secondaryPrice) : undefined,
-        trackBatchExpiry: !!data.trackBatchExpiry,
-        batchNumber: data.batchNumber?.trim() || undefined,
-        mfgDate: data.mfgDate || undefined,
-        expiryDate: data.expiryDate || undefined,
+        trackBatchExpiry: businessProfiles.includes('pharmacy') || detectedProfile === 'pharmacy',
         hasVariants: variants.length > 0,
         variants: variants.length > 0 ? variants : undefined,
         createdAt: new Date().toISOString(),
@@ -2155,6 +2150,10 @@ export function AddProductView(): React.JSX.Element {
           batchNumber: '',
           mfgDate: '',
           expiryDate: '',
+          primaryUnit: '',
+          secondaryUnit: '',
+          conversionRate: undefined,
+          secondaryPrice: undefined,
           imageUrl: '',
           description: '',
         });
@@ -2288,22 +2287,6 @@ export function AddProductView(): React.JSX.Element {
     // Opening stock is valued at cost on the ledger
     if (isStocked && opening > 0 && !(Number(data.costPrice) > 0)) {
       notifyWarning('Enter the purchase cost for the opening stock: it is what the stock is worth.');
-      return;
-    }
-    // Medicines are tracked batch by batch (FEFO, expiry alerts, recalls)
-    const isMedicine = isStocked && (businessProfiles.includes('pharmacy') || detectedProfile === 'pharmacy');
-    if (isMedicine && opening > 0 && (!data.batchNumber?.trim() || !data.expiryDate)) {
-      notifyWarning('Batch number and expiry date are required for medicines with opening stock.');
-      return;
-    }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (data.expiryDate && new Date(`${data.expiryDate}T00:00:00`).getTime() < today.getTime()) {
-      notifyWarning('The expiry date has already passed. Expired stock should not be added.');
-      return;
-    }
-    if (data.mfgDate && data.expiryDate && data.mfgDate > data.expiryDate) {
-      notifyWarning('The manufacturing date is after the expiry date.');
       return;
     }
     // A wholesale unit must hold more than one retail unit
@@ -4680,73 +4663,6 @@ export function AddProductView(): React.JSX.Element {
                   )}
                 />
               </div>
-            </div>
-
-            {/* ── Feature: Batch Number, Expiry & Manufacturing Dates ── */}
-            <div style={{ marginTop: '16px', padding: '16px', borderRadius: '8px', backgroundColor: tokens.colorNeutralBackground3, border: `1px solid ${tokens.colorPaletteYellowBorder1}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Calendar20Regular style={{ color: tokens.colorStatusWarningForeground1 }} />
-                  <span style={{ fontWeight: 600, fontSize: '14px', color: tokens.colorNeutralForeground1 }}>
-                    Batch Number &amp; Expiry Tracking
-                  </span>
-                </div>
-                <Controller
-                  control={productForm.control}
-                  name="trackBatchExpiry"
-                  render={({ field }) => (
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: tokens.colorNeutralForeground1 }}>
-                      <input
-                        type="checkbox"
-                        checked={!!field.value}
-                        onChange={(e) => field.onChange(e.target.checked)}
-                      />
-                      Enable Expiry &amp; Batch
-                    </label>
-                  )}
-                />
-              </div>
-              <Caption1 style={{ color: tokens.colorNeutralForeground2, display: 'block', marginBottom: '14px' }}>
-                Track medicine/food batches, manufacturing dates, and automatically warn cashiers before selling expired products.
-              </Caption1>
-
-              {productForm.watch('trackBatchExpiry') && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
-                  <Controller
-                    control={productForm.control}
-                    name="batchNumber"
-                    render={({ field }) => (
-                      <CustomInput
-                        label="Batch / Lot Number"
-                        placeholder="e.g. BATCH-2026-04"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-
-                  <Controller
-                    control={productForm.control}
-                    name="mfgDate"
-                    render={({ field }) => (
-                      <CustomDateField
-                        label="Manufacturing Date (MFG)"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        max={new Date().toISOString().slice(0, 10)}
-                      />
-                    )}
-                  />
-
-                  <Controller
-                    control={productForm.control}
-                    name="expiryDate"
-                    render={({ field }) => (
-                      <CustomDateField label="Expiry Date (EXP)" value={field.value || ''} onChange={field.onChange} />
-                    )}
-                  />
-                </div>
-              )}
             </div>
           </div>
 

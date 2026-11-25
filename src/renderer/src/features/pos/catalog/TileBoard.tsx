@@ -770,7 +770,7 @@ function ItemTile({
   compact?: boolean;
   onToggleTag: (product: Product, tag: string) => void;
 }) {
-  const { F, isDark, inCartMap, addToCart, isWeighableOrLiquid, setWeighingProduct, setWeightAmount, setVariantPickerProduct } = pos;
+  const { F, isDark, inCartMap, addToCart, isWeighableOrLiquid, setWeighingProduct, setWeightAmount, setVariantPickerProduct, setDualUnitProduct, getUnitConversion } = pos;
   const product = React.useMemo(() => decodeProductVariants(rawProduct), [rawProduct]);
   const variantCount = product.variants?.length ?? 0;
   const hasVariants = variantCount > 0;
@@ -815,11 +815,17 @@ function ItemTile({
       setWeighingProduct(product);
       setWeightAmount(1.0);
       playBeep();
-    } else if (hasVariants) {
-      setVariantPickerProduct(product);
-      playBeep();
     } else {
-      addToCart(product, 1); // plays its own beep
+      const conv = getUnitConversion(product);
+      if (conv) {
+        setDualUnitProduct(product);
+        playBeep();
+      } else if (hasVariants) {
+        setVariantPickerProduct(product);
+        playBeep();
+      } else {
+        addToCart(product, 1); // plays its own beep
+      }
     }
   };
 

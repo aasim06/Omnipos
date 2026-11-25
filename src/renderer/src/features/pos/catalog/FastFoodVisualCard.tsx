@@ -21,6 +21,8 @@ export interface FastFoodVisualCardProps {
   setWeighingProduct: (p: Product) => void;
   setWeightAmount: (n: number) => void;
   setVariantPickerProduct: (p: Product) => void;
+  setDualUnitProduct?: (p: Product) => void;
+  getUnitConversion?: (p?: Product | null) => any;
 }
 
 /* Muted per-category swatches: [light bg, light ink, dark bg, dark ink]. */
@@ -75,6 +77,8 @@ export const FastFoodVisualCard = React.memo(
     setWeighingProduct,
     setWeightAmount,
     setVariantPickerProduct,
+    setDualUnitProduct,
+    getUnitConversion,
   }: FastFoodVisualCardProps) {
     const product = React.useMemo(() => decodeProductVariants(rawProduct), [rawProduct]);
     const variants = product.variants || [];
@@ -109,11 +113,17 @@ export const FastFoodVisualCard = React.memo(
         setWeighingProduct(product);
         setWeightAmount(1.0);
         playBeep();
-      } else if (hasVariants) {
-        setVariantPickerProduct(product);
-        playBeep();
       } else {
-        addToCart(product, 1); // addToCart plays its own beep
+        const conv = getUnitConversion ? getUnitConversion(product) : null;
+        if (conv && setDualUnitProduct) {
+          setDualUnitProduct(product);
+          playBeep();
+        } else if (hasVariants) {
+          setVariantPickerProduct(product);
+          playBeep();
+        } else {
+          addToCart(product, 1); // addToCart plays its own beep
+        }
       }
     };
 

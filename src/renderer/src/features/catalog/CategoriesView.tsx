@@ -18,7 +18,6 @@ import {
   Add20Regular,
   Delete20Regular,
   Edit20Regular,
-  Warning20Regular,
   Food24Regular,
   BuildingRetail24Regular,
   Dismiss16Regular,
@@ -110,12 +109,11 @@ export function CategoriesView(): React.JSX.Element {
   const styles = useCategoriesStyles();
   const queryClient = useQueryClient();
   const { notifySuccess, notifyError, notifyWarning } = useAppToast();
-  // Rename / delete-with-move / uncategorised items
+  // Rename / delete-with-move
   const [renameCat, setRenameCat] = useState<Category | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deletingCat, setDeletingCat] = useState<Category | null>(null);
   const [moveTarget, setMoveTarget] = useState('');
-  const [orphanTargets, setOrphanTargets] = useState<Record<string, string>>({});
   const [isBusy, setIsBusy] = useState(false);
   const confirmModal = useConfirmDialog();
   const { can, businessProfiles = ['standard', 'food'], refreshModules } = useLicense();
@@ -351,21 +349,6 @@ export function CategoriesView(): React.JSX.Element {
     }
   };
 
-  const moveOrphans = async (module: ModuleKey, from: string) => {
-    const to = orphanTargets[`${module}|${from}`];
-    if (!to) return;
-    setIsBusy(true);
-    try {
-      const moved = await posApi.moveCategoryItems(module, from, to);
-      await refreshAll();
-      notifySuccess(`${moved} item(s) moved from "${from || 'no category'}" to "${to}".`);
-    } catch (err: any) {
-      notifyError(err?.message || 'Could not move the items');
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
   if ((isLoadingCategories || isLoadingProducts) && categories.length === 0) {
     return <TablePageSkeleton />;
   }
@@ -555,57 +538,6 @@ export function CategoriesView(): React.JSX.Element {
           </div>
         </div>
       )}
-
-      {/* ── Items without a valid category ─────────────────────── */}
-      {(() => {
-        const orphans: { module: ModuleKey; name: string; count: number }[] = [];
-        for (const module of ['fastfood', 'minimart'] as ModuleKey[]) {
-          const names = new Set(categories.filter((c) => c.module === module).map((c) => c.name));
-          const byName = new Map<string, number>();
-          for (const p of products) {
-            if ((p.module || 'minimart') !== module || names.has(p.category)) continue;
-            byName.set(p.category || '', (byName.get(p.category || '') || 0) + 1);
-          }
-          byName.forEach((count, name) => orphans.push({ module, name, count }));
-        }
-        if (orphans.length === 0) return null;
-        return (
-          <div className={`${styles.sectionBox} ${styles.sectionBoxSpaced}`}>
-            <div className={styles.sectionTitle}>
-              <Warning20Regular />
-              <span>Items without a category ({orphans.reduce((s, o) => s + o.count, 0)})</span>
-            </div>
-            <Caption1 style={{ display: 'block', margin: '4px 0 10px', color: tokens.colorNeutralForeground3 }}>
-              These items are filed under a category that does not exist, so they are missing from category filters and POS tabs.
-              Move them to a category.
-            </Caption1>
-            {orphans.map((o) => {
-              const key = `${o.module}|${o.name}`;
-              const options = categories.filter((c) => c.module === o.module).map((c) => ({ value: c.name, label: c.name }));
-              return (
-                <div key={key} style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <div style={{ minWidth: 200 }}>
-                    <Body1 style={{ fontWeight: 600 }}>{o.name || '(no category)'}</Body1>
-                    <Caption1 style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
-                      {o.count} item{o.count === 1 ? '' : 's'} · {o.module === 'fastfood' ? 'Fast Food' : storeMod.shortRetailLabel}
-                    </Caption1>
-                  </div>
-                  <div style={{ minWidth: 220 }}>
-                    <CustomSelect
-                      value={orphanTargets[key] || ''}
-                      onChange={(v) => setOrphanTargets((t) => ({ ...t, [key]: v }))}
-                      options={[{ value: '', label: 'Move to…' }, ...options]}
-                    />
-                  </div>
-                  <Button appearance="primary" size="small" disabled={!orphanTargets[key] || isBusy} onClick={() => moveOrphans(o.module, o.name)}>
-                    Move items
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
 
       {/* ── Create Category Dialog ─────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={(_, data) => setIsDialogOpen(data.open)}>

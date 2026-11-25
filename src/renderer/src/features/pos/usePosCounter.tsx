@@ -209,6 +209,8 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
   const [weightAmount, setWeightAmount] = useState<number>(1.0);
   const [weightCalcMode, setWeightCalcMode] = useState<'weight' | 'rupees'>('weight');
   const [targetRupees, setTargetRupees] = useState<number>(50);
+  /* Dual Unit Packaging / Unit Selector Popover */
+  const [dualUnitProduct, setDualUnitProduct] = useState<Product | null>(null);
   /* Quick Quantity Numpad / Multiplier Popover */
   const [editingQtyItem, setEditingQtyItem] = useState<{
     productId: string;
@@ -697,6 +699,14 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
         return;
       }
 
+      const conv = getUnitConversion(found);
+      if (conv) {
+        setDualUnitProduct(found);
+        setBarcodeInput('');
+        playBeep();
+        return;
+      }
+
       addToCart(found, qty);
       setLastScannedFeedback({
         isSuccess: true,
@@ -836,6 +846,63 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     });
     playBeep();
   }, []);
+  const addDualUnitToCart = React.useCallback((
+    product: Product,
+    unitType: 'primary' | 'secondary',
+    qty = 1
+  ): boolean => {
+    const conv = getUnitConversion(product);
+    if (!conv) {
+      addToCart(product, qty);
+      return true;
+    }
+    const isPrimary = unitType === 'primary';
+    const isFood = product.module === 'fastfood';
+    const unitPrice = isPrimary ? conv.wholesalePrice : conv.retailPrice;
+    const unitLabel = isPrimary ? conv.wholesale : conv.retail;
+    const unitFactor = isPrimary ? conv.rate : 1;
+    const variantLabel = isPrimary ? conv.wholesale : undefined;
+    const addedBaseQty = qty * unitFactor;
+
+    if (!isFood && product.openingStock !== null && product.openingStock !== undefined) {
+      const inCartBase = cart.filter((i) => i.productId === product.id).reduce((s, i) => s + cartLineBaseQty(i), 0);
+      if (inCartBase + addedBaseQty > product.openingStock) {
+        playErrorBeep();
+        return false;
+      }
+    }
+
+    setCart((prev) => {
+      const existsIndex = prev.findIndex(
+        (item) => item.productId === product.id && item.variantLabel === variantLabel
+      );
+      if (existsIndex > -1) {
+        return prev.map((item, idx) =>
+          idx === existsIndex ? { ...item, quantity: item.quantity + qty } : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          productId: product.id,
+          name: product.name,
+          nameUrdu: product.nameUrdu,
+          unitPrice,
+          quantity: qty,
+          variantLabel,
+          costPrice: product.costPrice,
+          batchNumber: product.batchNumber,
+          expiryDate: product.expiryDate,
+          unitLabel,
+          selectedUnit: isPrimary ? 'primary' : 'secondary',
+          unitFactor: isPrimary ? conv.rate : undefined,
+          imageUrl: product.imageUrl,
+        },
+      ];
+    });
+    playBeep();
+    return true;
+  }, [cart, addToCart]);
   const removeFromCart = React.useCallback((productId: string, variantLabel?: string) => {
     setCart((prev) =>
       prev.filter((item) => !(item.productId === productId && item.variantLabel === variantLabel))
@@ -1396,6 +1463,8 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     setWeightCalcMode,
     targetRupees,
     setTargetRupees,
+    dualUnitProduct,
+    setDualUnitProduct,
     editingQtyItem,
     setEditingQtyItem,
     customQtyInput,
@@ -1444,6 +1513,7 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     handleApplyCustomQty,
     inCartMap,
     addToCart,
+    addDualUnitToCart,
     removeFromCart,
     updateCartQty,
     switchCartLineUnit,
@@ -1474,14 +1544,45 @@ export type PosCounterState = ReturnType<typeof usePosCounter>;
 export function getUnitConversion(p?: Product | null) {
   const rate = Number(p?.conversionRate || 0);
   if (!p || !p.primaryUnit || rate <= 1 || (p.variants && p.variants.length > 0)) return null;
-  const wholesalePrice = Number(p.price) || 0;
-  const piece = Number(p.secondaryPrice);
+
+  const basePrice = Number(p.price) || 0;
+  const secPrice = Number(p.secondaryPrice) || 0;
+
+  let retailPrice = 0;
+  let wholesalePrice = 0;
+
+  if (secPrice > 0 && basePrice > secPrice) {
+    // basePrice was entered as Wholesale Box price (e.g. 50), secPrice is Retail Piece price (e.g. 5)
+    wholesalePrice = basePrice;
+    retailPrice = secPrice;
+  } else if (secPrice > 0 && secPrice > basePrice) {
+    // secPrice was entered as Wholesale Box price (e.g. 50), basePrice is Retail Piece price (e.g. 5)
+    wholesalePrice = secPrice;
+    retailPrice = basePrice;
+  } else if (secPrice > 0 && secPrice === basePrice) {
+    // Both entered as piece price:
+    retailPrice = secPrice;
+    wholesalePrice = Math.round(secPrice * rate * 100) / 100;
+  } else {
+    // Single price provided (basePrice):
+    // If unit matches wholesale unit (e.g. Box), basePrice is for Box:
+    const isWholesaleBase = p.unit && p.primaryUnit && p.unit.trim().toLowerCase() === p.primaryUnit.trim().toLowerCase();
+    if (isWholesaleBase) {
+      wholesalePrice = basePrice;
+      retailPrice = Math.round((basePrice / rate) * 100) / 100;
+    } else {
+      // Otherwise in standard POS (like Med2 PCS with price 5), basePrice is retail piece price:
+      retailPrice = basePrice;
+      wholesalePrice = Math.round(basePrice * rate * 100) / 100;
+    }
+  }
+
   return {
     rate,
     wholesale: p.primaryUnit,
     retail: p.secondaryUnit || p.unit || 'PCS',
     wholesalePrice,
-    retailPrice: piece > 0 ? piece : Math.round((wholesalePrice / rate) * 100) / 100,
+    retailPrice,
   };
 }
 

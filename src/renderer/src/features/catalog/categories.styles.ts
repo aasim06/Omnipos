@@ -162,6 +162,7 @@ export const useCategoriesStyles = makeStyles({
     fontWeight: 600,
     padding: '1px 6px',
     borderRadius: '4px',
+    whiteSpace: 'nowrap',
   },
   productCountText: {
     color: tokens.colorNeutralForeground2,
