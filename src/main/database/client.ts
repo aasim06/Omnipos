@@ -331,6 +331,7 @@ export async function initializeDatabase(database: PrismaClient = getPrisma()): 
   for (const col of [
     `"batchNumber" TEXT`, `"expiryDate" TEXT`, `"recipe" TEXT`, `"itemRole" TEXT`, `"barcode" TEXT`,
     `"primaryUnit" TEXT`, `"secondaryUnit" TEXT`, `"conversionRate" REAL`, `"secondaryPrice" REAL`,
+    `"genericName" TEXT`,
   ]) {
     try {
       await database.$executeRawUnsafe(`ALTER TABLE "Product" ADD COLUMN ${col}`);

@@ -38,6 +38,7 @@ model Product {
   secondaryUnit String?        // retail / base unit, e.g. "Piece"
   conversionRate Float?        // base units per wholesale unit, e.g. 24
   secondaryPrice Float?
+  genericName  String?         // Formula / Generic / Salt name (Pharmacy)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 

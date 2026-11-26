@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams, useLocation } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -10,7 +10,8 @@ import {
   Textarea,
   Dialog,
   DialogSurface,
-  mergeClasses } from '@fluentui/react-components';
+  mergeClasses
+} from '@fluentui/react-components';
 import {
   ArrowLeft20Regular,
   Save20Regular,
@@ -426,9 +427,10 @@ export const PRICING_TYPES = PRICING_TYPES_FASTFOOD;
 
 const productSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters'),
+  nameUrdu: z.string().optional(),
   module: z.enum(['fastfood', 'minimart']),
   category: z.string().min(1, 'Category is required'),
-  price: z.coerce.number().positive('Retail price must be greater than 0'),
+  price: z.coerce.number().positive('Retail price must be greater than 0').default(1),
   costPrice: z.coerce.number().min(0, 'Cost price cannot be negative').optional(),
   pricingType: z.string().default('fixed'),
   unit: z.string().default('PCS'),
@@ -447,6 +449,7 @@ const productSchema = z.object({
   secondaryUnit: z.string().optional(),
   conversionRate: z.coerce.number().min(1).optional(),
   secondaryPrice: z.coerce.number().min(0).optional(),
+  genericName: z.string().optional(),
   trackBatchExpiry: z.boolean().optional().default(false),
   batchNumber: z.string().optional(),
   mfgDate: z.string().optional(),
@@ -479,7 +482,11 @@ import { useAddProductStyles, useStyles } from './addProduct.styles';
 export function AddProductView(): React.JSX.Element {
   const styles = useAddProductStyles();
   const navigate = useNavigate();
+  const { id: routeId } = useParams<{ id?: string }>();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const editId = routeId || searchParams.get('edit') || searchParams.get('id') || null;
+  const isEditMode = Boolean(editId);
   const queryClient = useQueryClient();
   const { notifySuccess, notifyWarning, notifyError } = useAppToast();
   const confirmModal = useConfirmDialog();
@@ -500,13 +507,13 @@ export function AddProductView(): React.JSX.Element {
     rawUrlModule === 'minimart' || rawUrlModule === 'omnimart'
       ? 'minimart'
       : rawUrlModule === 'fastfood'
-      ? 'fastfood'
-      : null;
+        ? 'fastfood'
+        : null;
 
   const defaultModule: ModuleKey =
     normalizedUrlModule &&
-    ((normalizedUrlModule === 'fastfood' && storeMod.allowFastFood) ||
-      (normalizedUrlModule === 'minimart' && storeMod.allowMinimart))
+      ((normalizedUrlModule === 'fastfood' && storeMod.allowFastFood) ||
+        (normalizedUrlModule === 'minimart' && storeMod.allowMinimart))
       ? normalizedUrlModule
       : storeMod.defaultModule;
 
@@ -526,15 +533,26 @@ export function AddProductView(): React.JSX.Element {
     staleTime: 60000,
   });
 
+  const { data: editingProductData } = useQuery<Product | null>({
+    queryKey: ['product', editId],
+    queryFn: async () => {
+      if (!editId) return null;
+      const list = await posApi.fetchProducts();
+      return list.find((p) => p.id === editId) || null;
+    },
+    enabled: isEditMode,
+  });
+
   const generateRandomSku = () => String(Math.floor(10000000 + Math.random() * 90000000));
 
   const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: '',
+      nameUrdu: '',
       module: defaultModule,
       category: searchParams.get('category') || 'General',
-      price: undefined,
+      price: 1,
       costPrice: undefined,
       pricingType: 'fixed',
       unit: defaultModule === 'minimart' ? 'PCS' : 'PCS',
@@ -548,6 +566,7 @@ export function AddProductView(): React.JSX.Element {
       secondaryUnit: '',
       conversionRate: undefined,
       secondaryPrice: undefined,
+      genericName: '',
       trackBatchExpiry: false,
       batchNumber: '',
       mfgDate: '',
@@ -736,6 +755,7 @@ export function AddProductView(): React.JSX.Element {
   const activeCategoryObj = categories.find((c) => c.name === watchedCategory);
   const detectedProfile = detectCategoryProfile(watchedCategory || '', activeCategoryObj?.profile);
   const profileConfig = CATEGORY_PROFILES[detectedProfile];
+  const isPharmacy = (businessProfiles.includes('pharmacy') || detectedProfile === 'pharmacy') && watchedModule !== 'fastfood';
 
   const activeRetailProfileKey = React.useMemo<CategoryProfile>(() => {
     const specific = businessProfiles.find((p) => p !== 'standard' && p !== 'food');
@@ -1031,11 +1051,11 @@ export function AddProductView(): React.JSX.Element {
     const updated = exists
       ? selectedShoeSizes.filter((s) => s !== sizeLabel)
       : [...selectedShoeSizes, sizeLabel].sort((a, b) => {
-          const numA = parseFloat(a);
-          const numB = parseFloat(b);
-          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-          return a.localeCompare(b);
-        });
+        const numA = parseFloat(a);
+        const numB = parseFloat(b);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.localeCompare(b);
+      });
     setSelectedShoeSizes(updated);
     rebuildVariantsFromShoeSelection(updated);
   };
@@ -1953,8 +1973,9 @@ export function AddProductView(): React.JSX.Element {
     }
   }, [watchedModule]);
 
-  // Synchronize URL parameters (module, category, returnUrl) dynamically
+  // Synchronize URL parameters (module, category, returnUrl) dynamically (only when creating new)
   useEffect(() => {
+    if (isEditMode) return;
     const rawModule = searchParams.get('module');
     const queryCat = searchParams.get('category');
 
@@ -1991,7 +2012,55 @@ export function AddProductView(): React.JSX.Element {
         applyCategoryProfileSettings(fallbackCat.name);
       }
     }
-  }, [searchParams, categories]);
+  }, [searchParams, categories, isEditMode]);
+
+  // Populate form with existing product details in Edit Mode
+  useEffect(() => {
+    if (!editingProductData) return;
+    const ep = editingProductData;
+    productForm.reset({
+      name: ep.name || '',
+      nameUrdu: (ep as any).nameUrdu || '',
+      module: ep.module || defaultModule,
+      category: ep.category || 'General',
+      price: ep.price,
+      costPrice: ep.costPrice,
+      pricingType: ep.pricingType || 'fixed',
+      unit: ep.unit || 'PCS',
+      skuCode: ep.skuCode || '',
+      rackLocation: ep.rackLocation || '',
+      prepTime: ep.prepTime,
+      openingStock: ep.openingStock,
+      minThreshold: ep.minThreshold,
+      imageUrl: ep.imageUrl || '',
+      description: ep.description || '',
+      primaryUnit: ep.primaryUnit || '',
+      secondaryUnit: ep.secondaryUnit || '',
+      conversionRate: ep.conversionRate,
+      secondaryPrice: ep.secondaryPrice,
+      genericName: ep.genericName || '',
+      trackBatchExpiry: ep.trackBatchExpiry ?? false,
+      batchNumber: ep.batchNumber || '',
+      mfgDate: ep.mfgDate || '',
+      expiryDate: ep.expiryDate || '',
+    });
+
+    if (ep.imageUrl || ep.imageBase64) {
+      setImagePreview(ep.imageBase64 || ep.imageUrl || null);
+    }
+    if (ep.module === 'fastfood' || ep.module === 'minimart') {
+      setActiveDepartmentTab(ep.module);
+    }
+    if (ep.pricingType) {
+      setPricingType(ep.pricingType);
+    }
+    if (ep.variants && ep.variants.length > 0) {
+      setVariants(ep.variants);
+    }
+    if (ep.category) {
+      applyCategoryProfileSettings(ep.category);
+    }
+  }, [editingProductData]);
 
   // Whenever article price changes, sync all shoe size variants to the same article price
   useEffect(() => {
@@ -2099,9 +2168,16 @@ export function AddProductView(): React.JSX.Element {
           : data.price;
       const combinedNotes = data.description?.trim() || undefined;
 
+      const costChanged =
+        isEditMode &&
+        editingProductData &&
+        Math.abs(Number(data.costPrice || 0) - Number(editingProductData.costPrice || 0)) > 0.005;
+
       const newProduct: Product = {
-        id: uid(data.module === 'fastfood' ? 'prod_ff_' : 'prod_mm_'),
+        ...(isEditMode && editingProductData ? editingProductData : {}),
+        id: isEditMode && editingProductData ? editingProductData.id : uid(data.module === 'fastfood' ? 'prod_ff_' : 'prod_mm_'),
         name: data.name.trim(),
+        nameUrdu: data.nameUrdu?.trim() || undefined,
         module: data.module,
         category: data.category,
         price: effectivePrice,
@@ -2110,22 +2186,28 @@ export function AddProductView(): React.JSX.Element {
         itemRole: data.module === 'fastfood' ? 'food_menu' : 'retail_product',
         isKitchenRouted: data.module === 'fastfood',
         unit: data.unit,
-        skuCode: data.skuCode || generateRandomSku(),
-        rackLocation: data.rackLocation,
+        skuCode: data.skuCode || (editingProductData?.skuCode) || generateRandomSku(),
+        barcode: data.skuCode || editingProductData?.barcode,
+        rackLocation: data.rackLocation?.trim() || undefined,
         prepTime: data.prepTime,
-        openingStock: data.openingStock !== undefined && data.openingStock !== null ? data.openingStock : (data.module === 'fastfood' ? undefined : 0),
+        openingStock: isEditMode && editingProductData ? editingProductData.openingStock : (data.openingStock !== undefined && data.openingStock !== null ? data.openingStock : (data.module === 'fastfood' ? undefined : 0)),
         // null clears the item's own limit so the store default applies
         minThreshold: (data.minThreshold ?? null) as number | undefined,
         imageUrl: imagePreview || data.imageUrl || undefined,
+        imageBase64: imagePreview && imagePreview.startsWith('data:') ? imagePreview : (editingProductData?.imageBase64 || undefined),
         description: combinedNotes || undefined,
         primaryUnit: data.primaryUnit?.trim() || undefined,
         secondaryUnit: data.secondaryUnit?.trim() || undefined,
         conversionRate: data.conversionRate ? Number(data.conversionRate) : undefined,
         secondaryPrice: data.secondaryPrice !== undefined ? Number(data.secondaryPrice) : undefined,
+        genericName: data.genericName?.trim() || undefined,
         trackBatchExpiry: businessProfiles.includes('pharmacy') || detectedProfile === 'pharmacy',
+        batchNumber: data.batchNumber?.trim() || undefined,
+        mfgDate: data.mfgDate || undefined,
+        expiryDate: data.expiryDate || undefined,
         hasVariants: variants.length > 0,
         variants: variants.length > 0 ? variants : undefined,
-        createdAt: new Date().toISOString(),
+        createdAt: isEditMode && editingProductData ? (editingProductData.createdAt || new Date().toISOString()) : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       if (variants.length > 0) {
@@ -2135,6 +2217,17 @@ export function AddProductView(): React.JSX.Element {
     },
     onSuccess: (saved: any) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      if (isEditMode) {
+        queryClient.invalidateQueries({ queryKey: ['product', editId] });
+        notifySuccess(`"${saved?.name || 'Product'}" updated successfully!`);
+        const returnUrl = searchParams.get('returnUrl') || (location.state as any)?.from;
+        if (returnUrl) {
+          navigate(returnUrl);
+        } else {
+          navigate(-1);
+        }
+        return;
+      }
       if (addAnotherRef.current) {
         addAnotherRef.current = false;
         notifySuccess(`"${saved?.name || 'Item'}" saved. Enter the next item.`);
@@ -2143,7 +2236,7 @@ export function AddProductView(): React.JSX.Element {
         productForm.reset({
           ...keep,
           name: '',
-          price: undefined as any,
+          price: 1,
           costPrice: undefined,
           skuCode: '',
           openingStock: keep.module === 'fastfood' ? undefined : 0,
@@ -2154,6 +2247,7 @@ export function AddProductView(): React.JSX.Element {
           secondaryUnit: '',
           conversionRate: undefined,
           secondaryPrice: undefined,
+          genericName: '',
           imageUrl: '',
           description: '',
         });
@@ -2161,7 +2255,7 @@ export function AddProductView(): React.JSX.Element {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
-      const returnUrl = searchParams.get('returnUrl');
+      const returnUrl = searchParams.get('returnUrl') || (location.state as any)?.from;
       if (returnUrl) {
         navigate(returnUrl);
       } else {
@@ -2296,7 +2390,10 @@ export function AddProductView(): React.JSX.Element {
     }
     // Same name in the same department: usually a mistake
     const same = allProducts.find(
-      (p) => (p.module || 'minimart') === data.module && p.name.trim().toLowerCase() === data.name.trim().toLowerCase()
+      (p) =>
+        (p.module || 'minimart') === data.module &&
+        p.name.trim().toLowerCase() === data.name.trim().toLowerCase() &&
+        p.id !== editId
     );
     if (same) {
       const ok = await confirmModal({
@@ -2304,6 +2401,18 @@ export function AddProductView(): React.JSX.Element {
         message: `"${same.name}" is already in ${same.category}${same.skuCode ? ` (SKU ${same.skuCode})` : ''}. Two items with one name split their stock and confuse search. Add a strength or pack size to the name if it is a different item.\n\nCreate it anyway?`,
         confirmLabel: 'Create anyway',
         intent: 'danger',
+      });
+      if (!ok) return;
+    }
+    const costChanged =
+      isEditMode &&
+      editingProductData &&
+      Math.abs(Number(data.costPrice || 0) - Number(editingProductData.costPrice || 0)) > 0.005;
+    if (costChanged) {
+      const ok = await confirmModal({
+        title: 'Change the average cost?',
+        message: `The average cost of "${data.name}" changes from PKR ${Number(editingProductData!.costPrice || 0).toLocaleString()} to PKR ${Number(data.costPrice || 0).toLocaleString()}. This changes the value of the stock on hand and future profit figures. Normally the cost comes from purchases (Stock In).`,
+        confirmLabel: 'Change cost',
       });
       if (!ok) return;
     }
@@ -2327,17 +2436,26 @@ export function AddProductView(): React.JSX.Element {
           <Button
             appearance="subtle"
             icon={<ArrowLeft20Regular />}
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              const returnUrl = searchParams.get('returnUrl') || (location.state as any)?.from;
+              if (returnUrl) {
+                navigate(returnUrl);
+              } else {
+                navigate(-1);
+              }
+            }}
             className={styles.headerBackBtn}
           >
             Back
           </Button>
           <div>
             <Subtitle1 as="h1" className={styles.headerTitle}>
-              Add New Product to Catalog
+              {isEditMode ? `Edit Product: ${editingProductData?.name || ''}` : 'Add New Product to Catalog'}
             </Subtitle1>
             <Caption1 className={styles.headerSubtitle}>
-              Create a new item for Fast Food menu or Omnimart supermarket inventory
+              {isEditMode
+                ? 'Update product pricing, inventory thresholds, dual units, and formula'
+                : 'Create a new item for Fast Food menu or Omnimart supermarket inventory'}
             </Caption1>
           </div>
         </div>
@@ -2345,21 +2463,30 @@ export function AddProductView(): React.JSX.Element {
         <div className={styles.headerActions}>
           <Button
             appearance="subtle"
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              const returnUrl = searchParams.get('returnUrl') || (location.state as any)?.from;
+              if (returnUrl) {
+                navigate(returnUrl);
+              } else {
+                navigate(-1);
+              }
+            }}
             className={styles.btnCancel}
           >
             Cancel
           </Button>
-          <Button
-            appearance="secondary"
-            disabled={saveProductMutation.isPending}
-            onClick={() => {
-              addAnotherRef.current = true;
-              void productForm.handleSubmit(onSubmit, () => (addAnotherRef.current = false))();
-            }}
-          >
-            Save &amp; add another
-          </Button>
+          {!isEditMode && (
+            <Button
+              appearance="secondary"
+              disabled={saveProductMutation.isPending}
+              onClick={() => {
+                addAnotherRef.current = true;
+                void productForm.handleSubmit(onSubmit, () => (addAnotherRef.current = false))();
+              }}
+            >
+              Save &amp; add another
+            </Button>
+          )}
           <Button
             appearance="primary"
             icon={<Save20Regular />}
@@ -2370,7 +2497,7 @@ export function AddProductView(): React.JSX.Element {
             }}
             className={styles.btnPrimarySave}
           >
-            {saveProductMutation.isPending ? 'Saving...' : 'Save Product'}
+            {saveProductMutation.isPending ? 'Saving...' : isEditMode ? 'Update Product' : 'Save Product'}
           </Button>
         </div>
       </div>
@@ -2671,14 +2798,50 @@ export function AddProductView(): React.JSX.Element {
                     label="Product Name"
                     required
                     placeholder={
-                      activeItemType?.placeholderName ||
-                      (watchedModule === 'fastfood'
-                        ? 'e.g. Crispy Zinger Burger / Tikka Pizza'
-                        : 'e.g. White Cotton Kurta / Leather Shoes / Whitening Cream / RC Toy Car')
+                      isPharmacy
+                        ? 'e.g. Panadol 500mg Tablets / Augmentin 625mg'
+                        : (activeItemType?.placeholderName ||
+                          (watchedModule === 'fastfood'
+                            ? 'e.g. Crispy Zinger Burger / Tikka Pizza'
+                            : 'e.g. White Cotton Kurta / Leather Shoes / Whitening Cream / RC Toy Car'))
                     }
                     value={field.value || ''}
                     onChange={field.onChange}
                     error={productForm.formState.errors.name?.message}
+                  />
+                )}
+              />
+            </div>
+
+            {/* Generic / Formula / Salt Name (ONLY for Pharmacy businesses & medicine products) */}
+            {isPharmacy && (
+              <div>
+                <Controller
+                  control={productForm.control}
+                  name="genericName"
+                  render={({ field }) => (
+                    <CustomInput
+                      label="Generic / Salt Name (Formula)"
+                      placeholder="e.g. Paracetamol / Acetaminophen / Amoxicillin + Clavulanic Acid"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+            )}
+
+            {/* Urdu Name (Optional) */}
+            <div>
+              <Controller
+                control={productForm.control}
+                name="nameUrdu"
+                render={({ field }) => (
+                  <CustomInput
+                    label="Urdu Name / نام اردو میں (اختیاری)"
+                    placeholder="مثلاً: پیناڈول گولیاں / کرسپی زنگر برگر / باسمتی چاول"
+                    value={field.value || ''}
+                    onChange={field.onChange}
                   />
                 )}
               />
@@ -2743,9 +2906,9 @@ export function AddProductView(): React.JSX.Element {
                 {pricingType === 'retail_shoes'
                   ? `Select available sizes for this ${watchedCategory || 'footwear'} article (${getShoePresetForCategory(watchedCategory || '').name}). All sizes share the same article price.`
                   : (watchedModule === 'fastfood'
-                      ? PRICING_TYPES_FASTFOOD
-                      : ALL_RETAIL_PRICING_TYPES
-                    ).find((p) => p.id === pricingType)?.desc}
+                    ? PRICING_TYPES_FASTFOOD
+                    : ALL_RETAIL_PRICING_TYPES
+                  ).find((p) => p.id === pricingType)?.desc}
               </div>
 
               {/* ── 1. Dedicated S / M / L / XL Pizza Size Pricing (Fast Food) ── */}
@@ -4216,9 +4379,9 @@ export function AddProductView(): React.JSX.Element {
                           <div>
                             <CustomInput
                               label={
-                                pricingType === 'perkg' || pricingType === 'amountse'
-                                  ? 'Stock Weight (KG / Grams - Read-only)'
-                                  : 'Stock Quantity (Read-only)'
+                                isEditMode
+                                  ? (pricingType === 'perkg' || pricingType === 'amountse' ? 'Current Stock Weight (KG / Grams - Read-only)' : 'Current Stock Quantity (Read-only)')
+                                  : (pricingType === 'perkg' || pricingType === 'amountse' ? 'Stock Weight (KG / Grams - Read-only)' : 'Stock Quantity (Read-only)')
                               }
                               type="number"
                               readOnly
@@ -4230,7 +4393,9 @@ export function AddProductView(): React.JSX.Element {
                             <div className={styles.apStyle_100}>
                               <span className={styles.apStyle_101}>
                                 <Package className={styles.apStyle_102} />
-                                Initial stock: <strong>0</strong> (Add via Stock In)
+                                {isEditMode
+                                  ? <>Current inventory stock: <strong>{editingProductData?.openingStock ?? 0}</strong> (Adjust via Stock In / Inventory)</>
+                                  : <>Initial stock: <strong>0</strong> (Add via Stock In)</>}
                               </span>
                               {watchedCategory && (
                                 <span className={styles.apStyle_103}>
@@ -4287,7 +4452,7 @@ export function AddProductView(): React.JSX.Element {
                       render={({ field }) => (
                         <div>
                           <CustomInput
-                            label="Total Opening Stock (Read-only)"
+                            label={isEditMode ? 'Current Total Stock (Read-only)' : 'Total Opening Stock (Read-only)'}
                             type="number"
                             readOnly
                             disabled
@@ -4298,7 +4463,9 @@ export function AddProductView(): React.JSX.Element {
                           <div className={styles.apStyle_100}>
                             <span className={styles.apStyle_101}>
                               <Package className={styles.apStyle_102} />
-                              Initial stock: <strong>0</strong> (Add via Stock In)
+                              {isEditMode
+                                ? <>Current inventory stock: <strong>{editingProductData?.openingStock ?? 0}</strong> (Adjust via Stock In / Inventory)</>
+                                : <>Initial stock: <strong>0</strong> (Add via Stock In)</>}
                             </span>
                             {watchedCategory && (
                               <span className={styles.apStyle_103}>
@@ -4535,8 +4702,8 @@ export function AddProductView(): React.JSX.Element {
                           v.price !== undefined
                             ? v.price
                             : v.priceDelta !== undefined && v.priceDelta !== 0
-                            ? (watchedPrice || 0) + v.priceDelta
-                            : (watchedPrice || undefined);
+                              ? (watchedPrice || 0) + v.priceDelta
+                              : (watchedPrice || undefined);
 
                         return (
                           <div key={v.id} className={styles.variantRowItem}>
@@ -4738,8 +4905,8 @@ export function AddProductView(): React.JSX.Element {
                     {variants.length > 0
                       ? `${variants.reduce((sum, v) => sum + (v.stock || 0), 0)} left`
                       : watchedModule === 'fastfood' && (watchedStock === null || watchedStock === undefined)
-                      ? 'Fresh Kitchen'
-                      : `${watchedStock ?? 50} left`}
+                        ? 'Fresh Kitchen'
+                        : `${watchedStock ?? 50} left`}
                   </div>
                 </div>
 

@@ -351,6 +351,12 @@ export const FastFoodVisualCard = React.memo(
               overflow: 'hidden',
             }}
           >
+            {product.genericName && (
+              <span style={{ color: '#0284C7', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {product.genericName}
+              </span>
+            )}
+            {product.genericName && (code || stockText) && <span aria-hidden>·</span>}
             {code && (
               <span style={{ fontFamily: 'Consolas, "Cascadia Mono", monospace', overflow: 'hidden', textOverflow: 'ellipsis' }}>{code}</span>
             )}

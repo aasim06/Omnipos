@@ -460,6 +460,22 @@ export default function App(): React.JSX.Element {
               }
             />
             <Route
+              path="/catalog/edit/:id"
+              element={
+                <RouteAccessGate moduleKey="catalog">
+                  <AddProductView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
+              path="/catalog/products/edit/:id"
+              element={
+                <RouteAccessGate moduleKey="catalog">
+                  <AddProductView />
+                </RouteAccessGate>
+              }
+            />
+            <Route
               path="/catalog/products/:id"
               element={
                 <RouteAccessGate moduleKey="catalog">

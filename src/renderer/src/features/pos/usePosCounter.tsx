@@ -448,6 +448,7 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
       const matchesSearch =
         !q ||
         p.name.toLowerCase().includes(q) ||
+        (p.genericName && p.genericName.toLowerCase().includes(q)) ||
         (p.skuCode && p.skuCode.toLowerCase().includes(q)) ||
         (p.barcode && p.barcode.toLowerCase().includes(q)) ||
         (p.category && p.category.toLowerCase().includes(q)) ||
@@ -715,6 +716,23 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
       setBarcodeInput('');
       setTimeout(() => setLastScannedFeedback(null), 3500);
     } else {
+      // Check if lookupTerm matches generic / salt name (Pharmacy support)
+      const genericMatches = products.filter(
+        (p) => p.genericName && p.genericName.toLowerCase().includes(termLower)
+      );
+      if (genericMatches.length > 0) {
+        setSearchTerm(lookupTerm);
+        setActiveCategory('All');
+        setBarcodeInput('');
+        playBeep();
+        setLastScannedFeedback({
+          isSuccess: true,
+          text: `Found ${genericMatches.length} medicine${genericMatches.length > 1 ? 's' : ''} for salt "${lookupTerm}"`,
+        });
+        setTimeout(() => setLastScannedFeedback(null), 3500);
+        return;
+      }
+
       playErrorBeep();
       setLastScannedFeedback({
         isSuccess: false,

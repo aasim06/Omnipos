@@ -420,6 +420,12 @@ export function ProductCatalog({ pos, highlightSelected = true }: { pos: PosCoun
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: F.textMuted, marginTop: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             <span style={{ fontWeight: 500 }}>{product.category || 'General'}</span>
+                            {product.genericName && (
+                              <>
+                                <span style={{ opacity: 0.5 }}>•</span>
+                                <span style={{ color: '#0284C7', fontWeight: 600 }}>{product.genericName}</span>
+                              </>
+                            )}
                             {product.rackLocation && (
                               <>
                                 <span style={{ opacity: 0.5 }}>•</span>

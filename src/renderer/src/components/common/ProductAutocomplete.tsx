@@ -341,6 +341,7 @@ export function ProductAutocomplete({
     // Direct match on base fields
     const baseFieldsMatch =
       p.name.toLowerCase().includes(query) ||
+      (p.genericName && p.genericName.toLowerCase().includes(query)) ||
       (p.skuCode && p.skuCode.toLowerCase().includes(query)) ||
       (p.barcode && p.barcode.toLowerCase().includes(query)) ||
       (p.category && p.category.toLowerCase().includes(query)) ||
@@ -349,7 +350,7 @@ export function ProductAutocomplete({
     if (baseFieldsMatch) return true;
 
     // Token-based matching on base product details
-    const pBaseText = `${p.name} ${p.skuCode || ''} ${p.barcode || ''} ${p.category || ''}`.toLowerCase();
+    const pBaseText = `${p.name} ${p.genericName || ''} ${p.skuCode || ''} ${p.barcode || ''} ${p.category || ''}`.toLowerCase();
     if (queryTokens.every((t) => pBaseText.includes(t))) return true;
 
     // Token-based or direct matching on product variants
@@ -555,6 +556,11 @@ export function ProductAutocomplete({
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span className={styles.itemName}>{prod.name}</span>
+                          {prod.genericName && (
+                            <span style={{ fontSize: '11px', color: '#0284c7', background: '#f0f9ff', border: '1px solid #bae6fd', padding: '1px 6px', borderRadius: '4px', fontWeight: 500 }}>
+                              {prod.genericName}
+                            </span>
+                          )}
                           {prod.variants && prod.variants.length > 0 && (
                             <span className={styles.variantBadgeCount}>
                               {prod.variants.length} Sizes

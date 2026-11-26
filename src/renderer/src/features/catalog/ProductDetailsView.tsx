@@ -125,6 +125,7 @@ export function ProductDetailsView(): React.JSX.Element {
   const [editSecondaryUnit, setEditSecondaryUnit] = useState('');
   const [editConversionRate, setEditConversionRate] = useState<number | ''>('');
   const [editSecondaryPrice, setEditSecondaryPrice] = useState<number | ''>('');
+  const [editGenericName, setEditGenericName] = useState('');
   const [editTrackBatchExpiry, setEditTrackBatchExpiry] = useState(false);
   const [editBatchNumber, setEditBatchNumber] = useState('');
   const [editMfgDate, setEditMfgDate] = useState('');
@@ -143,6 +144,7 @@ export function ProductDetailsView(): React.JSX.Element {
     setEditSecondaryUnit(product.secondaryUnit || '');
     setEditConversionRate(product.conversionRate ?? '');
     setEditSecondaryPrice(product.secondaryPrice ?? '');
+    setEditGenericName(product.genericName || '');
     setEditTrackBatchExpiry(product.trackBatchExpiry ?? false);
     setEditBatchNumber(product.batchNumber || '');
     setEditMfgDate(product.mfgDate || '');
@@ -183,6 +185,7 @@ export function ProductDetailsView(): React.JSX.Element {
         secondaryUnit: editSecondaryUnit.trim() || undefined,
         conversionRate: editConversionRate !== '' ? Number(editConversionRate) : undefined,
         secondaryPrice: editSecondaryPrice !== '' ? Number(editSecondaryPrice) : undefined,
+        genericName: editGenericName.trim() || undefined,
         trackBatchExpiry: editTrackBatchExpiry,
         batchNumber: editBatchNumber.trim() || undefined,
         mfgDate: editMfgDate || undefined,
@@ -310,7 +313,7 @@ export function ProductDetailsView(): React.JSX.Element {
           <Button
             appearance="primary"
             icon={<Edit20Regular />}
-            onClick={openEditModal}
+            onClick={() => navigate(`/catalog/edit/${product.id}`, { state: { from: location.pathname } })}
           >
             Edit Product
           </Button>
@@ -378,6 +381,11 @@ export function ProductDetailsView(): React.JSX.Element {
             </div>
 
             <h1 className={styles.productTitle}>{product.name}</h1>
+            {product.genericName && (
+              <p style={{ margin: '4px 0 0 0', fontSize: '13px', fontWeight: 600, color: tokens.colorPaletteBlueForeground2 }}>
+                💊 Generic / Salt: {product.genericName}
+              </p>
+            )}
             {product.description && (
               <p className={styles.productDesc}>{product.description}</p>
             )}
@@ -679,6 +687,12 @@ export function ProductDetailsView(): React.JSX.Element {
               onChange={(e) => setEditName(e.target.value)}
               placeholder="Product Name"
               required
+            />
+            <CustomInput
+              label="Generic / Salt Name (Formula)"
+              value={editGenericName}
+              onChange={(e) => setEditGenericName(e.target.value)}
+              placeholder="e.g. Paracetamol, Ibuprofen, Amoxicillin"
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <CustomInput

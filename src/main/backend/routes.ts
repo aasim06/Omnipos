@@ -260,7 +260,8 @@ export function sanitizeProduct(raw: any) {
     'category', 'skuCode', 'rackLocation', 'unit', 'minThreshold',
     'openingStock', 'prepTime', 'displayOrder', 'tags', 'allergens',
     'isAvailable', 'imageBase64', 'imageUrl', 'variants', 'batchNumber', 'expiryDate', 'recipe',
-    'itemRole', 'barcode', 'primaryUnit', 'secondaryUnit', 'conversionRate', 'secondaryPrice'
+    'itemRole', 'barcode', 'primaryUnit', 'secondaryUnit', 'conversionRate', 'secondaryPrice',
+    'genericName'
   ];
   const out: any = {};
   for (const k of allowed) {

@@ -305,50 +305,19 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
   });
 
   const handleOpenAddProduct = () => {
-    setEditingProduct(null);
-    setImagePreview(null);
     const defaultMod: ModuleKey =
       activeTab === 'minimart' && storeMod.allowMinimart
         ? 'minimart'
         : activeTab === 'fastfood' && storeMod.allowFastFood
           ? 'fastfood'
           : storeMod.defaultModule;
-    const firstCat = categories.find((c) => c.module === defaultMod)?.name || 'General';
-    productForm.reset({
-      name: '',
-      nameUrdu: '',
-      module: defaultMod,
-      category: firstCat,
-      price: undefined,
-      costPrice: undefined,
-      unit: defaultMod === 'minimart' ? 'PCS' : 'PCS',
-      skuCode: `SKU-${Math.floor(10000000 + Math.random() * 90000000)}`,
-      rackLocation: '',
-      openingStock: 0,
-      imageUrl: '',
-      description: '',
-    });
-    setIsProductDialogOpen(true);
+    navigate(`/catalog/new?module=${defaultMod}`);
   };
 
   const handleOpenEditProduct = (prod: Product) => {
-    setEditingProduct(prod);
-    setImagePreview(prod.imageBase64 || prod.imageUrl || null);
-    productForm.reset({
-      name: prod.name,
-      nameUrdu: prod.nameUrdu || '',
-      module: prod.module,
-      category: prod.category,
-      price: prod.price,
-      costPrice: prod.costPrice,
-      unit: prod.unit || 'PCS',
-      skuCode: prod.skuCode || '',
-      rackLocation: prod.rackLocation || '',
-      openingStock: prod.openingStock ?? 0,
-      imageUrl: prod.imageUrl || '',
-      description: prod.description || '',
+    navigate(`/catalog/edit/${prod.id}`, {
+      state: { from: location.pathname + location.search }
     });
-    setIsProductDialogOpen(true);
   };
 
   const onProductSubmit = async (data: ProductFormData) => {
@@ -463,6 +432,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
       const q = searchTerm.toLowerCase().trim();
       return (
         p.name.toLowerCase().includes(q) ||
+        (p.genericName && p.genericName.toLowerCase().includes(q)) ||
         (p.skuCode && p.skuCode.toLowerCase().includes(q)) ||
         p.category.toLowerCase().includes(q) ||
         (p.variants &&
@@ -1001,52 +971,11 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                                   </span>
                                 )}
                               </div>
-                              {p.description && (
-                                <Caption1 className={styles.prodDesc}>
-                                  {p.description}
+                              {p.genericName && (
+                                <Caption1 style={{ color: tokens.colorPaletteBlueForeground2, fontWeight: 500, fontSize: '11px', display: 'block', marginTop: '1px' }}>
+                                  {p.genericName}
                                 </Caption1>
                               )}
-
-                              {/* Dual Units / Wholesale Conversion Badge */}
-                              {p.primaryUnit && p.conversionRate && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
-                                  <span style={{ fontSize: '10.5px', backgroundColor: '#EFF6FC', color: tokens.colorPaletteBlueForeground2, padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                                    1 {p.primaryUnit} = {p.conversionRate} {p.secondaryUnit || p.unit || 'Pcs'}
-                                  </span>
-                                  {p.secondaryPrice !== undefined && (
-                                    <span style={{ fontSize: '10.5px', color: tokens.colorNeutralForeground2 }}>
-                                      (@ {formatPKR(p.secondaryPrice)}/pc)
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Batch Number & Expiry Badge */}
-                              {p.expiryDate && (() => {
-                                const diff = Math.ceil((new Date(p.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                                const isExp = diff < 0;
-                                const isSoon = diff >= 0 && diff <= 30;
-                                return (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
-                                    <span style={{
-                                      fontSize: '10.5px',
-                                      padding: '1px 6px',
-                                      borderRadius: '4px',
-                                      fontWeight: 600,
-                                      backgroundColor: isExp ? '#FDF3F4' : isSoon ? '#FFF8E6' : '#F1F9F4',
-                                      color: isExp ? '#D13438' : isSoon ? '#D97706' : '#107C41',
-                                      border: `1px solid ${isExp ? '#F9D9DC' : isSoon ? '#FCE3A1' : '#CEEAD6'}`
-                                    }}>
-                                      {isExp ? `Expired (${Math.abs(diff)}d ago)` : isSoon ? `Exp in ${diff} days` : `Exp: ${new Date(p.expiryDate).toLocaleDateString()}`}
-                                    </span>
-                                    {p.batchNumber && (
-                                      <span style={{ fontSize: '10px', color: '#8A8886', fontFamily: 'monospace' }}>
-                                        #{p.batchNumber}
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })()}
                             </div>
                           </div>
                         </TableCell>

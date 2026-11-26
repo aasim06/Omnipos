@@ -20,6 +20,7 @@ export interface Product {
   secondaryUnit?: string; // e.g. "Piece" / "Pouch"
   conversionRate?: number; // e.g. 1 Carton = 24 Pieces
   secondaryPrice?: number; // Retail selling price per secondary unit (PKR)
+  genericName?: string; // Formula / Generic / Salt name (Pharmacy)
   trackBatchExpiry?: boolean;
   batchNumber?: string;
   mfgDate?: string;
