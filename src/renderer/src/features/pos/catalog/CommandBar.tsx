@@ -12,6 +12,7 @@ import {
   Sparkle20Regular,
   Table20Regular,
   Receipt20Regular,
+  AddCircle20Regular,
 } from '@fluentui/react-icons';
 import { playErrorBeep } from '@/lib/soundFx';
 
@@ -257,6 +258,48 @@ export function CommandBar({
       </div>
 
       <div style={{ flex: 1 }} />
+
+      {/* Quick Add Product & Stock In Button (F3) */}
+      <button
+        type="button"
+        onClick={() => pos.openQuickAdd()}
+        title="Quick Add Product & Stock In (F3)"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          height: '32px',
+          padding: '0 10px',
+          borderRadius: '4px',
+          border: `1px solid ${isDark ? 'rgba(16, 185, 129, 0.4)' : '#A7F3D0'}`,
+          backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5',
+          color: isDark ? '#34D399' : '#065F46',
+          fontSize: '12px',
+          fontFamily: F.font,
+          fontWeight: 700,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isDark ? 'rgba(16, 185, 129, 0.22)' : '#D1FAE5')}
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.backgroundColor = isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5')
+        }
+      >
+        <AddCircle20Regular style={{ width: 16, height: 16, color: isDark ? '#34D399' : '#059669' }} />
+        <span>Add quick item</span>
+        <span
+          style={{
+            fontSize: '10px',
+            padding: '1px 5px',
+            borderRadius: '3px',
+            backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+            color: 'inherit',
+          }}
+        >
+          F3
+        </span>
+      </button>
 
       {/* Bills / Invoices History Shortcut */}
       <button

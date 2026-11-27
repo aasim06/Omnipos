@@ -211,6 +211,17 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
   const [targetRupees, setTargetRupees] = useState<number>(50);
   /* Dual Unit Packaging / Unit Selector Popover */
   const [dualUnitProduct, setDualUnitProduct] = useState<Product | null>(null);
+  /* Quick Add Product & Instant Stock In Dialog (F3 Shortcut) */
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickAddInitialBarcode, setQuickAddInitialBarcode] = useState('');
+  const openQuickAdd = React.useCallback((barcode?: string) => {
+    setQuickAddInitialBarcode(barcode || '');
+    setIsQuickAddOpen(true);
+  }, []);
+  const closeQuickAdd = React.useCallback(() => {
+    setIsQuickAddOpen(false);
+    setQuickAddInitialBarcode('');
+  }, []);
   /* Quick Quantity Numpad / Multiplier Popover */
   const [editingQtyItem, setEditingQtyItem] = useState<{
     productId: string;
@@ -736,9 +747,10 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
       playErrorBeep();
       setLastScannedFeedback({
         isSuccess: false,
-        text: `"${lookupTerm}" not found in catalog`
+        text: `"${lookupTerm}" not found (Press F3 to Quick Add)`
       });
-      setTimeout(() => setLastScannedFeedback(null), 3500);
+      setQuickAddInitialBarcode(lookupTerm);
+      setTimeout(() => setLastScannedFeedback(null), 4500);
     }
   };
   /* Scale / Loose Weight & Liquid Volume Calculator Confirmation */
@@ -1353,6 +1365,12 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
         return;
       }
 
+      if (e.key === 'F3') {
+        e.preventDefault();
+        openQuickAdd();
+        return;
+      }
+
       if (e.key === 'F4') {
         e.preventDefault();
         handleParkOrder();
@@ -1547,6 +1565,12 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
     handleClearDiscount,
     handleApplyPreset,
     checkout,
+    isQuickAddOpen,
+    setIsQuickAddOpen,
+    quickAddInitialBarcode,
+    setQuickAddInitialBarcode,
+    openQuickAdd,
+    closeQuickAdd,
     isPending,
     featured,
   };
