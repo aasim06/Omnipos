@@ -49,12 +49,16 @@ export const useStockLedgerStyles = makeStyles({
     fontSize: '12px',
     fontWeight: 600,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    whiteSpace: 'nowrap',
   },
   td: {
     padding: '13px 14px',
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     fontSize: '13px',
     color: tokens.colorNeutralForeground1,
+  },
+  tdNowrap: {
+    whiteSpace: 'nowrap',
   },
   tableRow: {
     ':hover': {
@@ -153,6 +157,12 @@ export const useStockLedgerStyles = makeStyles({
   },
   badgeBold: {
     fontWeight: 600,
+    whiteSpace: 'nowrap',
+    letterSpacing: '0.4px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    flexShrink: 0,
   },
   productName: {
     fontWeight: 600,

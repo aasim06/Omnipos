@@ -796,15 +796,15 @@ export function StockLedgerView(): React.JSX.Element {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Date &amp; Time</th>
-                <th className={styles.th}>Movement Type</th>
+                <th className={mergeClasses(styles.th, styles.tdNowrap)}>Date &amp; Time</th>
+                <th className={mergeClasses(styles.th, styles.tdNowrap)}>Movement Type</th>
                 <th className={styles.th}>Product / Food Item</th>
                 <th className={styles.th}>Reason / Source</th>
-                <th className={mergeClasses(styles.th, styles.thRight)}>Unit Cost</th>
-                <th className={mergeClasses(styles.th, styles.thCenter)}>Quantity</th>
-                <th className={mergeClasses(styles.th, styles.thCenter)}>Balance</th>
-                <th className={mergeClasses(styles.th, styles.thRight)}>Impact Value</th>
-                <th className={mergeClasses(styles.th, styles.thCenter)}>Action</th>
+                <th className={mergeClasses(styles.th, styles.thRight, styles.tdNowrap)}>Unit Cost</th>
+                <th className={mergeClasses(styles.th, styles.thCenter, styles.tdNowrap)}>Quantity</th>
+                <th className={mergeClasses(styles.th, styles.thCenter, styles.tdNowrap)}>Balance</th>
+                <th className={mergeClasses(styles.th, styles.thRight, styles.tdNowrap)}>Impact Value</th>
+                <th className={mergeClasses(styles.th, styles.thCenter, styles.tdNowrap)}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -829,7 +829,7 @@ export function StockLedgerView(): React.JSX.Element {
                         </Caption1>
                       </td>
 
-                      <td className={styles.td}>
+                      <td className={mergeClasses(styles.td, styles.tdNowrap)}>
                         <Badge
                           appearance="filled"
                           color={isIn ? 'success' : 'danger'}

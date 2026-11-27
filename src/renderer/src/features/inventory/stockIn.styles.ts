@@ -639,6 +639,12 @@ export const useStockInStyles = makeStyles({
   },
   badgeBold: {
     fontWeight: 600,
+    whiteSpace: 'nowrap',
+    letterSpacing: '0.4px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    flexShrink: 0,
   },
   reasonText: {
     color: tokens.colorNeutralForeground1,

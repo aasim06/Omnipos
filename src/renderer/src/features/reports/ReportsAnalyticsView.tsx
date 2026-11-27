@@ -28,9 +28,9 @@ import {
   CheckmarkCircle20Filled,
   Info16Regular,
 } from '@fluentui/react-icons';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { resolveApiUrl } from '@/lib/api';
-import { offlineDb } from '@/lib/offlineDb';
+import { useQuery } from '@tanstack/react-query';
+import { posApi } from '@/lib/api';
+import { Product, Order, OrderRefund } from '@shared/types';
 import { formatPKR } from '@/lib/utils';
 
 import { useReportsAnalyticsStyles, useStyles } from './reportsAnalytics.styles';
@@ -71,133 +71,146 @@ export function ReportsAnalyticsView(): React.JSX.Element {
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
 
-  const { data: report, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['analytics-report', dateFilter, customStart, customEnd],
-    placeholderData: keepPreviousData,
-    queryFn: async () => {
-      const { start, end } = getDateRange(dateFilter, customStart, customEnd);
-      const startMs = start.getTime();
-      const endMs = end.getTime();
-
-      try {
-        const [localOrders, localExpenses, localRefunds, localProducts] = await Promise.all([
-          offlineDb.orders.toArray(),
-          offlineDb.expenses.toArray(),
-          offlineDb.refunds.toArray(),
-          offlineDb.products.toArray(),
-        ]);
-
-        // Build cost map from product catalog
-        const costMap = new Map<string, number>();
-        localProducts.forEach((p) => {
-          if (typeof p.costPrice === 'number' && p.costPrice > 0) {
-            costMap.set(p.id, p.costPrice);
-            if (p.name) costMap.set(p.name.toLowerCase().trim(), p.costPrice);
-          }
-        });
-
-        // Filter orders within date range
-        const paidOrders = localOrders.filter((o) => {
-          if (o.stage !== 'paid') return false;
-          const t = new Date(o.createdAt).getTime();
-          return t >= startMs && t <= endMs;
-        });
-
-        // Filter refunds within date range
-        const filteredRefunds = localRefunds.filter((r) => {
-          const t = new Date(r.createdAt).getTime();
-          return t >= startMs && t <= endMs;
-        });
-
-        // Filter expenses within date range
-        const filteredExpenses = localExpenses.filter((e) => {
-          const t = new Date(e.date || (e as any).createdAt).getTime();
-          return t >= startMs && t <= endMs;
-        });
-
-        let grossSales = 0;
-        let totalDiscounts = 0;
-        let totalSalesAfterDiscount = 0;
-        let calculatedRealCOGS = 0;
-        let totalUnitsSold = 0;
-        let hasRealCostCount = 0;
-
-        paidOrders.forEach((o) => {
-          const sub = (o.lines || []).reduce((s, l) => s + (l.unitPrice || 0) * (l.quantity || 1), 0);
-          grossSales += sub;
-          const netOrd =
-            typeof o.totalAmount === 'number' && o.totalAmount >= 0
-              ? o.totalAmount
-              : Math.max(0, sub - (sub * (o.discountPercent || 0)) / 100);
-          totalSalesAfterDiscount += netOrd;
-          totalDiscounts += Math.max(0, sub - netOrd);
-
-          (o.lines || []).forEach((l) => {
-            const q = Number(l.quantity || 1);
-            totalUnitsSold += q;
-            const cost = l.costPrice || costMap.get(l.productId) || costMap.get(l.name.toLowerCase().trim()) || 0;
-            if (cost > 0) {
-              hasRealCostCount += q;
-              calculatedRealCOGS += cost * q;
-            }
-          });
-        });
-
-        const totalRefunds = filteredRefunds.reduce((sum, r) => sum + (r.refundAmount || 0), 0);
-        const netSales = Math.max(0, totalSalesAfterDiscount - totalRefunds);
-        const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-
-        // If at least some items have real costPrice, use real COGS, else fallback to 45%
-        const isRealCostUsed = calculatedRealCOGS > 0;
-        const finalCOGS = isRealCostUsed ? Math.round(calculatedRealCOGS) : Math.round(netSales * 0.45);
-        const grossProfit = Math.max(0, netSales - finalCOGS);
-        const netProfit = grossProfit - totalExpenses;
-
-        const itemMap = new Map<string, { name: string; quantity: number; revenue: number; profit: number }>();
-        paidOrders.forEach((o) => {
-          (o.lines || []).forEach((l) => {
-            const key = l.productId || l.name;
-            const cur = itemMap.get(key) || { name: l.name, quantity: 0, revenue: 0, profit: 0 };
-            const q = Number(l.quantity || 1);
-            const rev = Number(l.unitPrice || 0) * q;
-            const cost = (l.costPrice || costMap.get(l.productId) || costMap.get(l.name.toLowerCase().trim()) || 0) * q;
-            cur.quantity += q;
-            cur.revenue += rev;
-            cur.profit += rev - cost;
-            itemMap.set(key, cur);
-          });
-        });
-
-        const topSellingItems = Array.from(itemMap.values())
-          .sort((a, b) => b.quantity - a.quantity)
-          .slice(0, 5)
-          .map((item) => ({
-            name: item.name,
-            count: item.quantity,
-            revenue: item.revenue,
-            profit: item.profit,
-          }));
-
-        return {
-          totalGrossSales: grossSales,
-          totalDiscounts,
-          totalRefunds,
-          netSales,
-          estimatedCOGS: finalCOGS,
-          isRealCostUsed,
-          totalExpenses,
-          grossProfit,
-          netProfit,
-          totalOrdersCount: paidOrders.length,
-          totalRefundsCount: filteredRefunds.length,
-          topSellingItems,
-        };
-      } catch (err) {
-        console.error('Failed to compute analytics report:', err);
-        return null;
-      }
-    },
+  // Queries using posApi with React Query caching across app
+  const { data: products = [], isLoading: loadingProducts } = useQuery<Product[]>({
+    queryKey: ['products'],
+    queryFn: () => posApi.fetchProducts(),
+    staleTime: 60_000,
   });
+
+  const { data: orders = [], isLoading: loadingOrders, isFetching: fetchingOrders, refetch } = useQuery<Order[]>({
+    queryKey: ['orders'],
+    queryFn: () => posApi.fetchOrders(),
+    staleTime: 30_000,
+  });
+
+  const { data: refunds = [], isLoading: loadingRefunds, isFetching: fetchingRefunds } = useQuery<OrderRefund[]>({
+    queryKey: ['refunds'],
+    queryFn: () => posApi.fetchRefunds(),
+    staleTime: 60_000,
+  });
+
+  const { data: allExpenses = [], isLoading: loadingExpenses, isFetching: fetchingExpenses } = useQuery({
+    queryKey: ['expenses'],
+    queryFn: () => posApi.fetchExpenses(),
+    staleTime: 60_000,
+  });
+
+  const isInitialLoading = (loadingProducts || loadingOrders) && products.length === 0 && orders.length === 0;
+  const isFetching = fetchingOrders || fetchingRefunds || fetchingExpenses;
+
+  // Instant in-memory computation whenever date filter or dataset changes (0ms delay)
+  const report = useMemo(() => {
+    const { start, end } = getDateRange(dateFilter, customStart, customEnd);
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+
+    // Build cost map from product catalog
+    const costMap = new Map<string, number>();
+    products.forEach((p) => {
+      if (typeof p.costPrice === 'number' && p.costPrice > 0) {
+        costMap.set(p.id, p.costPrice);
+        if (p.name) costMap.set(p.name.toLowerCase().trim(), p.costPrice);
+      }
+    });
+
+    // Filter orders within date range
+    const paidOrders = orders.filter((o) => {
+      if (o.stage !== 'paid') return false;
+      const t = new Date(o.createdAt).getTime();
+      return t >= startMs && t <= endMs;
+    });
+
+    // Filter refunds within date range
+    const filteredRefunds = refunds.filter((r) => {
+      const t = new Date(r.createdAt).getTime();
+      return t >= startMs && t <= endMs;
+    });
+
+    // Filter expenses within date range
+    const filteredExpenses = (allExpenses as any[]).filter((e) => {
+      const t = new Date(e.date || e.createdAt).getTime();
+      return t >= startMs && t <= endMs;
+    });
+
+    let grossSales = 0;
+    let totalDiscounts = 0;
+    let totalSalesAfterDiscount = 0;
+    let calculatedRealCOGS = 0;
+    let totalUnitsSold = 0;
+    let hasRealCostCount = 0;
+
+    paidOrders.forEach((o) => {
+      const sub = (o.lines || []).reduce((s, l) => s + (l.unitPrice || 0) * (l.quantity || 1), 0);
+      grossSales += sub;
+      const netOrd =
+        typeof o.totalAmount === 'number' && o.totalAmount >= 0
+          ? o.totalAmount
+          : Math.max(0, sub - (sub * (o.discountPercent || 0)) / 100);
+      totalSalesAfterDiscount += netOrd;
+      totalDiscounts += Math.max(0, sub - netOrd);
+
+      (o.lines || []).forEach((l) => {
+        const q = Number(l.quantity || 1);
+        totalUnitsSold += q;
+        const cost = l.costPrice || costMap.get(l.productId) || costMap.get(l.name.toLowerCase().trim()) || 0;
+        if (cost > 0) {
+          hasRealCostCount += q;
+          calculatedRealCOGS += cost * q;
+        }
+      });
+    });
+
+    const totalRefunds = filteredRefunds.reduce((sum, r) => sum + (r.refundAmount || 0), 0);
+    const netSales = Math.max(0, totalSalesAfterDiscount - totalRefunds);
+    const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+    // If at least some items have real costPrice, use real COGS, else fallback to 45%
+    const isRealCostUsed = calculatedRealCOGS > 0;
+    const finalCOGS = isRealCostUsed ? Math.round(calculatedRealCOGS) : Math.round(netSales * 0.45);
+    const grossProfit = Math.max(0, netSales - finalCOGS);
+    const netProfit = grossProfit - totalExpenses;
+
+    const itemMap = new Map<string, { name: string; quantity: number; revenue: number; profit: number }>();
+    paidOrders.forEach((o) => {
+      (o.lines || []).forEach((l) => {
+        const key = l.productId || l.name;
+        const cur = itemMap.get(key) || { name: l.name, quantity: 0, revenue: 0, profit: 0 };
+        const q = Number(l.quantity || 1);
+        const rev = Number(l.unitPrice || 0) * q;
+        const cost = (l.costPrice || costMap.get(l.productId) || costMap.get(l.name.toLowerCase().trim()) || 0) * q;
+        cur.quantity += q;
+        cur.revenue += rev;
+        cur.profit += rev - cost;
+        itemMap.set(key, cur);
+      });
+    });
+
+    const topSellingItems = Array.from(itemMap.values())
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5)
+      .map((item) => ({
+        name: item.name,
+        count: item.quantity,
+        revenue: item.revenue,
+        profit: item.profit,
+      }));
+
+    return {
+      totalGrossSales: grossSales,
+      totalDiscounts,
+      totalRefunds,
+      netSales,
+      estimatedCOGS: finalCOGS,
+      isRealCostUsed,
+      totalExpenses,
+      grossProfit,
+      netProfit,
+      totalOrdersCount: paidOrders.length,
+      totalRefundsCount: filteredRefunds.length,
+      topSellingItems,
+    };
+  }, [dateFilter, customStart, customEnd, products, orders, refunds, allExpenses]);
 
   const grossSales = report?.totalGrossSales || 0;
   const totalDiscounts = report?.totalDiscounts || 0;
@@ -245,8 +258,6 @@ export function ReportsAnalyticsView(): React.JSX.Element {
     link.click();
     document.body.removeChild(link);
   };
-
-  const isInitialLoading = isLoading && !report;
 
   return (
     <div className={styles.container}>
