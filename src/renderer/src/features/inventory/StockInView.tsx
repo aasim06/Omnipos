@@ -58,6 +58,7 @@ import { printGrn } from '@/lib/grnPrint';
 import { CustomDateField } from '@/components/ui/CustomDateField';
 import { CustomDateTimeField } from '@/components/ui/CustomDateField';
 import { lowStockLimit } from '@/lib/stockStatus';
+import { Pager, usePaged } from '@/components/common/Pager';
 
 export const FOOD_GROUPS: Record<string, { label: string; match: RegExp }> = {
   burgers: { label: 'Burgers & Sandwiches', match: /(burger|sandwich|shawarma|roll|wrap|patty)/i },
@@ -1449,6 +1450,18 @@ export function StockInView(): React.JSX.Element {
     );
   });
 
+  const {
+    pageItems: pagedStockIn,
+    page,
+    setPage,
+    pageCount,
+    total,
+    from,
+    to,
+    pageSize,
+    setPageSize,
+  } = usePaged(filteredMovements, 25, `${searchQuery}|${tableCategoryFilter}|${tableMainCategoryFilter}`);
+
   const isAllSelected = filteredMovements.length > 0 && selectedIds.length === filteredMovements.length;
 
   const toggleSelectAll = () => {
@@ -2221,7 +2234,7 @@ export function StockInView(): React.JSX.Element {
               </Button>
             )}
             <Caption1 className={styles.countCaption}>
-              Total {filteredMovements.length} Stock In Records
+              Showing {from}–{to} of {total} Stock In Records
             </Caption1>
           </div>
         </div>
@@ -2251,7 +2264,7 @@ export function StockInView(): React.JSX.Element {
                   </td>
                 </tr>
               ) : (
-                filteredMovements.map((mov) => {
+                pagedStockIn.map((mov) => {
                   const isChecked = selectedIds.includes(mov.id);
                   const resolvedVendor = getResolvedVendorName(mov);
                   const resolvedDt = getResolvedDate(mov);
@@ -2355,6 +2368,21 @@ export function StockInView(): React.JSX.Element {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div style={{ padding: '4px 12px', borderTop: `1px solid ${tokens.colorNeutralStroke2}`, backgroundColor: tokens.colorNeutralBackground1 }}>
+          <Pager
+            page={page}
+            pageCount={pageCount}
+            setPage={setPage}
+            total={total}
+            from={from}
+            to={to}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            noun="records"
+          />
         </div>
       </div>
 

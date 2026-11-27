@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -24,6 +24,7 @@ import {
   BuildingRetail24Regular,
   Print20Regular,
   Calendar20Regular,
+  Pause20Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { posApi, round3 } from '@/lib/api';
@@ -211,6 +212,28 @@ interface PurchaseBillModalProps {
   initialVendorId?: string;
 }
 
+export const GRN_DRAFT_KEY = 'omnipos_grn_held_bill';
+
+export function openGrnModal(vendorId?: string): void {
+  window.dispatchEvent(new CustomEvent('omnipos:open-grn', { detail: { vendorId } }));
+}
+
+interface GrnHeldDraft {
+  selectedVendorId: string;
+  vendorName: string;
+  billNumber: string;
+  billDate: string;
+  notes: string;
+  lines: PurchaseBillLine[];
+  discountAmount: number;
+  taxAmount: number;
+  taxClaimable: boolean;
+  freightAmount: number;
+  paymentMode: 'cash' | 'bank' | 'khata' | 'split';
+  paidAmount: number | '';
+  savedAt: string;
+}
+
 export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId }: PurchaseBillModalProps): React.JSX.Element | null {
   const styles = useStyles();
   const queryClient = useQueryClient();
@@ -228,16 +251,52 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
   const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
 
+  // Held draft indicator state
+  const [isDraftLoaded, setIsDraftLoaded] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState('');
+
+  // Auto-restore held draft when opened (unless an initialVendorId was explicitly requested)
   React.useEffect(() => {
-    if (isOpen) {
-      if (initialVendorId) {
-        const found = vendors.find((v) => v.id === initialVendorId);
-        if (found) {
-          setSelectedVendorId(found.id);
-          setVendorName(found.name);
-          return;
+    if (!isOpen) return;
+
+    if (initialVendorId) {
+      const found = vendors.find((v) => v.id === initialVendorId);
+      if (found) {
+        setSelectedVendorId(found.id);
+        setVendorName(found.name);
+        return;
+      }
+    }
+
+    try {
+      const raw = localStorage.getItem(GRN_DRAFT_KEY);
+      if (raw) {
+        const draft: GrnHeldDraft = JSON.parse(raw);
+        const hasContent =
+          (draft.lines && draft.lines.some((l) => (l.productName && l.productName.trim()) || (l.unitCost || 0) > 0)) ||
+          draft.selectedVendorId ||
+          draft.vendorName ||
+          draft.billNumber;
+
+        if (hasContent) {
+          if (draft.selectedVendorId) setSelectedVendorId(draft.selectedVendorId);
+          if (draft.vendorName) setVendorName(draft.vendorName);
+          if (draft.billNumber) setBillNumber(draft.billNumber);
+          if (draft.billDate) setBillDate(draft.billDate);
+          if (draft.notes) setNotes(draft.notes);
+          if (draft.lines && draft.lines.length > 0) setLines(draft.lines);
+          if (draft.discountAmount !== undefined) setDiscountAmount(draft.discountAmount);
+          if (draft.taxAmount !== undefined) setTaxAmount(draft.taxAmount);
+          if (draft.taxClaimable !== undefined) setTaxClaimable(draft.taxClaimable);
+          if (draft.freightAmount !== undefined) setFreightAmount(draft.freightAmount);
+          if (draft.paymentMode) setPaymentMode(draft.paymentMode);
+          if (draft.paidAmount !== undefined) setPaidAmount(draft.paidAmount);
+          setDraftSavedAt(draft.savedAt || '');
+          setIsDraftLoaded(true);
         }
       }
+    } catch (e) {
+      console.warn('Failed to parse GRN held draft:', e);
     }
   }, [isOpen, initialVendorId, vendors]);
 
@@ -273,6 +332,175 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
     queryKey: ['products'],
     queryFn: () => posApi.fetchProducts(),
   });
+
+  // Fetch stock movements to resolve vendor-product supply history
+  const { data: movements = [] } = useQuery<StockMovement[]>({
+    queryKey: ['stock-movements'],
+    queryFn: () => posApi.fetchStockMovements(),
+  });
+
+  const activeVendor = useMemo(() => {
+    return vendors.find((v) => v.id === selectedVendorId) || null;
+  }, [vendors, selectedVendorId]);
+
+  const activeVendorName = (vendorName.trim() || activeVendor?.name || '').trim();
+
+  // Set of product IDs & names that this vendor has supplied in past bills or stock movements
+  const vendorProductKeys = useMemo(() => {
+    if (!selectedVendorId && !activeVendorName) return new Set<string>();
+    const vId = selectedVendorId;
+    const vNameLower = activeVendorName.toLowerCase();
+    const set = new Set<string>();
+
+    // 1. Check purchase bills
+    const bills = vendorStorage.getPurchaseBills();
+    for (const b of bills) {
+      const matchId = vId && b.vendorId === vId;
+      const matchName = vNameLower && (b.vendorName || '').trim().toLowerCase() === vNameLower;
+      if (matchId || matchName) {
+        try {
+          const bLines = typeof b.lines === 'string' ? JSON.parse(b.lines) : (b.lines || []);
+          for (const l of bLines) {
+            if (l.productId) set.add(l.productId);
+            if (l.productName) set.add(l.productName.trim().toLowerCase());
+          }
+        } catch {}
+      }
+    }
+
+    // 2. Check stock movements
+    for (const m of movements) {
+      if (m.type !== 'in') continue;
+      const matchId = vId && m.vendorId === vId;
+      const matchName = vNameLower && (m.vendorName || '').trim().toLowerCase() === vNameLower;
+      if (matchId || matchName) {
+        if (m.productId) set.add(m.productId);
+        if (m.productName) set.add(m.productName.trim().toLowerCase());
+      }
+    }
+
+    return set;
+  }, [selectedVendorId, activeVendorName, movements]);
+
+  // Filtered products list for autocomplete:
+  // - If no vendor selected: empty (prompts to select vendor above)
+  // - If vendor selected & has history: only products supplied by this vendor
+  // - If vendor selected & brand new (0 history): all catalog products
+  const vendorProducts = useMemo(() => {
+    if (!selectedVendorId && !activeVendorName) {
+      return [];
+    }
+
+    if (vendorProductKeys.size > 0) {
+      return products.filter((p) => {
+        if ((p as any).vendorId && (p as any).vendorId === selectedVendorId) return true;
+        if ((p as any).vendorName && (p as any).vendorName.trim().toLowerCase() === activeVendorName.toLowerCase()) return true;
+        return vendorProductKeys.has(p.id) || vendorProductKeys.has(p.name.trim().toLowerCase());
+      });
+    }
+
+    // If it's a new vendor with no past history, allow all catalog products
+    return products;
+  }, [products, selectedVendorId, activeVendorName, vendorProductKeys]);
+
+  const [shouldFocusLastLine, setShouldFocusLastLine] = useState(false);
+  const lastLineInputRef = useRef<HTMLInputElement>(null);
+
+  const buildCurrentDraft = (): GrnHeldDraft => ({
+    selectedVendorId,
+    vendorName,
+    billNumber,
+    billDate,
+    notes,
+    lines,
+    discountAmount,
+    taxAmount,
+    taxClaimable,
+    freightAmount,
+    paymentMode,
+    paidAmount,
+    savedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  });
+
+  const handleHoldBill = () => {
+    const draft = buildCurrentDraft();
+    localStorage.setItem(GRN_DRAFT_KEY, JSON.stringify(draft));
+    notifySuccess('Bill held on draft. You can serve customer on POS and resume anytime.');
+    onClose();
+  };
+
+  const handleCloseWithAutoHold = () => {
+    const hasContent =
+      lines.some((l) => (l.productName && l.productName.trim()) || (l.unitCost || 0) > 0) ||
+      selectedVendorId ||
+      vendorName ||
+      billNumber;
+
+    if (hasContent) {
+      const draft = buildCurrentDraft();
+      localStorage.setItem(GRN_DRAFT_KEY, JSON.stringify(draft));
+    }
+    onClose();
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem(GRN_DRAFT_KEY);
+    setIsDraftLoaded(false);
+    setSelectedVendorId('');
+    setVendorName('');
+    setBillNumber('');
+    setBillDate(new Date().toISOString().slice(0, 10));
+    setNotes('');
+    setLines([
+      {
+        id: uid('pbl_'),
+        productName: '',
+        quantity: 1,
+        unitCost: 0,
+        retailPrice: 0,
+        batchNumber: '',
+        expiryDate: '',
+        totalCost: 0,
+      },
+    ]);
+    setDiscountAmount(0);
+    setTaxAmount(0);
+    setTaxClaimable(false);
+    setFreightAmount(0);
+    setPaymentMode('cash');
+    setPaidAmount('');
+    notifySuccess('Held draft cleared. Started fresh bill.');
+  };
+
+  // Keyboard shortcut Ctrl+N / Cmd+N to add new item line in GRN modal, F4 to hold bill
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleAddLine();
+      } else if (e.key === 'F4') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleHoldBill();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, selectedVendorId, vendorName, billNumber, billDate, notes, lines, discountAmount, taxAmount, taxClaimable, freightAmount, paymentMode, paidAmount]);
+
+  useEffect(() => {
+    if (shouldFocusLastLine) {
+      setShouldFocusLastLine(false);
+      setTimeout(() => {
+        lastLineInputRef.current?.focus();
+        lastLineInputRef.current?.select();
+      }, 60);
+    }
+  }, [shouldFocusLastLine, lines.length]);
 
   // Calculate totals
   const subtotal = useMemo(() => {
@@ -327,6 +555,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
         id: uid('pbl_'),
         productName: '',
         quantity: 1,
+        bonusQty: 0,
         unitCost: 0,
         retailPrice: 0,
         batchNumber: '',
@@ -334,6 +563,7 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
         totalCost: 0,
       },
     ]);
+    setShouldFocusLastLine(true);
   };
 
   // Remove line
@@ -670,6 +900,8 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
         } catch {}
       }
       notifySuccess(`Delivery #${billNumber} received. Stock and supplier balance updated.`);
+      localStorage.removeItem(GRN_DRAFT_KEY);
+      setIsDraftLoaded(false);
       if (printAfterSave && !printGrn(purchaseBill)) notifyWarning('Allow pop-ups to print the GRN.');
       onSuccess?.();
       onClose();
@@ -683,12 +915,12 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
   if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(_, data) => !data.open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(_, data) => !data.open && handleCloseWithAutoHold()}>
       <DialogSurface className={styles.dialogSurface} style={{ overflowY: 'hidden', overflowX: 'hidden' }}>
         <DialogTitle
           className={styles.dialogTitle}
           action={
-            <Button appearance="subtle" icon={<Dismiss20Regular />} onClick={onClose} />
+            <Button appearance="subtle" icon={<Dismiss20Regular />} onClick={handleCloseWithAutoHold} />
           }
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -717,6 +949,39 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
 
         <DialogBody className={styles.dialogBody}>
           <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '0 4px', boxSizing: 'border-box', width: '100%' }}>
+            {/* ── Held Bill Resumed Banner ── */}
+            {isDraftLoaded && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: '#fef3c7',
+                  border: '1px solid #fde68a',
+                  borderRadius: '8px',
+                  padding: '8px 14px',
+                  fontSize: '12.5px',
+                  color: '#92400e',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Pause20Regular style={{ color: '#d97706', width: '18px', height: '18px' }} />
+                  <span>
+                    <strong>Held Bill Resumed{draftSavedAt ? ` (${draftSavedAt})` : ''}:</strong> Pechla in-progress bill restore ho chuka hai. Aap continue kar sakte hain.
+                  </span>
+                </div>
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  onClick={handleDiscardDraft}
+                  style={{ color: '#b45309', fontWeight: 600 }}
+                >
+                  Clear / Discard Draft
+                </Button>
+              </div>
+            )}
+
             {/* ── Vendor & Bill Metadata Bar ── */}
             <div className={styles.metaBox}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -772,8 +1037,9 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                   icon={<Add20Regular />}
                   onClick={handleAddLine}
                   style={{ backgroundColor: tokens.colorBrandBackground, color: '#fff' }}
+                  title="Add Item Line (Ctrl+N)"
                 >
-                  + Add Item Line
+                  Add Item Line (Ctrl+N)
                 </Button>
               </div>
 
@@ -802,10 +1068,19 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
                         {/* Item Name / Autocomplete */}
                         <td style={{ padding: '8px 8px', verticalAlign: 'top' }}>
                           <ProductAutocomplete
-                            placeholder="Select product or type..."
+                            placeholder={
+                              !selectedVendorId && !activeVendorName
+                                ? 'Select supplier above first...'
+                                : (vendorProducts.length > 0
+                                    ? `Select product or type... ${vendorProducts.length} items`
+                                    : 'Type product name to add...')
+                            }
                             value={line.productName}
+                            products={vendorProducts}
+                            inputRef={idx === lines.length - 1 ? lastLineInputRef : undefined}
                             onChange={(val) => updateLine(idx, { productName: val })}
                             onSelectProduct={(p) => handleSelectProduct(idx, p)}
+                            fullWidthDropdown={false}
                           />
                           {hasVariants && linkedProduct && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '3px', flexWrap: 'nowrap' }}>
@@ -1162,8 +1437,17 @@ export function PurchaseBillModal({ isOpen, onClose, onSuccess, initialVendorId 
         </DialogBody>
 
         <DialogActions className={styles.dialogActions}>
-          <Button appearance="subtle" onClick={onClose} disabled={isSubmitting}>
+          <Button appearance="subtle" onClick={handleCloseWithAutoHold} disabled={isSubmitting}>
             Cancel
+          </Button>
+          <Button
+            appearance="secondary"
+            icon={<Pause20Regular />}
+            onClick={handleHoldBill}
+            disabled={isSubmitting}
+            title="Hold this bill on draft so you can attend to customers or switch to POS (F4)"
+          >
+            Hold Bill (F4)
           </Button>
           <Button
             appearance="primary"

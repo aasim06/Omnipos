@@ -36,6 +36,7 @@ import { formatPKR } from '@/lib/utils';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useAppToast } from '../../context/AppNotificationContext';
+import { Pager, usePaged } from '@/components/common/Pager';
 
 const EXPENSE_CATEGORY_OPTIONS = [
   { value: 'Petty Cash', label: 'Tea / Refreshments / Cleaning' },
@@ -140,6 +141,18 @@ export function ExpensesView(): React.JSX.Element {
       return posApi.fetchCashDrawer();
     },
   });
+
+  const {
+    pageItems: pagedExpenses,
+    page,
+    setPage,
+    pageCount,
+    total,
+    from,
+    to,
+    pageSize,
+    setPageSize,
+  } = usePaged(expenses, 15);
 
   // Add Expense Mutation: Instant Offline Dexie Write + Cloud Sync
   const addExpenseMutation = useMutation({
@@ -292,29 +305,46 @@ export function ExpensesView(): React.JSX.Element {
                 No expense entries logged today.
               </Body1>
             ) : (
-              expenses.map((exp) => (
-                <div key={exp.id} className={styles.expenseRow}>
-                  <div className={styles.expenseMetaCol}>
-                    <div className={styles.expenseCategoryRow}>
-                      <Body1 className={styles.expenseCategoryText}>{exp.category}</Body1>
-                      <Badge size="small" appearance="outline" color="informative">
-                        {exp.paymentMode ? exp.paymentMode.toUpperCase() : 'CASH'}
-                      </Badge>
+              <>
+                {pagedExpenses.map((exp) => (
+                  <div key={exp.id} className={styles.expenseRow}>
+                    <div className={styles.expenseMetaCol}>
+                      <div className={styles.expenseCategoryRow}>
+                        <Body1 className={styles.expenseCategoryText}>{exp.category}</Body1>
+                        <Badge size="small" appearance="outline" color="informative">
+                          {exp.paymentMode ? exp.paymentMode.toUpperCase() : 'CASH'}
+                        </Badge>
+                      </div>
+                      <Caption1 className={styles.expenseDateCaption}>
+                        {new Date(exp.date).toLocaleDateString()} at {new Date(exp.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {exp.vendorName ? ` • Vendor: ${exp.vendorName}` : ''}
+                        {exp.description ? ` • ${exp.description}` : ''}
+                      </Caption1>
                     </div>
-                    <Caption1 className={styles.expenseDateCaption}>
-                      {new Date(exp.date).toLocaleDateString()} at {new Date(exp.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      {exp.vendorName ? ` • Vendor: ${exp.vendorName}` : ''}
-                      {exp.description ? ` • ${exp.description}` : ''}
-                    </Caption1>
-                  </div>
 
-                  <div className={styles.expenseAmountRow}>
-                    <Subtitle1 className={styles.expenseAmountText}>
-                      -PKR {exp.amount.toLocaleString()}
-                    </Subtitle1>
+                    <div className={styles.expenseAmountRow}>
+                      <Subtitle1 className={styles.expenseAmountText}>
+                        -PKR {exp.amount.toLocaleString()}
+                      </Subtitle1>
+                    </div>
                   </div>
+                ))}
+
+                {/* Pagination Bar */}
+                <div style={{ padding: '6px 12px', borderTop: `1px solid ${tokens.colorNeutralStroke2}`, backgroundColor: tokens.colorNeutralBackground1 }}>
+                  <Pager
+                    page={page}
+                    pageCount={pageCount}
+                    setPage={setPage}
+                    total={total}
+                    from={from}
+                    to={to}
+                    pageSize={pageSize}
+                    onPageSizeChange={setPageSize}
+                    noun="expenses"
+                  />
                 </div>
-              ))
+              </>
             )}
           </div>
         </>

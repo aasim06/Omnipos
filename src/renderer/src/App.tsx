@@ -31,6 +31,7 @@ import { LicenseDisabledOverlay } from '@/features/auth/LicenseDisabledOverlay';
 import { RouteAccessGate, getDefaultAccessibleRoute } from '@/components/RouteAccessGate';
 import { FastFoodDashboardView } from '@/features/dashboard/FastFoodDashboardView';
 import { PendingSalesResync } from '@/components/shell/PendingSalesResync';
+import { PurchaseBillModal } from '@/features/inventory/PurchaseBillModal';
 import { makeStyles, Spinner, tokens } from '@fluentui/react-components';
 
 import { getOrCreateBrowserHwid, getWebLicenseApiBase } from '@/lib/webLicense';
@@ -115,6 +116,30 @@ const useStyles = makeStyles({
 function ProtectedShellLayout(): React.JSX.Element {
   const styles = useStyles();
   const { isAuthenticated } = useAuth();
+  const [isGlobalGrnOpen, setIsGlobalGrnOpen] = useState(false);
+  const [globalGrnVendorId, setGlobalGrnVendorId] = useState<string | undefined>();
+
+  useEffect(() => {
+    const handleOpenGrn = (e: any) => {
+      setGlobalGrnVendorId(e.detail?.vendorId);
+      setIsGlobalGrnOpen(true);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Universal F8 or Alt+G to open GRN (Receive Delivery) popup from anywhere in the app
+      if (e.key === 'F8' || (e.altKey && e.key.toLowerCase() === 'g')) {
+        e.preventDefault();
+        setIsGlobalGrnOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('omnipos:open-grn' as any, handleOpenGrn);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('omnipos:open-grn' as any, handleOpenGrn);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -127,6 +152,14 @@ function ProtectedShellLayout(): React.JSX.Element {
       <main className={styles.mainContent}>
         <Outlet />
       </main>
+      <PurchaseBillModal
+        isOpen={isGlobalGrnOpen}
+        onClose={() => {
+          setIsGlobalGrnOpen(false);
+          setGlobalGrnVendorId(undefined);
+        }}
+        initialVendorId={globalGrnVendorId}
+      />
     </div>
   );
 }

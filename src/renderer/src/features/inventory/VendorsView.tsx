@@ -43,8 +43,9 @@ import { formatPKR } from '@/lib/utils';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { vendorStorage, Vendor } from './vendorStorage';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
-import { PurchaseBillModal } from './PurchaseBillModal';
+import { openGrnModal } from './PurchaseBillModal';
 import { VendorLedgerModal } from './VendorLedgerModal';
+import { Pager, usePaged } from '@/components/common/Pager';
 
 const PARTY_TYPE_OPTIONS = [
   { value: 'Supplier (Vendor)', label: 'Supplier (Vendor)' },
@@ -118,9 +119,7 @@ export function VendorsView(): React.JSX.Element {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printingVendor, setPrintingVendor] = useState<Vendor | null>(null);
 
-  // Purchase Bill & Vendor Ledger Modal States
-  const [isPurchaseBillOpen, setIsPurchaseBillOpen] = useState(false);
-  const [purchaseBillVendorId, setPurchaseBillVendorId] = useState<string | undefined>(undefined);
+  // Vendor Ledger Modal States
   const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
   const [ledgerVendor, setLedgerVendor] = useState<Vendor | null>(null);
 
@@ -268,6 +267,18 @@ export function VendorsView(): React.JSX.Element {
       (v.address && v.address.toLowerCase().includes(q))
     );
   });
+
+  const {
+    pageItems: pagedVendors,
+    page,
+    setPage,
+    pageCount,
+    total,
+    from,
+    to,
+    pageSize,
+    setPageSize,
+  } = usePaged(filteredVendors, 25, searchQuery);
 
   const isAllSelected = filteredVendors.length > 0 && selectedIds.length === filteredVendors.length;
 
@@ -427,8 +438,7 @@ export function VendorsView(): React.JSX.Element {
             appearance="primary"
             icon={<Receipt20Regular />}
             onClick={() => {
-              setPurchaseBillVendorId(undefined);
-              setIsPurchaseBillOpen(true);
+              openGrnModal(undefined);
             }}
             style={{
               backgroundColor: '#0078D4',
@@ -498,7 +508,7 @@ export function VendorsView(): React.JSX.Element {
                   </td>
                 </tr>
               ) : (
-                filteredVendors.map((v) => {
+                pagedVendors.map((v) => {
                   const isChecked = selectedIds.includes(v.id);
                   const dt = new Date(v.createdAt || Date.now());
 
@@ -557,8 +567,7 @@ export function VendorsView(): React.JSX.Element {
                             size="small"
                             icon={<Receipt20Regular style={{ color: '#0078D4' }} />}
                             onClick={() => {
-                              setPurchaseBillVendorId(v.id);
-                              setIsPurchaseBillOpen(true);
+                              openGrnModal(v.id);
                             }}
                             className={styles.actionBtnStockIn}
                             title="New Purchase Bill (Kharidari Invoice)"
@@ -625,6 +634,21 @@ export function VendorsView(): React.JSX.Element {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div style={{ padding: '4px 12px', borderTop: `1px solid ${tokens.colorNeutralStroke2}`, backgroundColor: tokens.colorNeutralBackground1 }}>
+          <Pager
+            page={page}
+            pageCount={pageCount}
+            setPage={setPage}
+            total={total}
+            from={from}
+            to={to}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            noun="vendors"
+          />
         </div>
       </div>
 
@@ -889,14 +913,6 @@ export function VendorsView(): React.JSX.Element {
           </DialogBody>
         </DialogSurface>
       </Dialog>
-
-      {/* ── PURCHASE BILL MODAL (Kharidari Invoice) ── */}
-      <PurchaseBillModal
-        isOpen={isPurchaseBillOpen}
-        onClose={() => setIsPurchaseBillOpen(false)}
-        initialVendorId={purchaseBillVendorId}
-        onSuccess={() => setVendors(vendorStorage.getVendors())}
-      />
 
       {/* ── VENDOR ACCOUNT LEDGER MODAL (Khata & Payments) ── */}
       <VendorLedgerModal

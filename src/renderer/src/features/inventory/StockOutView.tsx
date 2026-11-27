@@ -41,6 +41,7 @@ import { StockMovement, Product, Category } from '@shared/types';
 import { uid, formatPKR } from '@/lib/utils';
 import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import { TablePageSkeleton } from '@/components/skeletons/PageSkeletons';
+import { Pager, usePaged } from '@/components/common/Pager';
 import { CustomInput, CustomSelect } from '@/components/ui';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { useAppToast, useConfirmDialog } from '../../context/AppNotificationContext';
@@ -537,6 +538,18 @@ export function StockOutView(): React.JSX.Element {
     return matchesSearch;
   });
 
+  const {
+    pageItems: pagedStockOut,
+    page,
+    setPage,
+    pageCount,
+    total,
+    from,
+    to,
+    pageSize,
+    setPageSize,
+  } = usePaged(filteredMovements, 25, `${searchQuery}|${outflowTab}|${tableCategoryFilter}`);
+
   const isAllSelected = filteredMovements.length > 0 && selectedIds.length === filteredMovements.length;
 
   const toggleSelectAll = () => {
@@ -965,7 +978,7 @@ export function StockOutView(): React.JSX.Element {
               </Button>
             )}
             <Caption1 className={styles.totalRecords}>
-              Total {filteredMovements.length} Stock Out Records
+              Showing {from}–{to} of {total} Stock Out Records
             </Caption1>
           </div>
         </div>
@@ -995,7 +1008,7 @@ export function StockOutView(): React.JSX.Element {
                   </td>
                 </tr>
               ) : (
-                filteredMovements.map((mov) => {
+                pagedStockOut.map((mov) => {
                   const isChecked = selectedIds.includes(mov.id);
                   const dt = new Date(mov.date);
                   const totalLine = (mov.unitCost || 0) * (mov.quantity || 0);
@@ -1084,6 +1097,21 @@ export function StockOutView(): React.JSX.Element {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div style={{ padding: '4px 12px', borderTop: `1px solid ${tokens.colorNeutralStroke2}`, backgroundColor: tokens.colorNeutralBackground1 }}>
+          <Pager
+            page={page}
+            pageCount={pageCount}
+            setPage={setPage}
+            total={total}
+            from={from}
+            to={to}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            noun="records"
+          />
         </div>
       </div>
 

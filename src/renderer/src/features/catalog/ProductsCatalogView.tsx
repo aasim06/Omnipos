@@ -59,6 +59,7 @@ import { useAppToast, useConfirmDialog } from '@/context/AppNotificationContext'
 import { getStockStatus, lowStockLimit } from '@/lib/stockStatus';
 import { belowCostWarning, marginPercent } from '@/lib/pricing';
 import { useAuth } from '@/features/auth/AuthContext';
+import { Pager, usePaged } from '@/components/common/Pager';
 
 /* ── Initials Monogram Helper ────────────────────────────────────────── */
 function initials(name: string): string {
@@ -445,6 +446,18 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
     }
     return true;
   });
+
+  const {
+    pageItems: pagedProducts,
+    page,
+    setPage,
+    pageCount,
+    total,
+    from,
+    to,
+    pageSize,
+    setPageSize,
+  } = usePaged(filteredProducts, 25, `${searchTerm}|${selectedCategory}|${activeTab}`);
 
   if (isLoadingProducts && products.length === 0) {
     return <TablePageSkeleton title="Products & Menu Catalog" hasMetrics={false} />;
@@ -871,7 +884,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
             </div>
 
             <Caption1 className={styles.tableCaption}>
-              Showing {filteredProducts.length} items
+              Showing {from}–{to} of {total} products
             </Caption1>
           </div>
 
@@ -913,7 +926,7 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredProducts.map((p) => {
+                  pagedProducts.map((p) => {
                     const isLow = p.openingStock !== null && p.openingStock !== undefined && p.openingStock <= lowStockLimit(p);
                     const isFastFood = p.module === 'fastfood';
 
@@ -1207,10 +1220,25 @@ export function ProductsCatalogView({ initialTab }: { initialTab?: 'all' | 'fast
             </Table>
           </div>
 
+          {/* Interactive Pagination Bar */}
+          <div style={{ padding: '4px 12px', borderTop: `1px solid ${tokens.colorNeutralStroke2}`, backgroundColor: tokens.colorNeutralBackground1 }}>
+            <Pager
+              page={page}
+              pageCount={pageCount}
+              setPage={setPage}
+              total={total}
+              from={from}
+              to={to}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              noun="products"
+            />
+          </div>
+
           {/* Table Footer with Summary Telemetry */}
           <div className={styles.tableFooterBar}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontWeight: 600 }}>Showing {filteredProducts.length} items</span>
+              <span style={{ fontWeight: 600 }}>Showing {from}–{to} of {total} products</span>
               <span>•</span>
               <span>Category: {selectedCategory === 'ALL' ? 'All Categories' : selectedCategory}</span>
             </div>

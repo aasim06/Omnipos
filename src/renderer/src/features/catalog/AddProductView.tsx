@@ -56,6 +56,7 @@ import {
 import { UNIT_OPTIONS } from '@/lib/units';
 import { useLicense } from '@/features/auth/LicenseModulesContext';
 import { CustomInput, CustomSelect } from '@/components/ui';
+import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import {
   Tag,
   Circle,
@@ -425,30 +426,40 @@ export const PRICING_TYPES = PRICING_TYPES_FASTFOOD;
 
 
 
+const optionalNonNegativeNumber = z.preprocess(
+  (v) => (v === '' || v === null || v === undefined || (typeof v === 'number' && isNaN(v)) ? undefined : Number(v)),
+  z.number().min(0, 'Cannot be negative').optional()
+);
+
+const optionalMin1Number = z.preprocess(
+  (v) => (v === '' || v === null || v === undefined || (typeof v === 'number' && isNaN(v)) ? undefined : Number(v)),
+  z.number().min(1, 'Must be at least 1').optional()
+);
+
 const productSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters'),
   nameUrdu: z.string().optional(),
   module: z.enum(['fastfood', 'minimart']),
   category: z.string().min(1, 'Category is required'),
-  price: z.coerce.number().positive('Retail price must be greater than 0').default(1),
-  costPrice: z.coerce.number().min(0, 'Cost price cannot be negative').optional(),
+  price: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined || (typeof v === 'number' && isNaN(v)) ? 1 : Number(v)),
+    z.number().positive('Retail price must be greater than 0').default(1)
+  ),
+  costPrice: optionalNonNegativeNumber,
   pricingType: z.string().default('fixed'),
   unit: z.string().default('PCS'),
   skuCode: z.string().optional(),
   rackLocation: z.string().optional(),
-  prepTime: z.coerce.number().min(0).optional(),
-  openingStock: z.coerce.number().min(0, 'Stock cannot be negative').nullable().optional(),
+  prepTime: optionalNonNegativeNumber,
+  openingStock: optionalNonNegativeNumber,
   // Low-stock alert limit: empty = store default, 0 = alert off, decimals allowed
-  minThreshold: z.preprocess(
-    (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
-    z.number().min(0, 'Alert limit cannot be negative').optional()
-  ),
+  minThreshold: optionalNonNegativeNumber,
   imageUrl: z.string().optional(),
   description: z.string().optional(),
   primaryUnit: z.string().optional(),
   secondaryUnit: z.string().optional(),
-  conversionRate: z.coerce.number().min(1).optional(),
-  secondaryPrice: z.coerce.number().min(0).optional(),
+  conversionRate: optionalMin1Number,
+  secondaryPrice: optionalNonNegativeNumber,
   genericName: z.string().optional(),
   trackBatchExpiry: z.boolean().optional().default(false),
   batchNumber: z.string().optional(),
@@ -2375,11 +2386,20 @@ export function AddProductView(): React.JSX.Element {
   // Keep the page open for the next item (pharmacies enter many in a row)
   const addAnotherRef = React.useRef(false);
 
+  const onInvalid = (errors: any) => {
+    console.warn('Product form validation errors:', errors);
+    const errorKeys = Object.keys(errors);
+    if (errorKeys.length > 0) {
+      const firstErr = errors[errorKeys[0]]?.message || 'Please fill in all required fields.';
+      notifyError(firstErr);
+    }
+  };
+
   const onSubmit = async (data: ProductFormData) => {
     const isStocked = data.module !== 'fastfood';
     const opening = Number(data.openingStock) || 0;
-    // Opening stock is valued at cost on the ledger
-    if (isStocked && opening > 0 && !(Number(data.costPrice) > 0)) {
+    // Opening stock is valued at cost on the ledger for brand new items
+    if (!isEditMode && isStocked && opening > 0 && !(Number(data.costPrice) > 0)) {
       notifyWarning('Enter the purchase cost for the opening stock: it is what the stock is worth.');
       return;
     }
@@ -2481,7 +2501,10 @@ export function AddProductView(): React.JSX.Element {
               disabled={saveProductMutation.isPending}
               onClick={() => {
                 addAnotherRef.current = true;
-                void productForm.handleSubmit(onSubmit, () => (addAnotherRef.current = false))();
+                void productForm.handleSubmit(onSubmit, (err) => {
+                  addAnotherRef.current = false;
+                  onInvalid(err);
+                })();
               }}
             >
               Save &amp; add another
@@ -2493,7 +2516,7 @@ export function AddProductView(): React.JSX.Element {
             disabled={saveProductMutation.isPending}
             onClick={() => {
               addAnotherRef.current = false;
-              void productForm.handleSubmit(onSubmit)();
+              void productForm.handleSubmit(onSubmit, onInvalid)();
             }}
             className={styles.btnPrimarySave}
           >
@@ -2503,7 +2526,7 @@ export function AddProductView(): React.JSX.Element {
       </div>
 
       {/* ── Main Form Layout ──────────────────────────────────── */}
-      <form onSubmit={productForm.handleSubmit(onSubmit)} className={styles.apStyle_1}>
+      <form onSubmit={productForm.handleSubmit(onSubmit, onInvalid)} className={styles.apStyle_1}>
         {/* ── Visual Department Selection Cards (Super Easy for Any User) ── */}
         <div className={styles.apRemCard1}>
           <div className={styles.apStyle_3}>
@@ -2697,6 +2720,10 @@ export function AddProductView(): React.JSX.Element {
                   name="category"
                   render={({ field }) => {
                     const displayList = filteredCategories.length > 0 ? filteredCategories : categories;
+                    const catOptions = displayList.map((c) => ({ value: c.name, label: c.name }));
+                    if (field.value && !catOptions.some((o) => o.value.toLowerCase() === field.value.toLowerCase())) {
+                      catOptions.unshift({ value: field.value, label: field.value });
+                    }
 
                     return (
                       <CustomSelect
@@ -2704,7 +2731,7 @@ export function AddProductView(): React.JSX.Element {
                         required
                         placeholder="Select Category"
                         value={field.value}
-                        options={displayList.map((c) => ({ value: c.name, label: c.name }))}
+                        options={catOptions}
                         onChange={(val) => {
                           field.onChange(val);
                           applyCategoryProfileSettings(val);
@@ -2788,28 +2815,56 @@ export function AddProductView(): React.JSX.Element {
               </div>
             )}
 
-            {/* Product Name */}
-            <div>
+            {/* Product Name with Autocomplete in Add Mode */}
+            <div style={{ position: 'relative' }}>
               <Controller
                 control={productForm.control}
                 name="name"
-                render={({ field }) => (
-                  <CustomInput
-                    label="Product Name"
-                    required
-                    placeholder={
-                      isPharmacy
-                        ? 'e.g. Panadol 500mg Tablets / Augmentin 625mg'
-                        : (activeItemType?.placeholderName ||
-                          (watchedModule === 'fastfood'
-                            ? 'e.g. Crispy Zinger Burger / Tikka Pizza'
-                            : 'e.g. White Cotton Kurta / Leather Shoes / Whitening Cream / RC Toy Car'))
-                    }
-                    value={field.value || ''}
-                    onChange={field.onChange}
-                    error={productForm.formState.errors.name?.message}
-                  />
-                )}
+                render={({ field }) =>
+                  isEditMode ? (
+                    <CustomInput
+                      label="Product Name"
+                      required
+                      placeholder={
+                        isPharmacy
+                          ? 'e.g. Panadol 500mg Tablets / Augmentin 625mg'
+                          : (activeItemType?.placeholderName ||
+                            (watchedModule === 'fastfood'
+                              ? 'e.g. Crispy Zinger Burger / Tikka Pizza'
+                              : 'e.g. White Cotton Kurta / Leather Shoes / Whitening Cream / RC Toy Car'))
+                      }
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      error={productForm.formState.errors.name?.message}
+                    />
+                  ) : (
+                    <ProductAutocomplete
+                      label="Product Name"
+                      required
+                      placeholder={
+                        isPharmacy
+                          ? 'e.g. Panadol 500mg Tablets / Augmentin 625mg'
+                          : (activeItemType?.placeholderName ||
+                            (watchedModule === 'fastfood'
+                              ? 'e.g. Crispy Zinger Burger / Tikka Pizza'
+                              : 'e.g. White Cotton Kurta / Leather Shoes / Whitening Cream / RC Toy Car'))
+                      }
+                      value={field.value || ''}
+                      products={allProducts}
+                      onChange={(val) => {
+                        field.onChange(val);
+                      }}
+                      onSelectProduct={(p) => {
+                        // Only fill Name, Category, Salt, Unit - do NOT change price, cost, stock, or barcode
+                        productForm.setValue('name', p.name);
+                        productForm.setValue('category', p.category);
+                        if (p.genericName) productForm.setValue('genericName', p.genericName);
+                        if (p.unit) productForm.setValue('unit', p.unit);
+                      }}
+                      error={productForm.formState.errors.name?.message}
+                    />
+                  )
+                }
               />
             </div>
 

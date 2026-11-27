@@ -705,17 +705,31 @@ export function FluentSidebar(): React.JSX.Element {
     });
   };
 
-  // Keyboard shortcut Ctrl+B / Cmd+B
+  // Keyboard shortcut Ctrl+B / Cmd+B and global POS shortcut F1 / Alt+P
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         toggleSidebar();
+        return;
+      }
+
+      // Universal F1 or Alt+P to jump straight to POS Terminal from anywhere in the app
+      if (e.key === 'F1' || (e.altKey && e.key.toLowerCase() === 'p')) {
+        e.preventDefault();
+        const targetPosRoute = can('omnimart')
+          ? '/pos/omnimart'
+          : can('fastfood')
+            ? '/pos/fastfood'
+            : '/pos/omnimart';
+        if (location.pathname !== targetPosRoute) {
+          navigate(targetPosRoute);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [can, location.pathname, navigate]);
 
   // Accordion for Products submenu
   const isCatalogActive = location.pathname.startsWith('/catalog');
@@ -796,6 +810,7 @@ export function FluentSidebar(): React.JSX.Element {
         {
           to: '/pos/fastfood',
           label: 'Fast Food POS',
+          badge: 'F1',
           moduleKey: 'fastfood' as const,
           icon: <Food24Regular className={styles.icon19} />,
           activeIcon: <Food24Filled className={styles.icon19} />,
@@ -803,6 +818,7 @@ export function FluentSidebar(): React.JSX.Element {
         {
           to: '/pos/omnimart',
           label: retailPosLabel,
+          badge: 'F1',
           moduleKey: 'omnimart' as const,
           icon: <BuildingRetail24Regular className={styles.icon19} />,
           activeIcon: <BuildingRetail24Filled className={styles.icon19} />,
@@ -866,7 +882,7 @@ export function FluentSidebar(): React.JSX.Element {
           activeIcon: <Box24Filled className={styles.icon19} />,
           subItems: [
             { to: '/inventory/dashboard', label: 'Inventory Dashboard', icon: <Box20Regular className={styles.icon15} /> },
-            { to: '/inventory/stock-in', label: 'Stock In', icon: <ArrowCircleDown20Regular className={styles.icon15} /> },
+            { to: '/inventory/stock-in', label: 'Stock In', icon: <ArrowCircleDown20Regular className={styles.icon15} />, badge: 'F8' },
             { to: '/inventory/stock-out', label: 'Stock Out', icon: <ArrowCircleUp20Regular className={styles.icon15} /> },
             { to: '/inventory/vendors', label: 'Vendors & Suppliers', icon: <PeopleCommunity20Regular className={styles.icon15} /> },
             { to: '/inventory/ledger', label: 'Stock Movement Ledger', icon: <DocumentTableSearch20Regular className={styles.icon15} /> },

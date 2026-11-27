@@ -24,6 +24,11 @@ export interface ProductAutocompleteProps {
   error?: string;
   disabled?: boolean;
   labelBg?: string;
+  className?: string;
+  autoFocus?: boolean;
+  inputRef?: React.Ref<HTMLInputElement>;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  fullWidthDropdown?: boolean;
 }
 
 const useStyles = makeStyles({
@@ -41,9 +46,9 @@ const useStyles = makeStyles({
     position: 'absolute',
     top: '100%',
     left: 0,
-    minWidth: '450px',
-    maxWidth: '560px',
-    width: 'max(100%, 450px)',
+    right: 0,
+    width: '100%',
+    boxSizing: 'border-box',
     zIndex: 2500,
     marginTop: '4px',
     backgroundColor: tokens.colorNeutralBackground1,
@@ -67,6 +72,12 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     padding: '6px',
   },
+  dropdownTableNarrow: {
+    minWidth: '450px',
+    maxWidth: '560px',
+    width: 'max(100%, 450px)',
+    right: 'auto',
+  },
   dropdownHeader: {
     padding: '6px 10px',
     fontSize: '11px',
@@ -87,16 +98,24 @@ const useStyles = makeStyles({
     gap: '10px',
     padding: '8px 10px',
     borderRadius: '8px',
+    borderLeftWidth: '3px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: 'transparent',
     borderBottomWidth: '1px',
     borderBottomStyle: 'solid',
     borderBottomColor: tokens.colorNeutralStroke3,
     cursor: 'pointer',
-    transitionProperty: 'background-color',
+    boxSizing: 'border-box',
+    transitionProperty: 'background-color, border-color',
     transitionDuration: '0.12s',
     transitionTimingFunction: 'ease',
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground3,
     },
+  },
+  itemRowActive: {
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderLeftColor: tokens.colorBrandStroke1,
   },
   thumb: {
     width: '36px',
@@ -268,12 +287,19 @@ export function ProductAutocomplete({
   error,
   disabled = false,
   labelBg,
+  className,
+  autoFocus = false,
+  inputRef,
+  onKeyDown,
+  fullWidthDropdown = true,
 }: ProductAutocompleteProps): React.JSX.Element {
   const styles = useStyles();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [internalValue, setInternalValue] = useState(controlledValue ?? '');
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Synchronize internal value when controlled value changes externally
   useEffect(() => {
@@ -281,6 +307,11 @@ export function ProductAutocomplete({
       setInternalValue(controlledValue);
     }
   }, [controlledValue]);
+
+  // Reset keyboard navigation index when display text or open status changes
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [internalValue, isOpen]);
 
   const displayValue = controlledValue !== undefined ? controlledValue : internalValue;
 
@@ -409,11 +440,16 @@ export function ProductAutocomplete({
       onSelectProduct(finalProd);
     }
     setIsOpen(false);
+    setSelectedIndex(-1);
   };
 
+  const visibleSuggestions = suggestions.slice(0, 20);
+
   return (
-    <div ref={containerRef} className={styles.container}>
+    <div ref={containerRef} className={mergeClasses(styles.container, className)}>
       <CustomInput
+        ref={inputRef}
+        autoFocus={autoFocus}
         id={id}
         label={label}
         labelBg={labelBg}
@@ -430,19 +466,52 @@ export function ProductAutocomplete({
           setIsOpen(true);
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === 'ArrowDown') {
             e.preventDefault();
+            if (!isOpen) {
+              setIsOpen(true);
+              setSelectedIndex(0);
+              return;
+            }
+            if (visibleSuggestions.length === 0) return;
+            const nextIdx = selectedIndex < visibleSuggestions.length - 1 ? selectedIndex + 1 : 0;
+            setSelectedIndex(nextIdx);
+            itemRefs.current[nextIdx]?.scrollIntoView({ block: 'nearest' });
+            return;
+          }
+
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!isOpen) {
+              setIsOpen(true);
+              setSelectedIndex(visibleSuggestions.length - 1);
+              return;
+            }
+            if (visibleSuggestions.length === 0) return;
+            const prevIdx = selectedIndex > 0 ? selectedIndex - 1 : visibleSuggestions.length - 1;
+            setSelectedIndex(prevIdx);
+            itemRefs.current[prevIdx]?.scrollIntoView({ block: 'nearest' });
+            return;
+          }
+
+          if (e.key === 'Enter') {
             const rawTerm = (displayValue || '').trim().toLowerCase();
-            if (suggestions.length > 0) {
-              const first = suggestions[0];
-              const matchedV = rawTerm && first.variants
-                ? first.variants.find(
-                    (v) =>
-                      (v.skuCode && v.skuCode.toLowerCase() === rawTerm) ||
-                      (v.label && v.label.toLowerCase() === rawTerm)
-                  )
-                : undefined;
-              handleSelect(first, matchedV);
+            if (isOpen && visibleSuggestions.length > 0) {
+              e.preventDefault();
+              const target =
+                selectedIndex >= 0 && selectedIndex < visibleSuggestions.length
+                  ? visibleSuggestions[selectedIndex]
+                  : visibleSuggestions[0];
+              const matchedV =
+                rawTerm && target.variants
+                  ? target.variants.find(
+                      (v) =>
+                        (v.skuCode && v.skuCode.toLowerCase() === rawTerm) ||
+                        (v.label && v.label.toLowerCase() === rawTerm)
+                    )
+                  : undefined;
+              handleSelect(target, matchedV);
+              return;
             } else if (rawTerm) {
               // Direct barcode / SKU fallback lookup across all products
               const match = allProducts.find(
@@ -461,10 +530,16 @@ export function ProductAutocomplete({
                   p.name.toLowerCase().includes(rawTerm)
               );
               if (match) {
+                e.preventDefault();
                 handleSelect(match);
+                return;
               }
             }
+          } else if (e.key === 'Escape') {
+            setIsOpen(false);
+            setSelectedIndex(-1);
           }
+          onKeyDown?.(e);
         }}
         error={error}
         rightElement={
@@ -478,7 +553,12 @@ export function ProductAutocomplete({
 
       {/* Floating Autocomplete Dropdown */}
       {isOpen && !disabled && (
-        <div className={styles.dropdown}>
+        <div
+          className={mergeClasses(
+            styles.dropdown,
+            !fullWidthDropdown && styles.dropdownTableNarrow
+          )}
+        >
           <div className={styles.dropdownHeader}>
             Catalog Quick Select ({suggestions.length} items)
           </div>
@@ -507,11 +587,13 @@ export function ProductAutocomplete({
                   </button>
                 </div>
               ) : (
-                `No items match "${displayValue}". Custom name will be used.`
+                propProducts && availableProducts.length === 0 && !displayValue
+                  ? 'Please select a supplier / vendor above first.'
+                  : `No items match "${displayValue}". Custom name will be used.`
               )}
             </div>
           ) : (
-            suggestions.slice(0, 20).map((prod) => {
+            visibleSuggestions.map((prod, idx) => {
               let matchedVariant: any = null;
               if (query && prod.variants && prod.variants.length > 0) {
                 matchedVariant =
@@ -533,11 +615,17 @@ export function ProductAutocomplete({
               return (
                 <div
                   key={prod.id}
+                  ref={(el) => {
+                    itemRefs.current[idx] = el;
+                  }}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     handleSelect(prod, matchedVariant || undefined);
                   }}
-                  className={styles.itemRow}
+                  className={mergeClasses(
+                    styles.itemRow,
+                    selectedIndex === idx && styles.itemRowActive
+                  )}
                 >
                   {/* Thumbnail Preview */}
                   <div className={styles.thumb}>

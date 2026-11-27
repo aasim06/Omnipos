@@ -1358,7 +1358,7 @@ export function usePosCounter({ module, modeType }: PosCounterProps) {
         activeEl?.tagName === 'TEXTAREA' ||
         activeEl?.tagName === 'SELECT';
 
-      if (e.key === 'F2') {
+      if (e.key === 'F1' || e.key === 'F2') {
         e.preventDefault();
         scannerInputRef.current?.focus();
         scannerInputRef.current?.select();

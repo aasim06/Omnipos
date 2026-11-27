@@ -19,7 +19,7 @@ import {
   Cart20Regular,
   BoxMultipleArrowRight20Regular,
 } from '@fluentui/react-icons';
-import { PurchaseBillModal } from './PurchaseBillModal';
+import { openGrnModal } from './PurchaseBillModal';
 import { StockCountDialog } from './StockCountDialog';
 import { RecipeDialog } from './RecipeDialog';
 import { StockAlertLimitsDialog } from './StockAlertLimitsDialog';
@@ -158,7 +158,6 @@ export function InventoryLayout(): React.JSX.Element {
   const isStockInPage = location.pathname === '/inventory/stock-in';
   const isStockOutPage = location.pathname === '/inventory/stock-out';
   const meta = pageMeta[location.pathname] || pageMeta['/inventory/dashboard'];
-  const [isPurchaseBillOpen, setIsPurchaseBillOpen] = useState(false);
   const [isStockCountOpen, setIsStockCountOpen] = useState(false);
   const [isRecipeOpen, setIsRecipeOpen] = useState(false);
   const [isAlertLimitsOpen, setIsAlertLimitsOpen] = useState(false);
@@ -208,8 +207,8 @@ export function InventoryLayout(): React.JSX.Element {
           subtitle={meta.subtitle}
           actions={
             <>
-              <Button appearance="secondary" icon={<Receipt20Regular />} onClick={() => setIsPurchaseBillOpen(true)}>
-                Receive delivery (GRN)
+              <Button appearance="secondary" icon={<Receipt20Regular />} onClick={() => openGrnModal()} title="Receive delivery (GRN) (F8)">
+                Receive delivery (GRN) (F8)
               </Button>
               {isStockOutPage && (
                 <>
@@ -273,12 +272,6 @@ export function InventoryLayout(): React.JSX.Element {
 
       {/* ── Physical Stock Count ── */}
       <StockCountDialog isOpen={isStockCountOpen} onClose={() => setIsStockCountOpen(false)} />
-
-      {/* ── Global Purchase Bill Modal ── */}
-      <PurchaseBillModal
-        isOpen={isPurchaseBillOpen}
-        onClose={() => setIsPurchaseBillOpen(false)}
-      />
     </div>
   );
 }

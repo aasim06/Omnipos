@@ -8,6 +8,7 @@ import { Product } from '@shared/types';
 import { vendorStorage } from '@/features/inventory/vendorStorage';
 import { DIALOG_SMOKE, DIALOG_SHADOW, useEscapeToClose } from '@/features/pos/posDialog';
 import { CustomDateField } from '@/components/ui/CustomDateField';
+import { ProductAutocomplete } from '@/components/common/ProductAutocomplete';
 import {
   Dismiss20Regular,
   AddCircle20Regular,
@@ -18,6 +19,7 @@ import {
   ArrowSyncCircle20Regular,
   Checkmark20Regular,
   Checkmark16Regular,
+  CheckmarkCircle20Regular,
   Building20Regular,
   ArrowLeft20Regular,
   ArrowRight20Regular,
@@ -43,12 +45,16 @@ export function QuickAddProductDialog({ pos }: { pos: PosCounterState }) {
     addToCart,
     notifySuccess,
     notifyWarning,
+    products = [],
   } = pos;
 
   const isPharmacy = businessProfiles.includes('pharmacy');
 
   // Wizard Step
   const [step, setStep] = useState<WizardStep>(1);
+
+  // Template fill indicator (only fills Name & Category, keeps fresh quantity, expiry, and SKU)
+  const [appliedTemplateName, setAppliedTemplateName] = useState<string | null>(null);
 
   // Step 1: Category states
   const [category, setCategory] = useState('');
@@ -125,6 +131,7 @@ export function QuickAddProductDialog({ pos }: { pos: PosCounterState }) {
       setCategory(defaultCat);
       setName('');
       setGenericName('');
+      setAppliedTemplateName(null);
       setBarcode(quickAddInitialBarcode || String(Math.floor(10000000 + Math.random() * 90000000)));
       setUnit(isPharmacy ? 'STRIP' : 'PCS');
       setCustomUnit('');
@@ -145,6 +152,15 @@ export function QuickAddProductDialog({ pos }: { pos: PosCounterState }) {
       setIsSubmitting(false);
     }
   }, [isQuickAddOpen, quickAddInitialBarcode, moduleCategories, isPharmacy, vendorsList]);
+
+  const handleSelectExistingProduct = (p: Product) => {
+    setName(p.name);
+    setCategory(p.category);
+    if (p.genericName) setGenericName(p.genericName);
+    if (p.unit) setUnit(p.unit);
+    setAppliedTemplateName(p.name);
+    // Price, Cost, Quantity, Expiry date, Batch number, and SKU/Barcode are intentionally NOT copied
+  };
 
   // Auto-focus appropriate input on step change
   useEffect(() => {
@@ -264,8 +280,8 @@ export function QuickAddProductDialog({ pos }: { pos: PosCounterState }) {
       const finalCost = Math.max(0, Number(costPrice) || 0);
       const effectiveUnit = customUnit.trim() ? customUnit.trim().toUpperCase() : unit.trim().toUpperCase() || 'PCS';
 
-      // 2. Build product payload
-      const newProduct: Product = {
+      // 2. Build product payload (always creates fresh new product record)
+      const savedProduct: Product = {
         id: newProdId,
         name: trimmedName,
         module,
@@ -291,8 +307,7 @@ export function QuickAddProductDialog({ pos }: { pos: PosCounterState }) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-
-      await posApi.saveProduct(newProduct);
+      await posApi.saveProduct(savedProduct);
 
       // 3. Record Stock In Movement if initial stock entered
       if (finalStockQty > 0) {
@@ -300,8 +315,8 @@ export function QuickAddProductDialog({ pos }: { pos: PosCounterState }) {
           await posApi.saveStockMovement({
             module,
             type: 'in',
-            productId: newProdId,
-            productName: newProduct.name,
+            productId: savedProduct.id,
+            productName: savedProduct.name,
             quantity: finalStockQty,
             unitCost: finalCost,
             batchNumber: batchNumber.trim() || undefined,
@@ -323,11 +338,11 @@ export function QuickAddProductDialog({ pos }: { pos: PosCounterState }) {
 
       // 5. If "Add to current bill" is checked, immediately add to active cart
       if (addToBillImmediately) {
-        addToCart(newProduct, Math.max(1, Number(billQty) || 1));
+        addToCart(savedProduct, Math.max(1, Number(billQty) || 1));
       }
 
       playSuccessChime();
-      notifySuccess(`"${newProduct.name}" created with ${finalStockQty} ${newProduct.unit} in stock!`);
+      notifySuccess(`"${savedProduct.name}" created with ${finalStockQty} ${savedProduct.unit} in stock!`);
       closeQuickAdd();
     } catch (err: any) {
       playErrorBeep();
@@ -886,26 +901,73 @@ export function QuickAddProductDialog({ pos }: { pos: PosCounterState }) {
              ══════════════════════════════════════════════════════════════════════════════ */}
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {/* Product Name */}
-              <div>
+              {/* Product Name with Autocomplete & Duplicate Detection */}
+              <div style={{ position: 'relative' }}>
                 <label style={labelStyle}>
                   <Box20Regular style={{ width: 14, height: 14 }} />
                   <span>Item / Product Name *</span>
                 </label>
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  placeholder={isPharmacy ? 'e.g. Panadol 500mg, Disprin, Augmentin 625mg' : 'e.g. Pepsi 1.5L, Lays Masala, Rice Super'}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleProceedToStep3();
-                    }
-                  }}
-                  style={{ ...inputStyle, fontWeight: 600 }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <ProductAutocomplete
+                    id="quick-add-product-name"
+                    placeholder={isPharmacy ? 'e.g. Panadol 500mg, Disprin, Augmentin 625mg' : 'e.g. Pepsi 1.5L, Lays Masala, Rice Super'}
+                    value={name}
+                    products={products}
+                    inputRef={nameInputRef}
+                    onChange={(val) => {
+                      setName(val);
+                      if (appliedTemplateName && val !== appliedTemplateName) {
+                        setAppliedTemplateName(null);
+                      }
+                    }}
+                    onSelectProduct={(p) => handleSelectExistingProduct(p)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleProceedToStep3();
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Applied Name & Category Template Banner */}
+                {appliedTemplateName && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5',
+                      border: `1px solid ${isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0'}`,
+                      marginTop: '6px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <CheckmarkCircle20Regular style={{ width: 18, height: 18, color: isDark ? '#34D399' : '#059669', flexShrink: 0 }} />
+                      <div style={{ fontSize: '12px', color: isDark ? '#34D399' : '#065F46' }}>
+                        Name and category filled from <strong>"{appliedTemplateName}"</strong>. Enter fresh quantity, expiry & barcode as needed.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAppliedTemplateName(null)}
+                      style={{
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        color: isDark ? '#34D399' : '#065F46',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Pharmacy Generic / Salt Name */}
@@ -1171,7 +1233,9 @@ export function QuickAddProductDialog({ pos }: { pos: PosCounterState }) {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '11px', color: F.textSecondary }}>Item Preview</div>
+                  <div style={{ fontSize: '11px', color: F.textSecondary, fontWeight: 600 }}>
+                    Item Preview
+                  </div>
                   <div style={{ fontSize: '14px', fontWeight: 700, color: F.textPrimary }}>
                     {name || 'Product'}
                   </div>
